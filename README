@@ -7,7 +7,6 @@
   Copyright 2007-2015 / M-Labs / sb@m-labs.hk
 
        A small footprint and configurable DRAM core
-           (initially based on MiSoC's LASMICON)
                   powered by Migen
 
 [> Doc

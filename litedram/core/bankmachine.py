@@ -4,7 +4,7 @@ from migen.genlib.fsm import FSM, NextState
 from migen.genlib.misc import optree
 from migen.genlib.fifo import SyncFIFO
 
-from misoclib.sdram.lasmicon.multiplexer import *
+from litedram.core.multiplexer import *
 
 class _AddressSlicer:
 	def __init__(self, col_a, address_align):
@@ -25,56 +25,62 @@ class _AddressSlicer:
 		else:
 			return Cat(Replicate(0, self.address_align), address[:split])
 
-class BankMachine(Module):
-	def __init__(self, geom_settings, timing_settings, address_align, bankn, req):
-		self.refresh_req = Signal()
-		self.refresh_gnt = Signal()
-		self.cmd = CommandRequestRW(geom_settings.mux_a, geom_settings.bank_a)
+class LiteDRAMRowTracker(Module):
+	def __init__(self, rw):
+		self.row = Signal(rw)
+		self.open = Signal()
+		self.close = Signal()
+		###
+		self._has_openrow = Signal()
+		self._openrow = Signal(rw)
+		self.sync += [
+			If(self.open,
+				self._has_openrow.eq(1),
+				self._openrow.eq(self.row)
+			).Elif(self.close,
+				self._has_openrow.eq(0)
+			)
+		]
 
+	def row_hit(self, row):
+		return self._openrow == row
+
+class LiteDRAMBankMachine(Module):
+	def __init__(self, sdram, bankn, cmd_fifo_depth):
+		self.refresh = Sink(dram_refresh_description)
+		self.write_cmd = Sink(dram_cmd_description(aw))
+		self.read_cmd = Sink(dram_cmd_description(aw))
+
+		self.cmd = Source(dram_bank_cmd_description())
 		###
 
-		# Request FIFO
-		self.submodules.req_fifo = SyncFIFO([("we", 1), ("adr", flen(req.adr))], timing_settings.req_queue_size)
+		read_write_n = FlipFlop()
+		self.comb += read_write_n.d.eq(1)
+		self.submodules += FlipFlop()
+
+		# Cmd fifos
+		write_cmd_fifo = SyncFIFO(self.write_cmd.description, cmd_fifo_depth)
+		read_cmd_fifo = SyncFIFO(self.read_cmd.description, cmd_fifo_depth)
+		self.submodules += write_cmd_fifo, read_cmd_fifo
 		self.comb += [
-			self.req_fifo.din.we.eq(req.we),
-			self.req_fifo.din.adr.eq(req.adr),
-			self.req_fifo.we.eq(req.stb),
-			req.req_ack.eq(self.req_fifo.writable),
-
-			self.req_fifo.re.eq(req.dat_ack),
-			req.lock.eq(self.req_fifo.readable)
+			Record.connect(self.write_cmd, write_cmd_fifo.sink),
+			Record.connect(self.read_cmd, read_cmd_fifo.sink)
 		]
-		reqf = self.req_fifo.dout
 
-		slicer = _AddressSlicer(geom_settings.col_a, address_align)
+		# Cmd mux
+		mux = Multiplexer(dram_cmd_description(32), 2)
+		self.submodules += mux
+		self.comb += [
+			mux.sel.eq(reading),
+			Record.connect(write_cmd_fifo.source, mux.sink0),
+			Record.connect(read_cmd_fifo.source, mux.sink1)
+		]
+
+		slicer = _AddressSlicer(sdram.geom_settings.col_a, address_align)
 
 		# Row tracking
-		has_openrow = Signal()
-		openrow = Signal(geom_settings.row_a)
-		hit = Signal()
-		self.comb += hit.eq(openrow == slicer.row(reqf.adr))
-		track_open = Signal()
-		track_close = Signal()
-		self.sync += [
-			If(track_open,
-				has_openrow.eq(1),
-				openrow.eq(slicer.row(reqf.adr))
-			),
-			If(track_close,
-				has_openrow.eq(0)
-			)
-		]
-
-		# Address generation
-		s_row_adr = Signal()
-		self.comb += [
-			self.cmd.ba.eq(bankn),
-			If(s_row_adr,
-				self.cmd.a.eq(slicer.row(reqf.adr))
-			).Else(
-				self.cmd.a.eq(slicer.col(reqf.adr))
-			)
-		]
+		row_tracker = LiteDRAMRowTracker(sdram.geom_settings.row_a)
+		self.submodules += row_tracker
 
 		# Respect write-to-precharge specification
 		precharge_ok = Signal()
@@ -89,27 +95,69 @@ class BankMachine(Module):
 			)
 		]
 
+		write_available = Signal()
+		write_hit = Signal()
+		self.comb += [
+			write_available.eq(write_cmd_fifo.source.stb)
+			write_hit.eq(tracker.row_hit(slicer.row(write_cmd_fifo.source.adr)))
+		]
+
+		read_available = Signal()
+		read_hit = Signal()
+		self.comb += [
+			read_available.eq(read_cmd_fifo.source.stb)
+			read_hit.eq(tracker.row_hit(slicer.row(read_cmd_fifo.source.adr)))
+		]
+
 		# Control and command generation FSM
-		fsm = FSM()
-		self.submodules += fsm
-		fsm.act("REGULAR",
-			If(self.refresh_req,
+		self.submodules.fsm = fsm = FSM(idle_state="WRITE")
+		fsm.act("WRITE",
+			read_write_n.reset.eq(1),
+			If(self.refresh.stb,
 				NextState("REFRESH")
-			).Elif(self.req_fifo.readable,
-				If(has_openrow,
-					If(hit,
-						# NB: write-to-read specification is enforced by multiplexer
-						self.cmd.stb.eq(1),
-						req.dat_ack.eq(self.cmd.ack),
-						self.cmd.is_read.eq(~reqf.we),
-						self.cmd.is_write.eq(reqf.we),
-						self.cmd.cas_n.eq(0),
-						self.cmd.we_n.eq(~reqf.we)
-					).Else(
-						NextState("PRECHARGE")
-					)
+			).Else(
+				If(~write_available & read_available, # XXX add anti starvation
+					NextState("READ")
 				).Else(
-					NextState("ACTIVATE")
+					If(tracker.hasopenrow,
+						If(write_hit,
+							self.cmd.stb.eq(1),
+							self.cmd.is_read.eq(0),
+							self.cmd.is_write.eq(1),
+							self.cmd.cas_n.eq(0),
+							self.cmd.we_n.eq(0)
+							write_cmd_fifo.source.stb.eq(self.cmd.ack)
+						).Else(
+							NextState("PRECHARGE")
+						)
+					).Else(
+						NextState("ACTIVATE")
+					)
+				)
+			)
+		)
+		fsm.act("READ",
+			read_write_n.ce.eq(1),
+			If(self.refresh.stb,
+				NextState("REFRESH")
+			).Else(
+				If(~read_available & write_available, # XXX add anti starvation
+					NextState("READ")
+				).Else(
+					If(tracker.hasopenrow,
+						If(write_hit,
+							self.cmd.stb.eq(1),
+							self.cmd.is_read.eq(1),
+							self.cmd.is_write.eq(0),
+							self.cmd.cas_n.eq(0),
+							self.cmd.we_n.eq(1)
+							read_cmd_fifo.source.stb.eq(self.cmd.ack)
+						).Else(
+							NextState("PRECHARGE")
+						)
+					).Else(
+						NextState("ACTIVATE")
+					)
 				)
 			)
 		)
@@ -117,28 +165,37 @@ class BankMachine(Module):
 			# Notes:
 			# 1. we are presenting the column address, A10 is always low
 			# 2. since we always go to the ACTIVATE state, we do not need
-			# to assert track_close.
+			# to assert tracker.close.
 			If(precharge_ok,
 				self.cmd.stb.eq(1),
-				If(self.cmd.ack, NextState("TRP")),
 				self.cmd.ras_n.eq(0),
 				self.cmd.we_n.eq(0),
-				self.cmd.is_cmd.eq(1)
+				self.cmd.is_cmd.eq(1),
+				If(read_write_n,
+					self.cmd.adr.eq(slicer.col(read_cmd_fifo.adr))
+				).Else(
+					self.cmd.adr.eq(slicer.col(write_cmd_fifo.adr))
+				),
+				If(self.cmd.ack, NextState("TRP")),
 			)
 		)
 		fsm.act("ACTIVATE",
-			s_row_adr.eq(1),
-			track_open.eq(1),
+			tracker.open.eq(1),
 			self.cmd.stb.eq(1),
 			self.cmd.is_cmd.eq(1),
+			If(read_write_n,
+				self.cmd.adr.eq(slicer.row(read_cmd_fifo.adr))
+			).Else(
+				self.cmd.adr.eq(slicer.row(write_cmd_fifo.adr))
+			),
 			If(self.cmd.ack, NextState("TRCD")),
 			self.cmd.ras_n.eq(0)
 		)
 		fsm.act("REFRESH",
-			self.refresh_gnt.eq(precharge_ok),
-			track_close.eq(1),
+			self.refresh.ack.eq(precharge_ok),
+			tracker.close.eq(1),
 			self.cmd.is_cmd.eq(1),
-			If(~self.refresh_req, NextState("REGULAR"))
+			If(~self.refresh.stb, NextState("REGULAR"))
 		)
-		fsm.delayed_enter("TRP", "ACTIVATE", timing_settings.tRP-1)
-		fsm.delayed_enter("TRCD", "REGULAR", timing_settings.tRCD-1)
+		fsm.delayed_enter("TRP", "ACTIVATE", sdram.timing_settings.tRP-1)
+		fsm.delayed_enter("TRCD", "REGULAR", sdram.timing_settings.tRCD-1)
