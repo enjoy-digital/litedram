@@ -3,8 +3,7 @@
        / /__/ / __/ -_) // / , _/ __ |/ /|_/ /
       /____/_/\__/\__/____/_/|_/_/ |_/_/  /_/
 
-  Copyright 2012-2015 / EnjoyDigital / florent@enjoy-digital.fr
-  Copyright 2007-2015 / M-Labs / sb@m-labs.hk
+             Copyright 2015 / EnjoyDigital
 
        A small footprint and configurable DRAM core
                   powered by Migen
@@ -31,7 +30,7 @@ LiteDRAM uses technologies developed in partnership with M-Labs Ltd:
  - Migen enables generating HDL with Python in an efficient way.
  - MiSoC provides the basic blocks to build a powerful and small footprint SoC.
 
-LiteDRAM can be used as a Migen/MiSoC library (by simply installing  it
+LiteDRAM can be used as a Migen/MiSoC library (by simply installing it
 with the provided setup.py) or can be integrated with your standard design flow
 by generating the verilog rtl that you will use as a standard core.
 
