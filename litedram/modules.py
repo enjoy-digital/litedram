@@ -1,7 +1,7 @@
-# SDRAM memory modules library
+# DRAM memory modules library
 #
 # This library avoid duplications of memory modules definitions in targets and
-# ease SDRAM usage. (User can only select an already existing module or create
+# ease DRAM usage. (User can only select an already existing module or create
 # one for its board and contribute to this library)
 #
 # TODO:
@@ -20,7 +20,7 @@ from migen.fhdl.std import *
 from misoclib.mem import sdram
 
 
-class SDRAMModule:
+class DRAMModule:
     def __init__(self, clk_freq, memtype, geom_settings, timing_settings):
         self.clk_freq = clk_freq
         self.memtype = memtype
@@ -46,7 +46,7 @@ class SDRAMModule:
 
 
 # SDR
-class IS42S16160(SDRAMModule):
+class IS42S16160(DRAMModule):
     geom_settings = {
         "nbanks": 4,
         "nrows":  8192,
@@ -62,11 +62,11 @@ class IS42S16160(SDRAMModule):
         "tRFC":  70
     }
     def __init__(self, clk_freq):
-        SDRAMModule.__init__(self, clk_freq,  "SDR", self.geom_settings,
+        DRAMModule.__init__(self, clk_freq,  "SDR", self.geom_settings,
             self.timing_settings)
 
 
-class MT48LC4M16(SDRAMModule):
+class MT48LC4M16(DRAMModule):
     geom_settings = {
         "nbanks": 4,
         "nrows":  4096,
@@ -81,11 +81,11 @@ class MT48LC4M16(SDRAMModule):
         "tRFC":  66
     }
     def __init__(self, clk_freq):
-        SDRAMModule.__init__(self, clk_freq, "SDR", self.geom_settings,
+        DRAMModule.__init__(self, clk_freq, "SDR", self.geom_settings,
             self.timing_settings)
 
 
-class AS4C16M16(SDRAMModule):
+class AS4C16M16(DRAMModule):
     geom_settings = {
         "nbanks": 4,
         "nrows":  8192,
@@ -101,12 +101,12 @@ class AS4C16M16(SDRAMModule):
         "tRFC":  60
     }
     def __init__(self, clk_freq):
-        SDRAMModule.__init__(self, clk_freq, "SDR", self.geom_settings,
+        DRAMModule.__init__(self, clk_freq, "SDR", self.geom_settings,
             self.timing_settings)
 
 
 # DDR
-class MT46V32M16(SDRAMModule):
+class MT46V32M16(DRAMModule):
     geom_settings = {
         "nbanks": 4,
         "nrows":  8192,
@@ -121,12 +121,12 @@ class MT46V32M16(SDRAMModule):
         "tRFC":  70
     }
     def __init__(self, clk_freq):
-        SDRAMModule.__init__(self, clk_freq, "DDR", self.geom_settings,
+        DRAMModule.__init__(self, clk_freq, "DDR", self.geom_settings,
             self.timing_settings)
 
 
 # LPDDR
-class MT46H32M16(SDRAMModule):
+class MT46H32M16(DRAMModule):
     geom_settings = {
         "nbanks": 4,
         "nrows":  8192,
@@ -141,12 +141,12 @@ class MT46H32M16(SDRAMModule):
         "tRFC":  72
     }
     def __init__(self, clk_freq):
-        SDRAMModule.__init__(self, clk_freq, "LPDDR", self.geom_settings,
+        DRAMModule.__init__(self, clk_freq, "LPDDR", self.geom_settings,
             self.timing_settings)
 
 
 # DDR2
-class MT47H128M8(SDRAMModule):
+class MT47H128M8(DRAMModule):
     geom_settings = {
         "nbanks": 8,
         "nrows":  16384,
@@ -161,11 +161,11 @@ class MT47H128M8(SDRAMModule):
         "tRFC":  127.5
     }
     def __init__(self, clk_freq):
-        SDRAMModule.__init__(self, clk_freq, "DDR2", self.geom_settings,
+        DRAMModule.__init__(self, clk_freq, "DDR2", self.geom_settings,
             self.timing_settings)
 
 
-class P3R1GE4JGF(SDRAMModule):
+class P3R1GE4JGF(DRAMModule):
     geom_settings = {
         "nbanks": 8,
         "nrows": 8192,
@@ -181,12 +181,12 @@ class P3R1GE4JGF(SDRAMModule):
     }
 
     def __init__(self, clk_freq):
-        SDRAMModule.__init__(self, clk_freq, "DDR2", self.geom_settings,
+        DRAMModule.__init__(self, clk_freq, "DDR2", self.geom_settings,
             self.timing_settings)
 
 
 # DDR3
-class MT8JTF12864(SDRAMModule):
+class MT8JTF12864(DRAMModule):
     geom_settings = {
         "nbanks": 8,
         "nrows":  16384,
@@ -201,11 +201,11 @@ class MT8JTF12864(SDRAMModule):
         "tRFC":  70
     }
     def __init__(self, clk_freq):
-        SDRAMModule.__init__(self, clk_freq, "DDR3", self.geom_settings,
+        DRAMModule.__init__(self, clk_freq, "DDR3", self.geom_settings,
             self.timing_settings)
 
 
-class MT41J128M16(SDRAMModule):
+class MT41J128M16(DRAMModule):
     geom_settings = {
         "nbanks": 8,
         "nrows":  16384,
@@ -221,5 +221,5 @@ class MT41J128M16(SDRAMModule):
     }
 
     def __init__(self, clk_freq):
-        SDRAMModule.__init__(self, clk_freq, "DDR3", self.geom_settings,
+        DRAMModule.__init__(self, clk_freq, "DDR3", self.geom_settings,
             self.timing_settings)

@@ -73,15 +73,18 @@ class LiteDRAMPort:
         self.write.connect(other)
         self.read.connect(other)
 
-def dram_bank_cmd_description(addressbits):
+def dram_cmd_description(rowbits, colbits):
+    payload_layout = [("row", rowbits), ("col", colbits)]
+    return EndpointDescription(payload_layout)
+
+def dram_bank_cmd_description(rowbits, colbits):
     payload_layout = [
-        ("adr", addressbits),
-        ("cas_n", 1),
-        ("ras_n", 1),
-        ("we_n", 1),
-        ("is_cmd", 1),
-        ("is_read", 1),
-        ("is_write", 1)
+        ("write", 1),
+        ("read", 1),
+        ("precharge", 1),
+        ("activate", 1),
+        ("row", rowbits),
+        ("col", colbits)
     ]
     return EndpointDescription(payload_layout)
 
