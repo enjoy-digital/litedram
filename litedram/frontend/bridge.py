@@ -1,11 +1,10 @@
 from litex.gen import *
-from litex.gen.genlib.fsm import FSM, NextState
 
 
-class WB2LASMI(Module):
-    def __init__(self, wishbone, lasmim):
+class LiteDRAMWishboneBridge(Module):
+    def __init__(self, wishbone, port):
 
-        ###
+        # # #
 
         # Control FSM
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
@@ -15,9 +14,9 @@ class WB2LASMI(Module):
             )
         )
         fsm.act("REQUEST",
-            lasmim.stb.eq(1),
-            lasmim.we.eq(wishbone.we),
-            If(lasmim.req_ack,
+            port.stb.eq(1),
+            port.we.eq(wishbone.we),
+            If(port.req_ack,
                 If(wishbone.we,
                     NextState("WRITE_DATA")
                 ).Else(
@@ -26,14 +25,14 @@ class WB2LASMI(Module):
             )
         )
         fsm.act("WRITE_DATA",
-            If(lasmim.dat_w_ack,
-                lasmim.dat_we.eq(wishbone.sel),
+            If(port.dat_w_ack,
+                port.dat_we.eq(wishbone.sel),
                 wishbone.ack.eq(1),
                 NextState("IDLE")
             )
         )
         fsm.act("READ_DATA",
-            If(lasmim.dat_r_ack,
+            If(port.dat_r_ack,
                 wishbone.ack.eq(1),
                 NextState("IDLE")
             )
@@ -41,9 +40,9 @@ class WB2LASMI(Module):
 
         # Address / Datapath
         self.comb += [
-            lasmim.adr.eq(wishbone.adr),
-            If(lasmim.dat_w_ack,
-                lasmim.dat_w.eq(wishbone.dat_w),
+            port.adr.eq(wishbone.adr),
+            If(port.dat_w_ack,
+                port.dat_w.eq(wishbone.dat_w),
             ),
-            wishbone.dat_r.eq(lasmim.dat_r)
+            wishbone.dat_r.eq(port.dat_r)
         ]
