@@ -1,19 +1,42 @@
-from functools import reduce
-from operator import or_
-from collections import namedtuple
-
 from litex.gen import *
 
-PhySettingsT = namedtuple("PhySettings", "memtype dfi_databits nphases rdphase wrphase rdcmdphase wrcmdphase cl cwl read_latency write_latency")
-def PhySettings(memtype, dfi_databits, nphases, rdphase, wrphase, rdcmdphase, wrcmdphase, cl, read_latency, write_latency, cwl=0):
-    return PhySettingsT(memtype, dfi_databits, nphases, rdphase, wrphase, rdcmdphase, wrcmdphase, cl, cwl, read_latency, write_latency)
+class PhySettings:
+    def __init__(self, memtype, dfi_databits,
+                 nphases,
+                 rdphase, wrphase,
+                 rdcmdphase, wrcmdphase,
+                 cl, read_latency, write_latency, cwl=0):
+        self.memtype = memtype
+        self.dfi_databits = dfi_databits
 
-GeomSettingsT = namedtuple("_GeomSettings", "bankbits rowbits colbits addressbits")
-def GeomSettings(bankbits, rowbits, colbits):
-    return GeomSettingsT(bankbits, rowbits, colbits, max(rowbits, colbits))
+        self.nphases = nphases
+        self.rdphase = rdphase
+        self.wrphase = wrphase
+        self.rdcmdphase = rdcmdphase
+        self.wrcmdphase = wrcmdphase
 
-TimingSettings = namedtuple("TimingSettings", "tRP tRCD tWR tWTR tREFI tRFC")
+        self.cl = cl
+        self.read_latency = read_latency
+        self.write_latency = write_latency
+        self.cwl = cwl
 
+
+class GeomSettings:
+    def __init__(self, bankbits, rowbits, colbits):
+        self.bankbits = bankbits
+        self.rowbits = rowbits
+        self.colbits =  colbits
+        self.addressbits = max(rowbits, colbits)
+
+
+class TimingSettings:
+    def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC):
+        self.tRP = tRP
+        self.tRCD = tRCD
+        self.tWR = tWR
+        self.tWTR = tWTR
+        self.tREFI = tREFI
+        self.tRFC = tRFC
 
 
 class Interface(Record):
