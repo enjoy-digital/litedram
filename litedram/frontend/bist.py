@@ -5,7 +5,7 @@ from litex.gen import *
 
 from litex.soc.interconnect.csr import *
 
-from litedram.frontend import dma_lasmi
+from litedram.frontend import dma
 
 # TODO: implement or replace DMAControllers in MiSoC
 
@@ -35,24 +35,24 @@ class LFSR(Module):
 memtest_magic = 0x361f
 
 
-class Writer(Module):
-    def __init__(self, lasmim):
+class LiteDRAMBISTGenerator(Module):
+    def __init__(self, port):
         self._magic = CSRStatus(16)
         self._reset = CSR()
         self._shoot = CSR()
-        self.submodules._dma = DMAWriteController(dma_lasmi.Writer(lasmim),
+        self.submodules._dma = DMAWriteController(dma.Writer(port),
                                                   MODE_EXTERNAL)
 
-        ###
+        # # #
 
         self.comb += self._magic.status.eq(memtest_magic)
 
-        lfsr = LFSR(lasmim.dw)
+        lfsr = LFSR(port.dw)
         self.submodules += lfsr
         self.comb += lfsr.reset.eq(self._reset.re)
 
         en = Signal()
-        en_counter = Signal(lasmim.aw)
+        en_counter = Signal(port.aw)
         self.comb += en.eq(en_counter != 0)
         self.sync += [
             If(self._shoot.re,
@@ -73,19 +73,19 @@ class Writer(Module):
         return [self._magic, self._reset, self._shoot] + self._dma.get_csrs()
 
 
-class Reader(Module):
-    def __init__(self, lasmim):
+class LiteDRAMBISTChecker(Module):
+    def __init__(self, port):
         self._magic = CSRStatus(16)
         self._reset = CSR()
-        self._error_count = CSRStatus(lasmim.aw)
-        self.submodules._dma = DMAReadController(dma_lasmi.Reader(lasmim),
+        self._error_count = CSRStatus(port.aw)
+        self.submodules._dma = DMAReadController(dma.Reader(port),
                                                  MODE_SINGLE_SHOT)
 
-        ###
+        # # #
 
         self.comb += self._magic.status.eq(memtest_magic)
 
-        lfsr = LFSR(lasmim.dw)
+        lfsr = LFSR(port.dw)
         self.submodules += lfsr
         self.comb += lfsr.reset.eq(self._reset.re)
 
@@ -104,21 +104,3 @@ class Reader(Module):
 
     def get_csrs(self):
         return [self._magic, self._reset, self._error_count] + self._dma.get_csrs()
-
-
-class _LFSRTB(Module):
-    def __init__(self, *args, **kwargs):
-        self.submodules.dut = LFSR(*args, **kwargs)
-        self.comb += self.dut.ce.eq(1)
-
-    def do_simulation(self, selfp):
-        print("{0:032x}".format(selfp.dut.o))
-
-if __name__ == "__main__":
-    from litex.gen.fhdl import verilog
-    from litex.gen.sim.generic import run_simulation
-
-    lfsr = LFSR(3, 4, [3, 2])
-    print(verilog.convert(lfsr, ios={lfsr.ce, lfsr.reset, lfsr.o}))
-
-    run_simulation(_LFSRTB(128), ncycles=20)
