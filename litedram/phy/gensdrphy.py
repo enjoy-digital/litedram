@@ -21,22 +21,22 @@
 # This PHY only supports CAS Latency 2.
 #
 
-from migen.fhdl.std import *
-from migen.genlib.record import *
-from migen.fhdl.specials import *
+from litex.gen import *
+from litex.gen.genlib.record import *
+from litex.gen.fhdl.specials import Tristate
 
-from misoclib.mem.sdram.phy.dfi import *
-from misoclib.mem import sdram
+from litedram.phy.dfi import *
+from litedram import settings as sdram_settings
 
 
 class GENSDRPHY(Module):
-    def __init__(self, pads, module):
-        addressbits = flen(pads.a)
-        bankbits = flen(pads.ba)
-        databits = flen(pads.dq)
+    def __init__(self, pads):
+        addressbits = len(pads.a)
+        bankbits = len(pads.ba)
+        databits = len(pads.dq)
 
-        self.settings = sdram.PhySettings(
-            memtype=module.memtype,
+        self.settings = sdram_settings.PhySettings(
+            memtype="SDR",
             dfi_databits=databits,
             nphases=1,
             rdphase=0,
@@ -47,7 +47,6 @@ class GENSDRPHY(Module):
             read_latency=4,
             write_latency=0
         )
-        self.module = module
 
         self.dfi = Interface(addressbits, bankbits, databits)
 

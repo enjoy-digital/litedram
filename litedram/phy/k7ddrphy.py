@@ -1,17 +1,18 @@
 # tCK=5ns CL=7 CWL=6
 
-from migen.fhdl.std import *
-from migen.bank.description import *
+from litex.gen import *
 
-from misoclib.mem.sdram.phy.dfi import *
-from misoclib.mem import sdram
+from litex.soc.interconnect.csr import *
+
+from litedram.phy.dfi import *
+from litedram import settings as sdram_settings
 
 
 class K7DDRPHY(Module, AutoCSR):
-    def __init__(self, pads, module):
-        addressbits = flen(pads.a)
-        bankbits = flen(pads.ba)
-        databits = flen(pads.dq)
+    def __init__(self, pads):
+        addressbits = len(pads.a)
+        bankbits = len(pads.ba)
+        databits = len(pads.dq)
         nphases = 4
 
         self._wlevel_en = CSRStorage()
@@ -25,8 +26,8 @@ class K7DDRPHY(Module, AutoCSR):
         self._wdly_dqs_rst = CSR()
         self._wdly_dqs_inc = CSR()
 
-        self.settings = sdram.PhySettings(
-            memtype=module.memtype,
+        self.settings = sdram_settings.PhySettings(
+            memtype="DDR3",
             dfi_databits=2*databits,
             nphases=nphases,
             rdphase=0,
@@ -38,7 +39,6 @@ class K7DDRPHY(Module, AutoCSR):
             read_latency=6,
             write_latency=2
         )
-        self.module = module
 
         self.dfi = Interface(addressbits, bankbits, 2*databits, nphases)
 
