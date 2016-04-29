@@ -23,8 +23,8 @@ from litex.gen import *
 from litex.gen.genlib.record import *
 from litex.gen.fhdl.decorators import ClockDomainsRenamer
 
+from litedram.common import PhySettings
 from litedram.phy.dfi import *
-from litedram import settings as sdram_settings
 
 
 class S6HalfRateDDRPHY(Module):
@@ -37,7 +37,7 @@ class S6HalfRateDDRPHY(Module):
         nphases = 2
 
         if memtype == "DDR3":
-            self.settings = sdram_settings.PhySettings(
+            self.settings = PhySettings(
                 memtype="DDR3",
                 dfi_databits=2*databits,
                 nphases=nphases,

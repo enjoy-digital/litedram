@@ -25,8 +25,8 @@ from litex.gen import *
 from litex.gen.genlib.record import *
 from litex.gen.fhdl.specials import Tristate
 
+from litedram.common import PhySettings
 from litedram.phy.dfi import *
-from litedram import settings as sdram_settings
 
 
 class GENSDRPHY(Module):
@@ -35,7 +35,7 @@ class GENSDRPHY(Module):
         bankbits = len(pads.ba)
         databits = len(pads.dq)
 
-        self.settings = sdram_settings.PhySettings(
+        self.settings = PhySettings(
             memtype="SDR",
             dfi_databits=databits,
             nphases=1,

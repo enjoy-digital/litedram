@@ -4,8 +4,8 @@ from litex.gen import *
 
 from litex.soc.interconnect.csr import *
 
+from litedram.common import PhySettings
 from litedram.phy.dfi import *
-from litedram import settings as sdram_settings
 
 
 class K7DDRPHY(Module, AutoCSR):
@@ -26,7 +26,7 @@ class K7DDRPHY(Module, AutoCSR):
         self._wdly_dqs_rst = CSR()
         self._wdly_dqs_inc = CSR()
 
-        self.settings = sdram_settings.PhySettings(
+        self.settings = PhySettings(
             memtype="DDR3",
             dfi_databits=2*databits,
             nphases=nphases,
