@@ -8,11 +8,14 @@ from litedram.core.multiplexer import *
 
 
 class ControllerSettings:
-    def __init__(self, req_queue_size=8, read_time=32, write_time=16, with_bandwidth=False):
+    def __init__(self, req_queue_size=8, read_time=32, write_time=16,
+                 with_bandwidth=False,
+                 with_refresh=True):
         self.req_queue_size = req_queue_size
         self.read_time = read_time
         self.write_time = write_time
         self.with_bandwidth = with_bandwidth
+        self.with_refresh = with_refresh
 
 
 class LiteDRAMController(Module):
@@ -46,7 +49,8 @@ class LiteDRAMController(Module):
         self.submodules.refresher = Refresher(geom_settings.addressbits,
                                               geom_settings.bankbits,
                                               timing_settings.tRP,
-                                              timing_settings.tREFI,timing_settings.tRFC)
+                                              timing_settings.tREFI,timing_settings.tRFC,
+                                              controller_settings.with_refresh)
 
         self.submodules.bank_machines = [BankMachine(geom_settings,
                                                      timing_settings,

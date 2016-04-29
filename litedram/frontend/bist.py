@@ -16,7 +16,7 @@ class LFSR(Module):
     def __init__(self, n_out, n_state=31, taps=[27, 30]):
         self.o = Signal(n_out)
 
-        ###
+        # # #
 
         state = Signal(n_state)
         curval = [state[i] for i in range(n_state)]

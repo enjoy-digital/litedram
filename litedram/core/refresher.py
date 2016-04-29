@@ -6,7 +6,7 @@ from litedram.core.multiplexer import *
 
 
 class Refresher(Module):
-    def __init__(self, a, ba, tRP, tREFI, tRFC):
+    def __init__(self, a, ba, tRP, tREFI, tRFC, enable):
         self.req = Signal()
         self.ack = Signal()  # 1st command 1 cycle after assertion of ack
         self.cmd = CommandRequest(a, ba)
@@ -55,7 +55,7 @@ class Refresher(Module):
         # Control FSM
         fsm = FSM()
         self.submodules += fsm
-        fsm.act("IDLE", If(start, NextState("WAIT_GRANT")))
+        fsm.act("IDLE", If(start & enable, NextState("WAIT_GRANT")))
         fsm.act("WAIT_GRANT",
             self.req.eq(1),
             If(self.ack,
