@@ -10,7 +10,7 @@ class Bandwidth(Module, AutoCSR):
         self._nwrites = CSRStatus(period_bits)
         self._data_width = CSRStatus(bits_for(data_width), reset=data_width)
 
-        ###
+        # # #
 
         cmd_stb = Signal()
         cmd_ack = Signal()

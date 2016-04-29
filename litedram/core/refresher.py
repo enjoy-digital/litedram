@@ -2,7 +2,7 @@ from litex.gen import *
 from litex.gen.genlib.misc import timeline
 from litex.gen.genlib.fsm import FSM
 
-from litedram.lasmicon.multiplexer import *
+from litedram.core.multiplexer import *
 
 
 class Refresher(Module):
@@ -11,7 +11,7 @@ class Refresher(Module):
         self.ack = Signal()  # 1st command 1 cycle after assertion of ack
         self.cmd = CommandRequest(a, ba)
 
-        ###
+        # # #
 
         # Refresh sequence generator:
         # PRECHARGE ALL --(tRP)--> AUTO REFRESH --(tRFC)--> done

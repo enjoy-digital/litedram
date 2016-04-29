@@ -1,10 +1,10 @@
 from litex.gen import *
 
 from litedram.phy import dfi
-from litedram import lasmi_bus
-from litedram.lasmicon.refresher import *
-from litedram.lasmicon.bankmachine import *
-from litedram.lasmicon.multiplexer import *
+from litedram import bus
+from litedram.core.refresher import *
+from litedram.core.bankmachine import *
+from litedram.core.multiplexer import *
 
 
 class ControllerSettings:
@@ -15,7 +15,7 @@ class ControllerSettings:
         self.with_bandwidth = with_bandwidth
 
 
-class LASMIcon(Module):
+class LiteDRAMController(Module):
     def __init__(self, phy_settings, geom_settings, timing_settings,
                  controller_settings=None):
         if controller_settings is None:
@@ -30,7 +30,7 @@ class LASMIcon(Module):
             geom_settings.bankbits,
             phy_settings.dfi_databits,
             phy_settings.nphases)
-        self.lasmic = lasmi_bus.Interface(
+        self.lasmic = bus.Interface(
             aw=geom_settings.rowbits + geom_settings.colbits - address_align,
             dw=phy_settings.dfi_databits*phy_settings.nphases,
             nbanks=2**geom_settings.bankbits,
@@ -39,7 +39,7 @@ class LASMIcon(Module):
             write_latency=phy_settings.write_latency+1)
         self.nrowbits = geom_settings.colbits - address_align
 
-        ###
+        # # #
 
         self.submodules.refresher = Refresher(geom_settings.addressbits, geom_settings.bankbits,
             timing_settings.tRP, timing_settings.tREFI, timing_settings.tRFC)

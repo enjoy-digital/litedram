@@ -1,1 +1,1 @@
-from litedram.lasmicon.core import ControllerSettings, LASMIcon
+from litedram.core.controller import ControllerSettings, LiteDRAMController

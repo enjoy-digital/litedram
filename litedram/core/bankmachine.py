@@ -3,7 +3,7 @@ from litex.gen.genlib.roundrobin import *
 from litex.gen.genlib.fsm import FSM, NextState
 from litex.gen.genlib.fifo import SyncFIFO
 
-from litedram.lasmicon.multiplexer import *
+from litedram.core.multiplexer import *
 
 
 class _AddressSlicer:
@@ -32,7 +32,7 @@ class BankMachine(Module):
         self.refresh_gnt = Signal()
         self.cmd = CommandRequestRW(geom_settings.addressbits, geom_settings.bankbits)
 
-        ###
+        # # #
 
         # Request FIFO
         layout = [("we", 1), ("adr", len(req.adr))]

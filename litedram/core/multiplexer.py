@@ -5,7 +5,7 @@ from litex.gen import *
 from litex.gen.genlib.roundrobin import *
 from litex.gen.genlib.fsm import FSM, NextState
 
-from litedram.lasmicon.perf import Bandwidth
+from litedram.core.perf import Bandwidth
 from litex.soc.interconnect.csr import AutoCSR
 
 
@@ -36,7 +36,7 @@ class _CommandChooser(Module):
         # NB: cas_n/ras_n/we_n are 1 when stb is inactive
         self.cmd = CommandRequestRW(len(requests[0].a), len(requests[0].ba))
 
-        ###
+        # # #
 
         rr = RoundRobin(len(requests), SP_CE)
         self.submodules += rr
