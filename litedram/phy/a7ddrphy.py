@@ -15,8 +15,6 @@ class A7DDRPHY(Module, AutoCSR):
         databits = len(pads.dq)
         nphases = 4
 
-        self._wlevel_en = CSRStorage()
-        self._wlevel_strobe = CSR()
         self._dly_sel = CSRStorage(databits//8)
         self._rdly_dq_rst = CSR()
         self._rdly_dq_inc = CSR()
@@ -116,17 +114,7 @@ class A7DDRPHY(Module, AutoCSR):
                 )
         # DQS and DM
         oe_dqs = Signal()
-        dqs_serdes_pattern = Signal(8)
-        self.comb += \
-            If(self._wlevel_en.storage,
-                If(self._wlevel_strobe.re,
-                    dqs_serdes_pattern.eq(0b00000001)
-                ).Else(
-                    dqs_serdes_pattern.eq(0b00000000)
-                )
-            ).Else(
-                dqs_serdes_pattern.eq(0b01010101)
-            )
+        dqs_serdes_pattern = Signal(8, reset=0b01010101)
         for i in range(databits//8):
             self.specials += \
                 Instance("OSERDESE2",
@@ -235,7 +223,7 @@ class A7DDRPHY(Module, AutoCSR):
             n_rddata_en = Signal()
             self.sync += n_rddata_en.eq(rddata_en)
             rddata_en = n_rddata_en
-        self.sync += [phase.rddata_valid.eq(rddata_en | self._wlevel_en.storage)
+        self.sync += [phase.rddata_valid.eq(rddata_en)
             for phase in self.dfi.phases]
 
         oe = Signal()
@@ -243,9 +231,7 @@ class A7DDRPHY(Module, AutoCSR):
         wrphase = self.dfi.phases[self.settings.wrphase]
         self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en[:3]))
         self.comb += oe.eq(last_wrdata_en[1] | last_wrdata_en[2] | last_wrdata_en[3])
-        self.sync += \
-            If(self._wlevel_en.storage,
-                oe_dqs.eq(1), oe_dq.eq(0)
-            ).Else(
-                oe_dqs.eq(oe), oe_dq.eq(oe)
-            )
+        self.sync += [
+            oe_dqs.eq(oe),
+            oe_dq.eq(oe)
+        ]
