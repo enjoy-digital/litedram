@@ -23,13 +23,13 @@ class LiteDRAMCrossbar(Module):
 
         self._masters = []
 
-    def get_master(self):
+    def get_port(self):
         if self.finalized:
             raise FinalizeError
-        lasmi_master = Interface(self._rca_bits + self._bank_bits,
+        port = Interface(self._rca_bits + self._bank_bits,
             self._dw, 1, self._req_queue_size, self._read_latency, self._write_latency)
-        self._masters.append(lasmi_master)
-        return lasmi_master
+        self._masters.append(port)
+        return port
 
     def do_finalize(self):
         nmasters = len(self._masters)
