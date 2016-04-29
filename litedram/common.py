@@ -2,7 +2,6 @@ from functools import reduce
 from operator import or_
 
 from litex.gen import *
-from litex.gen.genlib.record import *
 
 
 class Interface(Record):

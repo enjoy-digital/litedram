@@ -4,7 +4,7 @@ from operator import or_
 from litex.gen import *
 from litex.gen.genlib import roundrobin
 
-from litedram.bus import *
+from litedram.common import *
 
 
 class LiteDRAMCrossbar(Module):

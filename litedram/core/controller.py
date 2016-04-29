@@ -1,7 +1,7 @@
 from litex.gen import *
 
 from litedram.phy import dfi
-from litedram import bus
+from litedram import common
 from litedram.core.refresher import *
 from litedram.core.bankmachine import *
 from litedram.core.multiplexer import *
@@ -30,7 +30,7 @@ class LiteDRAMController(Module):
             geom_settings.bankbits,
             phy_settings.dfi_databits,
             phy_settings.nphases)
-        self.lasmic = bus.Interface(
+        self.lasmic = common.Interface(
             aw=geom_settings.rowbits + geom_settings.colbits - address_align,
             dw=phy_settings.dfi_databits*phy_settings.nphases,
             nbanks=2**geom_settings.bankbits,
