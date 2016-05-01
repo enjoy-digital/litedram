@@ -1,6 +1,5 @@
 from litex.gen import *
-from litex.gen.genlib.misc import timeline
-from litex.gen.genlib.fsm import FSM
+from litex.gen.genlib.misc import timeline, WaitTimer
 
 from litedram.core.multiplexer import *
 
@@ -9,7 +8,7 @@ class Refresher(Module):
     def __init__(self, a, ba, tRP, tREFI, tRFC, enable):
         self.req = Signal()
         self.ack = Signal()  # 1st command 1 cycle after assertion of ack
-        self.cmd = CommandRequest(a, ba)
+        self.cmd = cmd = CommandRequest(a, ba)
 
         # # #
 
@@ -18,21 +17,21 @@ class Refresher(Module):
         seq_start = Signal()
         seq_done = Signal()
         self.sync += [
-            self.cmd.a.eq(2**10),
-            self.cmd.ba.eq(0),
-            self.cmd.cas_n.eq(1),
-            self.cmd.ras_n.eq(1),
-            self.cmd.we_n.eq(1),
+            cmd.a.eq(2**10),
+            cmd.ba.eq(0),
+            cmd.cas_n.eq(1),
+            cmd.ras_n.eq(1),
+            cmd.we_n.eq(1),
             seq_done.eq(0)
         ]
         self.sync += timeline(seq_start, [
             (1, [
-                self.cmd.ras_n.eq(0),
-                self.cmd.we_n.eq(0)
+                cmd.ras_n.eq(0),
+                cmd.we_n.eq(0)
             ]),
             (1+tRP, [
-                self.cmd.cas_n.eq(0),
-                self.cmd.ras_n.eq(0)
+                cmd.cas_n.eq(0),
+                cmd.ras_n.eq(0)
             ]),
             (1+tRP+tRFC, [
                 seq_done.eq(1)
@@ -40,22 +39,16 @@ class Refresher(Module):
         ])
 
         # Periodic refresh counter
-        counter = Signal(max=tREFI)
-        start = Signal()
-        self.sync += [
-            start.eq(0),
-            If(counter == 0,
-                start.eq(1),
-                counter.eq(tREFI - 1)
-            ).Else(
-                counter.eq(counter - 1)
-            )
-        ]
+        self.submodules.timer = WaitTimer(tREFI)
+        self.comb += self.timer.wait.eq(enable & ~self.timer.done)
 
         # Control FSM
-        fsm = FSM()
-        self.submodules += fsm
-        fsm.act("IDLE", If(start & enable, NextState("WAIT_GRANT")))
+        self.submodules.fsm = fsm = FSM()
+        fsm.act("IDLE",
+            If(self.timer.done,
+                NextState("WAIT_GRANT")
+            )
+        )
         fsm.act("WAIT_GRANT",
             self.req.eq(1),
             If(self.ack,
@@ -65,5 +58,7 @@ class Refresher(Module):
         )
         fsm.act("WAIT_SEQ",
             self.req.eq(1),
-            If(seq_done, NextState("IDLE"))
+            If(seq_done,
+                NextState("IDLE")
+            )
         )
