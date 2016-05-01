@@ -163,10 +163,6 @@ class Multiplexer(Module, AutoCSR):
             Cat(*all_wrdata_mask).eq(~lasmic.dat_we)
         ]
 
-        # Control FSM
-        fsm = FSM()
-        self.submodules += fsm
-
         def steerer_sel(steerer, phy_settings, r_w_n):
             r = []
             for i in range(phy_settings.nphases):
@@ -186,6 +182,8 @@ class Multiplexer(Module, AutoCSR):
                 r.append(s)
             return r
 
+        # Control FSM
+        self.submodules.fsm = fsm = FSM()
         fsm.act("READ",
             read_time_en.eq(1),
             choose_req.want_reads.eq(1),
