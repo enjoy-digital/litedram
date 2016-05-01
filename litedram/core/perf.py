@@ -5,10 +5,10 @@ from litex.soc.interconnect.csr import *
 
 class Bandwidth(Module, AutoCSR):
     def __init__(self, cmd, data_width, period_bits=24):
-        self._update = CSR()
-        self._nreads = CSRStatus(period_bits)
-        self._nwrites = CSRStatus(period_bits)
-        self._data_width = CSRStatus(bits_for(data_width), reset=data_width)
+        self.update = CSR()
+        self.nreads = CSRStatus(period_bits)
+        self.nwrites = CSRStatus(period_bits)
+        self.data_width = CSRStatus(bits_for(data_width), reset=data_width)
 
         # # #
 
@@ -40,8 +40,8 @@ class Bandwidth(Module, AutoCSR):
                 If(cmd_is_read, nreads.eq(nreads + 1)),
                 If(cmd_is_write, nwrites.eq(nwrites + 1)),
             ),
-            If(self._update.re,
-                self._nreads.status.eq(nreads_r),
-                self._nwrites.status.eq(nwrites_r)
+            If(self.update.re,
+                self.nreads.status.eq(nreads_r),
+                self.nwrites.status.eq(nwrites_r)
             )
         ]
