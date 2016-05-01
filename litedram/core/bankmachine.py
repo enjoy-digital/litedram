@@ -1,7 +1,8 @@
 from litex.gen import *
 from litex.gen.genlib.roundrobin import *
-from litex.gen.genlib.fsm import FSM, NextState
-from litex.gen.genlib.fifo import SyncFIFO
+
+
+from litex.soc.interconnect import stream
 
 from litedram.core.multiplexer import *
 
@@ -36,22 +37,16 @@ class BankMachine(Module):
 
         # Request FIFO
         layout = [("we", 1), ("adr", len(req.adr))]
-        req_in = Record(layout)
-        reqf = Record(layout)
-        self.submodules.req_fifo = SyncFIFO(layout_len(layout),
-                                            controller_settings.req_queue_size)
+        fifo = stream.SyncFIFO(layout, controller_settings.req_queue_size)
+        self.submodules += fifo
         self.comb += [
-            self.req_fifo.din.eq(req_in.raw_bits()),
-            reqf.raw_bits().eq(self.req_fifo.dout)
-        ]
-        self.comb += [
-            req_in.we.eq(req.we),
-            req_in.adr.eq(req.adr),
-            self.req_fifo.we.eq(req.stb),
-            req.req_ack.eq(self.req_fifo.writable),
+            fifo.sink.valid.eq(req.stb),
+            fifo.sink.we.eq(req.we),
+            fifo.sink.adr.eq(req.adr),
+            req.req_ack.eq(fifo.sink.ready),
 
-            self.req_fifo.re.eq(req.dat_w_ack | req.dat_r_ack),
-            req.lock.eq(self.req_fifo.readable)
+            fifo.source.ready.eq(req.dat_w_ack | req.dat_r_ack),
+            req.lock.eq(fifo.source.valid),
         ]
 
         slicer = _AddressSlicer(geom_settings.colbits, address_align)
@@ -60,13 +55,13 @@ class BankMachine(Module):
         has_openrow = Signal()
         openrow = Signal(geom_settings.rowbits)
         hit = Signal()
-        self.comb += hit.eq(openrow == slicer.row(reqf.adr))
+        self.comb += hit.eq(openrow == slicer.row(fifo.source.adr))
         track_open = Signal()
         track_close = Signal()
         self.sync += [
             If(track_open,
                 has_openrow.eq(1),
-                openrow.eq(slicer.row(reqf.adr))
+                openrow.eq(slicer.row(fifo.source.adr))
             ),
             If(track_close,
                 has_openrow.eq(0)
@@ -78,9 +73,9 @@ class BankMachine(Module):
         self.comb += [
             self.cmd.ba.eq(bankn),
             If(s_row_adr,
-                self.cmd.a.eq(slicer.row(reqf.adr))
+                self.cmd.a.eq(slicer.row(fifo.source.adr))
             ).Else(
-                self.cmd.a.eq(slicer.col(reqf.adr))
+                self.cmd.a.eq(slicer.col(fifo.source.adr))
             )
         ]
 
@@ -103,17 +98,17 @@ class BankMachine(Module):
         fsm.act("REGULAR",
             If(self.refresh_req,
                 NextState("REFRESH")
-            ).Elif(self.req_fifo.readable,
+            ).Elif(fifo.source.valid,
                 If(has_openrow,
                     If(hit,
                         # NB: write-to-read specification is enforced by multiplexer
                         self.cmd.stb.eq(1),
-                        req.dat_w_ack.eq(self.cmd.ack & reqf.we),
-                        req.dat_r_ack.eq(self.cmd.ack & ~reqf.we),
-                        self.cmd.is_read.eq(~reqf.we),
-                        self.cmd.is_write.eq(reqf.we),
+                        req.dat_w_ack.eq(self.cmd.ack & fifo.source.we),
+                        req.dat_r_ack.eq(self.cmd.ack & ~fifo.source.we),
+                        self.cmd.is_read.eq(~fifo.source.we),
+                        self.cmd.is_write.eq(fifo.source.we),
                         self.cmd.cas_n.eq(0),
-                        self.cmd.we_n.eq(~reqf.we)
+                        self.cmd.we_n.eq(~fifo.source.we)
                     ).Else(
                         NextState("PRECHARGE")
                     )
