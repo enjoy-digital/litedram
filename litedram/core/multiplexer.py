@@ -16,36 +16,45 @@ class _CommandChooser(Module):
         self.want_reads = Signal()
         self.want_writes = Signal()
         self.want_cmds = Signal()
-        # NB: cas/ras/we are 0 when valid is inactive
+        # cas/ras/we are 0 when valid is inactive
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(len(requests[0].a),
                                                                len(requests[0].ba)))
 
         # # #
 
-        rr = RoundRobin(len(requests), SP_CE)
-        self.submodules += rr
+        n = len(requests)
 
-        for i, req in enumerate(requests):
-            self.comb += rr.request[i].eq(req.valid & ((req.is_cmd & self.want_cmds) |
-                                                       ((req.is_read == self.want_reads) |
-                                                        (req.is_write == self.want_writes))))
+        valids = Signal(n)
+        for i, request in enumerate(requests):
+            command = request.is_cmd & self.want_cmds
+            read = request.is_read == self.want_reads
+            write = request.is_write == self.want_writes
+            self.comb += valids[i].eq(request.valid & (command | (read & write)))
 
-        valid = Signal()
-        self.comb += valid.eq(Array(req.valid for req in requests)[rr.grant])
+
+        arbiter = RoundRobin(n, SP_CE)
+        self.submodules += arbiter
+        choices = Array(valids[i] for i in range(n))
+        self.comb += [
+            arbiter.request.eq(valids),
+            cmd.valid.eq(choices[arbiter.grant])
+        ]
+        
         for name in ["a", "ba", "is_read", "is_write", "is_cmd"]:
             choices = Array(getattr(req, name) for req in requests)
-            self.comb += getattr(cmd, name).eq(choices[rr.grant])
+            self.comb += getattr(cmd, name).eq(choices[arbiter.grant])
+        
         for name in ["cas", "ras", "we"]:
             # we should only assert those signals when valid is 1
             choices = Array(getattr(req, name) for req in requests)
-            self.comb += If(cmd.valid, getattr(cmd, name).eq(choices[rr.grant]))
-        self.comb += cmd.valid.eq(valid \
-            & ((cmd.is_cmd & self.want_cmds) | ((cmd.is_read == self.want_reads) \
-            & (cmd.is_write == self.want_writes))))
+            self.comb += If(cmd.valid, getattr(cmd, name).eq(choices[arbiter.grant]))
 
-        self.comb += [If(cmd.valid & cmd.ready & (rr.grant == i), req.ready.eq(1))
-            for i, req in enumerate(requests)]
-        self.comb += rr.ce.eq(cmd.ready)
+        for i, request in enumerate(requests):
+            self.comb += \
+                If(cmd.valid & cmd.ready & (arbiter.grant == i),
+                    request.ready.eq(1)
+                )
+        self.comb += arbiter.ce.eq(cmd.ready)
 
 
 class _Steerer(Module):
@@ -91,10 +100,6 @@ class Multiplexer(Module, AutoCSR):
         requests = [bm.cmd for bm in bank_machines]
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
         self.submodules.choose_req = choose_req = _CommandChooser(requests)
-        self.comb += [
-            choose_cmd.want_reads.eq(0),
-            choose_cmd.want_writes.eq(0)
-        ]
         if phy_settings.nphases == 1:
             self.comb += [
                 choose_cmd.want_cmds.eq(1),
