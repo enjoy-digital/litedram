@@ -1,5 +1,4 @@
 from litex.gen import *
-from litex.gen.genlib.roundrobin import *
 from litex.gen.genlib.misc import WaitTimer
 
 from litex.soc.interconnect import stream
@@ -28,16 +27,23 @@ class _AddressSlicer:
 
 
 class BankMachine(Module):
-    def __init__(self, aw, n, address_align, geom_settings, timing_settings, controller_settings):
+    def __init__(self,
+            aw,
+            n,
+            address_align,
+            geom_settings,
+            timing_settings,
+            controller_settings):
         self.req = req = Record(cmd_layout(aw))
         self.refresh_req = Signal()
         self.refresh_gnt = Signal()
-        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(geom_settings.addressbits,
-                                                               geom_settings.bankbits))
+        a = geom_settings.addressbits
+        ba = geom_settings.bankbits
+        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
 
         # # #
 
-        # Request FIFO
+        # Request FIFO-
         fifo = stream.SyncFIFO([("we", 1), ("adr", len(req.adr))],
                                controller_settings.req_queue_size)
         self.submodules += fifo
@@ -78,7 +84,8 @@ class BankMachine(Module):
         ]
 
         # Respect write-to-precharge specification
-        self.submodules.precharge_timer = WaitTimer(2 + timing_settings.tWR - 1 + 1)
+        precharge_time = 2 + timing_settings.tWR - 1 + 1
+        self.submodules.precharge_timer = WaitTimer(precharge_time)
         self.comb += self.precharge_timer.wait.eq(~(cmd.valid &
                                                     cmd.ready &
                                                     cmd.is_write))
@@ -91,7 +98,8 @@ class BankMachine(Module):
             ).Elif(fifo.source.valid,
                 If(has_openrow,
                     If(hit,
-                        # NB: write-to-read specification is enforced by multiplexer
+                        # Note: write-to-read specification is enforced by
+                        # multiplexer
                         cmd.valid.eq(1),
                         If(fifo.source.we,
                             req.dat_w_ack.eq(cmd.ready),
@@ -111,10 +119,7 @@ class BankMachine(Module):
             )
         )
         fsm.act("PRECHARGE",
-            # Notes:
-            # 1. we are presenting the column address, A10 is always low
-            # 2. since we always go to the ACTIVATE state, we do not need
-            # to assert track_close.
+            # Note: we are presenting the column address, A10 is always low
             If(self.precharge_timer.done,
                 cmd.valid.eq(1),
                 If(cmd.ready,
@@ -123,7 +128,8 @@ class BankMachine(Module):
                 cmd.ras.eq(1),
                 cmd.we.eq(1),
                 cmd.is_cmd.eq(1)
-            )
+            ),
+            track_close.eq(1)
         )
         fsm.act("ACTIVATE",
             s_row_adr.eq(1),
