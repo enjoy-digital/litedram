@@ -64,7 +64,7 @@ class LiteDRAMBISTGenerator(Module):
 
         self.comb += [
             self._dma.trigger.eq(self._shoot.re),
-            self._dma.data.stb.eq(en),
+            self._dma.data.valid.eq(en),
             lfsr.ce.eq(en & self._dma.data.ack),
             self._dma.data.d.eq(lfsr.o)
         ]
@@ -90,14 +90,14 @@ class LiteDRAMBISTChecker(Module):
         self.comb += lfsr.reset.eq(self._reset.re)
 
         self.comb += [
-            lfsr.ce.eq(self._dma.data.stb),
+            lfsr.ce.eq(self._dma.data.valid),
             self._dma.data.ack.eq(1)
         ]
         err_cnt = self._error_count.status
         self.sync += [
             If(self._reset.re,
                 err_cnt.eq(0)
-            ).Elif(self._dma.data.stb,
+            ).Elif(self._dma.data.valid,
                 If(self._dma.data.d != lfsr.o, err_cnt.eq(err_cnt + 1))
             )
         ]

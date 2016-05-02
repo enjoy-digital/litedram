@@ -40,10 +40,10 @@ class BankMachine(Module):
         fifo = stream.SyncFIFO(layout, controller_settings.req_queue_size)
         self.submodules += fifo
         self.comb += [
-            fifo.sink.valid.eq(req.stb),
+            fifo.sink.valid.eq(req.valid),
             fifo.sink.we.eq(req.we),
             fifo.sink.adr.eq(req.adr),
-            req.req_ack.eq(fifo.sink.ready),
+            req.ready.eq(fifo.sink.ready),
 
             fifo.source.ready.eq(req.dat_w_ack | req.dat_r_ack),
             req.lock.eq(fifo.source.valid),
@@ -81,7 +81,7 @@ class BankMachine(Module):
 
         # Respect write-to-precharge specification
         self.submodules.precharge_timer = WaitTimer(2 + timing_settings.tWR - 1 + 1)
-        self.comb += self.precharge_timer.wait.eq(~(self.cmd.stb &
+        self.comb += self.precharge_timer.wait.eq(~(self.cmd.valid &
                                                     self.cmd.ack &
                                                     self.cmd.is_write))
 
@@ -94,7 +94,7 @@ class BankMachine(Module):
                 If(has_openrow,
                     If(hit,
                         # NB: write-to-read specification is enforced by multiplexer
-                        self.cmd.stb.eq(1),
+                        self.cmd.valid.eq(1),
                         If(fifo.source.we,
                             req.dat_w_ack.eq(self.cmd.ack),
                             self.cmd.is_write.eq(1)
@@ -118,7 +118,7 @@ class BankMachine(Module):
             # 2. since we always go to the ACTIVATE state, we do not need
             # to assert track_close.
             If(self.precharge_timer.done,
-                self.cmd.stb.eq(1),
+                self.cmd.valid.eq(1),
                 If(self.cmd.ack,
                     NextState("TRP")
                 ),
@@ -130,7 +130,7 @@ class BankMachine(Module):
         fsm.act("ACTIVATE",
             s_row_adr.eq(1),
             track_open.eq(1),
-            self.cmd.stb.eq(1),
+            self.cmd.valid.eq(1),
             self.cmd.is_cmd.eq(1),
             If(self.cmd.ack, NextState("TRCD")),
             self.cmd.ras_n.eq(0)

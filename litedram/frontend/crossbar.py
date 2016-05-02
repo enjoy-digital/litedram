@@ -40,7 +40,7 @@ class LiteDRAMCrossbar(Module):
 
         controller = self.controller
         controller_selected = [1]*nmasters
-        master_req_acks = [0]*nmasters
+        master_readys = [0]*nmasters
         master_dat_w_acks = [0]*nmasters
         master_dat_r_acks = [0]*nmasters
 
@@ -61,20 +61,20 @@ class LiteDRAMCrossbar(Module):
 
             # arbitrate
             bank_selected = [cs & (ba == nb) & ~locked for cs, ba, locked in zip(controller_selected, m_ba, master_locked)]
-            bank_requested = [bs & master.stb for bs, master in zip(bank_selected, self.masters)]
+            bank_requested = [bs & master.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 rr.request.eq(Cat(*bank_requested)),
-                rr.ce.eq(~bank.stb & ~bank.lock)
+                rr.ce.eq(~bank.valid & ~bank.lock)
             ]
 
             # route requests
             self.comb += [
                 bank.adr.eq(Array(m_rca)[rr.grant]),
                 bank.we.eq(Array(self.masters)[rr.grant].we),
-                bank.stb.eq(Array(bank_requested)[rr.grant])
+                bank.valid.eq(Array(bank_requested)[rr.grant])
             ]
-            master_req_acks = [master_req_ack | ((rr.grant == nm) & bank_selected[nm] & bank.req_ack)
-                for nm, master_req_ack in enumerate(master_req_acks)]
+            master_readys = [master_ready | ((rr.grant == nm) & bank_selected[nm] & bank.ready)
+                for nm, master_ready in enumerate(master_readys)]
             master_dat_w_acks = [master_dat_w_ack | ((rr.grant == nm) & bank.dat_w_ack)
                 for nm, master_dat_w_ack in enumerate(master_dat_w_acks)]
             master_dat_r_acks = [master_dat_r_ack | ((rr.grant == nm) & bank.dat_r_ack)
@@ -94,7 +94,7 @@ class LiteDRAMCrossbar(Module):
                     master_dat_r_ack = new_master_dat_r_ack
                 master_dat_r_acks[nm] = master_dat_r_ack
 
-        self.comb += [master.req_ack.eq(master_req_ack) for master, master_req_ack in zip(self.masters, master_req_acks)]
+        self.comb += [master.ready.eq(master_ready) for master, master_ready in zip(self.masters, master_readys)]
         self.comb += [master.dat_w_ack.eq(master_dat_w_ack) for master, master_dat_w_ack in zip(self.masters, master_dat_w_acks)]
         self.comb += [master.dat_r_ack.eq(master_dat_r_ack) for master, master_dat_r_ack in zip(self.masters, master_dat_r_acks)]
 

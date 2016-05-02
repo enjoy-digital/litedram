@@ -14,9 +14,9 @@ class LiteDRAMWishboneBridge(Module):
             )
         )
         fsm.act("REQUEST",
-            port.stb.eq(1),
+            port.valid.eq(1),
             port.we.eq(wishbone.we),
-            If(port.req_ack,
+            If(port.ready,
                 If(wishbone.we,
                     NextState("WRITE_DATA")
                 ).Else(

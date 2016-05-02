@@ -3,29 +3,11 @@ from operator import or_, and_
 
 from litex.gen import *
 from litex.gen.genlib.roundrobin import *
-from litex.gen.genlib.fsm import FSM, NextState
 
-from litedram.core.perf import Bandwidth
 from litex.soc.interconnect.csr import AutoCSR
 
-
-class CommandRequest:
-    def __init__(self, a, ba):
-        self.a = Signal(a)
-        self.ba = Signal(ba)
-        self.cas_n = Signal(reset=1)
-        self.ras_n = Signal(reset=1)
-        self.we_n = Signal(reset=1)
-
-
-class CommandRequestRW(CommandRequest):
-    def __init__(self, a, ba):
-        CommandRequest.__init__(self, a, ba)
-        self.stb = Signal()
-        self.ack = Signal()
-        self.is_cmd = Signal()
-        self.is_read = Signal()
-        self.is_write = Signal()
+from litedram.common import *
+from litedram.core.perf import Bandwidth
 
 
 class _CommandChooser(Module):
@@ -33,7 +15,7 @@ class _CommandChooser(Module):
         self.want_reads = Signal()
         self.want_writes = Signal()
         self.want_cmds = Signal()
-        # NB: cas_n/ras_n/we_n are 1 when stb is inactive
+        # NB: cas_n/ras_n/we_n are 1 when valid is inactive
         self.cmd = CommandRequestRW(len(requests[0].a), len(requests[0].ba))
 
         # # #
@@ -41,23 +23,25 @@ class _CommandChooser(Module):
         rr = RoundRobin(len(requests), SP_CE)
         self.submodules += rr
 
-        self.comb += [rr.request[i].eq(req.stb & ((req.is_cmd & self.want_cmds) | ((req.is_read == self.want_reads) | (req.is_write == self.want_writes))))
-            for i, req in enumerate(requests)]
+        for i, req in enumerate(requests):
+            self.comb += rr.request[i].eq(req.valid & ((req.is_cmd & self.want_cmds) |
+                                                       ((req.is_read == self.want_reads) |
+                                                        (req.is_write == self.want_writes))))
 
-        stb = Signal()
-        self.comb += stb.eq(Array(req.stb for req in requests)[rr.grant])
+        valid = Signal()
+        self.comb += valid.eq(Array(req.valid for req in requests)[rr.grant])
         for name in ["a", "ba", "is_read", "is_write", "is_cmd"]:
             choices = Array(getattr(req, name) for req in requests)
             self.comb += getattr(self.cmd, name).eq(choices[rr.grant])
         for name in ["cas_n", "ras_n", "we_n"]:
-            # we should only assert those signals when stb is 1
+            # we should only assert those signals when valid is 1
             choices = Array(getattr(req, name) for req in requests)
-            self.comb += If(self.cmd.stb, getattr(self.cmd, name).eq(choices[rr.grant]))
-        self.comb += self.cmd.stb.eq(stb \
+            self.comb += If(self.cmd.valid, getattr(self.cmd, name).eq(choices[rr.grant]))
+        self.comb += self.cmd.valid.eq(valid \
             & ((self.cmd.is_cmd & self.want_cmds) | ((self.cmd.is_read == self.want_reads) \
             & (self.cmd.is_write == self.want_writes))))
 
-        self.comb += [If(self.cmd.stb & self.cmd.ack & (rr.grant == i), req.ack.eq(1))
+        self.comb += [If(self.cmd.valid & self.cmd.ack & (rr.grant == i), req.ack.eq(1))
             for i, req in enumerate(requests)]
         self.comb += rr.ce.eq(self.cmd.ack)
 
@@ -70,11 +54,11 @@ class _Steerer(Module):
 
         ###
 
-        def stb_and(cmd, attr):
-            if not hasattr(cmd, "stb"):
+        def valid_and(cmd, attr):
+            if not hasattr(cmd, "valid"):
                 return 0
             else:
-                return cmd.stb & getattr(cmd, attr)
+                return cmd.valid & getattr(cmd, attr)
         for phase, sel in zip(dfi.phases, self.sel):
             self.comb += [
                 phase.cke.eq(1),
@@ -90,8 +74,8 @@ class _Steerer(Module):
                 phase.cas_n.eq(Array(cmd.cas_n for cmd in commands)[sel]),
                 phase.ras_n.eq(Array(cmd.ras_n for cmd in commands)[sel]),
                 phase.we_n.eq(Array(cmd.we_n for cmd in commands)[sel]),
-                phase.rddata_en.eq(Array(stb_and(cmd, "is_read") for cmd in commands)[sel]),
-                phase.wrdata_en.eq(Array(stb_and(cmd, "is_write") for cmd in commands)[sel])
+                phase.rddata_en.eq(Array(valid_and(cmd, "is_read") for cmd in commands)[sel]),
+                phase.wrdata_en.eq(Array(valid_and(cmd, "is_write") for cmd in commands)[sel])
             ]
 
 
@@ -126,8 +110,8 @@ class Multiplexer(Module, AutoCSR):
         read_available = Signal()
         write_available = Signal()
         self.comb += [
-            read_available.eq(reduce(or_, [req.stb & req.is_read for req in requests])),
-            write_available.eq(reduce(or_, [req.stb & req.is_write for req in requests]))
+            read_available.eq(reduce(or_, [req.valid & req.is_read for req in requests])),
+            write_available.eq(reduce(or_, [req.valid & req.is_write for req in requests]))
         ]
 
         def anti_starvation(timeout):

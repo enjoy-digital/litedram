@@ -52,19 +52,22 @@ class LiteDRAMController(Module):
                                               timing_settings.tREFI,timing_settings.tRFC,
                                               controller_settings.with_refresh)
 
-        self.submodules.bank_machines = [BankMachine(geom_settings,
-                                                     timing_settings,
-                                                     controller_settings,
-                                                     address_align,
-                                                     i,
-                                                     getattr(self.lasmic, "bank"+str(i)))
-            for i in range(2**geom_settings.bankbits)]
+        bank_machines = []
+        for i in range(2**geom_settings.bankbits):
+            bank_machine = BankMachine(geom_settings,
+                                       timing_settings,
+                                       controller_settings,
+                                       address_align,
+                                       i,
+                                       getattr(self.lasmic, "bank"+str(i)))
+            bank_machines.append(bank_machine)
+            self.submodules += bank_machine
 
         self.submodules.multiplexer = Multiplexer(phy_settings,
                                                   geom_settings,
                                                   timing_settings,
                                                   controller_settings,
-                                                  self.bank_machines,
+                                                  bank_machines,
                                                   self.refresher,
                                                   self.dfi,
                                                   self.lasmic)

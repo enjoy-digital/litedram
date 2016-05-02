@@ -20,10 +20,10 @@ class LiteDRAMDMAReader(Module):
 
         self.comb += [
             port.we.eq(0),
-            port.stb.eq(sink.valid & request_enable),
+            port.valid.eq(sink.valid & request_enable),
             port.adr.eq(sink.address),
-            sink.ready.eq(port.req_ack & request_enable),
-            request_issued.eq(port.stb & port.req_ack)
+            sink.ready.eq(port.ready & request_enable),
+            request_issued.eq(port.valid & port.ready)
         ]
 
         # FIFO reservation level counter
@@ -74,10 +74,10 @@ class LiteDRAMDMAWriter(Module):
 
         self.comb += [
             port.we.eq(1),
-            port.stb.eq(fifo.writable & source.valid),
+            port.valid.eq(fifo.writable & source.valid),
             port.adr.eq(source.address),
-            source.ready.eq(fifo.writable & port.req_ack),
-            fifo.we.eq(source.valid & port.req_ack),
+            source.ready.eq(fifo.writable & port.ready),
+            fifo.we.eq(source.valid & port.ready),
             fifo.din.eq(source.data)
         ]
 
