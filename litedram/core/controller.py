@@ -34,7 +34,7 @@ class LiteDRAMController(Module):
             phy_settings.dfi_databits,
             phy_settings.nphases)
 
-        self.lasmic = common.Interface(
+        self.lasmic = common.InternalInterface(
             aw=geom_settings.rowbits + geom_settings.colbits - address_align,
             dw=phy_settings.dfi_databits*phy_settings.nphases,
             nbanks=2**geom_settings.bankbits,

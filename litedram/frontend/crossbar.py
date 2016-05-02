@@ -26,8 +26,8 @@ class LiteDRAMCrossbar(Module):
     def get_port(self):
         if self.finalized:
             raise FinalizeError
-        port = Interface(self.rca_bits + self.bank_bits,
-            self.dw, 1, self.req_queue_size, self.read_latency, self.write_latency)
+        port = UserInterface(self.rca_bits + self.bank_bits,
+            self.dw, self.req_queue_size, self.read_latency, self.write_latency)
         self.masters.append(port)
         return port
 
