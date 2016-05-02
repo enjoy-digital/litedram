@@ -6,7 +6,7 @@ from litex.soc.interconnect import stream
 from litedram.core.multiplexer import *
 
 
-class _AddressSlicer:
+class AddressSlicer:
     def __init__(self, colbits, address_align):
         self.colbits = colbits
         self.address_align = address_align
@@ -43,43 +43,45 @@ class BankMachine(Module):
 
         # # #
 
-        # Request FIFO-
-        fifo = stream.SyncFIFO([("we", 1), ("adr", len(req.adr))],
-                               controller_settings.req_queue_size)
-        self.submodules += fifo
+        # Command buffer
+        cmd_buffer_layout = [("we", 1), ("adr", len(req.adr))]
+        if controller_settings.cmd_buffer_depth < 2:
+            cmd_buffer = stream.Buffer(cmd_buffer_layout)
+        else:
+            cmd_buffer = stream.SyncFIFO(cmd_buffer_layout,
+                                         controller_settings.cmd_buffer_depth)
+        self.submodules += cmd_buffer
         self.comb += [
-            req.connect(fifo.sink, omit=["dat_w_ack", "dat_r_ack", "lock"]),
-            fifo.source.ready.eq(req.dat_w_ack | req.dat_r_ack),
-            req.lock.eq(fifo.source.valid),
+            req.connect(cmd_buffer.sink, omit=["dat_w_ack", "dat_r_ack", "lock"]),
+            cmd_buffer.source.ready.eq(req.dat_w_ack | req.dat_r_ack),
+            req.lock.eq(cmd_buffer.source.valid),
         ]
 
-        slicer = _AddressSlicer(geom_settings.colbits, address_align)
+        slicer = AddressSlicer(geom_settings.colbits, address_align)
 
         # Row tracking
         has_openrow = Signal()
         openrow = Signal(geom_settings.rowbits)
         hit = Signal()
-        self.comb += hit.eq(openrow == slicer.row(fifo.source.adr))
+        self.comb += hit.eq(openrow == slicer.row(cmd_buffer.source.adr))
         track_open = Signal()
         track_close = Signal()
-        self.sync += [
-            If(track_open,
-                has_openrow.eq(1),
-                openrow.eq(slicer.row(fifo.source.adr))
-            ),
+        self.sync += \
             If(track_close,
                 has_openrow.eq(0)
+            ).Elif(track_open,
+                has_openrow.eq(1),
+                openrow.eq(slicer.row(cmd_buffer.source.adr))
             )
-        ]
 
         # Address generation
-        s_row_adr = Signal()
+        sel_row_adr = Signal()
         self.comb += [
             cmd.ba.eq(n),
-            If(s_row_adr,
-                cmd.a.eq(slicer.row(fifo.source.adr))
+            If(sel_row_adr,
+                cmd.a.eq(slicer.row(cmd_buffer.source.adr))
             ).Else(
-                cmd.a.eq(slicer.col(fifo.source.adr))
+                cmd.a.eq(slicer.col(cmd_buffer.source.adr))
             )
         ]
 
@@ -95,13 +97,13 @@ class BankMachine(Module):
         fsm.act("REGULAR",
             If(self.refresh_req,
                 NextState("REFRESH")
-            ).Elif(fifo.source.valid,
+            ).Elif(cmd_buffer.source.valid,
                 If(has_openrow,
                     If(hit,
                         # Note: write-to-read specification is enforced by
                         # multiplexer
                         cmd.valid.eq(1),
-                        If(fifo.source.we,
+                        If(cmd_buffer.source.we,
                             req.dat_w_ack.eq(cmd.ready),
                             cmd.is_write.eq(1),
                             cmd.we.eq(1),
@@ -132,7 +134,7 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("ACTIVATE",
-            s_row_adr.eq(1),
+            sel_row_adr.eq(1),
             track_open.eq(1),
             cmd.valid.eq(1),
             cmd.is_cmd.eq(1),

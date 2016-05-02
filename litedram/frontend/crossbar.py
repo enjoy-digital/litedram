@@ -15,7 +15,7 @@ class LiteDRAMCrossbar(Module):
         self.rca_bits = controller.aw
         self.dw = controller.dw
         self.nbanks = controller.nbanks
-        self.req_queue_size = controller.req_queue_size
+        self.cmd_buffer_depth = controller.cmd_buffer_depth
         self.read_latency = controller.read_latency
         self.write_latency = controller.write_latency
 
@@ -27,7 +27,7 @@ class LiteDRAMCrossbar(Module):
         if self.finalized:
             raise FinalizeError
         port = UserInterface(self.rca_bits + self.bank_bits,
-            self.dw, self.req_queue_size, self.read_latency, self.write_latency)
+            self.dw, self.cmd_buffer_depth, self.read_latency, self.write_latency)
         self.masters.append(port)
         return port
 

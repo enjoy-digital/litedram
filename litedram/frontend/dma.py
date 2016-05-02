@@ -12,7 +12,7 @@ class LiteDRAMDMAReader(Module):
         # # #
 
         if fifo_depth is None:
-            fifo_depth = port.req_queue_size + port.read_latency + 2
+            fifo_depth = port.cmd_buffer_depth + port.read_latency + 2
 
         # request issuance
         request_enable = Signal()
@@ -67,7 +67,7 @@ class LiteDRAMDMAWriter(Module):
         # # #
 
         if fifo_depth is None:
-            fifo_depth = port.req_queue_size + port.write_latency + 2
+            fifo_depth = port.cmd_buffer_depth + port.write_latency + 2
 
         fifo = SyncFIFO(port.dw, fifo_depth)
         self.submodules += fifo

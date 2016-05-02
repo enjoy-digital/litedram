@@ -8,10 +8,10 @@ from litedram.core.multiplexer import *
 
 
 class ControllerSettings:
-    def __init__(self, req_queue_size=8, read_time=32, write_time=16,
+    def __init__(self, cmd_buffer_depth=8, read_time=32, write_time=16,
                  with_bandwidth=False,
                  with_refresh=True):
-        self.req_queue_size = req_queue_size
+        self.cmd_buffer_depth = cmd_buffer_depth
         self.read_time = read_time
         self.write_time = write_time
         self.with_bandwidth = with_bandwidth
@@ -38,7 +38,7 @@ class LiteDRAMController(Module):
             aw=geom_settings.rowbits + geom_settings.colbits - address_align,
             dw=phy_settings.dfi_databits*phy_settings.nphases,
             nbanks=2**geom_settings.bankbits,
-            req_queue_size=controller_settings.req_queue_size,
+            cmd_buffer_depth=controller_settings.cmd_buffer_depth,
             read_latency=phy_settings.read_latency+1,
             write_latency=phy_settings.write_latency+1)
         self.nrowbits = geom_settings.colbits - address_align

@@ -59,11 +59,11 @@ def data_layout(dw):
 
 
 class InternalInterface(Record):
-    def __init__(self, aw, dw, nbanks, req_queue_size, read_latency, write_latency):
+    def __init__(self, aw, dw, nbanks, cmd_buffer_depth, read_latency, write_latency):
         self.aw = aw
         self.dw = dw
         self.nbanks = nbanks
-        self.req_queue_size = req_queue_size
+        self.cmd_buffer_depth = cmd_buffer_depth
         self.read_latency = read_latency
         self.write_latency = write_latency
 
@@ -73,10 +73,10 @@ class InternalInterface(Record):
 
 
 class UserInterface(Record):
-    def __init__(self, aw, dw, req_queue_size, read_latency, write_latency):
+    def __init__(self, aw, dw, cmd_buffer_depth, read_latency, write_latency):
         self.aw = aw
         self.dw = dw
-        self.req_queue_size = req_queue_size
+        self.cmd_buffer_depth = cmd_buffer_depth
         self.read_latency = read_latency
         self.write_latency = write_latency
 
