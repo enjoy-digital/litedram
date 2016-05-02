@@ -97,7 +97,7 @@ class CommandRequestRW(CommandRequest):
     def __init__(self, a, ba):
         CommandRequest.__init__(self, a, ba)
         self.valid = Signal()
-        self.ack = Signal()
+        self.ready = Signal()
         self.is_cmd = Signal()
         self.is_read = Signal()
         self.is_write = Signal()

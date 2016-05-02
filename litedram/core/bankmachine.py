@@ -28,7 +28,8 @@ class _AddressSlicer:
 
 
 class BankMachine(Module):
-    def __init__(self, geom_settings, timing_settings, controller_settings, address_align, bankn, req):
+    def __init__(self, aw, n, address_align, geom_settings, timing_settings, controller_settings):
+        self.req = req = Record(cmd_layout(aw))
         self.refresh_req = Signal()
         self.refresh_gnt = Signal()
         self.cmd = CommandRequestRW(geom_settings.addressbits, geom_settings.bankbits)
@@ -36,15 +37,11 @@ class BankMachine(Module):
         # # #
 
         # Request FIFO
-        layout = [("we", 1), ("adr", len(req.adr))]
-        fifo = stream.SyncFIFO(layout, controller_settings.req_queue_size)
+        fifo = stream.SyncFIFO([("we", 1), ("adr", len(req.adr))],
+                               controller_settings.req_queue_size)
         self.submodules += fifo
         self.comb += [
-            fifo.sink.valid.eq(req.valid),
-            fifo.sink.we.eq(req.we),
-            fifo.sink.adr.eq(req.adr),
-            req.ready.eq(fifo.sink.ready),
-
+            req.connect(fifo.sink, omit=["dat_w_ack", "dat_r_ack", "lock"]),
             fifo.source.ready.eq(req.dat_w_ack | req.dat_r_ack),
             req.lock.eq(fifo.source.valid),
         ]
@@ -71,7 +68,7 @@ class BankMachine(Module):
         # Address generation
         s_row_adr = Signal()
         self.comb += [
-            self.cmd.ba.eq(bankn),
+            self.cmd.ba.eq(n),
             If(s_row_adr,
                 self.cmd.a.eq(slicer.row(fifo.source.adr))
             ).Else(
@@ -82,7 +79,7 @@ class BankMachine(Module):
         # Respect write-to-precharge specification
         self.submodules.precharge_timer = WaitTimer(2 + timing_settings.tWR - 1 + 1)
         self.comb += self.precharge_timer.wait.eq(~(self.cmd.valid &
-                                                    self.cmd.ack &
+                                                    self.cmd.ready &
                                                     self.cmd.is_write))
 
         # Control and command generation FSM
@@ -96,10 +93,10 @@ class BankMachine(Module):
                         # NB: write-to-read specification is enforced by multiplexer
                         self.cmd.valid.eq(1),
                         If(fifo.source.we,
-                            req.dat_w_ack.eq(self.cmd.ack),
+                            req.dat_w_ack.eq(self.cmd.ready),
                             self.cmd.is_write.eq(1)
                         ).Else(
-                            req.dat_r_ack.eq(self.cmd.ack),
+                            req.dat_r_ack.eq(self.cmd.ready),
                             self.cmd.is_read.eq(1)
                         ),
                         self.cmd.cas_n.eq(0),
@@ -119,7 +116,7 @@ class BankMachine(Module):
             # to assert track_close.
             If(self.precharge_timer.done,
                 self.cmd.valid.eq(1),
-                If(self.cmd.ack,
+                If(self.cmd.ready,
                     NextState("TRP")
                 ),
                 self.cmd.ras_n.eq(0),
@@ -132,7 +129,9 @@ class BankMachine(Module):
             track_open.eq(1),
             self.cmd.valid.eq(1),
             self.cmd.is_cmd.eq(1),
-            If(self.cmd.ack, NextState("TRCD")),
+            If(self.cmd.ready,
+                NextState("TRCD")
+            ),
             self.cmd.ras_n.eq(0)
         )
         fsm.act("REFRESH",

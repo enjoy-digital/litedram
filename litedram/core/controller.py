@@ -41,7 +41,6 @@ class LiteDRAMController(Module):
             req_queue_size=controller_settings.req_queue_size,
             read_latency=phy_settings.read_latency+1,
             write_latency=phy_settings.write_latency+1)
-
         self.nrowbits = geom_settings.colbits - address_align
 
         # # #
@@ -49,19 +48,21 @@ class LiteDRAMController(Module):
         self.submodules.refresher = Refresher(geom_settings.addressbits,
                                               geom_settings.bankbits,
                                               timing_settings.tRP,
-                                              timing_settings.tREFI,timing_settings.tRFC,
+                                              timing_settings.tREFI,
+                                              timing_settings.tRFC,
                                               controller_settings.with_refresh)
 
         bank_machines = []
         for i in range(2**geom_settings.bankbits):
-            bank_machine = BankMachine(geom_settings,
-                                       timing_settings,
-                                       controller_settings,
-                                       address_align,
+            bank_machine = BankMachine(self.lasmic.aw,
                                        i,
-                                       getattr(self.lasmic, "bank"+str(i)))
+                                       address_align,
+                                       geom_settings,
+                                       timing_settings,
+                                       controller_settings)
             bank_machines.append(bank_machine)
             self.submodules += bank_machine
+            self.comb += getattr(self.lasmic, "bank"+str(i)).connect(bank_machine.req)
 
         self.submodules.multiplexer = Multiplexer(phy_settings,
                                                   geom_settings,

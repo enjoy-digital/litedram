@@ -41,9 +41,9 @@ class _CommandChooser(Module):
             & ((self.cmd.is_cmd & self.want_cmds) | ((self.cmd.is_read == self.want_reads) \
             & (self.cmd.is_write == self.want_writes))))
 
-        self.comb += [If(self.cmd.valid & self.cmd.ack & (rr.grant == i), req.ack.eq(1))
+        self.comb += [If(self.cmd.valid & self.cmd.ready & (rr.grant == i), req.ready.eq(1))
             for i, req in enumerate(requests)]
-        self.comb += rr.ce.eq(self.cmd.ack)
+        self.comb += rr.ce.eq(self.cmd.ready)
 
 
 class _Steerer(Module):
@@ -171,8 +171,8 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("READ",
             read_time_en.eq(1),
             choose_req.want_reads.eq(1),
-            choose_cmd.cmd.ack.eq(1),
-            choose_req.cmd.ack.eq(1),
+            choose_cmd.cmd.ready.eq(1),
+            choose_req.cmd.ready.eq(1),
             steerer_sel(steerer, phy_settings, "read"),
             If(write_available,
                 # TODO: switch only after several cycles of ~read_available?
@@ -183,8 +183,8 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("WRITE",
             write_time_en.eq(1),
             choose_req.want_writes.eq(1),
-            choose_cmd.cmd.ack.eq(1),
-            choose_req.cmd.ack.eq(1),
+            choose_cmd.cmd.ready.eq(1),
+            choose_req.cmd.ready.eq(1),
             steerer_sel(steerer, phy_settings, "write"),
             If(read_available,
                 If(~write_available | max_write_time, NextState("WTR"))
