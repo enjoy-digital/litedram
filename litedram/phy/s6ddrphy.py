@@ -68,7 +68,7 @@ class S6HalfRateDDRPHY(Module):
         self.clk4x_wr_strb = Signal()
         self.clk4x_rd_strb = Signal()
 
-        ###
+        # # #
 
         # sys_clk           : system clk, used for dfi interface
         # sdram_half_clk    : half rate sdram clk

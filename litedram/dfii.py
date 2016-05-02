@@ -13,7 +13,7 @@ class PhaseInjector(Module, AutoCSR):
         self._wrdata = CSRStorage(len(phase.wrdata))
         self._rddata = CSRStatus(len(phase.rddata))
 
-        ###
+        # # #
 
         self.comb += [
             If(self._command_issue.re,
@@ -48,7 +48,7 @@ class DFIInjector(Module, AutoCSR):
         for n, phase in enumerate(inti.phases):
             setattr(self.submodules, "pi" + str(n), PhaseInjector(phase))
 
-        ###
+        # # #
 
         self.comb += If(self._control.storage[0],
                 self.slave.connect(self.master)

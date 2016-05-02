@@ -8,7 +8,7 @@ class Refresher(Module):
     def __init__(self, a, ba, tRP, tREFI, tRFC, enable):
         self.req = Signal()
         self.ack = Signal()  # 1st command 1 cycle after assertion of ack
-        self.cmd = cmd = CommandRequest(a, ba)
+        self.cmd = cmd = Record(cmd_request_layout(a, ba))
 
         # # #
 
@@ -19,19 +19,19 @@ class Refresher(Module):
         self.sync += [
             cmd.a.eq(2**10),
             cmd.ba.eq(0),
-            cmd.cas_n.eq(1),
-            cmd.ras_n.eq(1),
-            cmd.we_n.eq(1),
+            cmd.cas.eq(0),
+            cmd.ras.eq(0),
+            cmd.we.eq(0),
             seq_done.eq(0)
         ]
         self.sync += timeline(seq_start, [
             (1, [
-                cmd.ras_n.eq(0),
-                cmd.we_n.eq(0)
+                cmd.ras.eq(1),
+                cmd.we.eq(1)
             ]),
             (1+tRP, [
-                cmd.cas_n.eq(0),
-                cmd.ras_n.eq(0)
+                cmd.cas.eq(1),
+                cmd.ras.eq(1)
             ]),
             (1+tRP+tRFC, [
                 seq_done.eq(1)

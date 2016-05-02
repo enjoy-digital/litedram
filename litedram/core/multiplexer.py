@@ -4,6 +4,7 @@ from operator import or_, and_
 from litex.gen import *
 from litex.gen.genlib.roundrobin import *
 
+from litex.soc.interconnect import stream
 from litex.soc.interconnect.csr import AutoCSR
 
 from litedram.common import *
@@ -15,8 +16,9 @@ class _CommandChooser(Module):
         self.want_reads = Signal()
         self.want_writes = Signal()
         self.want_cmds = Signal()
-        # NB: cas_n/ras_n/we_n are 1 when valid is inactive
-        self.cmd = CommandRequestRW(len(requests[0].a), len(requests[0].ba))
+        # NB: cas/ras/we are 0 when valid is inactive
+        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(len(requests[0].a),
+                                                               len(requests[0].ba)))
 
         # # #
 
@@ -32,18 +34,18 @@ class _CommandChooser(Module):
         self.comb += valid.eq(Array(req.valid for req in requests)[rr.grant])
         for name in ["a", "ba", "is_read", "is_write", "is_cmd"]:
             choices = Array(getattr(req, name) for req in requests)
-            self.comb += getattr(self.cmd, name).eq(choices[rr.grant])
-        for name in ["cas_n", "ras_n", "we_n"]:
+            self.comb += getattr(cmd, name).eq(choices[rr.grant])
+        for name in ["cas", "ras", "we"]:
             # we should only assert those signals when valid is 1
             choices = Array(getattr(req, name) for req in requests)
-            self.comb += If(self.cmd.valid, getattr(self.cmd, name).eq(choices[rr.grant]))
-        self.comb += self.cmd.valid.eq(valid \
-            & ((self.cmd.is_cmd & self.want_cmds) | ((self.cmd.is_read == self.want_reads) \
-            & (self.cmd.is_write == self.want_writes))))
+            self.comb += If(cmd.valid, getattr(cmd, name).eq(choices[rr.grant]))
+        self.comb += cmd.valid.eq(valid \
+            & ((cmd.is_cmd & self.want_cmds) | ((cmd.is_read == self.want_reads) \
+            & (cmd.is_write == self.want_writes))))
 
-        self.comb += [If(self.cmd.valid & self.cmd.ready & (rr.grant == i), req.ready.eq(1))
+        self.comb += [If(cmd.valid & cmd.ready & (rr.grant == i), req.ready.eq(1))
             for i, req in enumerate(requests)]
-        self.comb += rr.ce.eq(self.cmd.ready)
+        self.comb += rr.ce.eq(cmd.ready)
 
 
 class _Steerer(Module):
@@ -52,7 +54,7 @@ class _Steerer(Module):
         nph = len(dfi.phases)
         self.sel = [Signal(max=ncmd) for i in range(nph)]
 
-        ###
+        # # #
 
         def valid_and(cmd, attr):
             if not hasattr(cmd, "valid"):
@@ -71,9 +73,9 @@ class _Steerer(Module):
             self.sync += [
                 phase.address.eq(Array(cmd.a for cmd in commands)[sel]),
                 phase.bank.eq(Array(cmd.ba for cmd in commands)[sel]),
-                phase.cas_n.eq(Array(cmd.cas_n for cmd in commands)[sel]),
-                phase.ras_n.eq(Array(cmd.ras_n for cmd in commands)[sel]),
-                phase.we_n.eq(Array(cmd.we_n for cmd in commands)[sel]),
+                phase.cas_n.eq(~Array(cmd.cas for cmd in commands)[sel]),
+                phase.ras_n.eq(~Array(cmd.ras for cmd in commands)[sel]),
+                phase.we_n.eq(~Array(cmd.we for cmd in commands)[sel]),
                 phase.rddata_en.eq(Array(valid_and(cmd, "is_read") for cmd in commands)[sel]),
                 phase.wrdata_en.eq(Array(valid_and(cmd, "is_write") for cmd in commands)[sel])
             ]
@@ -100,7 +102,7 @@ class Multiplexer(Module, AutoCSR):
             ]
 
         # Command steering
-        nop = CommandRequest(geom_settings.addressbits, geom_settings.bankbits)
+        nop = Record(cmd_request_layout(geom_settings.addressbits, geom_settings.bankbits))
         commands = [nop, choose_cmd.cmd, choose_req.cmd, refresher.cmd]  # nop must be 1st
         (STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH) = range(4)
         steerer = _Steerer(commands, dfi)

@@ -50,7 +50,7 @@ class GENSDRPHY(Module):
 
         self.dfi = Interface(addressbits, bankbits, databits)
 
-        ###
+        # # #
 
         #
         # Command/address

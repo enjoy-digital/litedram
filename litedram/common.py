@@ -84,20 +84,18 @@ class UserInterface(Record):
         Record.__init__(self, layout)
 
 
-class CommandRequest:
-    def __init__(self, a, ba):
-        self.a = Signal(a)
-        self.ba = Signal(ba)
-        self.cas_n = Signal(reset=1)
-        self.ras_n = Signal(reset=1)
-        self.we_n = Signal(reset=1)
+def cmd_request_layout(a, ba):
+    return [
+        ("a",     a),
+        ("ba",   ba),
+        ("cas",   1),
+        ("ras",   1),
+        ("we",    1)
+    ]
 
-
-class CommandRequestRW(CommandRequest):
-    def __init__(self, a, ba):
-        CommandRequest.__init__(self, a, ba)
-        self.valid = Signal()
-        self.ready = Signal()
-        self.is_cmd = Signal()
-        self.is_read = Signal()
-        self.is_write = Signal()
+def cmd_request_rw_layout(a, ba):
+    return cmd_request_layout(a, ba) + [
+        ("is_cmd", 1),
+        ("is_read", 1),
+        ("is_write", 1)
+    ]

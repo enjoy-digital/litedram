@@ -43,7 +43,7 @@ class K7DDRPHY(Module, AutoCSR):
 
         self.dfi = Interface(addressbits, bankbits, 2*databits, nphases)
 
-        ###
+        # # #
 
         # Clock
         sd_clk_se = Signal()
