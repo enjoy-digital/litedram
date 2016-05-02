@@ -16,9 +16,11 @@ class _CommandChooser(Module):
         self.want_reads = Signal()
         self.want_writes = Signal()
         self.want_cmds = Signal()
+
+        a = len(requests[0].a)
+        ba = len(requests[0].ba)
         # cas/ras/we are 0 when valid is inactive
-        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(len(requests[0].a),
-                                                               len(requests[0].ba)))
+        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
 
         # # #
 
@@ -47,7 +49,10 @@ class _CommandChooser(Module):
         for name in ["cas", "ras", "we"]:
             # we should only assert those signals when valid is 1
             choices = Array(getattr(req, name) for req in requests)
-            self.comb += If(cmd.valid, getattr(cmd, name).eq(choices[arbiter.grant]))
+            self.comb += \
+                If(cmd.valid,
+                    getattr(cmd, name).eq(choices[arbiter.grant])
+                )
 
         for i, request in enumerate(requests):
             self.comb += \
@@ -70,6 +75,7 @@ class _Steerer(Module):
                 return 0
             else:
                 return cmd.valid & getattr(cmd, attr)
+
         for phase, sel in zip(dfi.phases, self.sel):
             self.comb += [
                 phase.cke.eq(1),
@@ -84,14 +90,26 @@ class _Steerer(Module):
                 phase.bank.eq(Array(cmd.ba for cmd in commands)[sel]),
                 phase.cas_n.eq(~Array(cmd.cas for cmd in commands)[sel]),
                 phase.ras_n.eq(~Array(cmd.ras for cmd in commands)[sel]),
-                phase.we_n.eq(~Array(cmd.we for cmd in commands)[sel]),
-                phase.rddata_en.eq(Array(valid_and(cmd, "is_read") for cmd in commands)[sel]),
-                phase.wrdata_en.eq(Array(valid_and(cmd, "is_write") for cmd in commands)[sel])
+                phase.we_n.eq(~Array(cmd.we for cmd in commands)[sel])
+            ]
+            rddata_ens = Array(valid_and(cmd, "is_read") for cmd in commands)
+            wrdata_ens = Array(valid_and(cmd, "is_write") for cmd in commands)
+            self.sync += [
+                phase.rddata_en.eq(rddata_ens[sel]),
+                phase.wrdata_en.eq(wrdata_ens[sel])
             ]
 
 
 class Multiplexer(Module, AutoCSR):
-    def __init__(self, phy_settings, geom_settings, timing_settings, controller_settings, bank_machines, refresher, dfi, lasmic,
+    def __init__(self,
+            phy_settings,
+            geom_settings,
+            timing_settings,
+            controller_settings,
+            bank_machines,
+            refresher,
+            dfi,
+            lasmic,
             with_bandwidth=False):
         assert(phy_settings.nphases == len(dfi.phases))
         self.phy_settings = phy_settings
@@ -107,8 +125,10 @@ class Multiplexer(Module, AutoCSR):
             ]
 
         # Command steering
-        nop = Record(cmd_request_layout(geom_settings.addressbits, geom_settings.bankbits))
-        commands = [nop, choose_cmd.cmd, choose_req.cmd, refresher.cmd]  # nop must be 1st
+        nop = Record(cmd_request_layout(geom_settings.addressbits,
+                                        geom_settings.bankbits))
+        # nop must be 1st
+        commands = [nop, choose_cmd.cmd, choose_req.cmd, refresher.cmd]
         (STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH) = range(4)
         steerer = _Steerer(commands, dfi)
         self.submodules += steerer
@@ -116,9 +136,11 @@ class Multiplexer(Module, AutoCSR):
         # Read/write turnaround
         read_available = Signal()
         write_available = Signal()
+        reads = [req.valid & req.is_read for req in requests]
+        writes = [req.valid & req.is_write for req in requests]
         self.comb += [
-            read_available.eq(reduce(or_, [req.valid & req.is_read for req in requests])),
-            write_available.eq(reduce(or_, [req.valid & req.is_write for req in requests]))
+            read_available.eq(reduce(or_, reads)),
+            write_available.eq(reduce(or_, writes))
         ]
 
         def anti_starvation(timeout):
@@ -136,13 +158,15 @@ class Multiplexer(Module, AutoCSR):
             else:
                 self.comb += max_time.eq(0)
             return en, max_time
+
         read_time_en, max_read_time = anti_starvation(controller_settings.read_time)
         write_time_en, max_write_time = anti_starvation(controller_settings.write_time)
 
         # Refresh
         self.comb += [bm.refresh_req.eq(refresher.req) for bm in bank_machines]
         go_to_refresh = Signal()
-        self.comb += go_to_refresh.eq(reduce(and_, [bm.refresh_gnt for bm in bank_machines]))
+        bm_refresh_gnts = [bm.refresh_gnt for bm in bank_machines]
+        self.comb += go_to_refresh.eq(reduce(and_, bm_refresh_gnts))
 
         # Datapath
         all_rddata = [p.rddata for p in dfi.phases]
@@ -183,9 +207,13 @@ class Multiplexer(Module, AutoCSR):
             steerer_sel(steerer, phy_settings, "read"),
             If(write_available,
                 # TODO: switch only after several cycles of ~read_available?
-                If(~read_available | max_read_time, NextState("RTW"))
+                If(~read_available | max_read_time,
+                    NextState("RTW")
+                )
             ),
-            If(go_to_refresh, NextState("REFRESH"))
+            If(go_to_refresh,
+                NextState("REFRESH")
+            )
         )
         fsm.act("WRITE",
             write_time_en.eq(1),
@@ -194,16 +222,23 @@ class Multiplexer(Module, AutoCSR):
             choose_req.cmd.ready.eq(1),
             steerer_sel(steerer, phy_settings, "write"),
             If(read_available,
-                If(~write_available | max_write_time, NextState("WTR"))
+                If(~write_available | max_write_time,
+                    NextState("WTR")
+                )
             ),
-            If(go_to_refresh, NextState("REFRESH"))
+            If(go_to_refresh,
+                NextState("REFRESH")
+            )
         )
         fsm.act("REFRESH",
             steerer.sel[0].eq(STEER_REFRESH),
             refresher.ack.eq(1),
-            If(~refresher.req, NextState("READ"))
+            If(~refresher.req,
+                NextState("READ")
+            )
         )
-        fsm.delayed_enter("RTW", "WRITE", phy_settings.read_latency-1)  # FIXME: reduce this, actual limit is around (cl+1)/nphases
+        # TODO: reduce this, actual limit is around (cl+1)/nphases
+        fsm.delayed_enter("RTW", "WRITE", phy_settings.read_latency-1)
         fsm.delayed_enter("WTR", "READ", timing_settings.tWTR-1)
 
         if controller_settings.with_bandwidth:
