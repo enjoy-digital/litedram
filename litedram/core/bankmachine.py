@@ -28,28 +28,26 @@ class AddressSlicer:
 
 class BankMachine(Module):
     def __init__(self,
-            aw,
             n,
+            aw,
             address_align,
-            geom_settings,
-            timing_settings,
-            controller_settings):
+            settings):
         self.req = req = Record(cmd_layout(aw))
         self.refresh_req = Signal()
         self.refresh_gnt = Signal()
-        a = geom_settings.addressbits
-        ba = geom_settings.bankbits
+        a = settings.geom.addressbits
+        ba = settings.geom.bankbits
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
 
         # # #
 
         # Command buffer
         cmd_buffer_layout = [("we", 1), ("adr", len(req.adr))]
-        if controller_settings.cmd_buffer_depth < 2:
+        if settings.cmd_buffer_depth < 2:
             cmd_buffer = stream.Buffer(cmd_buffer_layout)
         else:
             cmd_buffer = stream.SyncFIFO(cmd_buffer_layout,
-                                         controller_settings.cmd_buffer_depth)
+                                         settings.cmd_buffer_depth)
         self.submodules += cmd_buffer
         self.comb += [
             req.connect(cmd_buffer.sink, omit=["dat_w_ack", "dat_r_ack", "lock"]),
@@ -57,11 +55,11 @@ class BankMachine(Module):
             req.lock.eq(cmd_buffer.source.valid),
         ]
 
-        slicer = AddressSlicer(geom_settings.colbits, address_align)
+        slicer = AddressSlicer(settings.geom.colbits, address_align)
 
         # Row tracking
         has_openrow = Signal()
-        openrow = Signal(geom_settings.rowbits)
+        openrow = Signal(settings.geom.rowbits)
         hit = Signal()
         self.comb += hit.eq(openrow == slicer.row(cmd_buffer.source.adr))
         track_open = Signal()
@@ -86,7 +84,7 @@ class BankMachine(Module):
         ]
 
         # Respect write-to-precharge specification
-        precharge_time = 2 + timing_settings.tWR - 1 + 1
+        precharge_time = 2 + settings.timing.tWR - 1 + 1
         self.submodules.precharge_timer = WaitTimer(precharge_time)
         self.comb += self.precharge_timer.wait.eq(~(cmd.valid &
                                                     cmd.ready &
@@ -153,5 +151,5 @@ class BankMachine(Module):
                 NextState("REGULAR")
             )
         )
-        fsm.delayed_enter("TRP", "ACTIVATE", timing_settings.tRP-1)
-        fsm.delayed_enter("TRCD", "REGULAR", timing_settings.tRCD-1)
+        fsm.delayed_enter("TRP", "ACTIVATE", settings.timing.tRP-1)
+        fsm.delayed_enter("TRCD", "REGULAR", settings.timing.tRCD-1)

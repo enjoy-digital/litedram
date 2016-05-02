@@ -102,31 +102,27 @@ class _Steerer(Module):
 
 class Multiplexer(Module, AutoCSR):
     def __init__(self,
-            phy_settings,
-            geom_settings,
-            timing_settings,
-            controller_settings,
+            settings,
             bank_machines,
             refresher,
             dfi,
             lasmic,
             with_bandwidth=False):
-        assert(phy_settings.nphases == len(dfi.phases))
-        self.phy_settings = phy_settings
+        assert(settings.phy.nphases == len(dfi.phases))
 
         # Command choosing
         requests = [bm.cmd for bm in bank_machines]
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
         self.submodules.choose_req = choose_req = _CommandChooser(requests)
-        if phy_settings.nphases == 1:
+        if settings.phy.nphases == 1:
             self.comb += [
                 choose_cmd.want_cmds.eq(1),
                 choose_req.want_cmds.eq(1)
             ]
 
         # Command steering
-        nop = Record(cmd_request_layout(geom_settings.addressbits,
-                                        geom_settings.bankbits))
+        nop = Record(cmd_request_layout(settings.geom.addressbits,
+                                        settings.geom.bankbits))
         # nop must be 1st
         commands = [nop, choose_cmd.cmd, choose_req.cmd, refresher.cmd]
         (STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH) = range(4)
@@ -159,8 +155,8 @@ class Multiplexer(Module, AutoCSR):
                 self.comb += max_time.eq(0)
             return en, max_time
 
-        read_time_en, max_read_time = anti_starvation(controller_settings.read_time)
-        write_time_en, max_write_time = anti_starvation(controller_settings.write_time)
+        read_time_en, max_read_time = anti_starvation(settings.read_time)
+        write_time_en, max_write_time = anti_starvation(settings.write_time)
 
         # Refresh
         self.comb += [bm.refresh_req.eq(refresher.req) for bm in bank_machines]
@@ -178,19 +174,19 @@ class Multiplexer(Module, AutoCSR):
             Cat(*all_wrdata_mask).eq(~lasmic.dat_we)
         ]
 
-        def steerer_sel(steerer, phy_settings, r_w_n):
+        def steerer_sel(steerer, r_w_n):
             r = []
-            for i in range(phy_settings.nphases):
+            for i in range(settings.phy.nphases):
                 s = steerer.sel[i].eq(STEER_NOP)
                 if r_w_n == "read":
-                    if i == phy_settings.rdphase:
+                    if i == settings.phy.rdphase:
                         s = steerer.sel[i].eq(STEER_REQ)
-                    elif i == phy_settings.rdcmdphase:
+                    elif i == settings.phy.rdcmdphase:
                         s = steerer.sel[i].eq(STEER_CMD)
                 elif r_w_n == "write":
-                    if i == phy_settings.wrphase:
+                    if i == settings.phy.wrphase:
                         s = steerer.sel[i].eq(STEER_REQ)
-                    elif i == phy_settings.wrcmdphase:
+                    elif i == settings.phy.wrcmdphase:
                         s = steerer.sel[i].eq(STEER_CMD)
                 else:
                     raise ValueError
@@ -204,7 +200,7 @@ class Multiplexer(Module, AutoCSR):
             choose_req.want_reads.eq(1),
             choose_cmd.cmd.ready.eq(1),
             choose_req.cmd.ready.eq(1),
-            steerer_sel(steerer, phy_settings, "read"),
+            steerer_sel(steerer, "read"),
             If(write_available,
                 # TODO: switch only after several cycles of ~read_available?
                 If(~read_available | max_read_time,
@@ -220,7 +216,7 @@ class Multiplexer(Module, AutoCSR):
             choose_req.want_writes.eq(1),
             choose_cmd.cmd.ready.eq(1),
             choose_req.cmd.ready.eq(1),
-            steerer_sel(steerer, phy_settings, "write"),
+            steerer_sel(steerer, "write"),
             If(read_available,
                 If(~write_available | max_write_time,
                     NextState("WTR")
@@ -238,9 +234,9 @@ class Multiplexer(Module, AutoCSR):
             )
         )
         # TODO: reduce this, actual limit is around (cl+1)/nphases
-        fsm.delayed_enter("RTW", "WRITE", phy_settings.read_latency-1)
-        fsm.delayed_enter("WTR", "READ", timing_settings.tWTR-1)
+        fsm.delayed_enter("RTW", "WRITE", settings.phy.read_latency-1)
+        fsm.delayed_enter("WTR", "READ", settings.timing.tWTR-1)
 
-        if controller_settings.with_bandwidth:
-            data_width = phy_settings.dfi_databits*phy_settings.nphases
+        if settings.with_bandwidth:
+            data_width = settings.phy.dfi_databits*settings.phy.nphases
             self.submodules.bandwidth = Bandwidth(self.choose_req.cmd, data_width)

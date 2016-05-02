@@ -5,10 +5,11 @@ from litedram.core.multiplexer import *
 
 
 class Refresher(Module):
-    def __init__(self, a, ba, tRP, tREFI, tRFC, enable):
+    def __init__(self, settings):
         self.req = Signal()
         self.ack = Signal()  # 1st command 1 cycle after assertion of ack
-        self.cmd = cmd = Record(cmd_request_layout(a, ba))
+        self.cmd = cmd = Record(cmd_request_layout(settings.geom.addressbits,
+                                                   settings.geom.bankbits))
 
         # # #
 
@@ -29,18 +30,18 @@ class Refresher(Module):
                 cmd.ras.eq(1),
                 cmd.we.eq(1)
             ]),
-            (1+tRP, [
+            (1+settings.timing.tRP, [
                 cmd.cas.eq(1),
                 cmd.ras.eq(1)
             ]),
-            (1+tRP+tRFC, [
+            (1+settings.timing.tRP+settings.timing.tRFC, [
                 seq_done.eq(1)
             ])
         ])
 
         # Periodic refresh counter
-        self.submodules.timer = WaitTimer(tREFI)
-        self.comb += self.timer.wait.eq(enable & ~self.timer.done)
+        self.submodules.timer = WaitTimer(settings.timing.tREFI)
+        self.comb += self.timer.wait.eq(settings.with_refresh & ~self.timer.done)
 
         # Control FSM
         self.submodules.fsm = fsm = FSM()

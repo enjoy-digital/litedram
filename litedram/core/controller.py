@@ -34,40 +34,29 @@ class LiteDRAMController(Module):
             phy_settings.dfi_databits,
             phy_settings.nphases)
 
-        self.lasmic = common.InternalInterface(
-            aw=geom_settings.rowbits + geom_settings.colbits - address_align,
-            dw=phy_settings.dfi_databits*phy_settings.nphases,
-            nbanks=2**geom_settings.bankbits,
-            cmd_buffer_depth=controller_settings.cmd_buffer_depth,
-            read_latency=phy_settings.read_latency+1,
-            write_latency=phy_settings.write_latency+1)
-        self.nrowbits = geom_settings.colbits - address_align
+        self.settings = settings = controller_settings
+        self.settings.phy = phy_settings
+        self.settings.geom = geom_settings
+        self.settings.timing = timing_settings
+
+        self.lasmic = common.InternalInterface(address_align, settings)
+        self.nrowbits = settings.geom.colbits - address_align
 
         # # #
 
-        self.submodules.refresher = Refresher(geom_settings.addressbits,
-                                              geom_settings.bankbits,
-                                              timing_settings.tRP,
-                                              timing_settings.tREFI,
-                                              timing_settings.tRFC,
-                                              controller_settings.with_refresh)
+        self.submodules.refresher = Refresher(self.settings)
 
         bank_machines = []
         for i in range(2**geom_settings.bankbits):
-            bank_machine = BankMachine(self.lasmic.aw,
-                                       i,
+            bank_machine = BankMachine(i,
+                                       self.lasmic.aw,
                                        address_align,
-                                       geom_settings,
-                                       timing_settings,
-                                       controller_settings)
+                                       settings)
             bank_machines.append(bank_machine)
             self.submodules += bank_machine
             self.comb += getattr(self.lasmic, "bank"+str(i)).connect(bank_machine.req)
 
-        self.submodules.multiplexer = Multiplexer(phy_settings,
-                                                  geom_settings,
-                                                  timing_settings,
-                                                  controller_settings,
+        self.submodules.multiplexer = Multiplexer(settings,
                                                   bank_machines,
                                                   self.refresher,
                                                   self.dfi,

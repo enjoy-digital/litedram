@@ -59,16 +59,14 @@ def data_layout(dw):
 
 
 class InternalInterface(Record):
-    def __init__(self, aw, dw, nbanks, cmd_buffer_depth, read_latency, write_latency):
-        self.aw = aw
-        self.dw = dw
-        self.nbanks = nbanks
-        self.cmd_buffer_depth = cmd_buffer_depth
-        self.read_latency = read_latency
-        self.write_latency = write_latency
+    def __init__(self, address_align, settings):
+        self.aw = settings.geom.rowbits + settings.geom.colbits - address_align
+        self.dw = settings.phy.dfi_databits*settings.phy.nphases
+        self.nbanks = 2**settings.geom.bankbits
+        self.settings = settings
 
-        layout = [("bank"+str(i), cmd_layout(aw)) for i in range(nbanks)]
-        layout += data_layout(dw)
+        layout = [("bank"+str(i), cmd_layout(self.aw)) for i in range(self.nbanks)]
+        layout += data_layout(self.dw)
         Record.__init__(self, layout)
 
 

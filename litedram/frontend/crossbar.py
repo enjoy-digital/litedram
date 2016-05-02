@@ -15,9 +15,9 @@ class LiteDRAMCrossbar(Module):
         self.rca_bits = controller.aw
         self.dw = controller.dw
         self.nbanks = controller.nbanks
-        self.cmd_buffer_depth = controller.cmd_buffer_depth
-        self.read_latency = controller.read_latency
-        self.write_latency = controller.write_latency
+        self.cmd_buffer_depth = controller.settings.cmd_buffer_depth
+        self.read_latency = controller.settings.phy.read_latency + 1
+        self.write_latency = controller.settings.phy.write_latency + 1
 
         self.bank_bits = log2_int(self.nbanks, False)
 
