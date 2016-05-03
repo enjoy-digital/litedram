@@ -71,7 +71,7 @@ class InternalInterface(Record):
         Record.__init__(self, layout)
 
 
-class UserInterface(Record):
+class UserPort(Record):
     def __init__(self, aw, dw, cmd_buffer_depth, read_latency, write_latency):
         self.aw = aw
         self.dw = dw

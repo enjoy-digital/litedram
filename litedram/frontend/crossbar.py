@@ -26,8 +26,11 @@ class LiteDRAMCrossbar(Module):
     def get_port(self):
         if self.finalized:
             raise FinalizeError
-        port = UserInterface(self.rca_bits + self.bank_bits,
-            self.dw, self.cmd_buffer_depth, self.read_latency, self.write_latency)
+        port = UserPort(self.rca_bits + self.bank_bits,
+                        self.dw,
+                        self.cmd_buffer_depth,
+                        self.read_latency,
+                        self.write_latency)
         self.masters.append(port)
         return port
 
@@ -39,7 +42,6 @@ class LiteDRAMCrossbar(Module):
                                                   self.cba_shift)
 
         controller = self.controller
-        controller_selected = [1]*nmasters
         master_readys = [0]*nmasters
         master_wdata_readys = [0]*nmasters
         master_rdata_valids = [0]*nmasters
@@ -60,7 +62,7 @@ class LiteDRAMCrossbar(Module):
                 master_locked.append(locked)
 
             # arbitrate
-            bank_selected = [cs & (ba == nb) & ~locked for cs, ba, locked in zip(controller_selected, m_ba, master_locked)]
+            bank_selected = [(ba == nb) & ~locked for ba, locked in zip(m_ba, master_locked)]
             bank_requested = [bs & master.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 rr.request.eq(Cat(*bank_requested)),
@@ -99,20 +101,15 @@ class LiteDRAMCrossbar(Module):
         self.comb += [master.rdata_valid.eq(master_rdata_valid) for master, master_rdata_valid in zip(self.masters, master_rdata_valids)]
 
         # route data writes
-        controller_selected_wl = controller_selected
-        for i in range(self.write_latency):
-            n_controller_selected_wl = [Signal() for i in range(nmasters)]
-            self.sync += [n.eq(o) for n, o in zip(n_controller_selected_wl, controller_selected_wl)]
-            controller_selected_wl = n_controller_selected_wl
         wdata_maskselect = []
         wdata_we_maskselect = []
-        for master, selected in zip(self.masters, controller_selected_wl):
+        for master in self.masters:
             o_wdata = Signal(self.dw)
             o_wdata_we = Signal(self.dw//8)
-            self.comb += If(selected,
-                    o_wdata.eq(master.wdata),
-                    o_wdata_we.eq(master.wdata_we)
-                )
+            self.comb += [
+                o_wdata.eq(master.wdata),
+                o_wdata_we.eq(master.wdata_we)
+            ]
             wdata_maskselect.append(o_wdata)
             wdata_we_maskselect.append(o_wdata_we)
         self.comb += [
