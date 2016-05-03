@@ -1,15 +1,16 @@
 from litex.gen import *
 from litex.gen.genlib.misc import timeline, WaitTimer
 
+from litex.soc.interconnect import stream
+
 from litedram.core.multiplexer import *
 
 
 class Refresher(Module):
     def __init__(self, settings):
-        self.req = Signal()
-        self.ack = Signal()  # 1st command 1 cycle after assertion of ack
-        self.cmd = cmd = Record(cmd_request_layout(settings.geom.addressbits,
-                                                   settings.geom.bankbits))
+        # 1st command 1 cycle after assertion of ready
+        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(settings.geom.addressbits,
+                                                               settings.geom.bankbits))
 
         # # #
 
@@ -51,15 +52,16 @@ class Refresher(Module):
             )
         )
         fsm.act("WAIT_GRANT",
-            self.req.eq(1),
-            If(self.ack,
+            cmd.valid.eq(1),
+            If(cmd.ready,
                 seq_start.eq(1),
                 NextState("WAIT_SEQ")
             )
         )
         fsm.act("WAIT_SEQ",
-            self.req.eq(1),
+            cmd.valid.eq(1),
             If(seq_done,
+                cmd.last.eq(1),
                 NextState("IDLE")
             )
         )

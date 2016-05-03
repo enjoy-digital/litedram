@@ -159,7 +159,7 @@ class Multiplexer(Module, AutoCSR):
         write_time_en, max_write_time = anti_starvation(settings.write_time)
 
         # Refresh
-        self.comb += [bm.refresh_req.eq(refresher.req) for bm in bank_machines]
+        self.comb += [bm.refresh_req.eq(refresher.cmd.valid) for bm in bank_machines]
         go_to_refresh = Signal()
         bm_refresh_gnts = [bm.refresh_gnt for bm in bank_machines]
         self.comb += go_to_refresh.eq(reduce(and_, bm_refresh_gnts))
@@ -228,8 +228,8 @@ class Multiplexer(Module, AutoCSR):
         )
         fsm.act("REFRESH",
             steerer.sel[0].eq(STEER_REFRESH),
-            refresher.ack.eq(1),
-            If(~refresher.req,
+            refresher.cmd.ready.eq(1),
+            If(refresher.cmd.valid & refresher.cmd.last,
                 NextState("READ")
             )
         )
