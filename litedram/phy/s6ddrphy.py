@@ -51,7 +51,7 @@ class S6HalfRateDDRPHY(Module):
                 write_latency=2
             )
         else:
-            self.settings = sdram_settings.PhySettings(
+            self.settings = PhySettings(
                 memtype=memtype,
                 dfi_databits=2*databits,
                 nphases=nphases,
@@ -407,7 +407,7 @@ class S6QuarterRateDDRPHY(Module):
         databits = len(pads.dq)
         nphases = 4
 
-        self.settings = sdram_settings.PhySettings(
+        self.settings = PhySettings(
             memtype="DDR3",
             dfi_databits=2*databits,
             nphases=nphases,
