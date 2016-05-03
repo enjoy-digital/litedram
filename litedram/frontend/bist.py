@@ -5,9 +5,7 @@ from litex.gen import *
 
 from litex.soc.interconnect.csr import *
 
-from litedram.frontend import dma
-
-# TODO: implement or replace DMAControllers in MiSoC
+from litedram.frontend.dma import LiteDRAMDMAWriter, LiteDRAMDMAReader
 
 
 @ResetInserter()
@@ -32,75 +30,102 @@ class LFSR(Module):
         ]
 
 
-memtest_magic = 0x361f
-
-
 class LiteDRAMBISTGenerator(Module):
-    def __init__(self, port):
-        self._magic = CSRStatus(16)
-        self._reset = CSR()
-        self._shoot = CSR()
-        self.submodules._dma = DMAWriteController(dma.Writer(port),
-                                                  MODE_EXTERNAL)
+    def __init__(self, dram_port):
+        self.reset = CSR()
+        self.shoot = CSR()
+        self.done = CSRStatus()
+        self.base = CSRStorage(dram_port.aw)
+        self.length = CSRStorage(dram_port.aw)
 
         # # #
 
-        self.comb += self._magic.status.eq(memtest_magic)
+        self.submodules.dma = dma = LiteDRAMDMAWriter(dram_port)
 
-        lfsr = LFSR(port.dw)
-        self.submodules += lfsr
-        self.comb += lfsr.reset.eq(self._reset.re)
+        self.submodules.lfsr = lfsr = LFSR(dram_port.dw)
+        self.comb += lfsr.reset.eq(self.reset.re)
 
-        en = Signal()
-        en_counter = Signal(port.aw)
-        self.comb += en.eq(en_counter != 0)
+        enable = Signal()
+        counter = Signal(dram_port.aw)
+        self.comb += enable.eq(counter != 0)
         self.sync += [
-            If(self._shoot.re,
-                en_counter.eq(self._dma.length)
+            If(self.shoot.re,
+                counter.eq(self.length.storage)
             ).Elif(lfsr.ce,
-                en_counter.eq(en_counter - 1)
+                counter.eq(counter - 1)
             )
         ]
 
         self.comb += [
-            self._dma.trigger.eq(self._shoot.re),
-            self._dma.data.valid.eq(en),
-            lfsr.ce.eq(en & self._dma.data.ready),
-            self._dma.data.d.eq(lfsr.o)
-        ]
+            dma.sink.valid.eq(enable),
+            dma.sink.address.eq(self.base.storage + counter),
+            dma.sink.data.eq(lfsr.o),
+            lfsr.ce.eq(enable & dma.sink.ready),
 
-    def get_csrs(self):
-        return [self._magic, self._reset, self._shoot] + self._dma.get_csrs()
+            self.done.status.eq(~enable)
+        ]
 
 
 class LiteDRAMBISTChecker(Module):
-    def __init__(self, port):
-        self._magic = CSRStatus(16)
-        self._reset = CSR()
-        self._error_count = CSRStatus(port.aw)
-        self.submodules._dma = DMAReadController(dma.Reader(port),
-                                                 MODE_SINGLE_SHOT)
+    def __init__(self, dram_port):
+        self.reset = CSR()
+        self.shoot = CSR()
+        self.done = CSRStatus()
+        self.base = CSRStorage(dram_port.aw)
+        self.length = CSRStorage(dram_port.aw)
+        self.error_count = CSRStatus(dram_port.aw)
 
         # # #
 
-        self.comb += self._magic.status.eq(memtest_magic)
+        self.submodules.dma = dma = LiteDRAMDMAReader(dram_port)
 
-        lfsr = LFSR(port.dw)
-        self.submodules += lfsr
-        self.comb += lfsr.reset.eq(self._reset.re)
+        # # #
 
-        self.comb += [
-            lfsr.ce.eq(self._dma.data.valid),
-            self._dma.data.ready.eq(1)
-        ]
-        err_cnt = self._error_count.status
+        self.submodules.lfsr = lfsr = LFSR(dram_port.dw)
+        self.comb += lfsr.reset.eq(self.reset.re)
+
+        address_counter = Signal(dram_port.aw)
+        address_counter_ce = Signal()
+        data_counter = Signal(dram_port.aw)
+        data_counter_ce = Signal()
         self.sync += [
-            If(self._reset.re,
-                err_cnt.eq(0)
-            ).Elif(self._dma.data.valid,
-                If(self._dma.data.d != lfsr.o, err_cnt.eq(err_cnt + 1))
+            If(self.shoot.re,
+                address_counter.eq(self.length.storage)
+            ).Elif(address_counter_ce,
+                address_counter.eq(address_counter - 1)
+            ),
+            If(self.shoot.re,
+                data_counter.eq(self.length.storage)
+            ).Elif(data_counter_ce,
+                data_counter.eq(data_counter - 1)
             )
         ]
 
-    def get_csrs(self):
-        return [self._magic, self._reset, self._error_count] + self._dma.get_csrs()
+        address_enable = Signal()
+        self.comb += address_enable.eq(address_counter != 0)
+
+        self.comb += [
+            dma.sink.valid.eq(address_enable),
+            dma.sink.address.eq(self.base.storage + address_counter),
+            address_counter_ce.eq(address_enable & dma.sink.ready)
+        ]
+
+        data_enable = Signal()
+        self.comb += data_enable.eq(data_counter != 0)
+
+        self.comb += [
+            lfsr.ce.eq(dma.source.valid),
+            dma.source.ready.eq(1)
+        ]
+        err_cnt = self.error_count.status
+        self.sync += \
+            If(self.reset.re,
+                err_cnt.eq(0)
+            ).Elif(dma.source.valid,
+                If(dma.source.data != lfsr.o,
+                    err_cnt.eq(err_cnt + 1)
+                )
+            )
+        self.comb += data_counter_ce.eq(dma.source.valid)
+
+        self.comb += self.done.status.eq(~data_enable & ~address_enable)

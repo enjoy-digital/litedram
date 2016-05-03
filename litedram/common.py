@@ -38,6 +38,7 @@ class TimingSettings:
         self.tREFI = tREFI
         self.tRFC = tRFC
 
+
 def cmd_layout(aw):
     return [
         ("valid",        1, DIR_M_TO_S),
@@ -59,7 +60,7 @@ def data_layout(dw):
     ]
 
 
-class InternalInterface(Record):
+class LiteDRAMInterface(Record):
     def __init__(self, address_align, settings):
         self.aw = settings.geom.rowbits + settings.geom.colbits - address_align
         self.dw = settings.phy.dfi_databits*settings.phy.nphases
@@ -71,7 +72,7 @@ class InternalInterface(Record):
         Record.__init__(self, layout)
 
 
-class UserPort(Record):
+class LiteDRAMPort(Record):
     def __init__(self, aw, dw, cmd_buffer_depth, read_latency, write_latency):
         self.aw = aw
         self.dw = dw
@@ -91,6 +92,7 @@ def cmd_request_layout(a, ba):
         ("ras",   1),
         ("we",    1)
     ]
+
 
 def cmd_request_rw_layout(a, ba):
     return cmd_request_layout(a, ba) + [

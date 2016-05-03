@@ -3,6 +3,7 @@ from litex.gen.genlib.fifo import SyncFIFO
 
 from litex.soc.interconnect import stream
 
+
 class LiteDRAMDMAReader(Module):
     def __init__(self, port, fifo_depth=None):
         self.sink = sink = stream.Endpoint([("address", port.aw)])
@@ -60,7 +61,7 @@ class LiteDRAMDMAReader(Module):
 
 class LiteDRAMDMAWriter(Module):
     def __init__(self, port, fifo_depth=None):
-        self.source = source = stream.Endpoint([("address", port.aw),
+        self.sink = sink = stream.Endpoint([("address", port.aw),
                                                 ("data", port.dw)])
         self.busy = Signal()
 
@@ -74,11 +75,11 @@ class LiteDRAMDMAWriter(Module):
 
         self.comb += [
             port.we.eq(1),
-            port.valid.eq(fifo.writable & source.valid),
-            port.adr.eq(source.address),
-            source.ready.eq(fifo.writable & port.ready),
-            fifo.we.eq(source.valid & port.ready),
-            fifo.din.eq(source.data)
+            port.valid.eq(fifo.writable & sink.valid),
+            port.adr.eq(sink.address),
+            sink.ready.eq(fifo.writable & port.ready),
+            fifo.we.eq(sink.valid & port.ready),
+            fifo.din.eq(sink.data)
         ]
 
         self.comb += [

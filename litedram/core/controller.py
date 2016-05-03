@@ -39,7 +39,7 @@ class LiteDRAMController(Module):
 
         self.nrowbits = settings.geom.colbits - address_align
 
-        self.interface = common.InternalInterface(address_align, settings)
+        self.interface = common.LiteDRAMInterface(address_align, settings)
 
         # # #
 
