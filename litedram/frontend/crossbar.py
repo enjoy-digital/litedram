@@ -41,8 +41,8 @@ class LiteDRAMCrossbar(Module):
         controller = self.controller
         controller_selected = [1]*nmasters
         master_readys = [0]*nmasters
-        master_dat_w_acks = [0]*nmasters
-        master_dat_r_acks = [0]*nmasters
+        master_wdata_readys = [0]*nmasters
+        master_rdata_valids = [0]*nmasters
 
         rrs = [roundrobin.RoundRobin(nmasters, roundrobin.SP_CE) for n in range(self.nbanks)]
         self.submodules += rrs
@@ -75,28 +75,28 @@ class LiteDRAMCrossbar(Module):
             ]
             master_readys = [master_ready | ((rr.grant == nm) & bank_selected[nm] & bank.ready)
                 for nm, master_ready in enumerate(master_readys)]
-            master_dat_w_acks = [master_dat_w_ack | ((rr.grant == nm) & bank.dat_w_ack)
-                for nm, master_dat_w_ack in enumerate(master_dat_w_acks)]
-            master_dat_r_acks = [master_dat_r_ack | ((rr.grant == nm) & bank.dat_r_ack)
-                for nm, master_dat_r_ack in enumerate(master_dat_r_acks)]
+            master_wdata_readys = [master_wdata_ready | ((rr.grant == nm) & bank.wdata_ready)
+                for nm, master_wdata_ready in enumerate(master_wdata_readys)]
+            master_rdata_valids = [master_rdata_valid | ((rr.grant == nm) & bank.rdata_valid)
+                for nm, master_rdata_valid in enumerate(master_rdata_valids)]
 
-        for nm, master_dat_w_ack in enumerate(master_dat_w_acks):
+        for nm, master_wdata_ready in enumerate(master_wdata_readys):
                 for i in range(self.write_latency):
-                    new_master_dat_w_ack = Signal()
-                    self.sync += new_master_dat_w_ack.eq(master_dat_w_ack)
-                    master_dat_w_ack = new_master_dat_w_ack
-                master_dat_w_acks[nm] = master_dat_w_ack
+                    new_master_wdata_ready = Signal()
+                    self.sync += new_master_wdata_ready.eq(master_wdata_ready)
+                    master_wdata_ready = new_master_wdata_ready
+                master_wdata_readys[nm] = master_wdata_ready
 
-        for nm, master_dat_r_ack in enumerate(master_dat_r_acks):
+        for nm, master_rdata_valid in enumerate(master_rdata_valids):
                 for i in range(self.read_latency):
-                    new_master_dat_r_ack = Signal()
-                    self.sync += new_master_dat_r_ack.eq(master_dat_r_ack)
-                    master_dat_r_ack = new_master_dat_r_ack
-                master_dat_r_acks[nm] = master_dat_r_ack
+                    new_master_rdata_valid = Signal()
+                    self.sync += new_master_rdata_valid.eq(master_rdata_valid)
+                    master_rdata_valid = new_master_rdata_valid
+                master_rdata_valids[nm] = master_rdata_valid
 
         self.comb += [master.ready.eq(master_ready) for master, master_ready in zip(self.masters, master_readys)]
-        self.comb += [master.dat_w_ack.eq(master_dat_w_ack) for master, master_dat_w_ack in zip(self.masters, master_dat_w_acks)]
-        self.comb += [master.dat_r_ack.eq(master_dat_r_ack) for master, master_dat_r_ack in zip(self.masters, master_dat_r_acks)]
+        self.comb += [master.wdata_ready.eq(master_wdata_ready) for master, master_wdata_ready in zip(self.masters, master_wdata_readys)]
+        self.comb += [master.rdata_valid.eq(master_rdata_valid) for master, master_rdata_valid in zip(self.masters, master_rdata_valids)]
 
         # route data writes
         controller_selected_wl = controller_selected
@@ -104,24 +104,24 @@ class LiteDRAMCrossbar(Module):
             n_controller_selected_wl = [Signal() for i in range(nmasters)]
             self.sync += [n.eq(o) for n, o in zip(n_controller_selected_wl, controller_selected_wl)]
             controller_selected_wl = n_controller_selected_wl
-        dat_w_maskselect = []
-        dat_we_maskselect = []
+        wdata_maskselect = []
+        wdata_we_maskselect = []
         for master, selected in zip(self.masters, controller_selected_wl):
-            o_dat_w = Signal(self.dw)
-            o_dat_we = Signal(self.dw//8)
+            o_wdata = Signal(self.dw)
+            o_wdata_we = Signal(self.dw//8)
             self.comb += If(selected,
-                    o_dat_w.eq(master.dat_w),
-                    o_dat_we.eq(master.dat_we)
+                    o_wdata.eq(master.wdata),
+                    o_wdata_we.eq(master.wdata_we)
                 )
-            dat_w_maskselect.append(o_dat_w)
-            dat_we_maskselect.append(o_dat_we)
+            wdata_maskselect.append(o_wdata)
+            wdata_we_maskselect.append(o_wdata_we)
         self.comb += [
-            controller.dat_w.eq(reduce(or_, dat_w_maskselect)),
-            controller.dat_we.eq(reduce(or_, dat_we_maskselect))
+            controller.wdata.eq(reduce(or_, wdata_maskselect)),
+            controller.wdata_we.eq(reduce(or_, wdata_we_maskselect))
         ]
 
         # route data reads
-        self.comb += [master.dat_r.eq(self.controller.dat_r) for master in self.masters]
+        self.comb += [master.rdata.eq(self.controller.rdata) for master in self.masters]
 
     def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
         m_ba = []    # bank address

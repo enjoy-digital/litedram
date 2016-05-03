@@ -40,21 +40,22 @@ class TimingSettings:
 
 def cmd_layout(aw):
     return [
-        ("valid",      1, DIR_M_TO_S),
-        ("ready",      1, DIR_S_TO_M),
-        ("we",         1, DIR_M_TO_S),
-        ("adr",       aw, DIR_M_TO_S),
-        ("dat_w_ack",  1, DIR_S_TO_M),
-        ("dat_r_ack",  1, DIR_S_TO_M),
-        ("lock",       1, DIR_S_TO_M)
+        ("valid",        1, DIR_M_TO_S),
+        ("ready",        1, DIR_S_TO_M),
+        ("we",           1, DIR_M_TO_S),
+        ("adr",         aw, DIR_M_TO_S),
+        ("lock",         1, DIR_S_TO_M),
+
+        ("wdata_ready",  1, DIR_S_TO_M),
+        ("rdata_valid",  1, DIR_S_TO_M)
     ]
 
 
 def data_layout(dw):
     return [
-        ("dat_w",     dw, DIR_M_TO_S),
-        ("dat_we", dw//8, DIR_M_TO_S),
-        ("dat_r",     dw, DIR_S_TO_M)
+        ("wdata",       dw, DIR_M_TO_S),
+        ("wdata_we", dw//8, DIR_M_TO_S),
+        ("rdata",       dw, DIR_S_TO_M)
     ]
 
 

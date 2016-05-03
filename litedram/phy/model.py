@@ -49,11 +49,11 @@ class Bank(Module):
         self.comb += [
             If(active,
                 write_port.adr.eq(row*ncols | self.write_col),
-                write_port.dat_w.eq(self.write_data),
+                write_port.wdata.eq(self.write_data),
                 write_port.we.eq(Replicate(self.write, data_width//8) & ~self.write_mask),
                 If(self.read,
                     read_port.adr.eq(row*ncols | self.read_col),
-                    self.read_data.eq(read_port.dat_r)
+                    self.read_data.eq(read_port.rdata)
                 )
             )
         ]

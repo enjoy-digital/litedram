@@ -48,8 +48,8 @@ class LiteDRAMDMAReader(Module):
         self.submodules += fifo
 
         self.comb += [
-            fifo.din.eq(port.dat_r),
-            fifo.we.eq(port.dat_r_ack),
+            fifo.din.eq(port.rdata),
+            fifo.we.eq(port.rdata_valid),
 
             source.valid.eq(fifo.readable),
             fifo.re.eq(source.ready),
@@ -82,10 +82,10 @@ class LiteDRAMDMAWriter(Module):
         ]
 
         self.comb += [
-            If(port.dat_w_ack,
+            If(port.wdata_ready,
                 fifo.re.eq(1),
-                port.dat_we.eq(2**(port.dw//8)-1),
-                port.dat_w.eq(fifo.dout)
+                port.wdata_we.eq(2**(port.dw//8)-1),
+                port.wdata.eq(fifo.dout)
             ),
             self.busy.eq(fifo.readable)
         ]

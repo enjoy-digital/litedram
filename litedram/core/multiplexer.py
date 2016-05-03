@@ -169,9 +169,9 @@ class Multiplexer(Module, AutoCSR):
         all_wrdata = [p.wrdata for p in dfi.phases]
         all_wrdata_mask = [p.wrdata_mask for p in dfi.phases]
         self.comb += [
-            interface.dat_r.eq(Cat(*all_rddata)),
-            Cat(*all_wrdata).eq(interface.dat_w),
-            Cat(*all_wrdata_mask).eq(~interface.dat_we)
+            interface.rdata.eq(Cat(*all_rddata)),
+            Cat(*all_wrdata).eq(interface.wdata),
+            Cat(*all_wrdata_mask).eq(~interface.wdata_we)
         ]
 
         def steerer_sel(steerer, r_w_n):

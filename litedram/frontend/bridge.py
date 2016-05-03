@@ -25,14 +25,14 @@ class LiteDRAMWishboneBridge(Module):
             )
         )
         fsm.act("WRITE_DATA",
-            If(port.dat_w_ack,
-                port.dat_we.eq(wishbone.sel),
+            If(port.wdata_ready,
+                port.wdata_we.eq(wishbone.sel),
                 wishbone.ack.eq(1),
                 NextState("IDLE")
             )
         )
         fsm.act("READ_DATA",
-            If(port.dat_r_ack,
+            If(port.rdata_valid,
                 wishbone.ack.eq(1),
                 NextState("IDLE")
             )
@@ -41,8 +41,8 @@ class LiteDRAMWishboneBridge(Module):
         # Address / Datapath
         self.comb += [
             port.adr.eq(wishbone.adr),
-            If(port.dat_w_ack,
-                port.dat_w.eq(wishbone.dat_w),
+            If(port.wdata_ready,
+                port.wdata.eq(wishbone.dat_w),
             ),
-            wishbone.dat_r.eq(port.dat_r)
+            wishbone.dat_r.eq(port.rdata)
         ]

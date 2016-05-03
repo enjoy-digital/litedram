@@ -46,8 +46,8 @@ class BankMachine(Module):
                                          settings.cmd_buffer_depth)
         self.submodules += cmd_buffer
         self.comb += [
-            req.connect(cmd_buffer.sink, omit=["dat_w_ack", "dat_r_ack", "lock"]),
-            cmd_buffer.source.ready.eq(req.dat_w_ack | req.dat_r_ack),
+            req.connect(cmd_buffer.sink, omit=["wdata_ready", "rdata_valid", "lock"]),
+            cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer.source.valid),
         ]
 
@@ -98,11 +98,11 @@ class BankMachine(Module):
                         # multiplexer
                         cmd.valid.eq(1),
                         If(cmd_buffer.source.we,
-                            req.dat_w_ack.eq(cmd.ready),
+                            req.wdata_ready.eq(cmd.ready),
                             cmd.is_write.eq(1),
                             cmd.we.eq(1),
                         ).Else(
-                            req.dat_r_ack.eq(cmd.ready),
+                            req.rdata_valid.eq(cmd.ready),
                             cmd.is_read.eq(1)
                         ),
                         cmd.cas.eq(1)
