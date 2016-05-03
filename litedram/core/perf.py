@@ -13,12 +13,12 @@ class Bandwidth(Module, AutoCSR):
         # # #
 
         cmd_valid = Signal()
-        cmd_ack = Signal()
+        cmd_ready = Signal()
         cmd_is_read = Signal()
         cmd_is_write = Signal()
         self.sync += [
             cmd_valid.eq(cmd.valid),
-            cmd_ack.eq(cmd.ack),
+            cmd_ready.eq(cmd.ready),
             cmd_is_read.eq(cmd.is_read),
             cmd_is_write.eq(cmd.is_write)
         ]
@@ -36,7 +36,7 @@ class Bandwidth(Module, AutoCSR):
                 nwrites_r.eq(nwrites),
                 nreads.eq(0),
                 nwrites.eq(0)
-            ).Elif(cmd_valid & cmd_ack,
+            ).Elif(cmd_valid & cmd_ready,
                 If(cmd_is_read, nreads.eq(nreads + 1)),
                 If(cmd_is_write, nwrites.eq(nwrites + 1)),
             ),
