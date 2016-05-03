@@ -46,40 +46,40 @@ class LiteDRAMCrossbar(Module):
         master_wdata_readys = [0]*nmasters
         master_rdata_valids = [0]*nmasters
 
-        rrs = [roundrobin.RoundRobin(nmasters, roundrobin.SP_CE) for n in range(self.nbanks)]
-        self.submodules += rrs
-        for nb, rr in enumerate(rrs):
+        arbiters = [roundrobin.RoundRobin(nmasters, roundrobin.SP_CE) for n in range(self.nbanks)]
+        self.submodules += arbiters
+        for nb, arbiter in enumerate(arbiters):
             bank = getattr(controller, "bank"+str(nb))
 
             # for each master, determine if another bank locks it
             master_locked = []
             for nm, master in enumerate(self.masters):
                 locked = 0
-                for other_nb, other_rr in enumerate(rrs):
+                for other_nb, other_arbiter in enumerate(arbiters):
                     if other_nb != nb:
                         other_bank = getattr(controller, "bank"+str(other_nb))
-                        locked = locked | (other_bank.lock & (other_rr.grant == nm))
+                        locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
                 master_locked.append(locked)
 
             # arbitrate
             bank_selected = [(ba == nb) & ~locked for ba, locked in zip(m_ba, master_locked)]
             bank_requested = [bs & master.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
-                rr.request.eq(Cat(*bank_requested)),
-                rr.ce.eq(~bank.valid & ~bank.lock)
+                arbiter.request.eq(Cat(*bank_requested)),
+                arbiter.ce.eq(~bank.valid & ~bank.lock)
             ]
 
             # route requests
             self.comb += [
-                bank.adr.eq(Array(m_rca)[rr.grant]),
-                bank.we.eq(Array(self.masters)[rr.grant].we),
-                bank.valid.eq(Array(bank_requested)[rr.grant])
+                bank.adr.eq(Array(m_rca)[arbiter.grant]),
+                bank.we.eq(Array(self.masters)[arbiter.grant].we),
+                bank.valid.eq(Array(bank_requested)[arbiter.grant])
             ]
-            master_readys = [master_ready | ((rr.grant == nm) & bank_selected[nm] & bank.ready)
+            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & bank.ready)
                 for nm, master_ready in enumerate(master_readys)]
-            master_wdata_readys = [master_wdata_ready | ((rr.grant == nm) & bank.wdata_ready)
+            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & bank.wdata_ready)
                 for nm, master_wdata_ready in enumerate(master_wdata_readys)]
-            master_rdata_valids = [master_rdata_valid | ((rr.grant == nm) & bank.rdata_valid)
+            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & bank.rdata_valid)
                 for nm, master_rdata_valid in enumerate(master_rdata_valids)]
 
         for nm, master_wdata_ready in enumerate(master_wdata_readys):
