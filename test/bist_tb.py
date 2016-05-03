@@ -8,18 +8,11 @@ from litedram.frontend.bist import LiteDRAMBISTChecker
 
 class TB(Module):
     def __init__(self):
-        self.write_port = LiteDRAMPort(aw=32,
-                                       dw=32,
-                                       cmd_buffer_depth=1,
-                                       read_latency=1,
-                                       write_latency=1)
-        self.read_port = LiteDRAMPort(aw=32,
-                                      dw=32,
-                                      cmd_buffer_depth=1,
-                                      read_latency=1,
-                                      write_latency=1)
+        self.write_port = LiteDRAMPort(aw=32, dw=32)
+        self.read_port = LiteDRAMPort(aw=32, dw=32)
         self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
         self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
+
 
 class DRAMMemory:
     def __init__(self, width, depth, init=[]):
@@ -79,7 +72,7 @@ def main_generator(dut):
         yield
     # write
     yield dut.generator.base.storage.eq(16)
-    yield dut.generator.length.storage.eq(16)
+    yield dut.generator.length.storage.eq(64)
     yield
     yield dut.generator.shoot.re.eq(1)
     yield
@@ -89,7 +82,7 @@ def main_generator(dut):
         yield
     # read
     yield dut.checker.base.storage.eq(16)
-    yield dut.checker.length.storage.eq(16)
+    yield dut.checker.length.storage.eq(64)
     yield
     yield dut.checker.shoot.re.eq(1)
     yield
@@ -97,10 +90,13 @@ def main_generator(dut):
     yield
     while((yield dut.checker.done.status) == 0):
         yield
+    # check
+    print("errors {:d}".format((yield dut.checker.error_count.status)))
+    yield
 
 if __name__ == "__main__":
     tb = TB()
-    mem = DRAMMemory(32, 1024)
+    mem = DRAMMemory(32, 128)
     generators = {
         "sys" :   [main_generator(tb),
                    mem.write_generator(tb.write_port),
