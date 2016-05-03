@@ -96,29 +96,27 @@ class LiteDRAMCrossbar(Module):
                     master_rdata_valid = new_master_rdata_valid
                 master_rdata_valids[nm] = master_rdata_valid
 
-        self.comb += [master.ready.eq(master_ready) for master, master_ready in zip(self.masters, master_readys)]
-        self.comb += [master.wdata_ready.eq(master_wdata_ready) for master, master_wdata_ready in zip(self.masters, master_wdata_readys)]
-        self.comb += [master.rdata_valid.eq(master_rdata_valid) for master, master_rdata_valid in zip(self.masters, master_rdata_valids)]
+        for master, master_ready in zip(self.masters, master_readys):
+            self.comb += master.ready.eq(master_ready)
+        for master, master_wdata_ready in zip(self.masters, master_wdata_readys):
+            self.comb += master.wdata_ready.eq(master_wdata_ready)
+        for master, master_rdata_valid in zip(self.masters, master_rdata_valids):
+            self.comb += master.rdata_valid.eq(master_rdata_valid)
 
         # route data writes
         wdata_maskselect = []
         wdata_we_maskselect = []
         for master in self.masters:
-            o_wdata = Signal(self.dw)
-            o_wdata_we = Signal(self.dw//8)
-            self.comb += [
-                o_wdata.eq(master.wdata),
-                o_wdata_we.eq(master.wdata_we)
-            ]
-            wdata_maskselect.append(o_wdata)
-            wdata_we_maskselect.append(o_wdata_we)
+            wdata_maskselect.append(master.wdata)
+            wdata_we_maskselect.append(master.wdata_we)
         self.comb += [
             controller.wdata.eq(reduce(or_, wdata_maskselect)),
             controller.wdata_we.eq(reduce(or_, wdata_we_maskselect))
         ]
 
         # route data reads
-        self.comb += [master.rdata.eq(self.controller.rdata) for master in self.masters]
+        for master in self.masters:
+            self.comb += master.rdata.eq(self.controller.rdata)
 
     def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
         m_ba = []    # bank address
@@ -130,7 +128,8 @@ class LiteDRAMCrossbar(Module):
             self.comb += cba.eq(master.adr[cba_shift:cba_upper])
             if cba_shift < self.rca_bits:
                 if cba_shift:
-                    self.comb += rca.eq(Cat(master.adr[:cba_shift], master.adr[cba_upper:]))
+                    self.comb += rca.eq(Cat(master.adr[:cba_shift],
+                                            master.adr[cba_upper:]))
                 else:
                     self.comb += rca.eq(master.adr[cba_upper:])
             else:
