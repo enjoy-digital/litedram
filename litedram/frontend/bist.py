@@ -30,7 +30,7 @@ class LFSR(Module):
         ]
 
 
-class LiteDRAMBISTGenerator(Module):
+class LiteDRAMBISTGenerator(Module, AutoCSR):
     def __init__(self, dram_port):
         self.reset = CSR()
         self.shoot = CSR()
@@ -66,7 +66,7 @@ class LiteDRAMBISTGenerator(Module):
         ]
 
 
-class LiteDRAMBISTChecker(Module):
+class LiteDRAMBISTChecker(Module, AutoCSR):
     def __init__(self, dram_port):
         self.reset = CSR()
         self.shoot = CSR()
