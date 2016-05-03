@@ -6,7 +6,7 @@ from litex.soc.interconnect import stream
 from litedram.core.multiplexer import *
 
 
-class AddressSlicer:
+class _AddressSlicer:
     def __init__(self, colbits, address_align):
         self.colbits = colbits
         self.address_align = address_align
@@ -27,11 +27,7 @@ class AddressSlicer:
 
 
 class BankMachine(Module):
-    def __init__(self,
-            n,
-            aw,
-            address_align,
-            settings):
+    def __init__(self, n, aw, address_align, settings):
         self.req = req = Record(cmd_layout(aw))
         self.refresh_req = Signal()
         self.refresh_gnt = Signal()
@@ -55,7 +51,7 @@ class BankMachine(Module):
             req.lock.eq(cmd_buffer.source.valid),
         ]
 
-        slicer = AddressSlicer(settings.geom.colbits, address_align)
+        slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
         # Row tracking
         has_openrow = Signal()
