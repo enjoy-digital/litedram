@@ -27,10 +27,7 @@ class LiteDRAMCrossbar(Module):
         if self.finalized:
             raise FinalizeError
         port = LiteDRAMPort(self.rca_bits + self.bank_bits,
-                            self.dw,
-                            self.cmd_buffer_depth,
-                            self.read_latency,
-                            self.write_latency)
+                            self.dw)
         self.masters.append(port)
         return port
 

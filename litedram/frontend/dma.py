@@ -5,15 +5,11 @@ from litex.soc.interconnect import stream
 
 
 class LiteDRAMDMAReader(Module):
-    def __init__(self, port, fifo_depth=None):
+    def __init__(self, port, fifo_depth=16):
         self.sink = sink = stream.Endpoint([("address", port.aw)])
         self.source = source = stream.Endpoint([("data", port.dw)])
-        self.busy = Signal()
 
         # # #
-
-        if fifo_depth is None:
-            fifo_depth = port.cmd_buffer_depth + port.read_latency + 2
 
         # request issuance
         request_enable = Signal()
@@ -39,10 +35,7 @@ class LiteDRAMDMAReader(Module):
                 rsv_level.eq(rsv_level - 1)
             )
         ]
-        self.comb += [
-            self.busy.eq(rsv_level != 0),
-            request_enable.eq(rsv_level != fifo_depth)
-        ]
+        self.comb += request_enable.eq(rsv_level != fifo_depth)
 
         # FIFO
         fifo = SyncFIFO(port.dw, fifo_depth)
@@ -60,15 +53,11 @@ class LiteDRAMDMAReader(Module):
 
 
 class LiteDRAMDMAWriter(Module):
-    def __init__(self, port, fifo_depth=None):
+    def __init__(self, port, fifo_depth=16):
         self.sink = sink = stream.Endpoint([("address", port.aw),
-                                                ("data", port.dw)])
-        self.busy = Signal()
+                                            ("data", port.dw)])
 
         # # #
-
-        if fifo_depth is None:
-            fifo_depth = port.cmd_buffer_depth + port.write_latency + 2
 
         fifo = SyncFIFO(port.dw, fifo_depth)
         self.submodules += fifo
@@ -87,6 +76,5 @@ class LiteDRAMDMAWriter(Module):
                 fifo.re.eq(1),
                 port.wdata_we.eq(2**(port.dw//8)-1),
                 port.wdata.eq(fifo.dout)
-            ),
-            self.busy.eq(fifo.readable)
+            )
         ]

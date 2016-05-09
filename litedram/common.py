@@ -73,12 +73,9 @@ class LiteDRAMInterface(Record):
 
 
 class LiteDRAMPort(Record):
-    def __init__(self, aw, dw, cmd_buffer_depth=0, read_latency=0, write_latency=0):
+    def __init__(self, aw, dw):
         self.aw = aw
         self.dw = dw
-        self.cmd_buffer_depth = cmd_buffer_depth
-        self.read_latency = read_latency
-        self.write_latency = write_latency
 
         layout = cmd_layout(aw) + data_layout(dw)
         Record.__init__(self, layout)
