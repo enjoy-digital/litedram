@@ -101,15 +101,17 @@ class LiteDRAMCrossbar(Module):
             self.comb += master.rdata_valid.eq(master_rdata_valid)
 
         # route data writes
-        wdata_maskselect = []
-        wdata_we_maskselect = []
-        for master in self.masters:
-            wdata_maskselect.append(master.wdata)
-            wdata_we_maskselect.append(master.wdata_we)
-        self.comb += [
-            controller.wdata.eq(reduce(or_, wdata_maskselect)),
-            controller.wdata_we.eq(reduce(or_, wdata_we_maskselect))
+        wdata_cases = {}
+        for nm, master in enumerate(self.masters):
+            wdata_cases[2**nm] = [
+                controller.wdata.eq(master.wdata),
+                controller.wdata_we.eq(master.wdata_we)
+            ]
+        wdata_cases["default"] = [
+            controller.wdata.eq(0),
+            controller.wdata_we.eq(0)
         ]
+        self.comb += Case(Cat(*master_wdata_readys), wdata_cases)
 
         # route data reads
         for master in self.masters:

@@ -72,9 +72,7 @@ class LiteDRAMDMAWriter(Module):
         ]
 
         self.comb += [
-            If(port.wdata_ready,
-                fifo.re.eq(1),
-                port.wdata_we.eq(2**(port.dw//8)-1),
-                port.wdata.eq(fifo.dout)
-            )
+            fifo.re.eq(port.wdata_ready),
+            port.wdata_we.eq(2**(port.dw//8)-1),
+            port.wdata.eq(fifo.dout)
         ]
