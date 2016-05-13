@@ -1,5 +1,4 @@
 from litex.gen import *
-from litex.gen.genlib.fifo import SyncFIFO
 
 from litex.soc.interconnect import stream
 
@@ -38,16 +37,14 @@ class LiteDRAMDMAReader(Module):
         self.comb += request_enable.eq(rsv_level != fifo_depth)
 
         # FIFO
-        fifo = SyncFIFO(port.dw, fifo_depth)
+        fifo = stream.SyncFIFO([("data", port.dw)], fifo_depth)
         self.submodules += fifo
 
         self.comb += [
-            fifo.din.eq(port.rdata),
-            fifo.we.eq(port.rdata_valid),
+            fifo.sink.data.eq(port.rdata),
+            fifo.sink.valid.eq(port.rdata_valid),
 
-            source.valid.eq(fifo.readable),
-            fifo.re.eq(source.ready),
-            source.data.eq(fifo.dout),
+            fifo.source.connect(source),
             data_dequeued.eq(source.valid & source.ready)
         ]
 
@@ -59,20 +56,20 @@ class LiteDRAMDMAWriter(Module):
 
         # # #
 
-        fifo = SyncFIFO(port.dw, fifo_depth)
+        fifo = stream.SyncFIFO([("data", port.dw)], fifo_depth)
         self.submodules += fifo
 
         self.comb += [
             port.we.eq(1),
-            port.valid.eq(fifo.writable & sink.valid),
+            port.valid.eq(fifo.sink.ready & sink.valid),
             port.adr.eq(sink.address),
-            sink.ready.eq(fifo.writable & port.ready),
-            fifo.we.eq(sink.valid & port.ready),
-            fifo.din.eq(sink.data)
+            sink.ready.eq(fifo.sink.ready & port.ready),
+            fifo.sink.valid.eq(sink.valid & port.ready),
+            fifo.sink.data.eq(sink.data)
         ]
 
         self.comb += [
-            fifo.re.eq(port.wdata_ready),
+            fifo.source.ready.eq(port.wdata_ready),
             port.wdata_we.eq(2**(port.dw//8)-1),
-            port.wdata.eq(fifo.dout)
+            port.wdata.eq(fifo.source.data)
         ]
