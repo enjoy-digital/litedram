@@ -15,11 +15,11 @@ class LiteDRAMDMAReader(Module):
         request_issued = Signal()
 
         self.comb += [
-            port.we.eq(0),
-            port.valid.eq(sink.valid & request_enable),
-            port.adr.eq(sink.address),
-            sink.ready.eq(port.ready & request_enable),
-            request_issued.eq(port.valid & port.ready)
+            port.cmd.we.eq(0),
+            port.cmd.valid.eq(sink.valid & request_enable),
+            port.cmd.adr.eq(sink.address),
+            sink.ready.eq(port.cmd.ready & request_enable),
+            request_issued.eq(port.cmd.valid & port.cmd.ready)
         ]
 
         # FIFO reservation level counter
@@ -41,10 +41,7 @@ class LiteDRAMDMAReader(Module):
         self.submodules += fifo
 
         self.comb += [
-            fifo.sink.data.eq(port.rdata),
-            fifo.sink.valid.eq(port.rdata_valid),
-            port.rdata_ready.eq(fifo.sink.ready),
-
+            port.rdata.connect(fifo.sink),
             fifo.source.connect(source),
             data_dequeued.eq(source.valid & source.ready)
         ]
@@ -61,17 +58,17 @@ class LiteDRAMDMAWriter(Module):
         self.submodules += fifo
 
         self.comb += [
-            port.we.eq(1),
-            port.valid.eq(fifo.sink.ready & sink.valid),
-            port.adr.eq(sink.address),
-            sink.ready.eq(fifo.sink.ready & port.ready),
-            fifo.sink.valid.eq(sink.valid & port.ready),
+            port.cmd.we.eq(1),
+            port.cmd.valid.eq(fifo.sink.ready & sink.valid),
+            port.cmd.adr.eq(sink.address),
+            sink.ready.eq(fifo.sink.ready & port.cmd.ready),
+            fifo.sink.valid.eq(sink.valid & port.cmd.ready),
             fifo.sink.data.eq(sink.data)
         ]
 
         self.comb += [
-            port.wdata_valid.eq(fifo.source.valid),
-            fifo.source.ready.eq(port.wdata_ready),
-            port.wdata_we.eq(2**(port.dw//8)-1),
-            port.wdata.eq(fifo.source.data)
+            port.wdata.valid.eq(fifo.source.valid),
+            fifo.source.ready.eq(port.wdata.ready),
+            port.wdata.we.eq(2**(port.dw//8)-1),
+            port.wdata.data.eq(fifo.source.data)
         ]

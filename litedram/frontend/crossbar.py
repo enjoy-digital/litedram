@@ -21,43 +21,24 @@ class LiteDRAMAsyncAdapter(Module):
         cmd_fifo = ClockDomainsRenamer({"write": cd_from, "read": cd_to})(cmd_fifo)
         self.submodules += cmd_fifo
         self.comb += [
-            cmd_fifo.sink.valid.eq(port_from.valid),
-            cmd_fifo.sink.we.eq(port_from.we),
-            cmd_fifo.sink.adr.eq(port_from.adr),
-            port_from.ready.eq(cmd_fifo.sink.ready),
-
-            port_to.valid.eq(cmd_fifo.source.valid),
-            port_to.we.eq(cmd_fifo.source.we),
-            port_to.adr.eq(cmd_fifo.source.adr),
-            cmd_fifo.source.ready.eq(port_to.ready)
+            port_from.cmd.connect(cmd_fifo.sink),
+            cmd_fifo.source.connect(port_to.cmd)
         ]
 
         wdata_fifo = stream.AsyncFIFO([("data", dw), ("we", dw//8)], 4)
         wdata_fifo = ClockDomainsRenamer({"write": cd_from, "read": cd_to})(wdata_fifo)
         self.submodules += wdata_fifo
         self.comb += [
-            wdata_fifo.sink.valid.eq(port_from.wdata_valid),
-            wdata_fifo.sink.data.eq(port_from.wdata),
-            wdata_fifo.sink.we.eq(port_from.wdata_we),
-            port_from.wdata_ready.eq(wdata_fifo.sink.ready),
-
-            port_to.wdata_valid.eq(wdata_fifo.source.valid),
-            port_to.wdata.eq(wdata_fifo.source.data),
-            port_to.wdata_we.eq(wdata_fifo.source.we),
-            wdata_fifo.source.ready.eq(port_to.wdata_ready)
+            port_from.wdata.connect(wdata_fifo.sink),
+            wdata_fifo.source.connect(port_to.wdata)
         ]
 
         rdata_fifo = stream.AsyncFIFO([("data", dw)], 4)
         rdata_fifo = ClockDomainsRenamer({"write": cd_to, "read": cd_from})(rdata_fifo)
         self.submodules += rdata_fifo
         self.comb += [
-            rdata_fifo.sink.valid.eq(port_to.rdata_valid),
-            rdata_fifo.sink.data.eq(port_to.rdata),
-            port_to.rdata_ready.eq(rdata_fifo.sink.ready),
-
-            port_from.rdata_valid.eq(rdata_fifo.source.valid),
-            port_from.rdata.eq(rdata_fifo.source.data),
-            rdata_fifo.source.ready.eq(port_from.rdata_ready)
+            port_to.rdata.connect(rddata_fifo.sink),
+            rddata_fifo.source.connect(port_from.rdata)
         ]
 
 
@@ -118,7 +99,7 @@ class LiteDRAMCrossbar(Module):
 
             # arbitrate
             bank_selected = [(ba == nb) & ~locked for ba, locked in zip(m_ba, master_locked)]
-            bank_requested = [bs & master.valid for bs, master in zip(bank_selected, self.masters)]
+            bank_requested = [bs & master.cmd.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 arbiter.request.eq(Cat(*bank_requested)),
                 arbiter.ce.eq(~bank.valid & ~bank.lock)
@@ -127,7 +108,7 @@ class LiteDRAMCrossbar(Module):
             # route requests
             self.comb += [
                 bank.adr.eq(Array(m_rca)[arbiter.grant]),
-                bank.we.eq(Array(self.masters)[arbiter.grant].we),
+                bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
                 bank.valid.eq(Array(bank_requested)[arbiter.grant])
             ]
             master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & bank.ready)
@@ -152,18 +133,18 @@ class LiteDRAMCrossbar(Module):
                 master_rdata_valids[nm] = master_rdata_valid
 
         for master, master_ready in zip(self.masters, master_readys):
-            self.comb += master.ready.eq(master_ready)
+            self.comb += master.cmd.ready.eq(master_ready)
         for master, master_wdata_ready in zip(self.masters, master_wdata_readys):
-            self.comb += master.wdata_ready.eq(master_wdata_ready)
+            self.comb += master.wdata.ready.eq(master_wdata_ready)
         for master, master_rdata_valid in zip(self.masters, master_rdata_valids):
-            self.comb += master.rdata_valid.eq(master_rdata_valid)
+            self.comb += master.rdata.valid.eq(master_rdata_valid)
 
         # route data writes
         wdata_cases = {}
         for nm, master in enumerate(self.masters):
             wdata_cases[2**nm] = [
-                controller.wdata.eq(master.wdata),
-                controller.wdata_we.eq(master.wdata_we)
+                controller.wdata.eq(master.wdata.data),
+                controller.wdata_we.eq(master.wdata.we)
             ]
         wdata_cases["default"] = [
             controller.wdata.eq(0),
@@ -173,7 +154,7 @@ class LiteDRAMCrossbar(Module):
 
         # route data reads
         for master in self.masters:
-            self.comb += master.rdata.eq(self.controller.rdata)
+            self.comb += master.rdata.data.eq(self.controller.rdata)
 
     def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
         m_ba = []    # bank address
@@ -182,15 +163,15 @@ class LiteDRAMCrossbar(Module):
             cba = Signal(self.bank_bits)
             rca = Signal(self.rca_bits)
             cba_upper = cba_shift + bank_bits
-            self.comb += cba.eq(master.adr[cba_shift:cba_upper])
+            self.comb += cba.eq(master.cmd.adr[cba_shift:cba_upper])
             if cba_shift < self.rca_bits:
                 if cba_shift:
-                    self.comb += rca.eq(Cat(master.adr[:cba_shift],
-                                            master.adr[cba_upper:]))
+                    self.comb += rca.eq(Cat(master.cmd.adr[:cba_shift],
+                                            master.cmd.adr[cba_upper:]))
                 else:
-                    self.comb += rca.eq(master.adr[cba_upper:])
+                    self.comb += rca.eq(master.cmd.adr[cba_upper:])
             else:
-                self.comb += rca.eq(master.adr[:cba_shift])
+                self.comb += rca.eq(master.cmd.adr[:cba_shift])
 
             ba = cba
 

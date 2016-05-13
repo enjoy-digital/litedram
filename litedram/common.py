@@ -1,4 +1,5 @@
 from litex.gen import *
+from litex.soc.interconnect import stream
 
 class PhySettings:
     def __init__(self, memtype, dfi_databits,
@@ -47,10 +48,8 @@ def cmd_layout(aw):
         ("adr",         aw, DIR_M_TO_S),
         ("lock",         1, DIR_S_TO_M), # only used internally
 
-        ("wdata_valid",  1, DIR_M_TO_S),
         ("wdata_ready",  1, DIR_S_TO_M),
-        ("rdata_valid",  1, DIR_S_TO_M),
-        ("rdata_ready",  1, DIR_M_TO_S)
+        ("rdata_valid",  1, DIR_S_TO_M)
     ]
 
 
@@ -73,15 +72,33 @@ class LiteDRAMInterface(Record):
         layout += data_layout(self.dw)
         Record.__init__(self, layout)
 
+def cmd_description(aw):
+    return [
+        ("we",   1),
+        ("adr", aw)
+    ]
 
-class LiteDRAMPort(Record):
+def wdata_description(dw):
+    return [
+        ("data", dw),
+        ("we",   dw//8)
+    ]
+
+def rdata_description(dw):
+    return [("data", dw)]
+
+
+class LiteDRAMPort:
     def __init__(self, aw, dw, cd):
         self.aw = aw
         self.dw = dw
         self.cd = cd
 
-        layout = cmd_layout(aw) + data_layout(dw)
-        Record.__init__(self, layout)
+        self.lock = Signal()
+
+        self.cmd = stream.Endpoint(cmd_description(aw))
+        self.wdata = stream.Endpoint(wdata_description(dw))
+        self.rdata = stream.Endpoint(rdata_description(dw))
 
 
 def cmd_request_layout(a, ba):
