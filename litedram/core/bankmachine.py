@@ -46,7 +46,9 @@ class BankMachine(Module):
                                          settings.cmd_buffer_depth)
         self.submodules += cmd_buffer
         self.comb += [
-            req.connect(cmd_buffer.sink, omit=["wdata_ready", "rdata_valid", "lock"]),
+            req.connect(cmd_buffer.sink, omit=["wdata_valid", "wdata_ready",
+                                               "rdata_valid", "rdata_ready",
+                                               "lock"]),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer.source.valid),
         ]

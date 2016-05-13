@@ -4,7 +4,61 @@ from operator import or_
 from litex.gen import *
 from litex.gen.genlib import roundrobin
 
+from litex.soc.interconnect import stream
+
 from litedram.common import *
+
+class LiteDRAMAsyncAdapter(Module):
+    def __init__(self, port_from, port_to):
+        aw = port_from.aw
+        dw = port_from.dw
+        cd_from = port_from.cd
+        cd_to = port_from.cd
+
+        # # #
+
+        cmd_fifo = stream.AsyncFIFO([("we", 1), ("adr", aw)], 4)
+        cmd_fifo = ClockDomainsRenamer({"write": cd_from, "read": cd_to})(cmd_fifo)
+        self.submodules += cmd_fifo
+        self.comb += [
+            cmd_fifo.sink.valid.eq(port_from.valid),
+            cmd_fifo.sink.we.eq(port_from.we),
+            cmd_fifo.sink.adr.eq(port_from.adr),
+            port_from.ready.eq(cmd_fifo.sink.ready),
+
+            port_to.valid.eq(cmd_fifo.source.valid),
+            port_to.we.eq(cmd_fifo.source.we),
+            port_to.adr.eq(cmd_fifo.source.adr),
+            cmd_fifo.source.ready.eq(port_to.ready)
+        ]
+
+        wdata_fifo = stream.AsyncFIFO([("data", dw), ("we", dw//8)], 4)
+        wdata_fifo = ClockDomainsRenamer({"write": cd_from, "read": cd_to})(wdata_fifo)
+        self.submodules += wdata_fifo
+        self.comb += [
+            wdata_fifo.sink.valid.eq(port_from.wdata_valid),
+            wdata_fifo.sink.data.eq(port_from.wdata),
+            wdata_fifo.sink.we.eq(port_from.wdata_we),
+            port_from.wdata_ready.eq(wdata_fifo.sink.ready),
+
+            port_to.wdata_valid.eq(wdata_fifo.source.valid),
+            port_to.wdata.eq(wdata_fifo.source.data),
+            port_to.wdata_we.eq(wdata_fifo.source.we),
+            wdata_fifo.source.ready.eq(port_to.wdata_ready)
+        ]
+
+        rdata_fifo = stream.AsyncFIFO([("data", dw)], 4)
+        rdata_fifo = ClockDomainsRenamer({"write": cd_to, "read": cd_from})(rdata_fifo)
+        self.submodules += rdata_fifo
+        self.comb += [
+            rdata_fifo.sink.valid.eq(port_to.rdata_valid),
+            rdata_fifo.sink.data.eq(port_to.rdata),
+            port_to.rdata_ready.eq(rdata_fifo.sink.ready),
+
+            port_from.rdata_valid.eq(rdata_fifo.source.valid),
+            port_from.rdata.eq(rdata_fifo.source.data),
+            rdata_fifo.source.ready.eq(port_from.rdata_ready)
+        ]
 
 
 class LiteDRAMCrossbar(Module):
@@ -23,13 +77,17 @@ class LiteDRAMCrossbar(Module):
 
         self.masters = []
 
-    def get_port(self):
+    def get_port(self, cd="sys"):
         if self.finalized:
             raise FinalizeError
-        port = LiteDRAMPort(self.rca_bits + self.bank_bits,
-                            self.dw)
-        self.masters.append(port)
-        return port
+        port_to = LiteDRAMPort(self.rca_bits + self.bank_bits, self.dw, "sys")
+        self.masters.append(port_to)
+        if cd != "sys":
+            port_from = LiteDRAMPort(self.rca_bits + self.bank_bits, self.dw, cd)
+            self.submodules += LiteDRAMAsyncAdapter(port_from, port_to)
+            return port_from
+        else:
+            return port_to
 
     def do_finalize(self):
         nmasters = len(self.masters)

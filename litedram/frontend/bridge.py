@@ -25,12 +25,14 @@ class LiteDRAMWishboneBridge(Module):
             )
         )
         fsm.act("WRITE_DATA",
+            port.wdata_valid.eq(1),
             If(port.wdata_ready,
                 wishbone.ack.eq(1),
                 NextState("IDLE")
             )
         )
         fsm.act("READ_DATA",
+            port.rdata_ready.eq(1),
             If(port.rdata_valid,
                 wishbone.ack.eq(1),
                 NextState("IDLE")

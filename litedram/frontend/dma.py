@@ -43,6 +43,7 @@ class LiteDRAMDMAReader(Module):
         self.comb += [
             fifo.sink.data.eq(port.rdata),
             fifo.sink.valid.eq(port.rdata_valid),
+            port.rdata_ready.eq(fifo.sink.ready),
 
             fifo.source.connect(source),
             data_dequeued.eq(source.valid & source.ready)
@@ -69,6 +70,7 @@ class LiteDRAMDMAWriter(Module):
         ]
 
         self.comb += [
+            port.wdata_valid.eq(fifo.source.valid),
             fifo.source.ready.eq(port.wdata_ready),
             port.wdata_we.eq(2**(port.dw//8)-1),
             port.wdata.eq(fifo.source.data)

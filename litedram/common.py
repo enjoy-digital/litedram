@@ -45,10 +45,12 @@ def cmd_layout(aw):
         ("ready",        1, DIR_S_TO_M),
         ("we",           1, DIR_M_TO_S),
         ("adr",         aw, DIR_M_TO_S),
-        ("lock",         1, DIR_S_TO_M),
+        ("lock",         1, DIR_S_TO_M), # only used internally
 
+        ("wdata_valid",  1, DIR_M_TO_S),
         ("wdata_ready",  1, DIR_S_TO_M),
-        ("rdata_valid",  1, DIR_S_TO_M)
+        ("rdata_valid",  1, DIR_S_TO_M),
+        ("rdata_ready",  1, DIR_M_TO_S)
     ]
 
 
@@ -73,9 +75,10 @@ class LiteDRAMInterface(Record):
 
 
 class LiteDRAMPort(Record):
-    def __init__(self, aw, dw):
+    def __init__(self, aw, dw, cd):
         self.aw = aw
         self.dw = dw
+        self.cd = cd
 
         layout = cmd_layout(aw) + data_layout(dw)
         Record.__init__(self, layout)

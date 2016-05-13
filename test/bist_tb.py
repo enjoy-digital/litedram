@@ -8,8 +8,8 @@ from litedram.frontend.bist import LiteDRAMBISTChecker
 
 class TB(Module):
     def __init__(self):
-        self.write_port = LiteDRAMPort(aw=32, dw=32)
-        self.read_port = LiteDRAMPort(aw=32, dw=32)
+        self.write_port = LiteDRAMPort(aw=32, dw=32, cd="sys")
+        self.read_port = LiteDRAMPort(aw=32, dw=32, cd="sys")
         self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
         self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
 
