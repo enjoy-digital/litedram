@@ -89,7 +89,7 @@ def rdata_description(dw):
 
 
 class LiteDRAMPort:
-    def __init__(self, aw, dw, cd):
+    def __init__(self, aw, dw, cd="sys"):
         self.aw = aw
         self.dw = dw
         self.cd = cd
