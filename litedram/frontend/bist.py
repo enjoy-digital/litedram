@@ -85,8 +85,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         done_sync = BusSynchronizer(1, cd, "sys")
         self.submodules += reset_sync, shoot_sync, done_sync
 
-        base_sync = BusSynchronizer(dram_port.aw, "sys", cd, 8)
-        length_sync = BusSynchronizer(dram_port.aw, "sys", cd, 8)
+        base_sync = BusSynchronizer(dram_port.aw, "sys", cd)
+        length_sync = BusSynchronizer(dram_port.aw, "sys", cd)
         self.submodules += base_sync, length_sync
 
         self.comb += [
@@ -107,36 +107,34 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         ]
 
 
-class LiteDRAMBISTChecker(Module, AutoCSR):
+class _LiteDRAMBISTChecker(Module, AutoCSR):
     def __init__(self, dram_port):
-        self.reset = CSR()
-        self.shoot = CSR()
-        self.done = CSRStatus()
-        self.base = CSRStorage(dram_port.aw)
-        self.length = CSRStorage(dram_port.aw)
-        self.error_count = CSRStatus(dram_port.aw)
+        self.reset = Signal()
+        self.shoot = Signal()
+        self.done = Signal()
+        self.base = Signal(dram_port.aw)
+        self.length = Signal(dram_port.aw)
+        self.error_count = Signal(32)
 
         # # #
 
         self.submodules.dma = dma = LiteDRAMDMAReader(dram_port)
 
-        # # #
-
         self.submodules.lfsr = lfsr = LFSR(dram_port.dw)
-        self.comb += lfsr.reset.eq(self.reset.re)
+        self.comb += lfsr.reset.eq(self.reset)
 
         address_counter = Signal(dram_port.aw)
         address_counter_ce = Signal()
         data_counter = Signal(dram_port.aw)
         data_counter_ce = Signal()
         self.sync += [
-            If(self.shoot.re,
-                address_counter.eq(self.length.storage)
+            If(self.shoot,
+                address_counter.eq(self.length)
             ).Elif(address_counter_ce,
                 address_counter.eq(address_counter - 1)
             ),
-            If(self.shoot.re,
-                data_counter.eq(self.length.storage)
+            If(self.shoot,
+                data_counter.eq(self.length)
             ).Elif(data_counter_ce,
                 data_counter.eq(data_counter - 1)
             )
@@ -147,7 +145,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
         self.comb += [
             dma.sink.valid.eq(address_enable),
-            dma.sink.address.eq(self.base.storage + address_counter),
+            dma.sink.address.eq(self.base + address_counter),
             address_counter_ce.eq(address_enable & dma.sink.ready)
         ]
 
@@ -158,15 +156,59 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             lfsr.ce.eq(dma.source.valid),
             dma.source.ready.eq(1)
         ]
-        err_cnt = self.error_count.status
         self.sync += \
-            If(self.reset.re,
-                err_cnt.eq(0)
+            If(self.reset,
+                self.error_count.eq(0)
             ).Elif(dma.source.valid,
                 If(dma.source.data != lfsr.o,
-                    err_cnt.eq(err_cnt + 1)
+                    self.error_count.eq(self.error_count + 1)
                 )
             )
         self.comb += data_counter_ce.eq(dma.source.valid)
 
-        self.comb += self.done.status.eq(~data_enable & ~address_enable)
+        self.comb += self.done.eq(~data_enable & ~address_enable)
+
+
+class LiteDRAMBISTChecker(Module, AutoCSR):
+    def __init__(self, dram_port, cd="sys"):
+        self.reset = CSR()
+        self.shoot = CSR()
+        self.done = CSRStatus()
+        self.base = CSRStorage(dram_port.aw)
+        self.length = CSRStorage(dram_port.aw)
+        self.error_count = CSRStatus(32)
+
+        # # #
+
+        checker = _LiteDRAMBISTChecker(dram_port)
+        self.submodules += ClockDomainsRenamer(cd)(checker)
+
+        reset_sync = PulseSynchronizer("sys", cd)
+        shoot_sync = PulseSynchronizer("sys", cd)
+        done_sync = BusSynchronizer(1, cd, "sys")
+        self.submodules += reset_sync, shoot_sync, done_sync
+
+        base_sync = BusSynchronizer(dram_port.aw, "sys", cd)
+        length_sync = BusSynchronizer(dram_port.aw, "sys", cd)
+        error_count_sync = BusSynchronizer(32, cd, "sys")
+        self.submodules += base_sync, length_sync
+
+        self.comb += [
+            reset_sync.i.eq(self.reset.re),
+            checker.reset.eq(reset_sync.o),
+
+            shoot_sync.i.eq(self.shoot.re),
+            checker.shoot.eq(shoot_sync.o),
+
+            done_sync.i.eq(checker.done),
+            self.done.status.eq(done_sync.o),
+
+            base_sync.i.eq(self.base.storage),
+            checker.base.eq(base_sync.o),
+
+            length_sync.i.eq(self.length.storage),
+            checker.length.eq(length_sync.o),
+
+            error_count_sync.i.eq(checker.error_count),
+            self.error_count.status.eq(error_count_sync.o)
+        ]
