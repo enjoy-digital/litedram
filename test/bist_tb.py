@@ -29,20 +29,20 @@ class DRAMMemory:
         address = 0
         pending = 0
         while True:
-            yield dram_port.ready.eq(0)
-            yield dram_port.rdata_valid.eq(0)
+            yield dram_port.cmd.ready.eq(0)
+            yield dram_port.rdata.valid.eq(0)
             if pending:
-                yield dram_port.rdata_valid.eq(1)
-                yield dram_port.rdata.eq(self.mem[address%self.depth])
+                yield dram_port.rdata.valid.eq(1)
+                yield dram_port.rdata.data.eq(self.mem[address%self.depth])
                 yield
-                yield dram_port.rdata_valid.eq(0)
-                yield dram_port.rdata.eq(0)
+                yield dram_port.rdata.valid.eq(0)
+                yield dram_port.rdata.data.eq(0)
                 pending = 0
-            elif (yield dram_port.valid):
-                pending = not (yield dram_port.we)
-                address = (yield dram_port.adr)
+            elif (yield dram_port.cmd.valid):
+                pending = not (yield dram_port.cmd.we)
+                address = (yield dram_port.cmd.adr)
                 yield
-                yield dram_port.ready.eq(1)
+                yield dram_port.cmd.ready.eq(1)
             yield
 
     @passive
@@ -50,20 +50,20 @@ class DRAMMemory:
         address = 0
         pending = 0
         while True:
-            yield dram_port.ready.eq(0)
-            yield dram_port.wdata_ready.eq(0)
+            yield dram_port.cmd.ready.eq(0)
+            yield dram_port.wdata.ready.eq(0)
             if pending:
-                yield dram_port.wdata_ready.eq(1)
+                yield dram_port.wdata.ready.eq(1)
                 yield
-                self.mem[address%self.depth] = (yield dram_port.wdata) # TODO manage we
-                yield dram_port.wdata_ready.eq(0)
+                self.mem[address%self.depth] = (yield dram_port.wdata.data) # TODO manage we
+                yield dram_port.wdata.ready.eq(0)
                 yield
                 pending = 0
-            elif (yield dram_port.valid):
-                pending = yield dram_port.we
-                address = (yield dram_port.adr)
+            elif (yield dram_port.cmd.valid):
+                pending = yield dram_port.cmd.we
+                address = (yield dram_port.cmd.adr)
                 yield
-                yield dram_port.ready.eq(1)
+                yield dram_port.cmd.ready.eq(1)
             yield
 
 
