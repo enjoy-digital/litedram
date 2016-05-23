@@ -145,7 +145,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
         self.comb += [
             dma.sink.valid.eq(address_enable),
-            dma.sink.address.eq(self.base + address_counter),
+            dma.sink.address.eq(self.base + address_counter - 1),
             address_counter_ce.eq(address_enable & dma.sink.ready)
         ]
 
@@ -191,7 +191,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         base_sync = BusSynchronizer(dram_port.aw, "sys", cd)
         length_sync = BusSynchronizer(dram_port.aw, "sys", cd)
         error_count_sync = BusSynchronizer(32, cd, "sys")
-        self.submodules += base_sync, length_sync
+        self.submodules += base_sync, length_sync, error_count_sync
 
         self.comb += [
             reset_sync.i.eq(self.reset.re),

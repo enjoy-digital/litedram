@@ -16,7 +16,7 @@ class TB(Module):
         self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
 
 def main_generator(dut):
-    for i in range(100):
+    for i in range(8):
         yield
     # write
     yield dut.generator.base.storage.eq(16)

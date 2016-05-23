@@ -13,11 +13,11 @@ class LiteDRAMAsyncAdapter(Module):
         aw = port_from.aw
         dw = port_from.dw
         cd_from = port_from.cd
-        cd_to = port_from.cd
+        cd_to = port_to.cd
 
         # # #
 
-        cmd_fifo = stream.AsyncFIFO([("we", 1), ("adr", aw)], 4)
+        cmd_fifo = stream.AsyncFIFO([("we", 1), ("adr", aw)], 8)
         cmd_fifo = ClockDomainsRenamer({"write": cd_from, "read": cd_to})(cmd_fifo)
         self.submodules += cmd_fifo
         self.comb += [
@@ -25,7 +25,7 @@ class LiteDRAMAsyncAdapter(Module):
             cmd_fifo.source.connect(port_to.cmd)
         ]
 
-        wdata_fifo = stream.AsyncFIFO([("data", dw), ("we", dw//8)], 4)
+        wdata_fifo = stream.AsyncFIFO([("data", dw), ("we", dw//8)], 8)
         wdata_fifo = ClockDomainsRenamer({"write": cd_from, "read": cd_to})(wdata_fifo)
         self.submodules += wdata_fifo
         self.comb += [
@@ -33,12 +33,12 @@ class LiteDRAMAsyncAdapter(Module):
             wdata_fifo.source.connect(port_to.wdata)
         ]
 
-        rdata_fifo = stream.AsyncFIFO([("data", dw)], 4)
+        rdata_fifo = stream.AsyncFIFO([("data", dw)], 8)
         rdata_fifo = ClockDomainsRenamer({"write": cd_to, "read": cd_from})(rdata_fifo)
         self.submodules += rdata_fifo
         self.comb += [
-            port_to.rdata.connect(rddata_fifo.sink),
-            rddata_fifo.source.connect(port_from.rdata)
+            port_to.rdata.connect(rdata_fifo.sink),
+            rdata_fifo.source.connect(port_from.rdata)
         ]
 
 
