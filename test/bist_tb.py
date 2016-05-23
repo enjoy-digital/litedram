@@ -21,21 +21,25 @@ def main_generator(dut):
     # write
     yield dut.generator.base.storage.eq(16)
     yield dut.generator.length.storage.eq(64)
-    yield
+    for i in range(8):
+        yield
     yield dut.generator.shoot.re.eq(1)
     yield
     yield dut.generator.shoot.re.eq(0)
-    yield
+    for i in range(8):
+        yield
     while((yield dut.generator.done.status) == 0):
         yield
     # read
     yield dut.checker.base.storage.eq(16)
     yield dut.checker.length.storage.eq(64)
-    yield
+    for i in range(8):
+        yield
     yield dut.checker.shoot.re.eq(1)
     yield
     yield dut.checker.shoot.re.eq(0)
-    yield
+    for i in range(8):
+        yield
     while((yield dut.checker.done.status) == 0):
         yield
     # check

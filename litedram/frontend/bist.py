@@ -2,6 +2,7 @@ from functools import reduce
 from operator import xor
 
 from litex.gen import *
+from litex.gen.genlib.cdc import PulseSynchronizer, BusSynchronizer
 
 from litex.soc.interconnect.csr import *
 
@@ -30,8 +31,44 @@ class LFSR(Module):
         ]
 
 
-class LiteDRAMBISTGenerator(Module, AutoCSR):
+class _LiteDRAMBISTGenerator(Module):
     def __init__(self, dram_port):
+        self.reset = Signal()
+        self.shoot = Signal()
+        self.done = Signal()
+        self.base = Signal(dram_port.aw)
+        self.length = Signal(dram_port.aw)
+
+        # # #
+
+        self.submodules.dma = dma = LiteDRAMDMAWriter(dram_port)
+
+        self.submodules.lfsr = lfsr = LFSR(dram_port.dw)
+        self.comb += lfsr.reset.eq(self.reset)
+
+        enable = Signal()
+        counter = Signal(dram_port.aw)
+        self.comb += enable.eq(counter != 0)
+        self.sync += [
+            If(self.shoot,
+                counter.eq(self.length)
+            ).Elif(lfsr.ce,
+                counter.eq(counter - 1)
+            )
+        ]
+
+        self.comb += [
+            dma.sink.valid.eq(enable),
+            dma.sink.address.eq(self.base + counter),
+            dma.sink.data.eq(lfsr.o),
+            lfsr.ce.eq(enable & dma.sink.ready),
+
+            self.done.eq(~enable)
+        ]
+
+
+class LiteDRAMBISTGenerator(Module, AutoCSR):
+    def __init__(self, dram_port, cd="sys"):
         self.reset = CSR()
         self.shoot = CSR()
         self.done = CSRStatus()
@@ -40,29 +77,33 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
         # # #
 
-        self.submodules.dma = dma = LiteDRAMDMAWriter(dram_port)
+        generator = _LiteDRAMBISTGenerator(dram_port)
+        self.submodules += ClockDomainsRenamer(cd)(generator)
 
-        self.submodules.lfsr = lfsr = LFSR(dram_port.dw)
-        self.comb += lfsr.reset.eq(self.reset.re)
+        reset_sync = PulseSynchronizer("sys", cd)
+        shoot_sync = PulseSynchronizer("sys", cd)
+        done_sync = BusSynchronizer(1, cd, "sys")
+        self.submodules += reset_sync, shoot_sync, done_sync
 
-        enable = Signal()
-        counter = Signal(dram_port.aw)
-        self.comb += enable.eq(counter != 0)
-        self.sync += [
-            If(self.shoot.re,
-                counter.eq(self.length.storage)
-            ).Elif(lfsr.ce,
-                counter.eq(counter - 1)
-            )
-        ]
+        base_sync = BusSynchronizer(dram_port.aw, "sys", cd, 8)
+        length_sync = BusSynchronizer(dram_port.aw, "sys", cd, 8)
+        self.submodules += base_sync, length_sync
 
         self.comb += [
-            dma.sink.valid.eq(enable),
-            dma.sink.address.eq(self.base.storage + counter),
-            dma.sink.data.eq(lfsr.o),
-            lfsr.ce.eq(enable & dma.sink.ready),
+            reset_sync.i.eq(self.reset.re),
+            generator.reset.eq(reset_sync.o),
 
-            self.done.status.eq(~enable)
+            shoot_sync.i.eq(self.shoot.re),
+            generator.shoot.eq(shoot_sync.o),
+
+            done_sync.i.eq(generator.done),
+            self.done.status.eq(done_sync.o),
+
+            base_sync.i.eq(self.base.storage),
+            generator.base.eq(base_sync.o),
+
+            length_sync.i.eq(self.length.storage),
+            generator.length.eq(length_sync.o)
         ]
 
 
