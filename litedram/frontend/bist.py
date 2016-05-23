@@ -68,7 +68,7 @@ class _LiteDRAMBISTGenerator(Module):
 
 
 class LiteDRAMBISTGenerator(Module, AutoCSR):
-    def __init__(self, dram_port, cd="sys"):
+    def __init__(self, dram_port):
         self.reset = CSR()
         self.shoot = CSR()
         self.done = CSRStatus()
@@ -76,6 +76,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         self.length = CSRStorage(dram_port.aw)
 
         # # #
+
+        cd = dram_port.cd
 
         generator = _LiteDRAMBISTGenerator(dram_port)
         self.submodules += ClockDomainsRenamer(cd)(generator)

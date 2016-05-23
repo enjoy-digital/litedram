@@ -51,8 +51,8 @@ class TB(Module):
                                                     self.controller.nrowbits)
         self.write_port = self.crossbar.get_port(cd="write")
         self.read_port = self.crossbar.get_port(cd="read")
-        self.submodules.generator = LiteDRAMBISTGenerator(self.write_port, cd="write")
-        self.submodules.checker = LiteDRAMBISTChecker(self.read_port, cd="read")
+        self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
+        self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
 
 
 def main_generator(dut):
