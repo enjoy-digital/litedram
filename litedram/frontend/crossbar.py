@@ -164,8 +164,11 @@ class _LiteDRAMUpConverter(Module):
         )
         fsm.act("RECEIVE",
             port_from.cmd.ready.eq(1),
-            If(counter == ratio-1,
-                NextState("GENERATE")
+            If(port_from.cmd.valid,
+                counter_ce.eq(1),
+                If(counter == ratio-1,
+                    NextState("GENERATE")
+                )
             )
         )
         fsm.act("GENERATE",
@@ -211,6 +214,7 @@ class LiteDRAMConverter(Module):
                 port_from.wdata.connect(port_to.wdata),
                 port_to.rdata.connect(port_from.rdata)
             ]
+
 
 class LiteDRAMCrossbar(Module):
     def __init__(self, controller, cba_shift):
