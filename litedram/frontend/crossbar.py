@@ -8,8 +8,12 @@ from litex.soc.interconnect import stream
 
 from litedram.common import *
 
+
 class LiteDRAMAsyncAdapter(Module):
     def __init__(self, port_from, port_to):
+        assert port_from.aw == port_to.aw
+        assert port_from.dw == port.to.dw
+
         aw = port_from.aw
         dw = port_from.dw
         cd_from = port_from.cd
@@ -40,6 +44,54 @@ class LiteDRAMAsyncAdapter(Module):
             port_to.rdata.connect(rdata_fifo.sink),
             rdata_fifo.source.connect(port_from.rdata)
         ]
+
+
+class _LiteDRAMDownConverter(Module):
+    """LiteDRAM port DownConverter
+
+    This module reduces user port data width to fit controller data width.
+    With N = port_from.dw/port_to.dw:
+    - Address is adapted (multiplied by N + internal increments)
+    - A single write from the user is splitted and generate N writes to the
+    controller.
+    - Reads generates N reads on the controller and returned datas are regroup
+    into a single data presented to the user.
+    """
+    def __init__(self, port_from, port_to):
+        assert port_from.cd == port_to.cd
+        assert port_from.dw > port_to.dw
+
+        # # #
+
+
+class _LiteDRAMUpConverter(Module):
+    """LiteDRAM port UpConverter
+
+    This module increase user port data width to fit controller data width.
+    With N = port_to.dw/port_from.dw:
+    - Address is adapted (divided by N)
+    - N writes and read from user are regrouped in a single one to the controller
+    (when possible, ie when consecutive and bursting)
+    """
+    def __init__(self, port_from, port_to):
+        assert port_from.cd == port_to.cd
+        assert port_from.dw < port_to.dw
+
+        # # #
+
+
+class LiteDRAMConverter(Module):
+    def __init__(self, port_from, port_to):
+        assert port_from.cd == port_to.cd
+
+        # # #
+
+        if port_from.dw > port_to.dw:
+            converter = _LiteDRAMDownConverter(port_from, port_to)
+            self.submodules += converter
+        elif port_from.dw < port.to.dw:
+            converter = _LiteDRAMUpConverter(port_from, port_to)
+            self.submodules += converter
 
 
 class LiteDRAMCrossbar(Module):
