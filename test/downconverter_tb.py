@@ -30,12 +30,24 @@ def main_generator(dut):
         while (yield dut.user_port.wdata.ready) == 0:
             yield
         yield
+    # read
+    yield dut.user_port.rdata.ready.eq(1)
+    for i in range(8):
+        yield dut.user_port.cmd.valid.eq(1)
+        yield dut.user_port.cmd.we.eq(0)
+        yield dut.user_port.cmd.adr.eq(i)
+        yield
+        while (yield dut.user_port.cmd.ready) == 0:
+            yield
+        yield dut.user_port.cmd.valid.eq(0)
+        yield
 
 if __name__ == "__main__":
     tb = TB()
     generators = {
         "sys" :   [main_generator(tb),
-                   tb.memory.write_generator(tb.internal_port)]
+                   tb.memory.write_generator(tb.internal_port),
+                   tb.memory.read_generator(tb.internal_port)]
     }
     clocks = {"sys": 10}
     run_simulation(tb, generators, clocks, vcd_name="sim.vcd")

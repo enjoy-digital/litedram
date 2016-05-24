@@ -14,8 +14,8 @@ class DRAMMemory:
     def read_generator(self, dram_port):
         address = 0
         pending = 0
+        yield dram_port.cmd.ready.eq(0)
         while True:
-            yield dram_port.cmd.ready.eq(0)
             yield dram_port.rdata.valid.eq(0)
             if pending:
                 yield dram_port.rdata.valid.eq(1)
@@ -27,16 +27,18 @@ class DRAMMemory:
             elif (yield dram_port.cmd.valid):
                 pending = not (yield dram_port.cmd.we)
                 address = (yield dram_port.cmd.adr)
-                yield
-                yield dram_port.cmd.ready.eq(1)
+                if pending:
+                    yield dram_port.cmd.ready.eq(1)
+                    yield
+                    yield dram_port.cmd.ready.eq(0)
             yield
 
     @passive
     def write_generator(self, dram_port):
         address = 0
         pending = 0
+        yield dram_port.cmd.ready.eq(0)
         while True:
-            yield dram_port.cmd.ready.eq(0)
             yield dram_port.wdata.ready.eq(0)
             if pending:
                 yield dram_port.wdata.ready.eq(1)
@@ -49,7 +51,8 @@ class DRAMMemory:
             elif (yield dram_port.cmd.valid):
                 pending = (yield dram_port.cmd.we)
                 address = (yield dram_port.cmd.adr)
-                yield dram_port.cmd.ready.eq(1)
-                yield
-                yield dram_port.cmd.ready.eq(0)
+                if pending:
+                    yield dram_port.cmd.ready.eq(1)
+                    yield
+                    yield dram_port.cmd.ready.eq(0)
             yield
