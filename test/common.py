@@ -45,9 +45,11 @@ class DRAMMemory:
                 yield dram_port.wdata.ready.eq(0)
                 yield
                 pending = 0
-            elif (yield dram_port.cmd.valid):
-                pending = yield dram_port.cmd.we
-                address = (yield dram_port.cmd.adr)
                 yield
+            elif (yield dram_port.cmd.valid):
+                pending = (yield dram_port.cmd.we)
+                address = (yield dram_port.cmd.adr)
                 yield dram_port.cmd.ready.eq(1)
+                yield
+                yield dram_port.cmd.ready.eq(0)
             yield

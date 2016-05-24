@@ -9,4 +9,7 @@ bist_tb:
 bist_async_tb:
 	$(CMD) bist_async_tb.py
 
-all: bist_tb bist_async_tb
+downconverter_tb:
+	$(CMD) downconverter_tb.py
+
+all: bist_tb bist_async_tb downconverter_tb

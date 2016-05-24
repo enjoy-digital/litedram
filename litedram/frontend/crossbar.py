@@ -85,10 +85,10 @@ class _LiteDRAMDownConverter(Module):
         fsm.act("IDLE",
             counter_reset.eq(1),
             If(port_from.cmd.valid,
-                NextState("ADAPT")
+                NextState("CONVERT")
             )
         )
-        fsm.act("ADAPT",
+        fsm.act("CONVERT",
             port_to.cmd.valid.eq(1),
             port_to.cmd.we.eq(port_from.cmd.we),
             port_to.cmd.adr.eq(port_from.cmd.adr*ratio + counter),
@@ -102,7 +102,7 @@ class _LiteDRAMDownConverter(Module):
         )
 
         wdata_converter = stream.StrideConverter(port_from.wdata.description,
-                                                 port_to.wdata.descritpion)
+                                                 port_to.wdata.description)
         self.submodules += wdata_converter
         self.comb += [
             port_from.wdata.connect(wdata_converter.sink),
@@ -178,7 +178,7 @@ class _LiteDRAMUpConverter(Module):
         )
 
         wdata_converter = stream.StrideConverter(port_from.wdata.description,
-                                                 port_to.wdata.descritpion)
+                                                 port_to.wdata.description)
         self.submodules += wdata_converter
         self.comb += [
             port_from.wdata.connect(wdata_converter.sink),
@@ -202,10 +202,15 @@ class LiteDRAMConverter(Module):
         if port_from.dw > port_to.dw:
             converter = _LiteDRAMDownConverter(port_from, port_to)
             self.submodules += converter
-        elif port_from.dw < port.to.dw:
+        elif port_from.dw < port_to.dw:
             converter = _LiteDRAMUpConverter(port_from, port_to)
             self.submodules += converter
-
+        else:
+            self.comb += [
+                port_from.cmd.connect(port_to.cmd),
+                port_from.wdata.connect(port_to.wdata),
+                port_to.rdata.connect(port_from.rdata)
+            ]
 
 class LiteDRAMCrossbar(Module):
     def __init__(self, controller, cba_shift):
