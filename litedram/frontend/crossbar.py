@@ -95,7 +95,7 @@ class _LiteDRAMDownConverter(Module):
             If(port_to.cmd.ready,
                 counter_ce.eq(1),
                 If(counter == ratio - 1,
-                    port_from.cmd.ready.eq(1)
+                    port_from.cmd.ready.eq(1),
                     NextState("IDLE")
                 )
             )
@@ -119,6 +119,9 @@ class _LiteDRAMDownConverter(Module):
 
 
 class _LiteDRAMUpConverter(Module):
+    # TODO:
+    # - handle all specials cases (incomplete / non aligned bursts)
+    # - add exceptions on datapath for such cases
     """LiteDRAM port UpConverter
 
     This module increase user port data width to fit controller data width.
@@ -130,9 +133,65 @@ class _LiteDRAMUpConverter(Module):
     def __init__(self, port_from, port_to):
         assert port_from.cd == port_to.cd
         assert port_from.dw < port_to.dw
+        if port_to.dw % port_from.dw:
+            raise ValueError("Ratio must be an int")
 
         # # #
 
+        ratio = port_to.dw//port_from.dw
+
+        we = Signal()
+        address = Signal(port_to.aw)
+
+        counter = Signal(max=ratio)
+        counter_reset = Signal()
+        counter_ce = Signal()
+        self.sync += \
+            If(counter_reset,
+                counter.eq(0)
+            ).Elif(counter_ce,
+                counter.eq(counter + 1)
+            )
+
+        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
+        fsm.act("IDLE",
+            counter_reset.eq(1),
+            If(port_from.cmd.valid,
+                NextValue(we, port_from.cmd.we),
+                NextValue(address, port_from.cmd.adr),
+                NextState("RECEIVE")
+            )
+        )
+        fsm.act("RECEIVE",
+            port_from.cmd.ready.eq(1),
+            If(counter == ratio-1,
+                NextState("GENERATE")
+            )
+        )
+        fsm.act("GENERATE",
+            port_to.cmd.valid.eq(1),
+            port_to.cmd.we.eq(we),
+            port_to.cmd.adr.eq(address[log2_int(ratio):]),
+            If(port_to.cmd.ready,
+                NextState("IDLE")
+            )
+        )
+
+        wdata_converter = stream.StrideConverter(port_from.wdata.description,
+                                                 port_to.wdata.descritpion)
+        self.submodules += wdata_converter
+        self.comb += [
+            port_from.wdata.connect(wdata_converter.sink),
+            wdata_converter.source.connect(port_to.wdata)
+        ]
+
+        rdata_converter = stream.StrideConverter(port_to.rdata.description,
+                                                 port_from.rdata.description)
+        self.submodules += rdata_converter
+        self.comb += [
+            port_to.rdata.connect(rdata_converter.sink),
+            rdata_converter.source.connect(port_from.rdata)
+        ]
 
 class LiteDRAMConverter(Module):
     def __init__(self, port_from, port_to):
