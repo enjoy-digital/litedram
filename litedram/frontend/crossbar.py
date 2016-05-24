@@ -10,6 +10,7 @@ from litedram.common import *
 
 
 class LiteDRAMAsyncAdapter(Module):
+    # TODO: check cmd/wdata/rdata fifo depths
     def __init__(self, port_from, port_to):
         assert port_from.aw == port_to.aw
         assert port_from.dw == port.to.dw
@@ -22,7 +23,8 @@ class LiteDRAMAsyncAdapter(Module):
         # # #
 
         cmd_fifo = stream.AsyncFIFO([("we", 1), ("adr", aw)], 8)
-        cmd_fifo = ClockDomainsRenamer({"write": cd_from, "read": cd_to})(cmd_fifo)
+        cmd_fifo = ClockDomainsRenamer({"write": cd_from,
+                                        "read": cd_to})(cmd_fifo)
         self.submodules += cmd_fifo
         self.comb += [
             port_from.cmd.connect(cmd_fifo.sink),
@@ -30,7 +32,8 @@ class LiteDRAMAsyncAdapter(Module):
         ]
 
         wdata_fifo = stream.AsyncFIFO([("data", dw), ("we", dw//8)], 8)
-        wdata_fifo = ClockDomainsRenamer({"write": cd_from, "read": cd_to})(wdata_fifo)
+        wdata_fifo = ClockDomainsRenamer({"write": cd_from,
+                                          "read": cd_to})(wdata_fifo)
         self.submodules += wdata_fifo
         self.comb += [
             port_from.wdata.connect(wdata_fifo.sink),
@@ -38,7 +41,8 @@ class LiteDRAMAsyncAdapter(Module):
         ]
 
         rdata_fifo = stream.AsyncFIFO([("data", dw)], 8)
-        rdata_fifo = ClockDomainsRenamer({"write": cd_to, "read": cd_from})(rdata_fifo)
+        rdata_fifo = ClockDomainsRenamer({"write": cd_to,
+                                          "read": cd_from})(rdata_fifo)
         self.submodules += rdata_fifo
         self.comb += [
             port_to.rdata.connect(rdata_fifo.sink),
@@ -60,8 +64,58 @@ class _LiteDRAMDownConverter(Module):
     def __init__(self, port_from, port_to):
         assert port_from.cd == port_to.cd
         assert port_from.dw > port_to.dw
+        if port_from.dw % port_to.dw:
+            raise ValueError("Ratio must be an int")
 
         # # #
+
+        ratio = port_from.dw//port_to.dw
+
+        counter = Signal(max=ratio)
+        counter_reset = Signal()
+        counter_ce = Signal()
+        self.sync += \
+            If(counter_reset,
+                counter.eq(0)
+            ).Elif(counter_ce,
+                counter.eq(counter + 1)
+            )
+
+        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
+        fsm.act("IDLE",
+            counter_reset.eq(1),
+            If(port_from.cmd.valid,
+                NextState("ADAPT")
+            )
+        )
+        fsm.act("ADAPT",
+            port_to.cmd.valid.eq(1),
+            port_to.cmd.we.eq(port_from.cmd.we),
+            port_to.cmd.adr.eq(port_from.cmd.adr*ratio + counter),
+            If(port_to.cmd.ready,
+                counter_ce.eq(1),
+                If(counter == ratio - 1,
+                    port_from.cmd.ready.eq(1)
+                    NextState("IDLE")
+                )
+            )
+        )
+
+        wdata_converter = stream.StrideConverter(port_from.wdata.description,
+                                                 port_to.wdata.descritpion)
+        self.submodules += wdata_converter
+        self.comb += [
+            port_from.wdata.connect(wdata_converter.sink),
+            wdata_converter.source.connect(port_to.wdata)
+        ]
+
+        rdata_converter = stream.StrideConverter(port_to.rdata.description,
+                                                 port_from.rdata.description)
+        self.submodules += rdata_converter
+        self.comb += [
+            port_to.rdata.connect(rdata_converter.sink),
+            rdata_converter.source.connect(port_from.rdata)
+        ]
 
 
 class _LiteDRAMUpConverter(Module):
