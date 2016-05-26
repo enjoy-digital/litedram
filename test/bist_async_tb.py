@@ -8,6 +8,8 @@ from litedram.modules import SDRAMModule
 from litedram.frontend.crossbar import LiteDRAMCrossbar
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
+from litedram.frontend.adaptation import LiteDRAMPortCDC
+
 
 from litedram.phy.model import SDRAMPHYModel
 
@@ -27,6 +29,7 @@ class SimModule(SDRAMModule):
 
 class TB(Module):
     def __init__(self):
+        # phy
         sdram_module = SimModule(1000, "1:1")
         phy_settings = PhySettings(
             memtype="SDR",
@@ -41,6 +44,7 @@ class TB(Module):
             write_latency=0
         )
         self.submodules.sdrphy = SDRAMPHYModel(sdram_module, phy_settings)
+        # controller
         self.submodules.controller = LiteDRAMController(
                                          phy_settings,
                                          sdram_module.geom_settings,
@@ -49,10 +53,24 @@ class TB(Module):
         self.comb += self.controller.dfi.connect(self.sdrphy.dfi)
         self.submodules.crossbar = LiteDRAMCrossbar(self.controller.interface,
                                                     self.controller.nrowbits)
-        self.write_port = self.crossbar.get_port(cd="write")
-        self.read_port = self.crossbar.get_port(cd="read")
-        self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
-        self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
+        # write port
+        write_crossbar_port = self.crossbar.get_port()
+        write_user_port = LiteDRAMPort(write_crossbar_port.aw,
+                                       write_crossbar_port.dw,
+                                       cd="write")
+        self.submodules += LiteDRAMPortCDC(write_user_port,
+                                           write_crossbar_port)
+
+
+        read_crossbar_port = self.crossbar.get_port()
+        read_user_port = LiteDRAMPort(read_crossbar_port.aw,
+                                      read_crossbar_port.dw,
+                                      cd="read")
+        # read port
+        self.submodules += LiteDRAMPortCDC(read_user_port,
+                                           read_crossbar_port)
+        self.submodules.generator = LiteDRAMBISTGenerator(write_user_port)
+        self.submodules.checker = LiteDRAMBISTChecker(read_user_port)
 
 
 def main_generator(dut):

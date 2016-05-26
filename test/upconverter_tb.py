@@ -3,15 +3,16 @@ from litex.gen import *
 from litex.soc.interconnect.stream import *
 
 from litedram.common import LiteDRAMPort
-from litedram.frontend.crossbar import LiteDRAMConverter
+from litedram.frontend.adaptation import LiteDRAMPortConverter
 
 from test.common import DRAMMemory
 
 class TB(Module):
     def __init__(self):
         self.user_port = LiteDRAMPort(aw=32, dw=32)
-        self.internal_port = LiteDRAMPort(aw=32, dw=64)
-        self.submodules.converter = LiteDRAMConverter(self.user_port, self.internal_port)
+        self.crossbar_port = LiteDRAMPort(aw=32, dw=64)
+        self.submodules.converter = LiteDRAMPortConverter(self.user_port,
+                                                          self.crossbar_port)
         self.memory = DRAMMemory(64, 128)
 
 def main_generator(dut):
@@ -54,8 +55,8 @@ if __name__ == "__main__":
     tb = TB()
     generators = {
         "sys" :   [main_generator(tb),
-                   tb.memory.write_generator(tb.internal_port),
-                   tb.memory.read_generator(tb.internal_port)]
+                   tb.memory.write_generator(tb.crossbar_port),
+                   tb.memory.read_generator(tb.crossbar_port)]
     }
     clocks = {"sys": 10}
     run_simulation(tb, generators, clocks, vcd_name="sim.vcd")
