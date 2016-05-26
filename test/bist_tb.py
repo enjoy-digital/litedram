@@ -18,8 +18,13 @@ class TB(Module):
         self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
 
 def main_generator(dut):
-    for i in range(8):
-        yield
+    # init
+    yield dut.generator.reset.storage.eq(1)
+    yield dut.checker.reset.storage.eq(1)
+    yield
+    yield dut.generator.reset.storage.eq(0)
+    yield dut.checker.reset.storage.eq(0)
+    yield
     # write
     yield dut.generator.base.storage.eq(16)
     yield dut.generator.length.storage.eq(64)
