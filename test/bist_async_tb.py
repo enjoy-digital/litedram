@@ -17,9 +17,9 @@ from litedram.phy.model import SDRAMPHYModel
 
 class SimModule(SDRAMModule):
     # geometry
-    nbanks = 4
+    nbanks = 2
     nrows  = 2048
-    ncols  = 4
+    ncols  = 2
     # timings
     tRP   = 1
     tRCD  = 1
@@ -45,7 +45,8 @@ class TB(Module):
             read_latency=4,
             write_latency=0
         )
-        self.submodules.sdrphy = SDRAMPHYModel(sdram_module, phy_settings)
+        self.submodules.sdrphy = SDRAMPHYModel(sdram_module, phy_settings, we_granularity=0)
+
         # controller
         self.submodules.controller = LiteDRAMController(
                                          phy_settings,
@@ -55,6 +56,7 @@ class TB(Module):
         self.comb += self.controller.dfi.connect(self.sdrphy.dfi)
         self.submodules.crossbar = LiteDRAMCrossbar(self.controller.interface,
                                                     self.controller.nrowbits)
+
         # write port
         write_crossbar_port = self.crossbar.get_port()
         write_user_port = LiteDRAMPort(write_crossbar_port.aw,
@@ -68,9 +70,12 @@ class TB(Module):
         read_user_port = LiteDRAMPort(read_crossbar_port.aw,
                                       read_crossbar_port.dw,
                                       cd="read")
+
         # read port
         self.submodules += LiteDRAMPortCDC(read_user_port,
                                            read_crossbar_port)
+
+        # generator / checker
         self.submodules.generator = LiteDRAMBISTGenerator(write_user_port)
         self.submodules.checker = LiteDRAMBISTChecker(read_user_port)
 
@@ -78,6 +83,13 @@ class TB(Module):
 def main_generator(dut):
     for i in range(100):
         yield
+    # init
+    yield dut.generator.reset.storage.eq(1)
+    yield dut.checker.reset.storage.eq(1)
+    yield
+    yield dut.generator.reset.storage.eq(0)
+    yield dut.checker.reset.storage.eq(0)
+    yield
     # write
     yield dut.generator.base.storage.eq(16)
     yield dut.generator.length.storage.eq(16)

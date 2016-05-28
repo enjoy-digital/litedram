@@ -15,7 +15,7 @@ from operator import or_
 
 
 class Bank(Module):
-    def __init__(self, data_width, nrows, ncols, burst_length):
+    def __init__(self, data_width, nrows, ncols, burst_length, we_granularity):
         self.activate = Signal()
         self.activate_row = Signal(max=nrows)
         self.precharge = Signal()
@@ -44,13 +44,17 @@ class Bank(Module):
 
         self.specials.mem = mem = Memory(data_width, nrows*ncols//burst_length)
         self.specials.write_port = write_port = mem.get_port(write_capable=True,
-                                                             we_granularity=8)
+                                                             we_granularity=we_granularity)
         self.specials.read_port = read_port = mem.get_port(async_read=True)
         self.comb += [
             If(active,
                 write_port.adr.eq(row*ncols | self.write_col),
                 write_port.dat_w.eq(self.write_data),
-                write_port.we.eq(Replicate(self.write, data_width//8) & ~self.write_mask),
+                If(we_granularity,
+                    write_port.we.eq(Replicate(self.write, data_width//8) & ~self.write_mask),
+                ).Else(
+                    write_port.we.eq(self.write),
+                ),
                 If(self.read,
                     read_port.adr.eq(row*ncols | self.read_col),
                     self.read_data.eq(read_port.dat_r)
@@ -92,7 +96,7 @@ class DFIPhase(Module):
 
 
 class SDRAMPHYModel(Module):
-    def __init__(self, module, settings):
+    def __init__(self, module, settings, we_granularity=8):
         if settings.memtype in ["SDR"]:
             burst_length = settings.nphases*1  # command multiplication*SDR
         elif settings.memtype in ["DDR", "LPDDR", "DDR2", "DDR3"]:
@@ -120,7 +124,7 @@ class SDRAMPHYModel(Module):
         self.submodules += phases
 
         # banks
-        banks = [Bank(data_width, nrows, ncols, burst_length) for i in range(nbanks)]
+        banks = [Bank(data_width, nrows, ncols, burst_length, we_granularity) for i in range(nbanks)]
         self.submodules += banks
 
         # connect DFI phases to banks (cmds, write datapath)
