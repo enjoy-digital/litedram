@@ -171,7 +171,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
 
 class LiteDRAMBISTChecker(Module, AutoCSR):
-    def __init__(self, dram_port, cd="sys"):
+    def __init__(self, dram_port):
         self.reset = CSRStorage()
         self.shoot = CSR()
         self.done = CSRStatus()
@@ -180,6 +180,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         self.error_count = CSRStatus(32)
 
         # # #
+
+        cd = dram_port.cd
 
         checker = ResetInserter()(_LiteDRAMBISTChecker(dram_port))
         self.submodules += ClockDomainsRenamer(cd)(checker)
