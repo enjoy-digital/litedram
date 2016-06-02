@@ -78,8 +78,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
         cd = dram_port.cd
 
-        generator = ResetInserter()(_LiteDRAMBISTGenerator(dram_port))
-        self.submodules += ClockDomainsRenamer(cd)(generator)
+        core = ResetInserter()(_LiteDRAMBISTGenerator(dram_port))
+        self.submodules.core = ClockDomainsRenamer(cd)(core)
 
         reset_sync = BusSynchronizer(1, "sys", cd)
         shoot_sync = PulseSynchronizer("sys", cd)
@@ -92,19 +92,19 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
         self.comb += [
             reset_sync.i.eq(self.reset.storage),
-            generator.reset.eq(reset_sync.o),
+            core.reset.eq(reset_sync.o),
 
             shoot_sync.i.eq(self.shoot.re),
-            generator.shoot.eq(shoot_sync.o),
+            core.shoot.eq(shoot_sync.o),
 
-            done_sync.i.eq(generator.done),
+            done_sync.i.eq(core.done),
             self.done.status.eq(done_sync.o),
 
             base_sync.i.eq(self.base.storage),
-            generator.base.eq(base_sync.o),
+            core.base.eq(base_sync.o),
 
             length_sync.i.eq(self.length.storage),
-            generator.length.eq(length_sync.o)
+            core.length.eq(length_sync.o)
         ]
 
 
@@ -183,8 +183,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
         cd = dram_port.cd
 
-        checker = ResetInserter()(_LiteDRAMBISTChecker(dram_port))
-        self.submodules += ClockDomainsRenamer(cd)(checker)
+        core = ResetInserter()(_LiteDRAMBISTChecker(dram_port))
+        self.submodules.core = ClockDomainsRenamer(cd)(core)
 
         reset_sync = BusSynchronizer(1, "sys", cd)
         shoot_sync = PulseSynchronizer("sys", cd)
@@ -198,20 +198,20 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
         self.comb += [
             reset_sync.i.eq(self.reset.re),
-            checker.reset.eq(reset_sync.o),
+            core.reset.eq(reset_sync.o),
 
             shoot_sync.i.eq(self.shoot.re),
-            checker.shoot.eq(shoot_sync.o),
+            core.shoot.eq(shoot_sync.o),
 
-            done_sync.i.eq(checker.done),
+            done_sync.i.eq(core.done),
             self.done.status.eq(done_sync.o),
 
             base_sync.i.eq(self.base.storage),
-            checker.base.eq(base_sync.o),
+            core.base.eq(base_sync.o),
 
             length_sync.i.eq(self.length.storage),
-            checker.length.eq(length_sync.o),
+            core.length.eq(length_sync.o),
 
-            error_count_sync.i.eq(checker.error_count),
+            error_count_sync.i.eq(core.error_count),
             self.error_count.status.eq(error_count_sync.o)
         ]
