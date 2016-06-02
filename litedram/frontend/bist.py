@@ -30,8 +30,18 @@ class LFSR(Module):
         ]
 
 
+@CEInserter()
+class Counter(Module):
+	def __init__(self, n_out):
+		self.o = Signal(n_out)
+
+		# # #
+
+		self.sync += self.o.eq(self.o + 1)
+
+
 class _LiteDRAMBISTGenerator(Module):
-    def __init__(self, dram_port):
+    def __init__(self, dram_port, random):
         self.shoot = Signal()
         self.done = Signal()
         self.base = Signal(dram_port.aw)
@@ -41,7 +51,10 @@ class _LiteDRAMBISTGenerator(Module):
 
         self.submodules.dma = dma = LiteDRAMDMAWriter(dram_port)
 
-        self.submodules.lfsr = lfsr = LFSR(dram_port.dw)
+        if random:
+        	self.submodules.gen = gen = LFSR(dram_port.dw)
+        else:
+        	self.submodules.gen = gen = Counter(dram_port.dw)
 
         shooted = Signal()
         enable = Signal()
@@ -51,7 +64,7 @@ class _LiteDRAMBISTGenerator(Module):
             If(self.shoot,
                 shooted.eq(1),
                 counter.eq(0)
-            ).Elif(lfsr.ce,
+            ).Elif(gen.ce,
                 counter.eq(counter + 1)
             )
         ]
@@ -59,15 +72,15 @@ class _LiteDRAMBISTGenerator(Module):
         self.comb += [
             dma.sink.valid.eq(enable),
             dma.sink.address.eq(self.base + counter),
-            dma.sink.data.eq(lfsr.o),
-            lfsr.ce.eq(enable & dma.sink.ready),
+            dma.sink.data.eq(gen.o),
+            gen.ce.eq(enable & dma.sink.ready),
 
             self.done.eq(~enable)
         ]
 
 
 class LiteDRAMBISTGenerator(Module, AutoCSR):
-    def __init__(self, dram_port):
+    def __init__(self, dram_port, random=True):
         self.reset = CSRStorage()
         self.shoot = CSR()
         self.done = CSRStatus()
@@ -78,7 +91,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
         cd = dram_port.cd
 
-        core = ResetInserter()(_LiteDRAMBISTGenerator(dram_port))
+        core = ResetInserter()(_LiteDRAMBISTGenerator(dram_port, random))
         self.submodules.core = ClockDomainsRenamer(cd)(core)
 
         reset_sync = BusSynchronizer(1, "sys", cd)
@@ -109,7 +122,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
 
 class _LiteDRAMBISTChecker(Module, AutoCSR):
-    def __init__(self, dram_port):
+    def __init__(self, dram_port, random):
         self.shoot = Signal()
         self.done = Signal()
         self.base = Signal(dram_port.aw)
@@ -120,7 +133,10 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
         self.submodules.dma = dma = LiteDRAMDMAReader(dram_port)
 
-        self.submodules.lfsr = lfsr = LFSR(dram_port.dw)
+        if random:
+        	self.submodules.gen = gen = LFSR(dram_port.dw)
+        else:
+        	self.submodules.gen = gen = Counter(dram_port.dw)
 
         shooted = Signal()
         address_counter = Signal(dram_port.aw)
@@ -156,12 +172,12 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.comb += data_enable.eq(shooted & (data_counter != (self.length - 1)))
 
         self.comb += [
-            lfsr.ce.eq(dma.source.valid),
+            gen.ce.eq(dma.source.valid),
             dma.source.ready.eq(1)
         ]
         self.sync += \
             If(dma.source.valid,
-                If(dma.source.data != lfsr.o,
+                If(dma.source.data != gen.o,
                     self.error_count.eq(self.error_count + 1)
                 )
             )
@@ -171,7 +187,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
 
 class LiteDRAMBISTChecker(Module, AutoCSR):
-    def __init__(self, dram_port):
+    def __init__(self, dram_port, random=True):
         self.reset = CSRStorage()
         self.shoot = CSR()
         self.done = CSRStatus()
@@ -183,7 +199,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
         cd = dram_port.cd
 
-        core = ResetInserter()(_LiteDRAMBISTChecker(dram_port))
+        core = ResetInserter()(_LiteDRAMBISTChecker(dram_port, random))
         self.submodules.core = ClockDomainsRenamer(cd)(core)
 
         reset_sync = BusSynchronizer(1, "sys", cd)
