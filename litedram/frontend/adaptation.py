@@ -52,10 +52,10 @@ class _LiteDRAMPortDownConverter(Module):
     This module reduces user port data width to fit controller data width.
     With N = port_from.dw/port_to.dw:
     - Address is adapted (multiplied by N + internal increments)
-    - A single write from the user is splitted and generate N writes to the
+    - A write from the user is splitted and generates N writes to the
     controller.
-    - Reads generates N reads on the controller and returned datas are regroup
-    into a single data presented to the user.
+    - A read from the user generates N reads to the controller and returned datas are regrouped
+    in a single data presented to the user.
     """
     def __init__(self, port_from, port_to):
         assert port_from.cd == port_to.cd
