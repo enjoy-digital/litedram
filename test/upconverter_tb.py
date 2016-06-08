@@ -3,11 +3,12 @@
 from litex.gen import *
 
 from litex.soc.interconnect.stream import *
+from litex.soc.interconnect.stream_sim import check
 
 from litedram.common import LiteDRAMPort
 from litedram.frontend.adaptation import LiteDRAMPortConverter
 
-from test.common import DRAMMemory
+from test.common import *
 
 class TB(Module):
     def __init__(self):
@@ -17,9 +18,18 @@ class TB(Module):
                                                           self.crossbar_port)
         self.memory = DRAMMemory(64, 128)
 
-def main_generator(dut):
-    for i in range(8):
+write_data = [seed_to_data(i, nbits=32) for i in range(8)]
+read_data = []
+
+@passive
+def read_generator(dut):
+    yield dut.user_port.rdata.ready.eq(1)
+    while True:
+        if (yield dut.user_port.rdata.valid):
+            read_data.append((yield dut.user_port.rdata.data))
         yield
+
+def main_generator(dut):
     # write
     for i in range(8):
         yield dut.user_port.cmd.valid.eq(1)
@@ -31,18 +41,15 @@ def main_generator(dut):
         yield dut.user_port.cmd.valid.eq(0)
         yield
         yield dut.user_port.wdata.valid.eq(1)
-        if i%2:
-            yield dut.user_port.wdata.data.eq(0x01234567)
-        else:
-            yield dut.user_port.wdata.data.eq(0x89abcdef)        
+        yield dut.user_port.wdata.data.eq(write_data[i])   
         yield
         while (yield dut.user_port.wdata.ready) == 0:
             yield
         yield dut.user_port.wdata.valid.eq(0)
         yield
+
     # read
     for i in range(8):
-        yield dut.user_port.rdata.ready.eq(1)
         for j in range(2):
             yield dut.user_port.cmd.valid.eq(1)
             yield dut.user_port.cmd.we.eq(0)
@@ -53,10 +60,20 @@ def main_generator(dut):
             yield dut.user_port.cmd.valid.eq(0)
             yield
 
+    # delay
+    for i in range(32):
+        yield
+
+    # check
+    s, l, e = check(write_data, read_data)
+    print("shift " + str(s) + " / length " + str(l) + " / errors " + str(e))
+
+
 if __name__ == "__main__":
     tb = TB()
     generators = {
         "sys" :   [main_generator(tb),
+                   read_generator(tb),
                    tb.memory.write_generator(tb.crossbar_port),
                    tb.memory.read_generator(tb.crossbar_port)]
     }

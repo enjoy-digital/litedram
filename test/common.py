@@ -1,5 +1,21 @@
 from litex.gen import *
 
+
+def seed_to_data(seed, random=True, nbits=32):
+    if nbits == 32:
+        if random:
+            return (seed * 0x31415979 + 1) & 0xffffffff
+        else:
+            return seed
+    else:
+        assert nbits%32 == 0
+        data = 0
+        for i in range(nbits//32):
+            data = data << 32
+            data |= seed_to_data(seed*nbits//32 + i, random, 32)
+        return data
+
+
 class DRAMMemory:
     def __init__(self, width, depth, init=[]):
         self.width = width
