@@ -155,7 +155,11 @@ class LiteDRAMPortUpConverter(Module):
             If(port_from.cmd.valid,
                 NextValue(we, port_from.cmd.we),
                 NextValue(address, port_from.cmd.adr),
-                NextState("RECEIVE")
+                If(we,
+                    NextState("RECEIVE")
+                ).Else(
+                    NextState("GENERATE") # FIXME
+                )
             )
         )
         fsm.act("RECEIVE",
@@ -163,7 +167,11 @@ class LiteDRAMPortUpConverter(Module):
             If(port_from.cmd.valid,
                 counter_ce.eq(1),
                 If(counter == ratio-1,
-                    NextState("GENERATE")
+                    If(we,
+                        NextState("GENERATE")
+                    ).Else(
+                        NextState("IDLE") # FIXME
+                    )
                 )
             )
         )
@@ -172,7 +180,11 @@ class LiteDRAMPortUpConverter(Module):
             port_to.cmd.we.eq(we),
             port_to.cmd.adr.eq(address[log2_int(ratio):]),
             If(port_to.cmd.ready,
-                NextState("IDLE")
+                If(we,
+                    NextState("IDLE")
+                ).Else(
+                    NextState("RECEIVE") # FIXME
+                )
             )
         )
 
