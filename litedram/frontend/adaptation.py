@@ -46,7 +46,7 @@ class LiteDRAMPortCDC(Module):
         ]
 
 
-class _LiteDRAMPortDownConverter(Module):
+class LiteDRAMPortDownConverter(Module):
     """LiteDRAM port DownConverter
 
     This module reduces user port data width to fit controller data width.
@@ -114,7 +114,7 @@ class _LiteDRAMPortDownConverter(Module):
         ]
 
 
-class _LiteDRAMPortUpConverter(Module):
+class LiteDRAMPortUpConverter(Module):
     # TODO:
     # - handle all specials cases (incomplete / non aligned bursts)
     # - add exceptions on datapath for such cases
@@ -200,10 +200,10 @@ class LiteDRAMPortConverter(Module):
         # # #
 
         if port_from.dw > port_to.dw:
-            converter = _LiteDRAMPortDownConverter(port_from, port_to)
+            converter = LiteDRAMPortDownConverter(port_from, port_to)
             self.submodules += converter
         elif port_from.dw < port_to.dw:
-            converter = _LiteDRAMPortUpConverter(port_from, port_to)
+            converter = LiteDRAMPortUpConverter(port_from, port_to)
             self.submodules += converter
         else:
             self.comb += [
