@@ -151,8 +151,9 @@ class LiteDRAMPortUpConverter(Module):
 
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
-            counter_reset.eq(1),
+            port_from.cmd.ready.eq(1),
             If(port_from.cmd.valid,
+                counter_ce.eq(1),
                 NextValue(we, port_from.cmd.we),
                 NextValue(address, port_from.cmd.adr),
                 If(we,
@@ -170,7 +171,8 @@ class LiteDRAMPortUpConverter(Module):
                     If(we,
                         NextState("GENERATE")
                     ).Else(
-                        NextState("IDLE") # FIXME
+                        NextState("IDLE"), # FIXME
+                        port_from.cmd.ready.eq(1),
                     )
                 )
             )
@@ -181,7 +183,8 @@ class LiteDRAMPortUpConverter(Module):
             port_to.cmd.adr.eq(address[log2_int(ratio):]),
             If(port_to.cmd.ready,
                 If(we,
-                    NextState("IDLE")
+                    NextState("IDLE"),
+                    port_from.cmd.ready.eq(1)
                 ).Else(
                     NextState("RECEIVE") # FIXME
                 )
