@@ -59,9 +59,10 @@ class Refresher(Module):
             )
         )
         fsm.act("WAIT_SEQ",
-            cmd.valid.eq(1),
             If(seq_done,
                 cmd.last.eq(1),
                 NextState("IDLE")
+            ).Else(
+                cmd.valid.eq(1)
             )
         )

@@ -41,11 +41,11 @@ class _CommandChooser(Module):
             arbiter.request.eq(valids),
             cmd.valid.eq(choices[arbiter.grant])
         ]
-        
+
         for name in ["a", "ba", "is_read", "is_write", "is_cmd"]:
             choices = Array(getattr(req, name) for req in requests)
             self.comb += getattr(cmd, name).eq(choices[arbiter.grant])
-        
+
         for name in ["cas", "ras", "we"]:
             # we should only assert those signals when valid is 1
             choices = Array(getattr(req, name) for req in requests)
@@ -229,7 +229,7 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("REFRESH",
             steerer.sel[0].eq(STEER_REFRESH),
             refresher.cmd.ready.eq(1),
-            If(refresher.cmd.valid & refresher.cmd.last,
+            If(refresher.cmd.last,
                 NextState("READ")
             )
         )
