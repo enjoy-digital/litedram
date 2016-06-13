@@ -7,6 +7,7 @@ from litex.gen.genlib import roundrobin
 from litex.soc.interconnect import stream
 
 from litedram.common import *
+from litedram.frontend.adaptation import LiteDRAMPortCDC, LiteDRAMPortConverter
 
 
 class LiteDRAMCrossbar(Module):
@@ -25,11 +26,32 @@ class LiteDRAMCrossbar(Module):
 
         self.masters = []
 
-    def get_port(self):
+    def get_port(self, dw=None, cd="sys"):
         if self.finalized:
             raise FinalizeError
-        port = LiteDRAMPort(self.rca_bits + self.bank_bits, self.dw)
+        if dw is None:
+            dw = self.dw
+
+        # crossbar port
+        port = LiteDRAMPort(self.rca_bits + self.bank_bits, self.dw, "sys")
         self.masters.append(port)
+
+        # clock domain crossing
+        if cd != "sys":
+            new_port = LiteDRAMPort(port.aw, port.dw, cd)
+            self.submodules += LiteDRAMPortCDC(new_port, port)
+            port = new_port
+
+        # data width convertion
+        if dw != self.dw:
+            if dw > self.dw:
+                adr_shift = log2_int(dw//self.dw)
+            else:
+                adr_shift = -log2_int(self.dw//dw)
+            new_port = LiteDRAMPort(port.aw + adr_shift, dw, cd=cd)
+            self.submodules += ClockDomainsRenamer(cd)(LiteDRAMPortConverter(new_port, port))
+            port = new_port
+
         return port
 
     def do_finalize(self):
