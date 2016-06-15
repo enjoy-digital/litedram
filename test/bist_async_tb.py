@@ -58,22 +58,8 @@ class TB(Module):
                                                     self.controller.nrowbits)
 
         # write port
-        write_crossbar_port = self.crossbar.get_port()
-        write_user_port = LiteDRAMPort(write_crossbar_port.aw,
-                                       write_crossbar_port.dw,
-                                       cd="write")
-        self.submodules += LiteDRAMPortCDC(write_user_port,
-                                           write_crossbar_port)
-
-
-        read_crossbar_port = self.crossbar.get_port()
-        read_user_port = LiteDRAMPort(read_crossbar_port.aw,
-                                      read_crossbar_port.dw,
-                                      cd="read")
-
-        # read port
-        self.submodules += LiteDRAMPortCDC(read_user_port,
-                                           read_crossbar_port)
+        write_user_port = self.crossbar.get_port("write", cd="write")
+        read_user_port = self.crossbar.get_port("read", cd="read")
 
         # generator / checker
         self.submodules.generator = LiteDRAMBISTGenerator(write_user_port)

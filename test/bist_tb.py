@@ -4,7 +4,7 @@ from litex.gen import *
 
 from litex.soc.interconnect.stream import *
 
-from litedram.common import LiteDRAMPort
+from litedram.common import LiteDRAMWritePort, LiteDRAMReadPort
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
 
@@ -12,8 +12,8 @@ from test.common import DRAMMemory
 
 class TB(Module):
     def __init__(self):
-        self.write_port = LiteDRAMPort(aw=32, dw=32)
-        self.read_port = LiteDRAMPort(aw=32, dw=32)
+        self.write_port = LiteDRAMWritePort(aw=32, dw=32)
+        self.read_port = LiteDRAMReadPort(aw=32, dw=32)
         self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
         self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
 

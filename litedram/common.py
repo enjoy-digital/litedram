@@ -89,7 +89,8 @@ def rdata_description(dw):
 
 
 class LiteDRAMPort:
-    def __init__(self, aw, dw, cd="sys"):
+    def __init__(self, mode, aw, dw, cd="sys"):
+        self.mode = mode
         self.aw = aw
         self.dw = dw
         self.cd = cd
@@ -99,6 +100,16 @@ class LiteDRAMPort:
         self.cmd = stream.Endpoint(cmd_description(aw))
         self.wdata = stream.Endpoint(wdata_description(dw))
         self.rdata = stream.Endpoint(rdata_description(dw))
+
+
+class LiteDRAMWritePort(LiteDRAMPort):
+    def __init__(self, *args, **kwargs):
+        LiteDRAMPort.__init__(self, "write", *args, **kwargs)
+
+
+class LiteDRAMReadPort(LiteDRAMPort):
+    def __init__(self, *args, **kwargs):
+        LiteDRAMPort.__init__(self, "read", *args, **kwargs)
 
 
 def cmd_request_layout(a, ba):
