@@ -191,7 +191,6 @@ class LiteDRAMWritePortUpConverter(Module):
 
 
 class LiteDRAMReadPortUpConverter(Module):
-    # TODO: finish and remove hack
     """LiteDRAM port UpConverter
 
     This module increase user port data width to fit controller data width.
@@ -212,53 +211,69 @@ class LiteDRAMReadPortUpConverter(Module):
 
         ratio = port_to.dw//port_from.dw
 
-        we = Signal()
-        address = Signal(port_to.aw)
+
+        # cmd
+
+        cmd_buffer = stream.SyncFIFO([("sel", ratio)], 4)
+        self.submodules += cmd_buffer
 
         counter = Signal(max=ratio)
-        counter_reset = Signal()
         counter_ce = Signal()
         self.sync += \
-            If(counter_reset,
-                counter.eq(0)
-            ).Elif(counter_ce,
+            If(counter_ce,
                 counter.eq(counter + 1)
             )
 
-        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
-        fsm.act("IDLE",
-            port_from.cmd.ready.eq(1),
+        self.comb += \
             If(port_from.cmd.valid,
-                counter_ce.eq(1),
-                NextValue(we, port_from.cmd.we),
-                NextValue(address, port_from.cmd.adr),
-                NextState("GENERATE")
-            )
-        )
-        fsm.act("RECEIVE",
-            port_from.cmd.ready.eq(1),
-            If(port_from.cmd.valid,
-                counter_ce.eq(1),
-                If(counter == ratio-1,
-                    NextState("IDLE")
+                If(counter == 0,
+                    port_to.cmd.valid.eq(1),
+                    port_to.cmd.adr.eq(port_from.cmd.adr[log2_int(ratio):]),
+                    port_from.cmd.ready.eq(port_to.cmd.ready),
+                    counter_ce.eq(port_to.cmd.ready)
+                ).Else(
+                    port_from.cmd.ready.eq(1),
+                    counter_ce.eq(1)
                 )
             )
-        )
-        fsm.act("GENERATE",
-            port_to.cmd.valid.eq(1),
-            port_to.cmd.we.eq(we),
-            port_to.cmd.adr.eq(address[log2_int(ratio):]),
-            If(port_to.cmd.ready,
-                NextState("RECEIVE")
-            )
-        )
 
+        # TODO: fix sel
+        self.comb += \
+            If(port_to.cmd.valid & port_to.cmd.ready,
+                cmd_buffer.sink.valid.eq(1),
+                cmd_buffer.sink.sel.eq(2**ratio-1)
+            )
+
+        # datapath
+
+        rdata_buffer  = stream.Buffer(port_to.rdata.description)
         rdata_converter = stream.StrideConverter(port_to.rdata.description,
                                                  port_from.rdata.description)
-        self.submodules += rdata_converter
-        self.submodules += stream.Pipeline(port_to.rdata,
-                                           rdata_converter,
-                                           port_from.rdata)
+        self.submodules +=  rdata_buffer, rdata_converter
+
+        rdata_chunk = Signal(ratio, reset=1)
+        rdata_chunk_valid = Signal()
+        self.sync += \
+            If(rdata_converter.source.valid &
+               rdata_converter.source.ready,
+                rdata_chunk.eq(Cat(rdata_chunk[ratio-1], rdata_chunk[:ratio-1]))
+            )
+
+        self.comb += [
+            port_to.rdata.connect(rdata_buffer.sink),
+            rdata_buffer.source.connect(rdata_converter.sink),
+            rdata_chunk_valid.eq((cmd_buffer.source.sel & rdata_chunk) != 0),
+            If(cmd_buffer.source.valid,
+                If(rdata_chunk_valid,
+                    port_from.rdata.valid.eq(rdata_converter.source.valid),
+                    port_from.rdata.data.eq(rdata_converter.source.data),
+                    rdata_converter.source.ready.eq(port_from.rdata.ready)
+                ).Else(
+                    rdata_converter.source.ready.eq(1)
+                )
+            ),
+            cmd_buffer.source.ready.eq(rdata_converter.source.ready & rdata_chunk[ratio-1])
+        ]
 
 
 class LiteDRAMPortConverter(Module):

@@ -13,19 +13,19 @@ from test.common import *
 class TB(Module):
     def __init__(self):
         self.write_user_port = LiteDRAMWritePort(aw=32, dw=32)
-        self.write_crossbar_port = LiteDRAMWritePort(aw=32, dw=64)
+        self.write_crossbar_port = LiteDRAMWritePort(aw=32, dw=128)
         self.submodules.write_converter = LiteDRAMPortConverter(self.write_user_port,
                                                                 self.write_crossbar_port)
 
         self.read_user_port = LiteDRAMReadPort(aw=32, dw=32)
-        self.read_crossbar_port = LiteDRAMReadPort(aw=32, dw=64)
+        self.read_crossbar_port = LiteDRAMReadPort(aw=32, dw=128)
         self.submodules.read_converter = LiteDRAMPortConverter(self.read_user_port,
                                                                self.read_crossbar_port)
 
-        self.memory = DRAMMemory(64, 128)
+        self.memory = DRAMMemory(128, 128)
 
 
-write_data = [seed_to_data(i, nbits=32) for i in range(8)]
+write_data = [seed_to_data(i, nbits=32) for i in range(16)]
 read_data = []
 
 
@@ -40,7 +40,7 @@ def read_generator(dut):
 
 def main_generator(dut):
     # write
-    for i in range(8):
+    for i in range(16):
         yield dut.write_user_port.cmd.valid.eq(1)
         yield dut.write_user_port.cmd.we.eq(1)
         yield dut.write_user_port.cmd.adr.eq(i)
@@ -58,16 +58,15 @@ def main_generator(dut):
         yield
 
     # read
-    for i in range(8):
-        for j in range(2):
-            yield dut.read_user_port.cmd.valid.eq(1)
-            yield dut.read_user_port.cmd.we.eq(0)
-            yield dut.read_user_port.cmd.adr.eq(i)
+    for i in range(16):
+        yield dut.read_user_port.cmd.valid.eq(1)
+        yield dut.read_user_port.cmd.we.eq(0)
+        yield dut.read_user_port.cmd.adr.eq(i)
+        yield
+        while (yield dut.read_user_port.cmd.ready) == 0:
             yield
-            while (yield dut.read_user_port.cmd.ready) == 0:
-                yield
-            yield dut.read_user_port.cmd.valid.eq(0)
-            yield
+        yield dut.read_user_port.cmd.valid.eq(0)
+        yield
 
     # delay
     for i in range(32):
