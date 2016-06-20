@@ -45,9 +45,9 @@ class LiteDRAMCrossbar(Module):
         # data width convertion
         if dw != self.dw:
             if dw > self.dw:
-                adr_shift = log2_int(dw//self.dw)
+                adr_shift = -log2_int(dw//self.dw)
             else:
-                adr_shift = -log2_int(self.dw//dw)
+                adr_shift = log2_int(self.dw//dw)
             new_port = LiteDRAMPort(mode, port.aw + adr_shift, dw, cd=cd)
             self.submodules += ClockDomainsRenamer(cd)(LiteDRAMPortConverter(new_port, port))
             port = new_port
