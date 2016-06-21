@@ -60,7 +60,7 @@ class LiteDRAMPortDownConverter(Module):
     - A read from the user generates N reads to the controller and returned datas are regrouped
     in a single data presented to the user.
     """
-    def __init__(self, port_from, port_to):
+    def __init__(self, port_from, port_to, reverse=False):
         assert port_from.cd == port_to.cd
         assert port_from.dw > port_to.dw
         assert port_from.mode == port_to.mode
@@ -104,7 +104,8 @@ class LiteDRAMPortDownConverter(Module):
 
         if mode == "write" or mode == "both":
             wdata_converter = stream.StrideConverter(port_from.wdata.description,
-                                                     port_to.wdata.description)
+                                                     port_to.wdata.description,
+                                                     reverse=reverse)
             self.submodules += wdata_converter
             self.submodules += stream.Pipeline(port_from.wdata,
                                                wdata_converter,
@@ -112,7 +113,8 @@ class LiteDRAMPortDownConverter(Module):
 
         if mode == "read" or mode == "both":
             rdata_converter = stream.StrideConverter(port_to.rdata.description,
-                                                     port_from.rdata.description)
+                                                     port_from.rdata.description,
+                                                     reverse=reverse)
             self.submodules += rdata_converter
             self.submodules += stream.Pipeline(port_to.rdata,
                                                rdata_converter,
@@ -129,7 +131,7 @@ class LiteDRAMWritePortUpConverter(Module):
     - N writes from user are regrouped in a single one to the controller
     (when possible, ie when consecutive and bursting)
     """
-    def __init__(self, port_from, port_to):
+    def __init__(self, port_from, port_to, reverse=False):
         assert port_from.cd == port_to.cd
         assert port_from.dw < port_to.dw
         assert port_from.mode == port_to.mode
@@ -183,7 +185,8 @@ class LiteDRAMWritePortUpConverter(Module):
         )
 
         wdata_converter = stream.StrideConverter(port_from.wdata.description,
-                                                 port_to.wdata.description)
+                                                 port_to.wdata.description,
+                                                 reverse=reverse)
         self.submodules += wdata_converter
         self.submodules += stream.Pipeline(port_from.wdata,
                                            wdata_converter,
@@ -199,7 +202,7 @@ class LiteDRAMReadPortUpConverter(Module):
     - N read from user are regrouped in a single one to the controller
     (when possible, ie when consecutive and bursting)
     """
-    def __init__(self, port_from, port_to):
+    def __init__(self, port_from, port_to, reverse=False):
         assert port_from.cd == port_to.cd
         assert port_from.dw < port_to.dw
         assert port_from.mode == port_to.mode
@@ -248,7 +251,8 @@ class LiteDRAMReadPortUpConverter(Module):
 
         rdata_buffer  = stream.Buffer(port_to.rdata.description)
         rdata_converter = stream.StrideConverter(port_to.rdata.description,
-                                                 port_from.rdata.description)
+                                                 port_from.rdata.description,
+                                                 reverse=reverse)
         self.submodules +=  rdata_buffer, rdata_converter
 
         rdata_chunk = Signal(ratio, reset=1)
@@ -277,7 +281,7 @@ class LiteDRAMReadPortUpConverter(Module):
 
 
 class LiteDRAMPortConverter(Module):
-    def __init__(self, port_from, port_to):
+    def __init__(self, port_from, port_to, reverse=False):
         assert port_from.cd == port_to.cd
         assert port_from.mode == port_to.mode
 
@@ -286,13 +290,13 @@ class LiteDRAMPortConverter(Module):
         mode = port_from.mode
 
         if port_from.dw > port_to.dw:
-            converter = LiteDRAMPortDownConverter(port_from, port_to)
+            converter = LiteDRAMPortDownConverter(port_from, port_to, reverse)
             self.submodules += converter
         elif port_from.dw < port_to.dw:
             if mode == "write":
-                converter = LiteDRAMWritePortUpConverter(port_from, port_to)
+                converter = LiteDRAMWritePortUpConverter(port_from, port_to, reverse)
             elif mode == "read":
-                converter = LiteDRAMReadPortUpConverter(port_from, port_to)
+                converter = LiteDRAMReadPortUpConverter(port_from, port_to, reverse)
             else:
                 raise NotImplementedError
 
