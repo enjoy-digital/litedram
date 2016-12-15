@@ -101,6 +101,8 @@ class LiteDRAMPort:
         self.wdata = stream.Endpoint(wdata_description(dw))
         self.rdata = stream.Endpoint(rdata_description(dw))
 
+        self.flush = Signal()
+
 
 class LiteDRAMWritePort(LiteDRAMPort):
     def __init__(self, *args, **kwargs):

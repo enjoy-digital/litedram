@@ -267,7 +267,9 @@ class LiteDRAMReadPortUpConverter(Module):
             port_to.rdata.connect(rdata_buffer.sink),
             rdata_buffer.source.connect(rdata_converter.sink),
             rdata_chunk_valid.eq((cmd_buffer.source.sel & rdata_chunk) != 0),
-            If(cmd_buffer.source.valid,
+            If(port_from.flush,
+                rdata_converter.source.ready.eq(1)
+            ).Elif(cmd_buffer.source.valid,
                 If(rdata_chunk_valid,
                     port_from.rdata.valid.eq(rdata_converter.source.valid),
                     port_from.rdata.data.eq(rdata_converter.source.data),
