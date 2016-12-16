@@ -175,12 +175,13 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             gen.ce.eq(dma.source.valid),
             dma.source.ready.eq(1)
         ]
-        self.sync += \
+        self.sync += [
             If(dma.source.valid,
                 If(dma.source.data != gen.o,
                     self.error_count.eq(self.error_count + 1)
                 )
-            )
+            ),
+        ]
         self.comb += data_counter_ce.eq(dma.source.valid)
 
         self.comb += self.done.eq(~data_enable & ~address_enable & shooted)
