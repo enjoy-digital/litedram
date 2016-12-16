@@ -12,8 +12,10 @@ from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
 from litedram.frontend.adaptation import LiteDRAMPortCDC
 
-
 from litedram.phy.model import SDRAMPHYModel
+
+from test.common import *
+
 
 class SimModule(SDRAMModule):
     # geometry
@@ -70,20 +72,14 @@ def main_generator(dut):
     for i in range(100):
         yield
     # init
-    yield dut.generator.reset.storage.eq(1)
-    yield dut.checker.reset.storage.eq(1)
-    yield
-    yield dut.generator.reset.storage.eq(0)
-    yield dut.checker.reset.storage.eq(0)
-    yield
+    yield from reset_bist_module(dut.generator)
+    yield from reset_bist_module(dut.checker)
     # write
     yield dut.generator.base.storage.eq(16)
     yield dut.generator.length.storage.eq(16)
     for i in range(32):
         yield
-    yield dut.generator.start.re.eq(1)
-    yield
-    yield dut.generator.start.re.eq(0)
+    yield from toggle_re(dut.generator.start)
     for i in range(32):
         yield
     while((yield dut.generator.done.status) == 0):
@@ -93,9 +89,7 @@ def main_generator(dut):
     yield dut.checker.length.storage.eq(16)
     for i in range(32):
         yield
-    yield dut.checker.start.re.eq(1)
-    yield
-    yield dut.checker.start.re.eq(0)
+    yield from toggle_re(dut.generator.start)
     for i in range(32):
         yield
     while((yield dut.checker.done.status) == 0):

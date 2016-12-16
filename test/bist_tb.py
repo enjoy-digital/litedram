@@ -10,7 +10,7 @@ from litedram.common import LiteDRAMWritePort, LiteDRAMReadPort
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
 
-from test.common import DRAMMemory
+from test.common import *
 
 class TB(Module):
     def __init__(self):
@@ -20,32 +20,6 @@ class TB(Module):
         self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
 
 
-def togglereset(module):
-    resig = module.reset.re
-
-    # Check that reset isn't set
-    reval = yield resig
-    assert not reval, reval
-
-    # Toggle the reset
-    yield resig.eq(1)
-    yield
-    yield resig.eq(0)
-    yield  # Takes 3 clock cycles for the reset to have an effect
-    yield
-    yield
-    yield
-    yield
-    yield
-
-    # Check some initial conditions are correct after reset.
-    started = yield module.core.started
-    assert started == 0, started
-
-    done = yield module.done.status
-    assert not done, done
-
-
 def main_generator(dut, mem):
     # Populate memory with random data
     random.seed(0)
@@ -53,7 +27,7 @@ def main_generator(dut, mem):
         mem.mem[i] = random.randint(0, 2**mem.width)
 
     # write
-    yield from togglereset(dut.generator)
+    yield from reset_bist_module(dut.generator)
 
     yield dut.generator.base.storage.eq(16)
     yield dut.generator.length.storage.eq(64)
@@ -70,7 +44,7 @@ def main_generator(dut, mem):
     assert done, done
 
     # read with no errors
-    yield from togglereset(dut.checker)
+    yield from reset_bist_module(dut.checker)
     errors = yield dut.checker.error_count.status
     assert errors == 0, errors
 
@@ -78,9 +52,7 @@ def main_generator(dut, mem):
     yield dut.checker.length.storage.eq(64)
     for i in range(8):
         yield
-    yield dut.checker.start.re.eq(1)
-    yield
-    yield dut.checker.start.re.eq(0)
+    yield from toggle_re(dut.checker.start)
     for i in range(8):
         yield
     while((yield dut.checker.done.status) == 0):
@@ -94,7 +66,7 @@ def main_generator(dut, mem):
     yield
 
     # read with one error
-    yield from togglereset(dut.checker)
+    yield from reset_bist_module(dut.checker)
     errors = yield dut.checker.error_count.status
     assert errors == 0, errors
 
@@ -105,9 +77,7 @@ def main_generator(dut, mem):
     yield dut.checker.length.storage.eq(64)
     for i in range(8):
         yield
-    yield dut.checker.start.re.eq(1)
-    yield
-    yield dut.checker.start.re.eq(0)
+    yield from toggle_re(dut.checker.start)
     for i in range(8):
         yield
     while((yield dut.checker.done.status) == 0):
