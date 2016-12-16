@@ -56,7 +56,7 @@ class _LiteDRAMBISTGenerator(Module):
         else:
         	self.submodules.gen = gen = Counter(dram_port.dw)
 
-        shooted = Signal()
+        self.shooted = shooted = Signal()
         enable = Signal()
         counter = Signal(dram_port.aw)
         self.comb += enable.eq(shooted & (counter != (self.length - 1)))
@@ -75,7 +75,7 @@ class _LiteDRAMBISTGenerator(Module):
             dma.sink.data.eq(gen.o),
             gen.ce.eq(enable & dma.sink.ready),
 
-            self.done.eq(~enable)
+            self.done.eq(~enable & shooted)
         ]
 
 
@@ -138,7 +138,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         else:
         	self.submodules.gen = gen = Counter(dram_port.dw)
 
-        shooted = Signal()
+        self.shooted = shooted = Signal()
         address_counter = Signal(dram_port.aw)
         address_counter_ce = Signal()
         data_counter = Signal(dram_port.aw)
@@ -183,7 +183,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             )
         self.comb += data_counter_ce.eq(dma.source.valid)
 
-        self.comb += self.done.eq(~data_enable & ~address_enable)
+        self.comb += self.done.eq(~data_enable & ~address_enable & shooted)
 
 
 class LiteDRAMBISTChecker(Module, AutoCSR):
