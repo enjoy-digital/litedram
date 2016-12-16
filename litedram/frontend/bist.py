@@ -81,7 +81,7 @@ class _LiteDRAMBISTGenerator(Module):
 
 class LiteDRAMBISTGenerator(Module, AutoCSR):
     def __init__(self, dram_port, random=True):
-        self.reset = CSRStorage()
+        self.reset = CSR()
         self.shoot = CSR()
         self.done = CSRStatus()
         self.base = CSRStorage(dram_port.aw)
@@ -104,7 +104,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         self.submodules += base_sync, length_sync
 
         self.comb += [
-            reset_sync.i.eq(self.reset.storage),
+            reset_sync.i.eq(self.reset.re),
             core.reset.eq(reset_sync.o),
 
             shoot_sync.i.eq(self.shoot.re),
@@ -189,7 +189,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
 class LiteDRAMBISTChecker(Module, AutoCSR):
     def __init__(self, dram_port, random=True):
-        self.reset = CSRStorage()
+        self.reset = CSR()
         self.shoot = CSR()
         self.done = CSRStatus()
         self.base = CSRStorage(dram_port.aw)
