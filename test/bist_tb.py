@@ -39,8 +39,8 @@ def togglereset(module):
     yield
 
     # Check some initial conditions are correct after reset.
-    shooted = yield module.core.shooted
-    assert shooted == 0, shooted
+    started = yield module.core.started
+    assert started == 0, started
 
     done = yield module.done.status
     assert not done, done
@@ -59,9 +59,9 @@ def main_generator(dut, mem):
     yield dut.generator.length.storage.eq(64)
     for i in range(8):
         yield
-    yield dut.generator.shoot.re.eq(1)
+    yield dut.generator.start.re.eq(1)
     yield
-    yield dut.generator.shoot.re.eq(0)
+    yield dut.generator.start.re.eq(0)
     for i in range(8):
         yield
     while((yield dut.generator.done.status) == 0):
@@ -78,9 +78,9 @@ def main_generator(dut, mem):
     yield dut.checker.length.storage.eq(64)
     for i in range(8):
         yield
-    yield dut.checker.shoot.re.eq(1)
+    yield dut.checker.start.re.eq(1)
     yield
-    yield dut.checker.shoot.re.eq(0)
+    yield dut.checker.start.re.eq(0)
     for i in range(8):
         yield
     while((yield dut.checker.done.status) == 0):
@@ -105,9 +105,9 @@ def main_generator(dut, mem):
     yield dut.checker.length.storage.eq(64)
     for i in range(8):
         yield
-    yield dut.checker.shoot.re.eq(1)
+    yield dut.checker.start.re.eq(1)
     yield
-    yield dut.checker.shoot.re.eq(0)
+    yield dut.checker.start.re.eq(0)
     for i in range(8):
         yield
     while((yield dut.checker.done.status) == 0):
