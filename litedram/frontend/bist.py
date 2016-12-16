@@ -1,3 +1,5 @@
+"""Built In Self Test (BIST) modules for testing liteDRAM functionality."""
+
 from functools import reduce
 from operator import xor
 
@@ -11,6 +13,8 @@ from litedram.frontend.dma import LiteDRAMDMAWriter, LiteDRAMDMAReader
 
 @CEInserter()
 class LFSR(Module):
+    """Linear-Feedback Shift Register to generate a pseudo-random sequence."""
+
     def __init__(self, n_out, n_state=31, taps=[27, 30]):
         self.o = Signal(n_out)
 
@@ -32,15 +36,15 @@ class LFSR(Module):
 
 @CEInserter()
 class Counter(Module):
-	def __init__(self, n_out):
-		self.o = Signal(n_out)
+    """Simple incremental counter."""
 
-		# # #
-
-		self.sync += self.o.eq(self.o + 1)
+    def __init__(self, n_out):
+        self.o = Signal(n_out)
+        self.sync += self.o.eq(self.o + 1)
 
 
 class _LiteDRAMBISTGenerator(Module):
+
     def __init__(self, dram_port, random):
         self.start = Signal()
         self.done = Signal()
@@ -80,6 +84,17 @@ class _LiteDRAMBISTGenerator(Module):
 
 
 class LiteDRAMBISTGenerator(Module, AutoCSR):
+    """litex module to generate a given pattern in memory.abs
+
+    CSRs:
+     * reset - Reset the module
+     * start - Start the checking
+     * done - The module has completed writing pattern
+
+     * base - DRAM address to start from.
+     * length - Number of DRAM words to check for.
+    """
+
     def __init__(self, dram_port, random=True):
         self.reset = CSR()
         self.start = CSR()
@@ -122,6 +137,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
 
 class _LiteDRAMBISTChecker(Module, AutoCSR):
+
     def __init__(self, dram_port, random):
         self.start = Signal()
         self.done = Signal()
@@ -188,6 +204,18 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
 
 class LiteDRAMBISTChecker(Module, AutoCSR):
+    """litex module to check a given pattern in memory.
+
+    CSRs:
+     * reset - Reset the module
+     * start - Start the checking
+     * done - The module has completed checking
+
+     * base - DRAM address to start from.
+     * length - Number of DRAM words to check for.
+     * error_count - Number of DRAM words which don't match.
+    """
+
     def __init__(self, dram_port, random=True):
         self.reset = CSR()
         self.start = CSR()
