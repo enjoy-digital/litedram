@@ -1,9 +1,37 @@
+"""Direct Memory Access (DMA) reader and writer modules."""
+
 from litex.gen import *
 
 from litex.soc.interconnect import stream
 
 
 class LiteDRAMDMAReader(Module):
+    """Read data from DRAM memory.
+
+    For every address written to the sink, one DRAM word will be produced on
+    the source.
+
+    Parameters
+    ----------
+    port : dram_port
+        Port on the DRAM memory controller to read from.
+
+    fifo_depth : int
+        How many request results the output FIFO can contain (and thus how many
+        read requests can be outstanding at once).
+
+    fifo_buffered : bool
+        ???
+
+    Attributes
+    ----------
+    sink : Record("address")
+        Sink for DRAM addresses to be read.
+
+    source : Record("data")
+        Source for DRAM word results from reading.
+    """
+
     def __init__(self, port, fifo_depth=16, fifo_buffered=False):
         self.sink = sink = stream.Endpoint([("address", port.aw)])
         self.source = source = stream.Endpoint([("data", port.dw)])
@@ -48,6 +76,25 @@ class LiteDRAMDMAReader(Module):
 
 
 class LiteDRAMDMAWriter(Module):
+    """Write data to DRAM memory.
+
+    Parameters
+    ----------
+    port : dram_port
+        Port on the DRAM memory controller to write to.
+
+    fifo_depth : int
+        How many requests the input FIFO can contain (and thus how many write
+        requests can be outstanding at once).
+
+    fifo_buffered : bool
+        ???
+
+    Attributes
+    ----------
+    sink : Record("address", "data")
+        Sink for DRAM addresses and DRAM data word to be written too.
+    """
     def __init__(self, port, fifo_depth=16, fifo_buffered=False):
         self.sink = sink = stream.Endpoint([("address", port.aw),
                                             ("data", port.dw)])
