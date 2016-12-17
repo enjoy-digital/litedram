@@ -13,7 +13,22 @@ from litedram.frontend.dma import LiteDRAMDMAWriter, LiteDRAMDMAReader
 
 @CEInserter()
 class LFSR(Module):
-    """Linear-Feedback Shift Register to generate a pseudo-random sequence."""
+    """Linear-Feedback Shift Register to generate a pseudo-random sequence.
+
+    Parameters
+    ----------
+    n_out : int
+        Width of the output data signal.
+    n_state : int
+        ???
+    taps : list of int
+        ???
+
+    Attributes
+    ----------
+    o : in
+        Output data
+    """
 
     def __init__(self, n_out, n_state=31, taps=[27, 30]):
         self.o = Signal(n_out)
@@ -36,7 +51,18 @@ class LFSR(Module):
 
 @CEInserter()
 class Counter(Module):
-    """Simple incremental counter."""
+    """Simple incremental counter.
+
+    Parameters
+    ----------
+    n_out : int
+        Width of the output data signal.
+
+    Attributes
+    ----------
+    o : in
+        Output data
+    """
 
     def __init__(self, n_out):
         self.o = Signal(n_out)
@@ -86,13 +112,20 @@ class _LiteDRAMBISTGenerator(Module):
 class LiteDRAMBISTGenerator(Module, AutoCSR):
     """litex module to generate a given pattern in memory.abs
 
-    CSRs:
-     * reset - Reset the module
-     * start - Start the checking
-     * done - The module has completed writing pattern
+    Attributes
+    ----------
+    reset : in
+        Reset the module.
+    start : in
+        Start the generation.
 
-     * base - DRAM address to start from.
-     * length - Number of DRAM words to check for.
+    base : in
+        DRAM address to start from.
+    length : in
+        Number of DRAM words to write.
+
+    done : out
+        The module has completed writing the pattern.
     """
 
     def __init__(self, dram_port, random=True):
@@ -236,7 +269,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
     base : in
         DRAM address to start from.
     length : in
-        Number of DRAM words to check for.
+        Number of DRAM words to check.
     halt_on_error : in
         Stop checking at the first error to occur.
 
