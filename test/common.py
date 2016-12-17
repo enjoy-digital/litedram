@@ -14,8 +14,8 @@ def toggle_re(reg):
 def reset_bist_module(module):
     # Toggle the reset
     yield from toggle_re(module.reset)
-    # Takes 8 more clock cycles for the reset to have an effect
-    for i in range(8):
+    # Takes a few clock cycles for the reset to have an effect
+    for i in range(16):
         yield
 
     # Check some initial conditions are correct after reset.

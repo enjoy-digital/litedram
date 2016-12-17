@@ -129,27 +129,27 @@ def main_generator(dut, mem):
     yield from toggle_re(dut.checker.start)
     for i in range(8):
         yield
-    while((yield dut.checker.core.error) == 0):
+    while((yield dut.checker.core.data_error) == 0):
         yield
 
-    err_addr = yield dut.checker.core._data_counter + dut.checker.core.base
+    err_addr = yield dut.checker.core.data_counter + dut.checker.core.base
     assert err_addr == 20, err_addr
-    err_expect = yield dut.checker.core.expect
+    err_expect = yield dut.checker.core.gen.o
     assert err_expect == 0xffff000f, hex(err_expect)
-    err_actual = yield dut.checker.core.actual
+    err_actual = yield dut.checker.core.dma.source.data
     assert err_actual == 0x200, err_actual
     yield
     errors = yield dut.checker.core.err_count
     assert errors == 1, errors
 
-    while((yield dut.checker.core.error) == 0):
+    while((yield dut.checker.core.data_error) == 0):
         yield
 
-    err_addr = yield dut.checker.core._data_counter + dut.checker.core.base
+    err_addr = yield dut.checker.core.data_counter + dut.checker.core.base
     assert err_addr == 21, err_addr
-    err_expect = yield dut.checker.core.expect
+    err_expect = yield dut.checker.core.gen.o
     assert err_expect == 0xfff1ff1f, hex(err_expect)
-    err_actual = yield dut.checker.core.actual
+    err_actual = yield dut.checker.core.dma.source.data
     assert err_actual == 0x210, hex(err_actual)
     yield
     errors = yield dut.checker.core.err_count
