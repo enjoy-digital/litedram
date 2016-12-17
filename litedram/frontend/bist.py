@@ -60,13 +60,13 @@ class _LiteDRAMBISTGenerator(Module):
         else:
         	self.submodules.gen = gen = Counter(dram_port.dw)
 
-        self.started = started = Signal()
-        enable = Signal()
+        self.running = running = Signal()
+        not_finished = Signal()
         counter = Signal(dram_port.aw)
-        self.comb += enable.eq(started & (counter != (self.length - 1)))
+        self.comb += not_finished.eq(running & (counter != (self.length - 1)))
         self.sync += [
             If(self.start,
-                started.eq(1),
+                running.eq(1),
                 counter.eq(0)
             ).Elif(gen.ce,
                 counter.eq(counter + 1)
@@ -74,12 +74,12 @@ class _LiteDRAMBISTGenerator(Module):
         ]
 
         self.comb += [
-            dma.sink.valid.eq(enable),
+            dma.sink.valid.eq(not_finished),
             dma.sink.address.eq(self.base + counter),
             dma.sink.data.eq(gen.o),
-            gen.ce.eq(enable & dma.sink.ready),
+            gen.ce.eq(not_finished & dma.sink.ready),
 
-            self.done.eq(~enable & started)
+            self.done.eq(~not_finished & running)
         ]
 
 
@@ -145,11 +145,11 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.length = Signal(dram_port.aw)
         self.halt_on_error = Signal()
 
-        self.error_count = Signal(32)
-        self.error_addr = Signal(dram_port.aw)
+        self.err_count = Signal(32)
+        self.err_addr = Signal(dram_port.aw)
 
-        self.error_wanted = Signal(dram_port.dw)
-        self.error_actual = Signal(dram_port.dw)
+        self.err_expect = Signal(dram_port.dw)
+        self.err_actual = Signal(dram_port.dw)
 
         self.done = Signal()
 
@@ -164,24 +164,24 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
         self._address_counter = address_counter = Signal(dram_port.aw)
 
-        self.started = started = Signal()
+        self.running = running = Signal()
         self.sync += [
             If(self.start,
-                started.eq(1),
-                If(self.error_addr != 0,
-                    self.error_addr.eq(0),
+                running.eq(1),
+                If(self.err_addr != 0,
+                    self.err_addr.eq(0),
                     address_counter.eq(address_counter+1),
                 ),
             ),
         ]
 
-        address_enable = Signal()
+        address_not_finished = Signal()
         address_counter_ce = Signal()
         self.comb += [
-            address_enable.eq(started & (address_counter != (self.length - 1))),
-            address_counter_ce.eq(address_enable & dma.sink.ready),
+            address_not_finished.eq(running & (address_counter != (self.length - 1))),
+            address_counter_ce.eq(address_not_finished & dma.sink.ready),
 
-            dma.sink.valid.eq(address_enable),
+            dma.sink.valid.eq(address_not_finished),
             dma.sink.address.eq(self.base + address_counter),
         ]
         self.sync += [
@@ -191,11 +191,11 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         ]
 
         self._data_counter = data_counter = Signal(dram_port.aw)
-        data_enable = Signal()
+        data_not_finished = Signal()
         data_counter_ce = Signal()
         self.comb += [
-            data_enable.eq(started & (data_counter != address_counter)),
-            data_counter_ce.eq(data_enable & dma.source.valid),
+            data_not_finished.eq(running & (data_counter != address_counter)),
+            data_counter_ce.eq(data_not_finished & dma.source.valid),
 
             dma.source.ready.eq(data_counter_ce),
             gen.ce.eq(data_counter_ce),
@@ -204,12 +204,12 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             If(data_counter_ce,
                 data_counter.eq(data_counter + 1),
                 If(dma.source.data != gen.o,
-                    self.error_count.eq(self.error_count + 1),
-                    self.error_addr.eq(self.base + data_counter),
-                    self.error_wanted.eq(gen.o),
-                    self.error_actual.eq(dma.source.data),
+                    self.err_count.eq(self.err_count + 1),
+                    self.err_addr.eq(self.base + data_counter),
+                    self.err_expect.eq(gen.o),
+                    self.err_actual.eq(dma.source.data),
                     If(self.halt_on_error,
-                        started.eq(0),
+                        running.eq(0),
                     ),
                 )
             ),
@@ -217,10 +217,10 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
         error = Signal()
         self.comb += [
-            error.eq(self.halt_on_error & (self.error_addr != 0)),
+            error.eq(self.halt_on_error & (self.err_addr != 0)),
         ]
 
-        self.comb += self.done.eq((~data_enable & ~address_enable & started) | error)
+        self.comb += self.done.eq((~data_not_finished & ~address_not_finished & running) | error)
 
 
 class LiteDRAMBISTChecker(Module, AutoCSR):
@@ -243,22 +243,31 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
     done : out
         The module has completed checking
 
-    error_count : out
+    err_count : out
         Number of DRAM words which don't match.
-    error_addr : out
+
+    err_addr : out
         Address of the last error to occur.
+    err_expect : out
+        Expected data value on the last error.
+    err_actual : out
+        Actual data value on the last error.
     """
 
     def __init__(self, dram_port, random=True):
         self.reset = CSR()
         self.start = CSR()
-        self.done = CSRStatus()
+
         self.base = CSRStorage(dram_port.aw)
         self.length = CSRStorage(dram_port.aw)
         self.halt_on_error = CSRStorage()
 
-        self.error_count = CSRStatus(32)
-        self.error_addr = CSRStatus(dram_port.aw)
+        self.done = CSRStatus()
+
+        self.err_count = CSRStatus(32)
+        self.err_addr = CSRStatus(dram_port.aw)
+        self.err_expect = CSRStatus(dram_port.dw)
+        self.err_actual = CSRStatus(dram_port.dw)
 
         # # #
 
@@ -301,13 +310,23 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             core.halt_on_error.eq(halt_on_error_sync.o),
         ]
 
-        error_count_sync = BusSynchronizer(32, cd, "sys")
-        error_addr_sync = BusSynchronizer(dram_port.aw, cd, "sys")
-        self.submodules += error_addr_sync, error_count_sync
-        self.comb += [
-            error_count_sync.i.eq(core.error_count),
-            self.error_count.status.eq(error_count_sync.o),
+        err_count_sync = BusSynchronizer(32, cd, "sys")
+        err_addr_sync = BusSynchronizer(dram_port.aw, cd, "sys")
+        err_expect_sync = BusSynchronizer(dram_port.dw, cd, "sys")
+        err_actual_sync = BusSynchronizer(dram_port.dw, cd, "sys")
 
-            error_addr_sync.i.eq(core.error_addr),
-            self.error_addr.status.eq(error_addr_sync.o),
+        self.submodules += err_addr_sync, err_count_sync, err_expect_sync, err_actual_sync
+
+        self.comb += [
+            err_count_sync.i.eq(core.err_count),
+            self.err_count.status.eq(err_count_sync.o),
+
+            err_addr_sync.i.eq(core.err_addr),
+            self.err_addr.status.eq(err_addr_sync.o),
+
+            err_expect_sync.i.eq(core.err_expect),
+            self.err_expect.status.eq(err_expect_sync.o),
+
+            err_actual_sync.i.eq(core.err_actual),
+            self.err_actual.status.eq(err_actual_sync.o),
         ]

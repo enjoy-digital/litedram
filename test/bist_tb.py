@@ -55,7 +55,7 @@ def main_generator(dut, mem):
 
     # read with no errors
     yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 0, errors
 
     yield dut.checker.base.storage.eq(16)
@@ -69,7 +69,7 @@ def main_generator(dut, mem):
         yield
     done = yield dut.checker.done.status
     assert done, done
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 0, errors
 
     yield
@@ -77,7 +77,7 @@ def main_generator(dut, mem):
 
     # read with one error
     yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 0, errors
 
     print("mem.mem[20]", hex(mem.mem[20]))
@@ -95,18 +95,18 @@ def main_generator(dut, mem):
         yield
     done = yield dut.checker.done.status
     assert done, done
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 1, errors
 
-    error_addr = yield dut.checker.error_addr.status
-    assert error_addr == 20, error_addr
+    err_addr = yield dut.checker.err_addr.status
+    assert err_addr == 20, err_addr
 
     yield
     yield
 
     # read with two errors
     yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 0, errors
 
     print("mem.mem[21]", hex(mem.mem[21]))
@@ -124,18 +124,18 @@ def main_generator(dut, mem):
         yield
     done = yield dut.checker.done.status
     assert done, done
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 2, errors
 
-    error_addr = yield dut.checker.error_addr.status
-    assert error_addr == 21, error_addr
+    err_addr = yield dut.checker.err_addr.status
+    assert err_addr == 21, err_addr
 
     yield
     yield
 
     # read with two errors but halting on the first one
     yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 0, errors
 
     yield dut.checker.base.storage.eq(16)
@@ -150,19 +150,19 @@ def main_generator(dut, mem):
         yield
     done = yield dut.checker.done.status
     assert done, done
-    started = yield dut.checker.core.started
-    assert not started, started
+    running = yield dut.checker.core.running
+    assert not running, running
     for i in range(16):
         yield
 
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 1, errors
-    error_addr = yield dut.checker.error_addr.status
-    assert error_addr == 20, error_addr
-    error_wanted = yield dut.checker.core.error_wanted
-    assert error_wanted == 0xffff000f, error_wanted
-    error_actual = yield dut.checker.core.error_actual
-    assert error_actual == 0x200, error_actual
+    err_addr = yield dut.checker.err_addr.status
+    assert err_addr == 20, err_addr
+    err_expect = yield dut.checker.core.err_expect
+    assert err_expect == 0xffff000f, err_expect
+    err_actual = yield dut.checker.core.err_actual
+    assert err_actual == 0x200, err_actual
 
     yield from toggle_re(dut.checker.start)
     for i in range(8):
@@ -171,19 +171,19 @@ def main_generator(dut, mem):
         yield
     done = yield dut.checker.done.status
     assert done, done
-    started = yield dut.checker.core.started
-    assert not started, started
+    running = yield dut.checker.core.running
+    assert not running, running
     for i in range(16):
         yield
 
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 2, errors
-    error_addr = yield dut.checker.error_addr.status
-    assert error_addr == 21, error_addr
-    error_wanted = yield dut.checker.core.error_wanted
-    assert error_wanted == 0xfff1ff1f, error_wanted
-    error_actual = yield dut.checker.core.error_actual
-    assert error_actual == 0x210, error_actual
+    err_addr = yield dut.checker.err_addr.status
+    assert err_addr == 21, err_addr
+    err_expect = yield dut.checker.core.err_expect
+    assert err_expect == 0xfff1ff1f, err_expect
+    err_actual = yield dut.checker.core.err_actual
+    assert err_actual == 0x210, err_actual
 
     yield from toggle_re(dut.checker.start)
     for i in range(8):
@@ -192,18 +192,18 @@ def main_generator(dut, mem):
         yield
     done = yield dut.checker.done.status
     assert done, done
-    started = yield dut.checker.core.started
-    assert started, started
+    running = yield dut.checker.core.running
+    assert running, running
     for i in range(16):
         yield
 
-    error_addr = yield dut.checker.error_addr.status
-    error_wanted = yield dut.checker.core.error_wanted
-    error_actual = yield dut.checker.core.error_actual
-    errors = yield dut.checker.error_count.status
+    err_addr = yield dut.checker.err_addr.status
+    err_expect = yield dut.checker.core.err_expect
+    err_actual = yield dut.checker.core.err_actual
+    errors = yield dut.checker.err_count.status
     assert errors == 2, errors
-    error_addr = yield dut.checker.error_addr.status
-    assert error_addr == 0, error_addr
+    err_addr = yield dut.checker.err_addr.status
+    assert err_addr == 0, err_addr
 
     yield
     yield
