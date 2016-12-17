@@ -72,6 +72,7 @@ class Counter(Module):
         self.sync += self.o.eq(self.o + 1)
 
 
+@ResetInserter()
 class _LiteDRAMBISTGenerator(Module):
 
     def __init__(self, dram_port, random):
@@ -144,7 +145,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
         cd = dram_port.cd
 
-        core = ResetInserter()(_LiteDRAMBISTGenerator(dram_port, random))
+        core = _LiteDRAMBISTGenerator(dram_port, random)
         self.submodules.core = ClockDomainsRenamer(cd)(core)
 
         reset_sync = PulseSynchronizer("sys", cd)
@@ -177,6 +178,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         ]
 
 
+@ResetInserter()
 class _LiteDRAMBISTChecker(Module, AutoCSR):
 
     def __init__(self, dram_port, random):
@@ -285,7 +287,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
         cd = dram_port.cd
 
-        core = ResetInserter()(_LiteDRAMBISTChecker(dram_port, random))
+        core = _LiteDRAMBISTChecker(dram_port, random)
         self.submodules.core = ClockDomainsRenamer(cd)(core)
 
         reset_sync = PulseSynchronizer("sys", cd)
