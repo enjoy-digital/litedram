@@ -86,11 +86,9 @@ class _LiteDRAMBISTGenerator(Module):
         gen_cls = LFSR if random else Counter
         self.submodules.gen = gen = gen_cls(dram_port.dw)
 
-        cmd_counter = Signal(dram_port.aw)
+        self.cmd_counter = cmd_counter = Signal(dram_port.aw)
 
-        fsm = FSM(reset_state="IDLE")
-        self.submodules += fsm
-
+        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
             If(self.start,
                 NextValue(cmd_counter, 0),
@@ -149,7 +147,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         core = ResetInserter()(_LiteDRAMBISTGenerator(dram_port, random))
         self.submodules.core = ClockDomainsRenamer(cd)(core)
 
-        reset_sync = BusSynchronizer(1, "sys", cd)
+        reset_sync = PulseSynchronizer("sys", cd)
         start_sync = PulseSynchronizer("sys", cd)
         self.submodules += reset_sync, start_sync
         self.comb += [
@@ -197,9 +195,8 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.submodules.gen = gen = gen_cls(dram_port.dw)
 
         # address
-        self._cmd_counter = cmd_counter = Signal(dram_port.aw)
-        cmd_fsm = FSM(reset_state="IDLE")
-        self.submodules += cmd_fsm
+        self.cmd_counter = cmd_counter = Signal(dram_port.aw)
+        self.submodules.cmd_fsm = cmd_fsm = FSM(reset_state="IDLE")
 
         cmd_fsm.act("IDLE",
             If(self.start,
@@ -220,18 +217,11 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.comb += dma.sink.address.eq(self.base + cmd_counter)
 
         # data
-        self._data_counter = data_counter = Signal(dram_port.aw)
-        data_fsm = FSM(reset_state="IDLE")
-        self.submodules += data_fsm
+        self.data_counter = data_counter = Signal(dram_port.aw)
+        self.submodules.data_fsm = data_fsm = FSM(reset_state="IDLE")
 
-        self.error = error = Signal()
-        self.actual = actual = Signal(dram_port.aw)
-        self.expect = expect = Signal(dram_port.aw)
-        self.comb += [
-            actual.eq(dma.source.data),
-            expect.eq(gen.o),
-            error.eq(dma.source.valid & (expect != actual)),
-        ]
+        self.data_error = Signal()
+        self.comb += self.data_error.eq(dma.source.data != gen.o)
 
         data_fsm.act("IDLE",
             If(self.start,
@@ -245,7 +235,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             If(dma.source.valid,
                 gen.ce.eq(1),
                 NextValue(data_counter, data_counter + 1),
-                If(error,
+                If(self.data_error,
                     NextValue(self.err_count, self.err_count + 1),
                 ),
                 If(data_counter == (self.length-1),
@@ -255,8 +245,8 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         )
         data_fsm.act("DONE")
 
-        self.comb += self.done.eq(
-            cmd_fsm.ongoing("DONE") & data_fsm.ongoing("DONE"))
+        self.comb += self.done.eq(cmd_fsm.ongoing("DONE") &
+                                  data_fsm.ongoing("DONE"))
 
 
 class LiteDRAMBISTChecker(Module, AutoCSR):
@@ -298,8 +288,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         core = ResetInserter()(_LiteDRAMBISTChecker(dram_port, random))
         self.submodules.core = ClockDomainsRenamer(cd)(core)
 
-        #reset_sync = PulseSynchronizer("sys", cd)
-        reset_sync = BusSynchronizer(1, "sys", cd)
+        reset_sync = PulseSynchronizer("sys", cd)
         start_sync = PulseSynchronizer("sys", cd)
         self.submodules += reset_sync, start_sync
         self.comb += [
