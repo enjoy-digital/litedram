@@ -19,9 +19,6 @@ def reset_bist_module(module):
         yield
 
     # Check some initial conditions are correct after reset.
-    running = yield module.core.running
-    assert running == 0, running
-
     done = yield module.done.status
     assert not done, done
 

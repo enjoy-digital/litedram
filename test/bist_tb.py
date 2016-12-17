@@ -20,16 +20,6 @@ class TB(Module):
         self.submodules.checker = LiteDRAMBISTChecker(self.read_port, random=True)
 
 
-finished = []
-
-def cycle_assert(dut):
-    while not finished:
-        addr = yield dut.checker.core._address_counter
-        data = yield dut.checker.core._data_counter
-        assert addr >= data, "addr {} >= data {}".format(addr, data)
-        yield
-
-
 def main_generator(dut, mem):
     # Populate memory with random data
     random.seed(0)
@@ -55,7 +45,7 @@ def main_generator(dut, mem):
 
     # read with no errors
     yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 0, errors
 
     yield dut.checker.base.storage.eq(16)
@@ -69,7 +59,7 @@ def main_generator(dut, mem):
         yield
     done = yield dut.checker.done.status
     assert done, done
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 0, errors
 
     yield
@@ -77,7 +67,7 @@ def main_generator(dut, mem):
 
     # read with one error
     yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 0, errors
 
     print("mem.mem[20]", hex(mem.mem[20]))
@@ -95,7 +85,7 @@ def main_generator(dut, mem):
         yield
     done = yield dut.checker.done.status
     assert done, done
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 1, errors
 
     yield
@@ -103,7 +93,7 @@ def main_generator(dut, mem):
 
     # read with two errors
     yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 0, errors
 
     print("mem.mem[21]", hex(mem.mem[21]))
@@ -121,7 +111,7 @@ def main_generator(dut, mem):
         yield
     done = yield dut.checker.done.status
     assert done, done
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 2, errors
 
     yield
@@ -129,7 +119,7 @@ def main_generator(dut, mem):
 
     # read with two errors but halting on the first one
     yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 0, errors
 
     yield dut.checker.base.storage.eq(16)
@@ -144,12 +134,12 @@ def main_generator(dut, mem):
 
     err_addr = yield dut.checker.core._data_counter + dut.checker.core.base
     assert err_addr == 20, err_addr
-    err_expect = yield dut.checker.core.expected
+    err_expect = yield dut.checker.core.expect
     assert err_expect == 0xffff000f, hex(err_expect)
     err_actual = yield dut.checker.core.actual
     assert err_actual == 0x200, err_actual
     yield
-    errors = yield dut.checker.core.error_count
+    errors = yield dut.checker.core.err_count
     assert errors == 1, errors
 
     while((yield dut.checker.core.error) == 0):
@@ -157,30 +147,24 @@ def main_generator(dut, mem):
 
     err_addr = yield dut.checker.core._data_counter + dut.checker.core.base
     assert err_addr == 21, err_addr
-    err_expect = yield dut.checker.core.expected
+    err_expect = yield dut.checker.core.expect
     assert err_expect == 0xfff1ff1f, hex(err_expect)
     err_actual = yield dut.checker.core.actual
     assert err_actual == 0x210, hex(err_actual)
     yield
-    errors = yield dut.checker.core.error_count
+    errors = yield dut.checker.core.err_count
     assert errors == 2, errors
 
     while((yield dut.checker.done.status) == 0):
         yield
+
     done = yield dut.checker.done.status
     assert done, done
-    running = yield dut.checker.core.running
-    assert running, running
-    for i in range(16):
-        yield
-
-    errors = yield dut.checker.error_count.status
+    errors = yield dut.checker.err_count.status
     assert errors == 2, errors
 
     yield
     yield
-
-    finished.append(True)
 
 
 if __name__ == "__main__":
@@ -191,7 +175,6 @@ if __name__ == "__main__":
             main_generator(tb, mem),
             mem.write_generator(tb.write_port),
             mem.read_generator(tb.read_port),
-            cycle_assert(tb),
         ],
     }
     clocks = {"sys": 10}

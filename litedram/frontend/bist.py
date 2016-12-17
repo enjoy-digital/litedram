@@ -45,7 +45,7 @@ class LFSR(Module):
 
         self.sync += [
             state.eq(Cat(*curval[:n_state])),
-            self.o.eq(Cat(*curval))
+            self.o.eq(Cat(*curval)),
         ]
 
 
@@ -66,6 +66,9 @@ class Counter(Module):
 
     def __init__(self, n_out):
         self.o = Signal(n_out)
+
+        # # #
+
         self.sync += self.o.eq(self.o + 1)
 
 
@@ -80,32 +83,36 @@ class _LiteDRAMBISTGenerator(Module):
         # # #
 
         self.submodules.dma = dma = LiteDRAMDMAWriter(dram_port)
+        gen_cls = LFSR if random else Counter
+        self.submodules.gen = gen = gen_cls(dram_port.dw)
 
-        if random:
-            self.submodules.gen = gen = LFSR(dram_port.dw)
-        else:
-            self.submodules.gen = gen = Counter(dram_port.dw)
+        cmd_counter = Signal(dram_port.aw)
 
-        self.running = running = Signal()
-        not_finished = Signal()
-        counter = Signal(dram_port.aw)
-        self.comb += not_finished.eq(running & (counter != (self.length - 1)))
-        self.sync += [
+        fsm = FSM(reset_state="IDLE")
+        self.submodules += fsm
+
+        fsm.act("IDLE",
             If(self.start,
-                running.eq(1),
-                counter.eq(0)
-            ).Elif(gen.ce,
-                counter.eq(counter + 1)
-            )
-        ]
-
+                NextValue(cmd_counter, 0),
+                NextState("RUN"),
+            ),
+        )
+        fsm.act("RUN",
+            dma.sink.valid.eq(1),
+            If(dma.sink.ready,
+                gen.ce.eq(1),
+                NextValue(cmd_counter, cmd_counter + 1),
+                If(cmd_counter == (self.length-1),
+                    NextState("DONE"),
+                ),
+            ),
+        )
+        fsm.act("DONE",
+            self.done.eq(1),
+        )
         self.comb += [
-            dma.sink.valid.eq(not_finished),
-            dma.sink.address.eq(self.base + counter),
+            dma.sink.address.eq(self.base + cmd_counter),
             dma.sink.data.eq(gen.o),
-            gen.ce.eq(not_finished & dma.sink.ready),
-
-            self.done.eq(~not_finished & running)
         ]
 
 
@@ -144,28 +151,31 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
         reset_sync = BusSynchronizer(1, "sys", cd)
         start_sync = PulseSynchronizer("sys", cd)
-        done_sync = BusSynchronizer(1, cd, "sys")
-        self.submodules += reset_sync, start_sync, done_sync
-
-        base_sync = BusSynchronizer(dram_port.aw, "sys", cd)
-        length_sync = BusSynchronizer(dram_port.aw, "sys", cd)
-        self.submodules += base_sync, length_sync
-
+        self.submodules += reset_sync, start_sync
         self.comb += [
             reset_sync.i.eq(self.reset.re),
             core.reset.eq(reset_sync.o),
 
             start_sync.i.eq(self.start.re),
             core.start.eq(start_sync.o),
+        ]
 
+        done_sync = BusSynchronizer(1, cd, "sys")
+        self.submodules += done_sync
+        self.comb += [
             done_sync.i.eq(core.done),
             self.done.status.eq(done_sync.o),
+        ]
 
+        base_sync = BusSynchronizer(dram_port.aw, "sys", cd)
+        length_sync = BusSynchronizer(dram_port.aw, "sys", cd)
+        self.submodules += base_sync, length_sync
+        self.comb += [
             base_sync.i.eq(self.base.storage),
             core.base.eq(base_sync.o),
 
             length_sync.i.eq(self.length.storage),
-            core.length.eq(length_sync.o)
+            core.length.eq(length_sync.o),
         ]
 
 
@@ -173,77 +183,80 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
     def __init__(self, dram_port, random):
         self.start = Signal()
+        self.done = Signal()
 
         self.base = Signal(dram_port.aw)
         self.length = Signal(dram_port.aw)
 
-        self.error_count = Signal(32)
+        self.err_count = Signal(32)
 
-        self.running = running = Signal()
-        self.done = Signal()
+        # # #
 
         self.submodules.dma = dma = LiteDRAMDMAReader(dram_port)
+        gen_cls = LFSR if random else Counter
+        self.submodules.gen = gen = gen_cls(dram_port.dw)
 
-        # Address generation
-        self._address_counter = address_counter = Signal(dram_port.aw)
-        address_not_finished = Signal()
-        address_counter_ce = Signal()
-        self.comb += [
-            address_not_finished.eq(running & (address_counter != (self.length - 1))),
-            address_counter_ce.eq(address_not_finished & dma.sink.ready),
+        # address
+        self._cmd_counter = cmd_counter = Signal(dram_port.aw)
+        cmd_fsm = FSM(reset_state="IDLE")
+        self.submodules += cmd_fsm
 
-            dma.sink.valid.eq(address_not_finished),
-            dma.sink.address.eq(self.base + address_counter),
-        ]
-        self.sync += [
-            If(address_counter_ce,
-                address_counter.eq(address_counter + 1)
+        cmd_fsm.act("IDLE",
+            If(self.start,
+                NextValue(cmd_counter, 0),
+                NextState("RUN"),
             ),
-        ]
+        )
+        cmd_fsm.act("RUN",
+            dma.sink.valid.eq(1),
+            If(dma.sink.ready,
+                NextValue(cmd_counter, cmd_counter + 1),
+                If(cmd_counter == (self.length-1),
+                    NextState("DONE")
+                ),
+            ),
+        )
+        cmd_fsm.act("DONE")
+        self.comb += dma.sink.address.eq(self.base + cmd_counter)
 
-        # Data receiving 
+        # data
         self._data_counter = data_counter = Signal(dram_port.aw)
-        data_not_finished = Signal()
-        data_counter_ce = Signal()
-        self.comb += [
-            data_not_finished.eq(running & (data_counter != address_counter)),
-            data_counter_ce.eq(data_not_finished & dma.source.valid),
-
-            dma.source.ready.eq(data_counter_ce),
-        ]
-        self.sync += [
-            If(data_counter_ce, data_counter.eq(data_counter + 1)),
-        ]
-
-        # Data checking
-        if random:
-            self.submodules.gen = gen = LFSR(dram_port.dw)
-        else:
-            self.submodules.gen = gen = Counter(dram_port.dw)
-        self.comb += [
-            gen.ce.eq(data_counter_ce),
-        ]
-
-        self.expected = expected = Signal(dram_port.dw)
-        self.comb += [
-            expected.eq(gen.o),
-        ]
-        self.actual = actual = Signal(dram_port.dw)
-        self.comb += [
-            actual.eq(dma.source.data),
-        ]
+        data_fsm = FSM(reset_state="IDLE")
+        self.submodules += data_fsm
 
         self.error = error = Signal()
+        self.actual = actual = Signal(dram_port.aw)
+        self.expect = expect = Signal(dram_port.aw)
         self.comb += [
-            error.eq(data_counter_ce & (expected != actual)),
-        ]
-        self.sync += [
-            If(error, self.error_count.eq(self.error_count + 1)),
+            actual.eq(dma.source.data),
+            expect.eq(gen.o),
+            error.eq(dma.source.valid & (expect != actual)),
         ]
 
-        # States
-        self.sync += If(self.start, running.eq(1))
-        self.comb += self.done.eq(~data_not_finished & ~address_not_finished & running)
+        data_fsm.act("IDLE",
+            If(self.start,
+                NextValue(data_counter, 0),
+                NextValue(self.err_count, 0),
+                NextState("RUN"),
+            ),
+        )
+        data_fsm.act("RUN",
+            dma.source.ready.eq(1),
+            If(dma.source.valid,
+                gen.ce.eq(1),
+                NextValue(data_counter, data_counter + 1),
+                If(error,
+                    NextValue(self.err_count, self.err_count + 1),
+                ),
+                If(data_counter == (self.length-1),
+                    NextState("DONE"),
+                ),
+            ),
+        )
+        data_fsm.act("DONE")
+
+        self.comb += self.done.eq(
+            cmd_fsm.ongoing("DONE") & data_fsm.ongoing("DONE"))
 
 
 class LiteDRAMBISTChecker(Module, AutoCSR):
@@ -264,7 +277,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
     done : out
         The module has completed checking
 
-    error_count : out
+    err_count : out
         Number of DRAM words which don't match.
     """
 
@@ -274,11 +287,9 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
         self.base = CSRStorage(dram_port.aw)
         self.length = CSRStorage(dram_port.aw)
-        self.halt_on_error = CSRStorage()
 
         self.done = CSRStatus()
-
-        self.error_count = CSRStatus(32)
+        self.err_count = CSRStatus(32)
 
         # # #
 
@@ -317,9 +328,9 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             core.length.eq(length_sync.o),
         ]
 
-        error_count_sync = BusSynchronizer(32, cd, "sys")
-        self.submodules += error_count_sync
+        err_count_sync = BusSynchronizer(32, cd, "sys")
+        self.submodules += err_count_sync
         self.comb += [
-            error_count_sync.i.eq(core.error_count),
-            self.error_count.status.eq(error_count_sync.o),
+            err_count_sync.i.eq(core.err_count),
+            self.err_count.status.eq(err_count_sync.o),
         ]
