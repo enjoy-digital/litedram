@@ -9,6 +9,7 @@ from litex.soc.interconnect.stream import *
 from litedram.common import LiteDRAMWritePort, LiteDRAMReadPort
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
+from litedram.frontend.bist import LiteDRAMBISTCheckerScope
 
 from test.common import *
 
@@ -18,6 +19,7 @@ class TB(Module):
         self.read_port = LiteDRAMReadPort(aw=32, dw=32)
         self.submodules.generator = LiteDRAMBISTGenerator(self.write_port, random=True)
         self.submodules.checker = LiteDRAMBISTChecker(self.read_port, random=True)
+        self.submodules.checker_scope = LiteDRAMBISTCheckerScope(self.checker)
 
 
 def main_generator(dut, mem):
@@ -117,7 +119,7 @@ def main_generator(dut, mem):
     yield
     yield
 
-    # read with two errors but halting on the first one
+    # check the scoped signals
     yield from reset_bist_module(dut.checker)
     errors = yield dut.checker.err_count.status
     assert errors == 0, errors
@@ -129,27 +131,27 @@ def main_generator(dut, mem):
     yield from toggle_re(dut.checker.start)
     for i in range(8):
         yield
-    while((yield dut.checker.core.data_error) == 0):
+    while((yield dut.checker_scope.data_error) == 0):
         yield
 
-    err_addr = yield dut.checker.core.data_counter + dut.checker.core.base
+    err_addr = yield dut.checker_scope.data_address
     assert err_addr == 20, err_addr
-    err_expect = yield dut.checker.core.gen.o
+    err_expect = yield dut.checker_scope.data_expected
     assert err_expect == 0xffff000f, hex(err_expect)
-    err_actual = yield dut.checker.core.dma.source.data
+    err_actual = yield dut.checker_scope.data_actual
     assert err_actual == 0x200, err_actual
     yield
     errors = yield dut.checker.core.err_count
     assert errors == 1, errors
 
-    while((yield dut.checker.core.data_error) == 0):
+    while((yield dut.checker_scope.data_error) == 0):
         yield
 
-    err_addr = yield dut.checker.core.data_counter + dut.checker.core.base
+    err_addr = yield dut.checker_scope.data_address
     assert err_addr == 21, err_addr
-    err_expect = yield dut.checker.core.gen.o
+    err_expect = yield dut.checker_scope.data_expected
     assert err_expect == 0xfff1ff1f, hex(err_expect)
-    err_actual = yield dut.checker.core.dma.source.data
+    err_actual = yield dut.checker_scope.data_actual
     assert err_actual == 0x210, hex(err_actual)
     yield
     errors = yield dut.checker.core.err_count
