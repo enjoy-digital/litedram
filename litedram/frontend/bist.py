@@ -222,9 +222,6 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.data_counter = data_counter = Signal(dram_port.aw)
         self.submodules.data_fsm = data_fsm = FSM(reset_state="IDLE")
 
-        self.data_error = Signal()
-        self.comb += self.data_error.eq(dma.source.data != gen.o)
-
         data_fsm.act("IDLE",
             If(self.start,
                 NextValue(data_counter, 0),
@@ -237,7 +234,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             If(dma.source.valid,
                 gen.ce.eq(1),
                 NextValue(data_counter, data_counter + 1),
-                If(self.data_error,
+                If(dma.source.data != gen.o,
                     NextValue(self.err_count, self.err_count + 1),
                 ),
                 If(data_counter == (self.length-1),
@@ -324,4 +321,31 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         self.comb += [
             err_count_sync.i.eq(core.err_count),
             self.err_count.status.eq(err_count_sync.o),
+        ]
+
+
+class LiteDRAMBISTCheckerScope(Module):
+    """Easy scope access to important signals of LiteDRAMBISTChecker."""
+
+    def __init__(self, checker):
+        core = checker.core
+        self.data_error = Signal()
+        self.data_address = Signal(core.data_counter.nbits)
+        self.data_expected = Signal(core.dma.source.data.nbits)
+        self.data_actual = Signal(core.dma.source.data.nbits)
+
+        self.comb += [
+            self.data_error.eq(core.dma.source.valid &
+                               (self.data_actual != self.data_expected)),
+            self.data_address.eq(core.base + core.data_counter),
+            self.data_actual.eq(core.dma.source.data),
+            self.data_expected.eq(core.gen.o),
+        ]
+
+    def signals(self):
+        return [
+            self.data_error,
+            self.data_address,
+            self.data_expected,
+            self.data_actual,
         ]
