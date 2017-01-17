@@ -56,22 +56,18 @@ def main_generator(dut, mem):
     yield from checker.run(16, 64)
     assert checker.errors == 0
 
-    # corrupt memory (4 errors)
-    for i in range(4):
-        mem.mem[i+16] = ~mem.mem[i+16]
+    # corrupt memory (using generator)
+    yield from generator.reset()
+    yield from generator.run(16 + 60, 64)
 
     # read (4 errors)
     yield from checker.reset()
     yield from checker.run(16, 64)
     assert checker.errors == 4
 
-    # revert memory
-    for i in range(4):
-        mem.mem[i+16] = ~mem.mem[i+16]
-
     # read (no errors)
     yield from checker.reset()
-    yield from checker.run(16, 64)
+    yield from checker.run(16 + 60, 64)
     assert checker.errors == 0
 
 
