@@ -45,7 +45,7 @@ class LFSR(Module):
 
         self.sync += [
             state.eq(Cat(*curval[:n_state])),
-            self.o.eq(Cat(*curval)),
+            self.o.eq(Cat(*curval))
         ]
 
 
@@ -93,7 +93,7 @@ class _LiteDRAMBISTGenerator(Module):
         fsm.act("IDLE",
             If(self.start,
                 NextValue(cmd_counter, 0),
-                NextState("RUN"),
+                NextState("RUN")
             ),
         )
         fsm.act("RUN",
@@ -102,7 +102,7 @@ class _LiteDRAMBISTGenerator(Module):
                 gen.ce.eq(1),
                 NextValue(cmd_counter, cmd_counter + 1),
                 If(cmd_counter == (self.length-1),
-                    NextState("DONE"),
+                    NextState("DONE")
                 ),
             ),
         )
@@ -111,7 +111,7 @@ class _LiteDRAMBISTGenerator(Module):
         )
         self.comb += [
             dma.sink.address.eq(self.base + cmd_counter),
-            dma.sink.data.eq(gen.o),
+            dma.sink.data.eq(gen.o)
         ]
 
 
@@ -156,14 +156,14 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
             core.reset.eq(reset_sync.o),
 
             start_sync.i.eq(self.start.re),
-            core.start.eq(start_sync.o),
+            core.start.eq(start_sync.o)
         ]
 
         done_sync = BusSynchronizer(1, cd, "sys")
         self.submodules += done_sync
         self.comb += [
             done_sync.i.eq(core.done),
-            self.done.status.eq(done_sync.o),
+            self.done.status.eq(done_sync.o)
         ]
 
         base_sync = BusSynchronizer(dram_port.aw, "sys", cd)
@@ -174,7 +174,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
             core.base.eq(base_sync.o),
 
             length_sync.i.eq(self.length.storage),
-            core.length.eq(length_sync.o),
+            core.length.eq(length_sync.o)
         ]
 
 
@@ -188,7 +188,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.base = Signal(dram_port.aw)
         self.length = Signal(dram_port.aw)
 
-        self.err_count = Signal(32)
+        self.errors = Signal(32)
 
         # # #
 
@@ -203,7 +203,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         cmd_fsm.act("IDLE",
             If(self.start,
                 NextValue(cmd_counter, 0),
-                NextState("RUN"),
+                NextState("RUN")
             ),
         )
         cmd_fsm.act("RUN",
@@ -225,8 +225,8 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         data_fsm.act("IDLE",
             If(self.start,
                 NextValue(data_counter, 0),
-                NextValue(self.err_count, 0),
-                NextState("RUN"),
+                NextValue(self.errors, 0),
+                NextState("RUN")
             ),
         )
         data_fsm.act("RUN",
@@ -235,10 +235,10 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
                 gen.ce.eq(1),
                 NextValue(data_counter, data_counter + 1),
                 If(dma.source.data != gen.o,
-                    NextValue(self.err_count, self.err_count + 1),
+                    NextValue(self.errors, self.errors + 1),
                 ),
                 If(data_counter == (self.length-1),
-                    NextState("DONE"),
+                    NextState("DONE")
                 ),
             ),
         )
@@ -266,7 +266,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
     done : out
         The module has completed checking
 
-    err_count : out
+    errors : out
         Number of DRAM words which don't match.
     """
 
@@ -278,7 +278,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         self.length = CSRStorage(dram_port.aw)
 
         self.done = CSRStatus()
-        self.err_count = CSRStatus(32)
+        self.errors = CSRStatus(32)
 
         # # #
 
@@ -295,14 +295,14 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             core.reset.eq(reset_sync.o),
 
             start_sync.i.eq(self.start.re),
-            core.start.eq(start_sync.o),
+            core.start.eq(start_sync.o)
         ]
 
         done_sync = BusSynchronizer(1, cd, "sys")
         self.submodules += done_sync
         self.comb += [
             done_sync.i.eq(core.done),
-            self.done.status.eq(done_sync.o),
+            self.done.status.eq(done_sync.o)
         ]
 
         base_sync = BusSynchronizer(dram_port.aw, "sys", cd)
@@ -313,12 +313,12 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             core.base.eq(base_sync.o),
 
             length_sync.i.eq(self.length.storage),
-            core.length.eq(length_sync.o),
+            core.length.eq(length_sync.o)
         ]
 
-        err_count_sync = BusSynchronizer(32, cd, "sys")
-        self.submodules += err_count_sync
+        errors_sync = BusSynchronizer(32, cd, "sys")
+        self.submodules += errors_sync
         self.comb += [
-            err_count_sync.i.eq(core.err_count),
-            self.err_count.status.eq(err_count_sync.o),
+            errors_sync.i.eq(core.errors),
+            self.errors.status.eq(errors_sync.o)
         ]
