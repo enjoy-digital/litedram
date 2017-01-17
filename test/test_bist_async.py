@@ -8,8 +8,8 @@ from litedram.common import PhySettings, LiteDRAMPort
 from litedram.core import *
 from litedram.modules import SDRAMModule
 from litedram.frontend.crossbar import LiteDRAMCrossbar
-from litedram.frontend.bist import LiteDRAMBISTGenerator
-from litedram.frontend.bist import LiteDRAMBISTChecker
+from litedram.frontend.bist import _LiteDRAMBISTGenerator
+from litedram.frontend.bist import _LiteDRAMBISTChecker
 from litedram.frontend.adaptation import LiteDRAMPortCDC
 
 from litedram.phy.model import SDRAMPHYModel
@@ -66,39 +66,25 @@ class TB(Module):
         read_user_port = self.crossbar.get_port("read", cd="read")
 
         # generator / checker
-        self.submodules.generator = LiteDRAMBISTGenerator(write_user_port)
-        self.submodules.checker = LiteDRAMBISTChecker(read_user_port)
+        self.submodules.generator = _LiteDRAMBISTGenerator(write_user_port, True)
+        self.submodules.checker = _LiteDRAMBISTChecker(read_user_port, True)
 
 
 def main_generator(dut):
-    for i in range(100):
-        yield
+    generator = BISTDriver(dut.generator)
+    checker = BISTDriver(dut.checker)
 
-    # init
-    yield from reset_bist_module(dut.generator)
-    yield from reset_bist_module(dut.checker)
+    for i in range(16):
+    	yield
 
     # write
-    yield dut.generator.base.storage.eq(16)
-    yield dut.generator.length.storage.eq(16)
-    for i in range(32):
-        yield
-    yield from toggle_re(dut.generator.start)
-    for i in range(32):
-        yield
-    while((yield dut.generator.done.status) == 0):
-        yield
+    yield from generator.reset()
+    yield from generator.run(16, 16)
 
-    # read
-    yield dut.checker.base.storage.eq(16)
-    yield dut.checker.length.storage.eq(16)
-    for i in range(32):
-        yield
-    yield from toggle_re(dut.generator.start)
-    for i in range(32):
-        yield
-    while((yield dut.checker.done.status) == 0):
-        yield
+    # read (no errors)
+    yield from checker.reset()
+    yield from checker.run(16, 16)
+    assert checker.errors == 0
 
 
 class TestBISTAsync(unittest.TestCase):

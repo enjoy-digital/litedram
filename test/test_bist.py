@@ -20,29 +20,6 @@ class DUT(Module):
         self.submodules.checker = _LiteDRAMBISTChecker(self.read_port, True)
 
 
-class BISTDriver:
-    def __init__(self, module):
-        self.module = module
-
-    def reset(self):
-        yield self.module.reset.eq(1)
-        yield
-        yield self.module.reset.eq(0)
-        yield
-
-    def run(self, base, length):
-        yield self.module.base.eq(base)
-        yield self.module.length.eq(length)
-        yield self.module.start.eq(1)
-        yield
-        yield self.module.start.eq(0)
-        yield
-        while((yield self.module.done) == 0):
-            yield
-        if hasattr(self.module, "errors"):
-            self.errors = (yield self.module.errors)
-
-
 def main_generator(dut, mem):
     generator = BISTDriver(dut.generator)
     checker = BISTDriver(dut.checker)
