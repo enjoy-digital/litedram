@@ -1,28 +1,6 @@
 from litex.gen import *
 
 
-def toggle_re(reg):
-    resig = reg.re
-    # Check that reset isn't set
-    reval = yield resig
-    assert not reval, reval
-    yield resig.eq(1)
-    yield
-    yield resig.eq(0)
-
-
-def reset_bist_module(module):
-    # Toggle the reset
-    yield from toggle_re(module.reset)
-    # Takes a few clock cycles for the reset to have an effect
-    for i in range(16):
-        yield
-
-    # Check some initial conditions are correct after reset.
-    done = yield module.done.status
-    assert not done, done
-
-
 def seed_to_data(seed, random=True, nbits=32):
     if nbits == 32:
         if random:

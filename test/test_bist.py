@@ -6,9 +6,8 @@ from litex.gen import *
 from litex.soc.interconnect.stream import *
 
 from litedram.common import LiteDRAMWritePort, LiteDRAMReadPort
-from litedram.frontend.bist import LiteDRAMBISTGenerator
-from litedram.frontend.bist import LiteDRAMBISTChecker
-from litedram.frontend.bist import LiteDRAMBISTCheckerScope
+from litedram.frontend.bist import _LiteDRAMBISTGenerator
+from litedram.frontend.bist import _LiteDRAMBISTChecker
 
 from test.common import *
 
@@ -17,156 +16,108 @@ class DUT(Module):
     def __init__(self):
         self.write_port = LiteDRAMWritePort(aw=32, dw=32)
         self.read_port = LiteDRAMReadPort(aw=32, dw=32)
-        self.submodules.generator = LiteDRAMBISTGenerator(self.write_port, True)
-        self.submodules.checker = LiteDRAMBISTChecker(self.read_port, True)
-        self.submodules.checker_scope = LiteDRAMBISTCheckerScope(self.checker)
+        self.submodules.generator = _LiteDRAMBISTGenerator(self.write_port, False)
+        self.submodules.checker = _LiteDRAMBISTChecker(self.read_port, False)
 
 
 def main_generator(dut, mem):
-    # Populate memory with random data
-    random.seed(0)
-    for i in range(0, len(mem.mem)):
-        mem.mem[i] = random.randint(0, 2**mem.width)
-
     # write
-    yield from reset_bist_module(dut.generator)
-
-    yield dut.generator.base.storage.eq(16)
-    yield dut.generator.length.storage.eq(64)
-    for i in range(8):
-        yield
-    yield dut.generator.start.re.eq(1)
+    yield dut.generator.reset.eq(1)
     yield
-    yield dut.generator.start.re.eq(0)
+    yield dut.generator.reset.eq(0)
+    yield
+
+    yield dut.generator.base.eq(16)
+    yield dut.generator.length.eq(64)
     for i in range(8):
         yield
-    while((yield dut.generator.done.status) == 0):
+    yield dut.generator.start.eq(1)
+    yield
+    yield dut.generator.start.eq(0)
+    for i in range(8):
         yield
-    done = yield dut.generator.done.status
+    while((yield dut.generator.done) == 0):
+        yield
+    done = yield dut.generator.done
     assert done, done
 
-    # read with no errors
-    yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.err_count.status
-    assert errors == 0, errors
+    # read (no errors)
+    yield dut.checker.reset.eq(1)
+    yield
+    yield dut.checker.reset.eq(0)
+    yield
 
-    yield dut.checker.base.storage.eq(16)
-    yield dut.checker.length.storage.eq(64)
+    yield dut.checker.base.eq(16)
+    yield dut.checker.length.eq(64)
     for i in range(8):
         yield
-    yield from toggle_re(dut.checker.start)
-    for i in range(8):
-        yield
-    while((yield dut.checker.done.status) == 0):
-        yield
-    done = yield dut.checker.done.status
+    yield dut.checker.start.eq(1)
+    yield
+    yield dut.checker.start.eq(0)
+    yield
+    while True:
+        done = (yield dut.checker.done)
+        if not done:
+            yield
+        else:
+            break
     assert done, done
-    errors = yield dut.checker.err_count.status
+    errors = yield dut.checker.err_count
     assert errors == 0, errors
 
+    # corrupt memory (4 errors)
+    for i in range(4):
+        mem.mem[i+16] = ~mem.mem[i+16]
+
+    # read (4 errors)
+    yield dut.checker.reset.eq(1)
     yield
+    yield dut.checker.reset.eq(0)
     yield
 
-    # read with one error
-    yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.err_count.status
-    assert errors == 0, errors
-
-    print("mem.mem[20]", hex(mem.mem[20]))
-    assert mem.mem[20] == 0xffff000f, hex(mem.mem[20])
-    mem.mem[20] = 0x200  # Make position 20 an error
-
-    yield dut.checker.base.storage.eq(16)
-    yield dut.checker.length.storage.eq(64)
-    for i in range(8):
-        yield
-    yield from toggle_re(dut.checker.start)
-    for i in range(8):
-        yield
-    while((yield dut.checker.done.status) == 0):
-        yield
-    done = yield dut.checker.done.status
+    yield dut.checker.base.eq(16)
+    yield dut.checker.length.eq(64)
+    yield dut.checker.start.eq(1)
+    yield
+    yield dut.checker.start.eq(0)
+    yield
+    while True:
+        done = (yield dut.checker.done)
+        if not done:
+            yield
+        else:
+            break
     assert done, done
-    errors = yield dut.checker.err_count.status
-    assert errors == 1, errors
+    errors = yield dut.checker.err_count
+    assert errors == 4, errors
 
+    # revert memory
+    for i in range(4):
+        mem.mem[i+16] = ~mem.mem[i+16]
+
+    # read (no errors)
+    yield dut.checker.reset.eq(1)
     yield
+    yield dut.checker.reset.eq(0)
     yield
 
-    # read with two errors
-    yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.err_count.status
-    assert errors == 0, errors
-
-    print("mem.mem[21]", hex(mem.mem[21]))
-    assert mem.mem[21] == 0xfff1ff1f, hex(mem.mem[21])
-    mem.mem[21] = 0x210 # Make position 21 an error
-
-    yield dut.checker.base.storage.eq(16)
-    yield dut.checker.length.storage.eq(64)
+    yield dut.checker.base.eq(16)
+    yield dut.checker.length.eq(64)
     for i in range(8):
         yield
-    yield from toggle_re(dut.checker.start)
-    for i in range(8):
-        yield
-    while((yield dut.checker.done.status) == 0):
-        yield
-    done = yield dut.checker.done.status
+    yield dut.checker.start.eq(1)
+    yield
+    yield dut.checker.start.eq(0)
+    yield
+    while True:
+        done = (yield dut.checker.done)
+        if not done:
+            yield
+        else:
+            break
     assert done, done
-    errors = yield dut.checker.err_count.status
-    assert errors == 2, errors
-
-    yield
-    yield
-
-    # check the scoped signals
-    yield from reset_bist_module(dut.checker)
-    errors = yield dut.checker.err_count.status
+    errors = yield dut.checker.err_count
     assert errors == 0, errors
-
-    yield dut.checker.base.storage.eq(16)
-    yield dut.checker.length.storage.eq(64)
-    for i in range(8):
-        yield
-    yield from toggle_re(dut.checker.start)
-    for i in range(8):
-        yield
-    while((yield dut.checker_scope.data_error) == 0):
-        yield
-
-    err_addr = yield dut.checker_scope.data_address
-    assert err_addr == 20, err_addr
-    err_expect = yield dut.checker_scope.data_expected
-    assert err_expect == 0xffff000f, hex(err_expect)
-    err_actual = yield dut.checker_scope.data_actual
-    assert err_actual == 0x200, err_actual
-    yield
-    errors = yield dut.checker.core.err_count
-    assert errors == 1, errors
-
-    while((yield dut.checker_scope.data_error) == 0):
-        yield
-
-    err_addr = yield dut.checker_scope.data_address
-    assert err_addr == 21, err_addr
-    err_expect = yield dut.checker_scope.data_expected
-    assert err_expect == 0xfff1ff1f, hex(err_expect)
-    err_actual = yield dut.checker_scope.data_actual
-    assert err_actual == 0x210, hex(err_actual)
-    yield
-    errors = yield dut.checker.core.err_count
-    assert errors == 2, errors
-
-    while((yield dut.checker.done.status) == 0):
-        yield
-
-    done = yield dut.checker.done.status
-    assert done, done
-    errors = yield dut.checker.err_count.status
-    assert errors == 2, errors
-
-    yield
-    yield
 
 
 class TestBIST(unittest.TestCase):
