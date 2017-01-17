@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-
+import unittest
 import random
 
 from litex.gen import *
@@ -13,12 +12,13 @@ from litedram.frontend.bist import LiteDRAMBISTCheckerScope
 
 from test.common import *
 
-class TB(Module):
+
+class DUT(Module):
     def __init__(self):
         self.write_port = LiteDRAMWritePort(aw=32, dw=32)
         self.read_port = LiteDRAMReadPort(aw=32, dw=32)
-        self.submodules.generator = LiteDRAMBISTGenerator(self.write_port, random=True)
-        self.submodules.checker = LiteDRAMBISTChecker(self.read_port, random=True)
+        self.submodules.generator = LiteDRAMBISTGenerator(self.write_port, True)
+        self.submodules.checker = LiteDRAMBISTChecker(self.read_port, True)
         self.submodules.checker_scope = LiteDRAMBISTCheckerScope(self.checker)
 
 
@@ -169,15 +169,16 @@ def main_generator(dut, mem):
     yield
 
 
-if __name__ == "__main__":
-    tb = TB()
-    mem = DRAMMemory(32, 128)
-    generators = {
-        "sys" : [
-            main_generator(tb, mem),
-            mem.write_generator(tb.write_port),
-            mem.read_generator(tb.read_port),
-        ],
-    }
-    clocks = {"sys": 10}
-    run_simulation(tb, generators, clocks, vcd_name="sim.vcd")
+class TestBIST(unittest.TestCase):
+    def test(self):
+        dut = DUT()
+        mem = DRAMMemory(32, 128)
+        generators = {
+            "sys" : [
+                main_generator(dut, mem),
+                mem.write_generator(dut.write_port),
+                mem.read_generator(dut.read_port)
+            ]
+        }
+        clocks = {"sys": 10}
+        run_simulation(dut, generators, clocks, vcd_name="sim.vcd")

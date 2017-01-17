@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+import unittest
 
 from litex.gen import *
 
@@ -47,7 +47,9 @@ class TB(Module):
             read_latency=4,
             write_latency=0
         )
-        self.submodules.sdrphy = SDRAMPHYModel(sdram_module, phy_settings, we_granularity=0)
+        self.submodules.sdrphy = SDRAMPHYModel(sdram_module,
+                                               phy_settings,
+                                               we_granularity=0)
 
         # controller
         self.submodules.controller = LiteDRAMController(
@@ -59,7 +61,7 @@ class TB(Module):
         self.submodules.crossbar = LiteDRAMCrossbar(self.controller.interface,
                                                     self.controller.nrowbits)
 
-        # write port
+        # ports
         write_user_port = self.crossbar.get_port("write", cd="write")
         read_user_port = self.crossbar.get_port("read", cd="read")
 
@@ -71,9 +73,11 @@ class TB(Module):
 def main_generator(dut):
     for i in range(100):
         yield
+
     # init
     yield from reset_bist_module(dut.generator)
     yield from reset_bist_module(dut.checker)
+
     # write
     yield dut.generator.base.storage.eq(16)
     yield dut.generator.length.storage.eq(16)
@@ -84,6 +88,7 @@ def main_generator(dut):
         yield
     while((yield dut.generator.done.status) == 0):
         yield
+
     # read
     yield dut.checker.base.storage.eq(16)
     yield dut.checker.length.storage.eq(16)
@@ -94,16 +99,14 @@ def main_generator(dut):
         yield
     while((yield dut.checker.done.status) == 0):
         yield
-    # check
-    print("errors {:d}".format((yield dut.checker.error_count.status)))
-    yield
 
-if __name__ == "__main__":
-    tb = TB()
-    generators = {
-        "sys" :   [main_generator(tb)]
-    }
-    clocks = {"sys":   10,
-              "write": 12,
-              "read":   8}
-    run_simulation(tb, generators, clocks, vcd_name="sim.vcd")
+
+class TestBISTAsync(unittest.TestCase):
+    def test(self):
+        tb = TB()
+        generators = {"sys" :   [main_generator(tb)]}
+        clocks = {"sys":   10,
+                  "write": 12,
+                  "read":   8}
+        run_simulation(tb, generators, clocks, vcd_name="sim.vcd")
+        self.assertEqual(dut.checker.error_count.status, 0)
