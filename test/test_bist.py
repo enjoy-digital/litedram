@@ -16,108 +16,63 @@ class DUT(Module):
     def __init__(self):
         self.write_port = LiteDRAMWritePort(aw=32, dw=32)
         self.read_port = LiteDRAMReadPort(aw=32, dw=32)
-        self.submodules.generator = _LiteDRAMBISTGenerator(self.write_port, False)
-        self.submodules.checker = _LiteDRAMBISTChecker(self.read_port, False)
+        self.submodules.generator = _LiteDRAMBISTGenerator(self.write_port, True)
+        self.submodules.checker = _LiteDRAMBISTChecker(self.read_port, True)
+
+
+class BISTDriver:
+    def __init__(self, module):
+        self.module = module
+
+    def reset(self):
+        yield self.module.reset.eq(1)
+        yield
+        yield self.module.reset.eq(0)
+        yield
+
+    def run(self, base, length):
+        yield self.module.base.eq(base)
+        yield self.module.length.eq(length)
+        yield self.module.start.eq(1)
+        yield
+        yield self.module.start.eq(0)
+        yield
+        while((yield self.module.done) == 0):
+            yield
+        if hasattr(self.module, "errors"):
+            self.errors = (yield self.module.errors)
 
 
 def main_generator(dut, mem):
-    # write
-    yield dut.generator.reset.eq(1)
-    yield
-    yield dut.generator.reset.eq(0)
-    yield
+    generator = BISTDriver(dut.generator)
+    checker = BISTDriver(dut.checker)
 
-    yield dut.generator.base.eq(16)
-    yield dut.generator.length.eq(64)
-    for i in range(8):
-        yield
-    yield dut.generator.start.eq(1)
-    yield
-    yield dut.generator.start.eq(0)
-    for i in range(8):
-        yield
-    while((yield dut.generator.done) == 0):
-        yield
-    done = yield dut.generator.done
-    assert done, done
+    # write
+    yield from generator.reset()
+    yield from generator.run(16, 64)
 
     # read (no errors)
-    yield dut.checker.reset.eq(1)
-    yield
-    yield dut.checker.reset.eq(0)
-    yield
-
-    yield dut.checker.base.eq(16)
-    yield dut.checker.length.eq(64)
-    for i in range(8):
-        yield
-    yield dut.checker.start.eq(1)
-    yield
-    yield dut.checker.start.eq(0)
-    yield
-    while True:
-        done = (yield dut.checker.done)
-        if not done:
-            yield
-        else:
-            break
-    assert done, done
-    errors = yield dut.checker.err_count
-    assert errors == 0, errors
+    yield from checker.reset()
+    yield from checker.run(16, 64)
+    assert checker.errors == 0
 
     # corrupt memory (4 errors)
     for i in range(4):
         mem.mem[i+16] = ~mem.mem[i+16]
 
     # read (4 errors)
-    yield dut.checker.reset.eq(1)
-    yield
-    yield dut.checker.reset.eq(0)
-    yield
-
-    yield dut.checker.base.eq(16)
-    yield dut.checker.length.eq(64)
-    yield dut.checker.start.eq(1)
-    yield
-    yield dut.checker.start.eq(0)
-    yield
-    while True:
-        done = (yield dut.checker.done)
-        if not done:
-            yield
-        else:
-            break
-    assert done, done
-    errors = yield dut.checker.err_count
-    assert errors == 4, errors
+    yield from checker.reset()
+    yield from checker.run(16, 64)
+    assert checker.errors == 4
 
     # revert memory
     for i in range(4):
         mem.mem[i+16] = ~mem.mem[i+16]
 
     # read (no errors)
-    yield dut.checker.reset.eq(1)
-    yield
-    yield dut.checker.reset.eq(0)
-    yield
-
-    yield dut.checker.base.eq(16)
-    yield dut.checker.length.eq(64)
-    for i in range(8):
-        yield
-    yield dut.checker.start.eq(1)
-    yield
-    yield dut.checker.start.eq(0)
-    yield
-    while True:
-        done = (yield dut.checker.done)
-        if not done:
-            yield
-        else:
-            break
-    assert done, done
-    errors = yield dut.checker.err_count
-    assert errors == 0, errors
+    yield from checker.reset()
+    yield from checker.run(16, 64)
+    assert checker.errors == 0
 
 
 class TestBIST(unittest.TestCase):
