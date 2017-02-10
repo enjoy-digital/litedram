@@ -221,7 +221,7 @@ class A7DDRPHY(Module, AutoCSR):
         #  2 cycles CAS
         #  2 cycles through ISERDESE2
         rddata_en = self.dfi.phases[self.settings.rdphase].rddata_en
-        for i in range(5):
+        for i in range(6-1):
             n_rddata_en = Signal()
             self.sync += n_rddata_en.eq(rddata_en)
             rddata_en = n_rddata_en
