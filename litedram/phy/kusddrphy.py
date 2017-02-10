@@ -9,6 +9,11 @@ from litedram.common import PhySettings
 from litedram.phy.dfi import *
 from litedram.phy.bitslip import BitSlip
 
+# TODO:
+# - verify read_latency in simulation (OSERDESE3/ISERDESE3)
+# - verify initial p_DELAY_VALUE on ODELAYE3/IDELAYE3
+# - simulate with Micron's model
+# - test on board
 
 class KUSDDRPHY(Module, AutoCSR):
     def __init__(self, pads):
@@ -275,7 +280,7 @@ class KUSDDRPHY(Module, AutoCSR):
         #  2 cycles through OSERDESE3 TODO: verify latency
         #  2 cycles CAS
         #  2 cycles through ISERDESE3 TODO: verify latency
-        #  2 cycles through Bitslip
+        #  2 cycles through BitSlip
         rddata_en = self.dfi.phases[self.settings.rdphase].rddata_en
         for i in range(8-1):
             n_rddata_en = Signal()
