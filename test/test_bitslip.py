@@ -19,8 +19,9 @@ class BitSlipModel:
         # simulate bitslip
         r = []
         for i in range(len(s)-1):
-            v = (s[i+1] & (2**bitslip-1)) << (self.data_width-bitslip)
-            v |= (s[i] >> bitslip) & (2**(self.data_width-bitslip)-1)
+            v = (s[i+1] << self.data_width) | s[i]
+            v = v >> bitslip
+            v &= 2**self.data_width-1
             r.append(v)
         return r
 
@@ -60,7 +61,7 @@ class TestBitSlip(unittest.TestCase):
         self.bitslip_test(16)
 
     def test_bitslip_32b(self):
-        self.bitslip_test(32)       
+        self.bitslip_test(32)
 
     def test_bitslip_64b(self):
         self.bitslip_test(64)
