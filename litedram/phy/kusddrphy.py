@@ -7,6 +7,7 @@ from litex.soc.interconnect.csr import *
 
 from litedram.common import PhySettings
 from litedram.phy.dfi import *
+from litedram.phy.bitslip import BitSlip
 
 
 class KUSDDRPHY(Module, AutoCSR):
@@ -21,7 +22,7 @@ class KUSDDRPHY(Module, AutoCSR):
         self._dly_sel = CSRStorage(databits//8)
         self._rdly_dq_rst = CSR()
         self._rdly_dq_inc = CSR()
-        self._rdly_dq_bitslip = CSR()
+        self._rdly_dq_bitslip = CSRStorage(3)
         self._wdly_dq_rst = CSR()
         self._wdly_dq_inc = CSR()
         self._wdly_dqs_rst = CSR()
@@ -37,7 +38,7 @@ class KUSDDRPHY(Module, AutoCSR):
             wrcmdphase=0,
             cl=7,
             cwl=6,
-            read_latency=6,
+            read_latency=8,
             write_latency=2
         )
 
@@ -194,6 +195,12 @@ class KUSDDRPHY(Module, AutoCSR):
             dq_i_nodelay = Signal()
             dq_i_delayed = Signal()
             dq_t = Signal()
+            dq_bitslip = BitSlip(8)
+            self.sync += \
+                If(self._dly_sel.storage[i//8],
+                    dq_bitslip.value.eq(self._rdly_dq_bitslip.storage)
+                )
+            self.submodules += dq_bitslip
             self.specials += [
                 Instance("OSERDESE3",
                     p_DATA_WIDTH=8, p_INIT=0,
@@ -208,11 +215,18 @@ class KUSDDRPHY(Module, AutoCSR):
                     i_D7=self.dfi.phases[3].wrdata[i], i_D8=self.dfi.phases[3].wrdata[databits+i],
                     i_T=~oe_dq
                 ),
-                # TODO: ISERDESE3 implements less features than ISERDESE2 (bitslip is missing),
-                # need to implement bitslip as described in XAPP1208 and use new FIFO interface
-                #Instance("ISERDESE3",
-                #         TODO
-                #),
+                Instance("ISERDESE3",
+                    p_DATA_WIDTH=8,
+
+                    i_D=dq_i_delayed,
+                    i_RST=ResetSignal(),
+                    i_FIFO_RD_CLK=0, i_FIFO_RD_EN=0,
+                    i_CLK=ClockSignal("sys4x"), i_CLKB=~ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                    o_Q8=dq_bitslip.i[7], o_Q7=dq_bitslip.i[6],
+                    o_Q6=dq_bitslip.i[5], o_Q5=dq_bitslip.i[4],
+                    o_Q4=dq_bitslip.i[3], o_Q3=dq_bitslip.i[2],
+                    o_Q2=dq_bitslip.i[1], o_Q1=dq_bitslip.i[0]
+                ),
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
@@ -243,15 +257,27 @@ class KUSDDRPHY(Module, AutoCSR):
                     io_IO=pads.dq[i]
                 )
             ]
+            self.comb += [
+                self.dfi.phases[0].rddata[i].eq(dq_bitslip.o[7]),
+                self.dfi.phases[1].rddata[i].eq(dq_bitslip.o[5]),
+                self.dfi.phases[2].rddata[i].eq(dq_bitslip.o[3]),
+                self.dfi.phases[3].rddata[i].eq(dq_bitslip.o[1]),
+
+                self.dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[6]),
+                self.dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[4]),
+                self.dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[2]),
+                self.dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[0]),
+            ]
 
         # Flow control
         #
-        # total read latency = 6:
+        # total read latency = 8:
         #  2 cycles through OSERDESE3 TODO: verify latency
         #  2 cycles CAS
         #  2 cycles through ISERDESE3 TODO: verify latency
+        #  2 cycles through Bitslip
         rddata_en = self.dfi.phases[self.settings.rdphase].rddata_en
-        for i in range(5):
+        for i in range(8-1):
             n_rddata_en = Signal()
             self.sync += n_rddata_en.eq(rddata_en)
             rddata_en = n_rddata_en
