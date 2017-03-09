@@ -81,10 +81,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=pads.a[i],
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D1=self.dfi.phases[0].address[i], i_D2=self.dfi.phases[0].address[i],
-                    i_D3=self.dfi.phases[1].address[i], i_D4=self.dfi.phases[1].address[i],
-                    i_D5=self.dfi.phases[2].address[i], i_D6=self.dfi.phases[2].address[i],
-                    i_D7=self.dfi.phases[3].address[i], i_D8=self.dfi.phases[3].address[i]
+                    i_D=Cat(self.dfi.phases[0].address[i], self.dfi.phases[0].address[i],
+                            self.dfi.phases[1].address[i], self.dfi.phases[1].address[i],
+                            self.dfi.phases[2].address[i], self.dfi.phases[2].address[i],
+                            self.dfi.phases[3].address[i], self.dfi.phases[3].address[i])
                 )
         for i in range(bankbits):
             self.specials += \
@@ -95,10 +95,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=pads.ba[i],
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D1=self.dfi.phases[0].bank[i], i_D2=self.dfi.phases[0].bank[i],
-                    i_D3=self.dfi.phases[1].bank[i], i_D4=self.dfi.phases[1].bank[i],
-                    i_D5=self.dfi.phases[2].bank[i], i_D6=self.dfi.phases[2].bank[i],
-                    i_D7=self.dfi.phases[3].bank[i], i_D8=self.dfi.phases[3].bank[i]
+                    i_D=Cat(self.dfi.phases[0].bank[i], self.dfi.phases[0].bank[i],
+                            self.dfi.phases[1].bank[i], self.dfi.phases[1].bank[i],
+                            self.dfi.phases[2].bank[i], self.dfi.phases[2].bank[i],
+                            self.dfi.phases[3].bank[i], self.dfi.phases[3].bank[i])
                 )
         for name in "ras_n", "cas_n", "we_n", "cs_n", "cke", "odt", "reset_n":
             self.specials += \
@@ -109,10 +109,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=getattr(pads, name),
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D1=getattr(self.dfi.phases[0], name), i_D2=getattr(self.dfi.phases[0], name),
-                    i_D3=getattr(self.dfi.phases[1], name), i_D4=getattr(self.dfi.phases[1], name),
-                    i_D5=getattr(self.dfi.phases[2], name), i_D6=getattr(self.dfi.phases[2], name),
-                    i_D7=getattr(self.dfi.phases[3], name), i_D8=getattr(self.dfi.phases[3], name)
+                    i_D=Cat(getattr(self.dfi.phases[0], name), getattr(self.dfi.phases[0], name),
+                            getattr(self.dfi.phases[1], name), getattr(self.dfi.phases[1], name),
+                            getattr(self.dfi.phases[2], name), getattr(self.dfi.phases[2], name),
+                            getattr(self.dfi.phases[3], name), getattr(self.dfi.phases[3], name))
                 )
 
         # DQS and DM
@@ -138,10 +138,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=dm_o_nodelay,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D1=self.dfi.phases[0].wrdata_mask[i], i_D2=self.dfi.phases[0].wrdata_mask[databits//8+i],
-                    i_D3=self.dfi.phases[1].wrdata_mask[i], i_D4=self.dfi.phases[1].wrdata_mask[databits//8+i],
-                    i_D5=self.dfi.phases[2].wrdata_mask[i], i_D6=self.dfi.phases[2].wrdata_mask[databits//8+i],
-                    i_D7=self.dfi.phases[3].wrdata_mask[i], i_D8=self.dfi.phases[3].wrdata_mask[databits//8+i]
+                    i_D=Cat(self.dfi.phases[0].wrdata_mask[i], self.dfi.phases[0].wrdata_mask[databits//8+i],
+                            self.dfi.phases[1].wrdata_mask[i], self.dfi.phases[1].wrdata_mask[databits//8+i],
+                            self.dfi.phases[2].wrdata_mask[i], self.dfi.phases[2].wrdata_mask[databits//8+i],
+                            self.dfi.phases[3].wrdata_mask[i], self.dfi.phases[3].wrdata_mask[databits//8+i])
                 )
             self.specials += \
                 Instance("ODELAYE3",
@@ -168,10 +168,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=dqs_nodelay, o_T_OUT=dqs_t,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D1=dqs_serdes_pattern[0], i_D2=dqs_serdes_pattern[1],
-                    i_D3=dqs_serdes_pattern[2], i_D4=dqs_serdes_pattern[3],
-                    i_D5=dqs_serdes_pattern[4], i_D6=dqs_serdes_pattern[5],
-                    i_D7=dqs_serdes_pattern[6], i_D8=dqs_serdes_pattern[7],
+                    i_D=Cat(dqs_serdes_pattern[0], dqs_serdes_pattern[1],
+                            dqs_serdes_pattern[2], dqs_serdes_pattern[3],
+                            dqs_serdes_pattern[4], dqs_serdes_pattern[5],
+                            dqs_serdes_pattern[6], dqs_serdes_pattern[7]),
                     i_T=~oe_dqs,
                 ),
                 Instance("ODELAYE3",
@@ -214,10 +214,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=dq_o_nodelay, o_T_OUT=dq_t,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D1=self.dfi.phases[0].wrdata[i], i_D2=self.dfi.phases[0].wrdata[databits+i],
-                    i_D3=self.dfi.phases[1].wrdata[i], i_D4=self.dfi.phases[1].wrdata[databits+i],
-                    i_D5=self.dfi.phases[2].wrdata[i], i_D6=self.dfi.phases[2].wrdata[databits+i],
-                    i_D7=self.dfi.phases[3].wrdata[i], i_D8=self.dfi.phases[3].wrdata[databits+i],
+                    i_D=Cat(self.dfi.phases[0].wrdata[i], self.dfi.phases[0].wrdata[databits+i],
+                            self.dfi.phases[1].wrdata[i], self.dfi.phases[1].wrdata[databits+i],
+                            self.dfi.phases[2].wrdata[i], self.dfi.phases[2].wrdata[databits+i],
+                            self.dfi.phases[3].wrdata[i], self.dfi.phases[3].wrdata[databits+i]),
                     i_T=~oe_dq
                 ),
                 Instance("ISERDESE3",
@@ -227,10 +227,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     i_RST=ResetSignal(),
                     i_FIFO_RD_CLK=0, i_FIFO_RD_EN=0,
                     i_CLK=ClockSignal("sys4x"), i_CLKB=~ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    o_Q8=dq_bitslip.i[7], o_Q7=dq_bitslip.i[6],
-                    o_Q6=dq_bitslip.i[5], o_Q5=dq_bitslip.i[4],
-                    o_Q4=dq_bitslip.i[3], o_Q3=dq_bitslip.i[2],
-                    o_Q2=dq_bitslip.i[1], o_Q1=dq_bitslip.i[0]
+                    o_Q=dq_bitslip.i
                 ),
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
