@@ -61,8 +61,7 @@ class KUSDDRPHY(Module, AutoCSR):
                 o_OQ=sd_clk_se,
                 i_RST=ResetSignal(),
                 i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                i_D1=0, i_D2=1, i_D3=0, i_D4=1,
-                i_D5=0, i_D6=1, i_D7=0, i_D8=1
+                i_D=0b10101010
             ),
             Instance("OBUFDS",
                 i_I=sd_clk_se,
@@ -150,8 +149,8 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
                     i_CLK=ClockSignal(),
-                    i_INC=1, i_EN_VTC=1,
-                    i_LOAD=self._dly_sel.storage[i] & self._wdly_dq_rst.re,
+                    i_INC=1, i_EN_VTC=0,
+                    i_RST=self._dly_sel.storage[i] & self._wdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dq_inc.re,
 
                     o_ODATAIN=dm_o_nodelay, o_DATAOUT=pads.dm[i]
@@ -180,8 +179,8 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=6, # TODO: verify value
 
                     i_CLK=ClockSignal(),
-                    i_INC=1, i_EN_VTC=1,
-                    i_LOAD=self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
+                    i_INC=1, i_EN_VTC=0,
+                    i_RST=self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
 
                     o_ODATAIN=dqs_nodelay, o_DATAOUT=dqs_delayed
@@ -226,7 +225,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     i_D=dq_i_delayed,
                     i_RST=ResetSignal(),
                     i_FIFO_RD_CLK=0, i_FIFO_RD_EN=0,
-                    i_CLK=ClockSignal("sys4x"), i_CLKB=~ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                    i_CLK=ClockSignal("sys4x"), i_CLK_B=~ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     o_Q=dq_bitslip.i
                 ),
                 Instance("ODELAYE3",
@@ -235,8 +234,8 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=6, # TODO: verify value
 
                     i_CLK=ClockSignal(),
-                    i_INC=1, i_EN_VTC=1,
-                    i_LOAD=self._dly_sel.storage[i//8] & self._wdly_dq_rst.re,
+                    i_INC=1, i_EN_VTC=0,
+                    i_RST=self._dly_sel.storage[i//8] & self._wdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
 
                     o_ODATAIN=dq_o_nodelay, o_DATAOUT=dq_o_delayed
@@ -248,8 +247,8 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=6, # TODO: verify value
 
                     i_CLK=ClockSignal(),
-                    i_INC=1, i_EN_VTC=1,
-                    i_LOAD=self._dly_sel.storage[i//8] & self._rdly_dq_rst.re,
+                    i_INC=1, i_EN_VTC=0,
+                    i_RST=self._dly_sel.storage[i//8] & self._rdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
 
                     i_IDATAIN=dq_i_nodelay, o_DATAOUT=dq_i_delayed
