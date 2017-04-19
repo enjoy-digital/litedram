@@ -2,12 +2,12 @@
 # tCK=5ns CL=7 CWL=6
 
 from litex.gen import *
+from litex.gen.genlib.misc import BitSlip
 
 from litex.soc.interconnect.csr import *
 
 from litedram.common import PhySettings
 from litedram.phy.dfi import *
-from litedram.phy.bitslip import BitSlip
 
 # TODO:
 # - verify read_latency in simulation (OSERDESE3/ISERDESE3)
