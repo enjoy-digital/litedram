@@ -9,7 +9,7 @@
 
 
 [> Intro
----------
+--------
 LiteDRAM provides a small footprint and configurable DRAM core.
 
 LiteDRAM is part of LiteX libraries whose aims are to lower entry level of
@@ -48,7 +48,7 @@ Frontend:
   - BIST.
 
 [> Possible improvements
--------------------------
+------------------------
 - add standardized interfaces (AXI, Avalon-ST)
 - add support for Altera PHYs.
 - add support for Lattice PHYs.
@@ -59,18 +59,20 @@ enjoy-digital.fr. You can also contact our partner on the public mailing list
 devel [AT] lists.m-labs.hk.
 
 
-[> Getting started
+> Getting started
 ------------------
-XXX
+1. Install Python3 and your vendor's software
 
-[> Simulations:
-XXX
+2. Obtain LiteX and install it:
+  git clone https://github.com/enjoy-digital/litex --recursive
+  cd litex
+  python3 setup.py install
+  cd ..
 
-[> Tests :
-XXX
+3. TODO: add example design(s)
 
 [> License
------------
+----------
 LiteDRAM is released under the very permissive two-clause BSD license. Under
 the terms of this license, you are authorized to use LiteDRAM for closed-source
 proprietary designs.
@@ -83,7 +85,7 @@ do them if possible:
  - send us the modifications and improvements you have done to LiteDRAM.
 
 [> Support and consulting
---------------------------
+-------------------------
 We love open-source hardware and like sharing our designs with others.
 
 LiteDRAM is developed and maintained by EnjoyDigital. Initial development
@@ -97,4 +99,5 @@ So feel free to contact us, we'd love to work with you! (and eventually shorten
 the list of the possible improvements :)
 
 [> Contact
+----------
 E-mail: florent [AT] enjoy-digital.fr
