@@ -33,12 +33,12 @@ class LiteDRAMCrossbar(Module):
             dw = self.dw
 
         # crossbar port
-        port = LiteDRAMPort(mode, self.rca_bits + self.bank_bits, self.dw, "sys")
+        port = LiteDRAMPort(mode, self.rca_bits + self.bank_bits, self.dw, "sys", len(self.masters))
         self.masters.append(port)
 
         # clock domain crossing
         if cd != "sys":
-            new_port = LiteDRAMPort(mode, port.aw, port.dw, cd)
+            new_port = LiteDRAMPort(mode, port.aw, port.dw, cd, port.id)
             self.submodules += LiteDRAMPortCDC(new_port, port)
             port = new_port
 
@@ -48,7 +48,7 @@ class LiteDRAMCrossbar(Module):
                 adr_shift = -log2_int(dw//self.dw)
             else:
                 adr_shift = log2_int(self.dw//dw)
-            new_port = LiteDRAMPort(mode, port.aw + adr_shift, dw, cd=cd)
+            new_port = LiteDRAMPort(mode, port.aw + adr_shift, dw, cd, port.id)
             self.submodules += ClockDomainsRenamer(cd)(LiteDRAMPortConverter(new_port, port, reverse))
             port = new_port
 
