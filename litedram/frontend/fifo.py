@@ -16,16 +16,8 @@ def _inc(signal, modulo):
         )
 
 
-def _raw_layout(endpoint):
-    raw_layout = []
-    raw_layout.append(endpoint.first)
-    raw_layout.append(endpoint.last)
-    raw_layout.append(endpoint.payload.raw_bits())
-    return Cat(iter(raw_layout))
-
-
 class _LiteDRAMFIFOCtrl(Module):
-    def __init__(self, base, depth):
+    def __init__(self, base, depth, read_threshold, write_threshold):
         self.base = base
         self.depth = depth
         self.level = Signal(max=depth+1)
@@ -66,74 +58,67 @@ class _LiteDRAMFIFOCtrl(Module):
         ]
 
         self.comb += [
-            self.writable.eq(self.level != depth),
-            self.readable.eq(self.level != 0)
+            self.writable.eq(self.level <= write_threshold),
+            self.readable.eq(self.level >= read_threshold)
         ]
 
 
 class _LiteDRAMFIFOWriter(Module):
-    def __init__(self, ctrl, layout, port):
-        self.sink = sink = stream.Endpoint(layout)
+    def __init__(self, dw, port, ctrl):
+        self.sink = stream.Endpoint([("data", dw)])
 
         # # #
 
         writer = dma.LiteDRAMDMAWriter(port)
         self.submodules += writer
 
-        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
-        fsm.act("IDLE",
-            If(ctrl.writable & sink.valid,
-                NextState("WRITE")
-            )
-        )
-        fsm.act("WRITE",
-            writer.sink.valid.eq(1),
-            If(writer.sink.ready,
-                ctrl.write.eq(1),
-                sink.ready.eq(1),
-                NextState("IDLE")
-            )
-        )
         self.comb += [
-            writer.sink.address.eq(ctrl.write_address + ctrl.base//(port.dw//8)),
-            writer.sink.data.eq(_raw_layout(sink))
+            writer.sink.valid.eq(self.sink.valid & ctrl.writable),
+            writer.sink.address.eq(ctrl.base + ctrl.write_address),
+            writer.sink.data.eq(self.sink.data),
+            If(writer.sink.valid & writer.sink.ready,
+                ctrl.write.eq(1),
+                self.sink.ready.eq(1)
+            )
         ]
 
 
 class _LiteDRAMFIFOReader(Module):
-    def __init__(self, ctrl, layout, port):
-        self.source = source = stream.Endpoint(layout)
+    def __init__(self, dw, port, ctrl):
+        self.source = source = stream.Endpoint([("data", dw)])
 
         # # #
 
         reader = dma.LiteDRAMDMAReader(port)
         self.submodules += reader
 
-        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
-        fsm.act("IDLE",
-            If(ctrl.readable,
-                NextState("READ")
-            )
-        )
-        fsm.act("READ",
-            reader.sink.valid.eq(1),
-            If(reader.sink.ready,
-                ctrl.read.eq(1),
-                NextState("IDLE")
-            )
-        )
-
         self.comb += [
-            reader.sink.address.eq(ctrl.read_address + ctrl.base//(port.dw//8)),
-            source.valid.eq(reader.source.valid),
-            _raw_layout(source).eq(reader.source.data),
-            reader.source.ready.eq(source.ready)
+            reader.sink.valid.eq(ctrl.readable),
+            reader.sink.address.eq(ctrl.base + ctrl.read_address),
+            If(reader.sink.valid & reader.sink.ready,
+                ctrl.read.eq(1)
+            )
         ]
+        self.comb += reader.source.connect(self.source)
 
 
 class LiteDRAMFIFO(Module):
-    def __init__(self, layout, base, depth, write_port, read_port):
-        self.submodules.ctrl = _LiteDRAMFIFOCtrl(base, depth)
-        self.submodules.writer = _LiteDRAMFIFOWriter(self.ctrl, layout, write_port)
-        self.submodules.reader = _LiteDRAMFIFOReader(self.ctrl, layout, read_port)
-        self.sink, self.source = self.writer.sink, self.reader.source
+    def __init__(self, dw, base, depth, write_port, read_port,
+        read_threshold=None, write_threshold=None):
+        self.sink = stream.Endpoint([("data", dw)])
+        self.source = stream.Endpoint([("data", dw)])
+
+        # # #
+
+        if read_threshold is None:
+            read_threshold = 0
+        if write_threshold is None:
+            write_threshold = depth
+
+        self.submodules.ctrl = _LiteDRAMFIFOCtrl(base, depth, read_threshold, write_threshold)
+        self.submodules.writer = _LiteDRAMFIFOWriter(dw, write_port, self.ctrl)
+        self.submodules.reader = _LiteDRAMFIFOReader(dw, read_port, self.ctrl)
+        self.comb += [
+            self.sink.connect(self.writer.sink),
+            self.reader.source.connect(self.source)
+        ]
