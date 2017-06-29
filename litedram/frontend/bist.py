@@ -86,7 +86,7 @@ class _LiteDRAMBISTGenerator(Module):
         dma = LiteDRAMDMAWriter(dram_port)
         self.submodules += dma, gen
 
-        cmd_counter = Signal(dram_port.aw)
+        cmd_counter = Signal(dram_port.aw, reset_less=True)
 
         fsm = FSM(reset_state="IDLE")
         self.submodules += fsm
@@ -209,7 +209,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.submodules += dma, gen
 
         # address
-        cmd_counter = Signal(dram_port.aw)
+        cmd_counter = Signal(dram_port.aw, reset_less=True)
 
         cmd_fsm = FSM(reset_state="IDLE")
         self.submodules += cmd_fsm
@@ -232,7 +232,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.comb += dma.sink.address.eq(self.base + cmd_counter)
 
         # data
-        data_counter = Signal(dram_port.aw)
+        data_counter = Signal(dram_port.aw, reset_less=True)
 
         data_fsm = FSM(reset_state="IDLE")
         self.submodules += data_fsm
