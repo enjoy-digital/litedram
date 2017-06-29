@@ -20,16 +20,15 @@ class LFSR(Module):
     n_out : int
         Width of the output data signal.
     n_state : int
-        ???
+        LFSR internal state
     taps : list of int
-        ???
+        LFSR taps (from polynom)
 
     Attributes
     ----------
     o : in
         Output data
     """
-
     def __init__(self, n_out, n_state=31, taps=[27, 30]):
         self.o = Signal(n_out)
 
@@ -63,7 +62,6 @@ class Counter(Module):
     o : in
         Output data
     """
-
     def __init__(self, n_out):
         self.o = Signal(n_out)
 
@@ -74,40 +72,44 @@ class Counter(Module):
 
 @ResetInserter()
 class _LiteDRAMBISTGenerator(Module):
-
     def __init__(self, dram_port, random):
         self.start = Signal()
         self.done = Signal()
         self.base = Signal(dram_port.aw)
         self.length = Signal(dram_port.aw)
+        self.ticks = Signal(32)
 
         # # #
 
-        self.submodules.dma = dma = LiteDRAMDMAWriter(dram_port)
         gen_cls = LFSR if random else Counter
-        self.submodules.gen = gen = gen_cls(dram_port.dw)
+        gen = gen_cls(dram_port.dw)
+        dma = LiteDRAMDMAWriter(dram_port)
+        self.submodules += dma, gen
 
-        self.cmd_counter = cmd_counter = Signal(dram_port.aw)
+        cmd_counter = Signal(dram_port.aw)
 
-        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
+        fsm = FSM(reset_state="IDLE")
+        self.submodules += fsm
         fsm.act("IDLE",
             If(self.start,
                 NextValue(cmd_counter, 0),
                 NextState("RUN")
             ),
+            NextValue(self.ticks, 0)
         )
         fsm.act("RUN",
             dma.sink.valid.eq(1),
             If(dma.sink.ready,
                 gen.ce.eq(1),
                 NextValue(cmd_counter, cmd_counter + 1),
-                If(cmd_counter == (self.length-1),
+                If(cmd_counter == (self.length - 1),
                     NextState("DONE")
-                ),
+                )
             ),
+            NextValue(self.ticks, self.ticks + 1)
         )
         fsm.act("DONE",
-            self.done.eq(1),
+            self.done.eq(1)
         )
         self.comb += [
             dma.sink.address.eq(self.base + cmd_counter),
@@ -116,7 +118,7 @@ class _LiteDRAMBISTGenerator(Module):
 
 
 class LiteDRAMBISTGenerator(Module, AutoCSR):
-    """litex module to generate a given pattern in memory.abs
+    """DRAM memory pattern generator.
 
     Attributes
     ----------
@@ -132,21 +134,25 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
     done : out
         The module has completed writing the pattern.
-    """
 
+    ticks : out
+        Duration of the generation.
+    """
     def __init__(self, dram_port, random=True):
         self.reset = CSR()
         self.start = CSR()
         self.done = CSRStatus()
         self.base = CSRStorage(dram_port.aw)
         self.length = CSRStorage(dram_port.aw)
+        self.ticks = CSRStatus(32)
 
         # # #
 
         cd = dram_port.cd
 
         core = _LiteDRAMBISTGenerator(dram_port, random)
-        self.submodules.core = ClockDomainsRenamer(cd)(core)
+        core = ClockDomainsRenamer(cd)(core)
+        self.submodules += core
 
         reset_sync = PulseSynchronizer("sys", cd)
         start_sync = PulseSynchronizer("sys", cd)
@@ -177,57 +183,66 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
             core.length.eq(length_sync.o)
         ]
 
+        ticks_sync = BusSynchronizer(32, cd, "sys")
+        self.submodules += ticks_sync
+        self.comb += [
+            ticks_sync.i.eq(core.ticks),
+            self.ticks.status.eq(ticks_sync.o)
+        ]
+
 
 @ResetInserter()
 class _LiteDRAMBISTChecker(Module, AutoCSR):
-
     def __init__(self, dram_port, random):
         self.start = Signal()
         self.done = Signal()
-
         self.base = Signal(dram_port.aw)
         self.length = Signal(dram_port.aw)
-
+        self.ticks = Signal(32)
         self.errors = Signal(32)
 
         # # #
 
-        self.submodules.dma = dma = LiteDRAMDMAReader(dram_port)
         gen_cls = LFSR if random else Counter
-        self.submodules.gen = gen = gen_cls(dram_port.dw)
+        gen = gen_cls(dram_port.dw)
+        dma = LiteDRAMDMAReader(dram_port)
+        self.submodules += dma, gen
 
         # address
-        self.cmd_counter = cmd_counter = Signal(dram_port.aw)
-        self.submodules.cmd_fsm = cmd_fsm = FSM(reset_state="IDLE")
+        cmd_counter = Signal(dram_port.aw)
 
+        cmd_fsm = FSM(reset_state="IDLE")
+        self.submodules += cmd_fsm
         cmd_fsm.act("IDLE",
             If(self.start,
                 NextValue(cmd_counter, 0),
                 NextState("RUN")
-            ),
+            )
         )
         cmd_fsm.act("RUN",
             dma.sink.valid.eq(1),
             If(dma.sink.ready,
                 NextValue(cmd_counter, cmd_counter + 1),
-                If(cmd_counter == (self.length-1),
+                If(cmd_counter == (self.length - 1),
                     NextState("DONE")
-                ),
-            ),
+                )
+            )
         )
         cmd_fsm.act("DONE")
         self.comb += dma.sink.address.eq(self.base + cmd_counter)
 
         # data
-        self.data_counter = data_counter = Signal(dram_port.aw)
-        self.submodules.data_fsm = data_fsm = FSM(reset_state="IDLE")
+        data_counter = Signal(dram_port.aw)
 
+        data_fsm = FSM(reset_state="IDLE")
+        self.submodules += data_fsm
         data_fsm.act("IDLE",
             If(self.start,
                 NextValue(data_counter, 0),
                 NextValue(self.errors, 0),
                 NextState("RUN")
             ),
+            NextValue(self.ticks, 0)
         )
         data_fsm.act("RUN",
             dma.source.ready.eq(1),
@@ -235,21 +250,21 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
                 gen.ce.eq(1),
                 NextValue(data_counter, data_counter + 1),
                 If(dma.source.data != gen.o,
-                    NextValue(self.errors, self.errors + 1),
+                    NextValue(self.errors, self.errors + 1)
                 ),
-                If(data_counter == (self.length-1),
+                If(data_counter == (self.length - 1),
                     NextState("DONE")
-                ),
+                )
             ),
+            NextValue(self.ticks, self.ticks + 1)
         )
-        data_fsm.act("DONE")
-
-        self.comb += self.done.eq(cmd_fsm.ongoing("DONE") &
-                                  data_fsm.ongoing("DONE"))
+        data_fsm.act("DONE",
+            self.done.eq(1)
+        )
 
 
 class LiteDRAMBISTChecker(Module, AutoCSR):
-    """litex module to check a given pattern in memory.
+    """DRAM memory pattern checker.
 
     Attributes
     ----------
@@ -266,18 +281,19 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
     done : out
         The module has completed checking
 
+    ticks: out
+        Duration of the check.
+
     errors : out
         Number of DRAM words which don't match.
     """
-
     def __init__(self, dram_port, random=True):
         self.reset = CSR()
         self.start = CSR()
-
         self.base = CSRStorage(dram_port.aw)
         self.length = CSRStorage(dram_port.aw)
-
         self.done = CSRStatus()
+        self.ticks = CSRStatus(32)
         self.errors = CSRStatus(32)
 
         # # #
@@ -285,7 +301,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         cd = dram_port.cd
 
         core = _LiteDRAMBISTChecker(dram_port, random)
-        self.submodules.core = ClockDomainsRenamer(cd)(core)
+        core = ClockDomainsRenamer(cd)(core)
+        self.submodules += core
 
         reset_sync = PulseSynchronizer("sys", cd)
         start_sync = PulseSynchronizer("sys", cd)
@@ -314,6 +331,13 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
             length_sync.i.eq(self.length.storage),
             core.length.eq(length_sync.o)
+        ]
+
+        ticks_sync = BusSynchronizer(32, cd, "sys")
+        self.submodules += ticks_sync
+        self.comb += [
+            ticks_sync.i.eq(core.ticks),
+            self.ticks.status.eq(ticks_sync.o)
         ]
 
         errors_sync = BusSynchronizer(32, cd, "sys")
