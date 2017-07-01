@@ -4,8 +4,8 @@ from litex.gen.genlib.record import *
 
 def phase_cmd_description(addressbits, bankbits):
     return [
-        ("address", addressbits, DIR_M_TO_S),
-        ("bank",       bankbits, DIR_M_TO_S),
+        ("address", addressbits, DIR_M_TO_S, True),
+        ("bank",       bankbits, DIR_M_TO_S, True),
         ("cas_n",             1, DIR_M_TO_S),
         ("cs_n",              1, DIR_M_TO_S),
         ("ras_n",             1, DIR_M_TO_S),
@@ -18,16 +18,16 @@ def phase_cmd_description(addressbits, bankbits):
 
 def phase_wrdata_description(databits):
     return [
-        ("wrdata",         databits, DIR_M_TO_S),
+        ("wrdata",         databits, DIR_M_TO_S, True),
         ("wrdata_en",             1, DIR_M_TO_S),
-        ("wrdata_mask", databits//8, DIR_M_TO_S)
+        ("wrdata_mask", databits//8, DIR_M_TO_S, True)
     ]
 
 
 def phase_rddata_description(databits):
     return [
         ("rddata_en",           1, DIR_M_TO_S),
-        ("rddata",       databits, DIR_S_TO_M),
+        ("rddata",       databits, DIR_S_TO_M, True),
         ("rddata_valid",        1, DIR_S_TO_M)
     ]
 

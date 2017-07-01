@@ -44,8 +44,8 @@ def cmd_layout(aw):
     return [
         ("valid",        1, DIR_M_TO_S),
         ("ready",        1, DIR_S_TO_M),
-        ("we",           1, DIR_M_TO_S),
-        ("adr",         aw, DIR_M_TO_S),
+        ("we",           1, DIR_M_TO_S, True),
+        ("adr",         aw, DIR_M_TO_S, True),
         ("lock",         1, DIR_S_TO_M), # only used internally
 
         ("wdata_ready",  1, DIR_S_TO_M),
@@ -55,9 +55,9 @@ def cmd_layout(aw):
 
 def data_layout(dw):
     return [
-        ("wdata",       dw, DIR_M_TO_S),
-        ("wdata_we", dw//8, DIR_M_TO_S),
-        ("rdata",       dw, DIR_S_TO_M)
+        ("wdata",       dw, DIR_M_TO_S, True),
+        ("wdata_we", dw//8, DIR_M_TO_S, True),
+        ("rdata",       dw, DIR_S_TO_M, True)
     ]
 
 

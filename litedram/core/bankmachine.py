@@ -57,7 +57,7 @@ class BankMachine(Module):
 
         # Row tracking
         has_openrow = Signal()
-        openrow = Signal(settings.geom.rowbits)
+        openrow = Signal(settings.geom.rowbits, reset_less=True)
         hit = Signal()
         self.comb += hit.eq(openrow == slicer.row(cmd_buffer.source.adr))
         track_open = Signal()
