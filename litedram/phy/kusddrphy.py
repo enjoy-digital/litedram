@@ -10,7 +10,6 @@ from litedram.common import PhySettings
 from litedram.phy.dfi import *
 
 # TODO:
-# - verify read_latency in simulation (OSERDESE3/ISERDESE3)
 # - verify initial p_DELAY_VALUE on ODELAYE3/IDELAYE3
 # - simulate with Micron's model
 # - test on board
@@ -24,10 +23,13 @@ class KUSDDRPHY(Module, AutoCSR):
 
         self._wlevel_en = CSRStorage()
         self._wlevel_strobe = CSR()
+
         self._dly_sel = CSRStorage(databits//8)
+
         self._rdly_dq_rst = CSR()
         self._rdly_dq_inc = CSR()
         self._rdly_dq_bitslip = CSRStorage(3)
+
         self._wdly_dq_rst = CSR()
         self._wdly_dq_inc = CSR()
         self._wdly_dqs_rst = CSR()
@@ -273,9 +275,9 @@ class KUSDDRPHY(Module, AutoCSR):
         # Flow control
         #
         # total read latency = 8:
-        #  2 cycles through OSERDESE3 TODO: verify latency
+        #  2 cycles through OSERDESE3
         #  2 cycles CAS
-        #  2 cycles through ISERDESE3 TODO: verify latency
+        #  2 cycles through ISERDESE3
         #  2 cycles through BitSlip
         rddata_en = self.dfi.phases[self.settings.rdphase].rddata_en
         for i in range(8-1):
