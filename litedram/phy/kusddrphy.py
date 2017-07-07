@@ -21,6 +21,8 @@ class KUSDDRPHY(Module, AutoCSR):
         databits = len(pads.dq)
         nphases = 4
 
+        self._rst = CSRStorage()
+
         self._wlevel_en = CSRStorage()
         self._wlevel_strobe = CSR()
 
@@ -53,6 +55,8 @@ class KUSDDRPHY(Module, AutoCSR):
 
         # # #
 
+        rst = self._rst.storage
+
         # Clock
         sd_clk_se = Signal()
         self.specials += [
@@ -61,7 +65,7 @@ class KUSDDRPHY(Module, AutoCSR):
                 p_IS_CLK_INVERTED=0, p_IS_CLKDIV_INVERTED=0, p_IS_RST_INVERTED=0,
 
                 o_OQ=sd_clk_se,
-                i_RST=ResetSignal(),
+                i_RST=ResetSignal() | rst,
                 i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                 i_D=0b10101010
             ),
@@ -80,7 +84,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_IS_CLK_INVERTED=0, p_IS_CLKDIV_INVERTED=0, p_IS_RST_INVERTED=0,
 
                     o_OQ=pads.a[i],
-                    i_RST=ResetSignal(),
+                    i_RST=ResetSignal() | rst,
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     i_D=Cat(self.dfi.phases[0].address[i], self.dfi.phases[0].address[i],
                             self.dfi.phases[1].address[i], self.dfi.phases[1].address[i],
@@ -94,7 +98,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_IS_CLK_INVERTED=0, p_IS_CLKDIV_INVERTED=0, p_IS_RST_INVERTED=0,
 
                     o_OQ=pads.ba[i],
-                    i_RST=ResetSignal(),
+                    i_RST=ResetSignal() | rst,
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     i_D=Cat(self.dfi.phases[0].bank[i], self.dfi.phases[0].bank[i],
                             self.dfi.phases[1].bank[i], self.dfi.phases[1].bank[i],
@@ -108,7 +112,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_IS_CLK_INVERTED=0, p_IS_CLKDIV_INVERTED=0, p_IS_RST_INVERTED=0,
 
                     o_OQ=getattr(pads, name),
-                    i_RST=ResetSignal(),
+                    i_RST=ResetSignal() | rst,
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     i_D=Cat(getattr(self.dfi.phases[0], name), getattr(self.dfi.phases[0], name),
                             getattr(self.dfi.phases[1], name), getattr(self.dfi.phases[1], name),
@@ -137,7 +141,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_IS_CLK_INVERTED=0, p_IS_CLKDIV_INVERTED=0, p_IS_RST_INVERTED=0,
 
                     o_OQ=dm_o_nodelay,
-                    i_RST=ResetSignal(),
+                    i_RST=ResetSignal() | rst,
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     i_D=Cat(self.dfi.phases[0].wrdata_mask[i], self.dfi.phases[0].wrdata_mask[databits//8+i],
                             self.dfi.phases[1].wrdata_mask[i], self.dfi.phases[1].wrdata_mask[databits//8+i],
@@ -152,7 +156,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=0,
-                    i_RST=self._dly_sel.storage[i] & self._wdly_dq_rst.re,
+                    i_RST=(self._dly_sel.storage[i] & self._wdly_dq_rst.re) | rst,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dq_inc.re,
 
                     o_ODATAIN=dm_o_nodelay, o_DATAOUT=pads.dm[i]
@@ -167,7 +171,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_IS_CLK_INVERTED=0, p_IS_CLKDIV_INVERTED=0, p_IS_RST_INVERTED=0,
 
                     o_OQ=dqs_nodelay, o_T_OUT=dqs_t,
-                    i_RST=ResetSignal(),
+                    i_RST=ResetSignal() | rst,
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     i_D=Cat(dqs_serdes_pattern[0], dqs_serdes_pattern[1],
                             dqs_serdes_pattern[2], dqs_serdes_pattern[3],
@@ -182,7 +186,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=0,
-                    i_RST=self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
+                    i_RST=(self._dly_sel.storage[i] & self._wdly_dqs_rst.re) | rst,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
 
                     o_ODATAIN=dqs_nodelay, o_DATAOUT=dqs_delayed
@@ -225,7 +229,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_DATA_WIDTH=8,
 
                     i_D=dq_i_delayed,
-                    i_RST=ResetSignal(),
+                    i_RST=ResetSignal() | rst,
                     i_FIFO_RD_CLK=0, i_FIFO_RD_EN=0,
                     i_CLK=ClockSignal("sys4x"), i_CLK_B=~ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     o_Q=dq_bitslip.i
@@ -237,7 +241,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=0,
-                    i_RST=self._dly_sel.storage[i//8] & self._wdly_dq_rst.re,
+                    i_RST=(self._dly_sel.storage[i//8] & self._wdly_dq_rst.re) | rst,
                     i_CE=self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
 
                     o_ODATAIN=dq_o_nodelay, o_DATAOUT=dq_o_delayed
@@ -247,12 +251,12 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
                     p_DELAY_FORMAT="COUNT", p_DELAY_SRC="IDATAIN",
                     p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=6, # TODO: verify value
-
+                
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=0,
-                    i_RST=self._dly_sel.storage[i//8] & self._rdly_dq_rst.re,
+                    i_RST=(self._dly_sel.storage[i//8] & self._rdly_dq_rst.re) | rst,
                     i_CE=self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
-
+                
                     i_IDATAIN=dq_i_nodelay, o_DATAOUT=dq_i_delayed
                 ),
                 Instance("IOBUF",
