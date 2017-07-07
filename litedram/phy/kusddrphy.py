@@ -11,7 +11,6 @@ from litedram.phy.dfi import *
 
 # TODO:
 # - verify initial p_DELAY_VALUE on ODELAYE3/IDELAYE3
-# - simulate with Micron's model
 # - test on board
 
 class KUSDDRPHY(Module, AutoCSR):
