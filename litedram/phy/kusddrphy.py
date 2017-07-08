@@ -10,7 +10,6 @@ from litedram.common import PhySettings
 from litedram.phy.dfi import *
 
 # TODO:
-# - fix IOBUF behaviour
 # - revert IDELAYE3/ODELAYE3 taps control
 
 class KUSDDRPHY(Module, AutoCSR):
@@ -255,10 +254,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     i_IDATAIN=dq_i_nodelay, o_DATAOUT=dq_i_delayed
                 ),
                 Instance("IOBUF",
-                	#i_I=0, o_O=dq_i_nodelay, i_T=dq_t, # input working...
-                    #i_I=1, o_O=dq_i_nodelay, i_T=dq_t, # input working...
-                    i_I=dq_o_delayed, o_O=dq_i_nodelay, i_T=dq_t, # input not working... : why ??
-
+                    i_I=dq_o_delayed, o_O=dq_i_nodelay, i_T=dq_t,
                     io_IO=pads.dq[i]
                 )
             ]
