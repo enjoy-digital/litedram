@@ -10,7 +10,7 @@ from litedram.common import PhySettings
 from litedram.phy.dfi import *
 
 # TODO:
-# - revert IDELAYE3/ODELAYE3 taps control
+# - test on hardware
 
 class KUSDDRPHY(Module, AutoCSR):
     def __init__(self, pads):
@@ -146,12 +146,12 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
-                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                    p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
                     i_CLK=ClockSignal(),
-                    i_INC=0, i_EN_VTC=1,
-                    i_RST=0,
-                    i_CE=0,
+                    i_INC=1, i_EN_VTC=0,
+                    i_RST=self._dly_sel.storage[i] & self._wdly_dq_rst.re,
+                    i_CE=self._dly_sel.storage[i] & self._wdly_dq_inc.re,
 
                     o_ODATAIN=dm_o_nodelay, o_DATAOUT=pads.dm[i]
                 )
@@ -176,12 +176,15 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
-                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=500,
+                    # we should preconfigure delay to 500ps with tCK=5ns but since tap
+                    # size can vary between 2.5 to 15 ps across PVT, set initial delay
+                    # to 0 and let the software configure it.
+                    p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
                     i_CLK=ClockSignal(),
-                    i_INC=0, i_EN_VTC=1,
-                    i_RST=0,
-                    i_CE=0,
+                    i_INC=1, i_EN_VTC=0,
+                    i_RST=self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
+                    i_CE=self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
 
                     o_ODATAIN=dqs_nodelay, o_DATAOUT=dqs_delayed
                 ),
@@ -231,26 +234,29 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
-                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
-                
+                    p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
+
                     i_CLK=ClockSignal(),
-                    i_INC=0, i_EN_VTC=1,
-                    i_RST=0,
-                    i_CE=0,
-                
+                    i_INC=1, i_EN_VTC=0,
+                    i_RST=self._dly_sel.storage[i//8] & self._wdly_dq_rst.re,
+                    i_CE=self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
+
                     o_ODATAIN=dq_o_nodelay, o_DATAOUT=dq_o_delayed
                 ),
                 Instance("IDELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC",p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
-                    p_DELAY_FORMAT="TIME", p_DELAY_SRC="IDATAIN",
-                    p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
-                
+                    p_DELAY_FORMAT="COUNT", p_DELAY_SRC="IDATAIN",
+                    # we should preconfigure delay to 500ps with tCK=5ns but since tap
+                    # size can vary between 2.5 to 15 ps across PVT, set initial delay
+                    # to 0 and let the software configure it.
+                    p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
+
                     i_CLK=ClockSignal(),
-                    i_INC=0, i_EN_VTC=1,
-                    i_RST=0,
-                    i_CE=0,
-                
+                    i_INC=1, i_EN_VTC=0,
+                    i_RST=self._dly_sel.storage[i//8] & self._rdly_dq_rst.re,
+                    i_CE=self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
+
                     i_IDATAIN=dq_i_nodelay, o_DATAOUT=dq_i_delayed
                 ),
                 Instance("IOBUF",
