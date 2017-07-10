@@ -84,7 +84,7 @@ class _LiteDRAMBISTGenerator(Module):
         # # #
 
         gen_cls = LFSR if random else Counter
-        gen = gen_cls(dram_port.dw)
+        gen = gen_cls(min(dram_port.dw, 32)) # FIXME: remove lfsr limitation
         dma = LiteDRAMDMAWriter(dram_port)
         self.submodules += dma, gen
 
@@ -210,7 +210,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         # # #
 
         gen_cls = LFSR if random else Counter
-        gen = gen_cls(dram_port.dw)
+        gen = gen_cls(min(dram_port.dw, 32)) # FIXME: remove lfsr limitation
         dma = LiteDRAMDMAReader(dram_port)
         self.submodules += dma, gen
 
