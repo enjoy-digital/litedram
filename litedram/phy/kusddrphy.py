@@ -245,9 +245,6 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC",p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
                     p_DELAY_FORMAT="COUNT", p_DELAY_SRC="IDATAIN",
-                    # we should preconfigure delay to 500ps with tCK=5ns but since tap
-                    # size can vary between 2.5 to 15 ps across PVT, set initial delay
-                    # to 0 and let the software configure it.
                     p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
                     i_CLK=ClockSignal(),
