@@ -73,10 +73,12 @@ class Counter(Module):
 @ResetInserter()
 class _LiteDRAMBISTGenerator(Module):
     def __init__(self, dram_port, random):
+        ashift = log2_int(dram_port.dw//8)
+        awidth = dram_port.aw + ashift
         self.start = Signal()
         self.done = Signal()
-        self.base = Signal(dram_port.aw)
-        self.length = Signal(dram_port.aw)
+        self.base = Signal(awidth)
+        self.length = Signal(awidth)
         self.ticks = Signal(32)
 
         # # #
@@ -102,7 +104,7 @@ class _LiteDRAMBISTGenerator(Module):
             If(dma.sink.ready,
                 gen.ce.eq(1),
                 NextValue(cmd_counter, cmd_counter + 1),
-                If(cmd_counter == (self.length - 1),
+                If(cmd_counter == (self.length[ashift:] - 1),
                     NextState("DONE")
                 )
             ),
@@ -112,7 +114,7 @@ class _LiteDRAMBISTGenerator(Module):
             self.done.eq(1)
         )
         self.comb += [
-            dma.sink.address.eq(self.base + cmd_counter),
+            dma.sink.address.eq(self.base[ashift:] + cmd_counter),
             dma.sink.data.eq(gen.o)
         ]
 
@@ -139,11 +141,13 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         Duration of the generation.
     """
     def __init__(self, dram_port, random=True):
+        ashift = log2_int(dram_port.dw//8)
+        awidth = dram_port.aw + ashift
         self.reset = CSR()
         self.start = CSR()
         self.done = CSRStatus()
-        self.base = CSRStorage(dram_port.aw)
-        self.length = CSRStorage(dram_port.aw)
+        self.base = CSRStorage(awidth)
+        self.length = CSRStorage(awidth)
         self.ticks = CSRStatus(32)
 
         # # #
@@ -172,8 +176,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
             self.done.status.eq(done_sync.o)
         ]
 
-        base_sync = BusSynchronizer(dram_port.aw, "sys", cd)
-        length_sync = BusSynchronizer(dram_port.aw, "sys", cd)
+        base_sync = BusSynchronizer(awidth, "sys", cd)
+        length_sync = BusSynchronizer(awidth, "sys", cd)
         self.submodules += base_sync, length_sync
         self.comb += [
             base_sync.i.eq(self.base.storage),
@@ -194,10 +198,12 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 @ResetInserter()
 class _LiteDRAMBISTChecker(Module, AutoCSR):
     def __init__(self, dram_port, random):
+        ashift = log2_int(dram_port.dw//8)
+        awidth = dram_port.aw + ashift
         self.start = Signal()
         self.done = Signal()
-        self.base = Signal(dram_port.aw)
-        self.length = Signal(dram_port.aw)
+        self.base = Signal(awidth)
+        self.length = Signal(awidth)
         self.ticks = Signal(32)
         self.errors = Signal(32)
 
@@ -223,13 +229,13 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             dma.sink.valid.eq(1),
             If(dma.sink.ready,
                 NextValue(cmd_counter, cmd_counter + 1),
-                If(cmd_counter == (self.length - 1),
+                If(cmd_counter == (self.length[ashift:] - 1),
                     NextState("DONE")
                 )
             )
         )
         cmd_fsm.act("DONE")
-        self.comb += dma.sink.address.eq(self.base + cmd_counter)
+        self.comb += dma.sink.address.eq(self.base[ashift:] + cmd_counter)
 
         # data
         data_counter = Signal(dram_port.aw, reset_less=True)
@@ -252,7 +258,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
                 If(dma.source.data != gen.o,
                     NextValue(self.errors, self.errors + 1)
                 ),
-                If(data_counter == (self.length - 1),
+                If(data_counter == (self.length[ashift:] - 1),
                     NextState("DONE")
                 )
             ),
@@ -288,10 +294,12 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         Number of DRAM words which don't match.
     """
     def __init__(self, dram_port, random=True):
+        ashift = log2_int(dram_port.dw//8)
+        awidth = dram_port.aw + ashift
         self.reset = CSR()
         self.start = CSR()
-        self.base = CSRStorage(dram_port.aw)
-        self.length = CSRStorage(dram_port.aw)
+        self.base = CSRStorage(awidth)
+        self.length = CSRStorage(awidth)
         self.done = CSRStatus()
         self.ticks = CSRStatus(32)
         self.errors = CSRStatus(32)
@@ -322,8 +330,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             self.done.status.eq(done_sync.o)
         ]
 
-        base_sync = BusSynchronizer(dram_port.aw, "sys", cd)
-        length_sync = BusSynchronizer(dram_port.aw, "sys", cd)
+        base_sync = BusSynchronizer(awidth, "sys", cd)
+        length_sync = BusSynchronizer(awidth, "sys", cd)
         self.submodules += base_sync, length_sync
         self.comb += [
             base_sync.i.eq(self.base.storage),
