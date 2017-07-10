@@ -18,10 +18,13 @@ class K7DDRPHY(Module, AutoCSR):
 
         self._wlevel_en = CSRStorage()
         self._wlevel_strobe = CSR()
+
         self._dly_sel = CSRStorage(databits//8)
+
         self._rdly_dq_rst = CSR()
         self._rdly_dq_inc = CSR()
         self._rdly_dq_bitslip = CSR()
+
         self._wdly_dq_rst = CSR()
         self._wdly_dq_inc = CSR()
         self._wdly_dqs_rst = CSR()
