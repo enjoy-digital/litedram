@@ -151,7 +151,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     i_RST=self._dly_sel.storage[i] & self._wdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dq_inc.re,
 
-                    o_ODATAIN=dm_o_nodelay, o_DATAOUT=pads.dm[i]
+                    i_ODATAIN=dm_o_nodelay, o_DATAOUT=pads.dm[i]
                 )
 
             dqs_nodelay = Signal()
@@ -181,7 +181,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     i_RST=self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
 
-                    o_ODATAIN=dqs_nodelay, o_DATAOUT=dqs_delayed
+                    i_ODATAIN=dqs_nodelay, o_DATAOUT=dqs_delayed
                 ),
                 Instance("OBUFTDS",
                     i_I=dqs_delayed, i_T=dqs_t,
@@ -240,7 +240,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     i_RST=self._dly_sel.storage[i//8] & self._wdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
 
-                    o_ODATAIN=dq_o_nodelay, o_DATAOUT=dq_o_delayed
+                    i_ODATAIN=dq_o_nodelay, o_DATAOUT=dq_o_delayed
                 ),
                 Instance("IDELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC",p_REFCLK_FREQUENCY=200.0,
