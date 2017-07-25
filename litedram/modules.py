@@ -112,6 +112,20 @@ class MT46H32M16(SDRAMModule):
     tREFI = 64*1000*1000/8192
     tRFC  = 72
 
+class MT46H32M32(SDRAMModule):
+    memtype = "LPDDR"
+    # geometry
+    nbanks = 4
+    nrows  = 8192
+    ncols  = 1024
+    # timings
+    tRP   = 15
+    tRCD  = 15
+    tWR   = 15
+    tWTR  = 2
+    tREFI = 64*1000*1000/8192
+    tRFC  = 72
+
 
 # DDR2
 class MT47H128M8(SDRAMModule):
