@@ -222,12 +222,16 @@ class KUSDDRPHY(Module, AutoCSR):
                     i_T=~oe_dq
                 ),
                 Instance("ISERDESE3",
+                    p_IS_CLK_INVERTED=0,
+                    p_IS_CLK_B_INVERTED=1,
                     p_DATA_WIDTH=8,
 
                     i_D=dq_i_delayed,
                     i_RST=ResetSignal(),
                     i_FIFO_RD_CLK=0, i_FIFO_RD_EN=0,
-                    i_CLK=ClockSignal("sys4x"), i_CLK_B=~ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                    i_CLK=ClockSignal("sys4x"),
+                    i_CLK_B=ClockSignal("sys4x"), # locally inverted
+                    i_CLKDIV=ClockSignal(),
                     o_Q=dq_bitslip.i
                 ),
                 Instance("ODELAYE3",
