@@ -1,4 +1,4 @@
-# 1:4 frequency-ratio DDR3 PHYs for KintexUltrascale
+# 1:4 frequency-ratio DDR3 PHY for Kintex Ultrascale
 # tCK=5ns CL=7 CWL=6
 
 from litex.gen import *
