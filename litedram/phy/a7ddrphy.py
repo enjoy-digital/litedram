@@ -41,26 +41,27 @@ class A7DDRPHY(Module, AutoCSR):
         # # #
 
         # Clock
-        sd_clk_se = Signal()
-        self.specials += [
-            Instance("OSERDESE2",
-                p_DATA_WIDTH=8, p_TRISTATE_WIDTH=1,
-                p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
-                p_SERDES_MODE="MASTER",
+        for i in range(len(pads.clk_p)):
+            sd_clk_se = Signal()
+            self.specials += [
+                Instance("OSERDESE2",
+                    p_DATA_WIDTH=8, p_TRISTATE_WIDTH=1,
+                    p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
+                    p_SERDES_MODE="MASTER",
 
-                o_OQ=sd_clk_se,
-                i_OCE=1,
-                i_RST=ResetSignal(),
-                i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                i_D1=0, i_D2=1, i_D3=0, i_D4=1,
-                i_D5=0, i_D6=1, i_D7=0, i_D8=1
-            ),
-            Instance("OBUFDS",
-                i_I=sd_clk_se,
-                o_O=pads.clk_p,
-                o_OB=pads.clk_n
-            )
-        ]
+                    o_OQ=sd_clk_se,
+                    i_OCE=1,
+                    i_RST=ResetSignal(),
+                    i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                    i_D1=0, i_D2=1, i_D3=0, i_D4=1,
+                    i_D5=0, i_D6=1, i_D7=0, i_D8=1
+                ),
+                Instance("OBUFDS",
+                    i_I=sd_clk_se,
+                    o_O=pads.clk_p[i],
+                    o_OB=pads.clk_n[i]
+                )
+            ]
 
         # Addresses and commands
         for i in range(addressbits):

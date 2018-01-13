@@ -75,7 +75,7 @@ def main_generator(dut):
     checker = BISTDriver(dut.checker)
 
     for i in range(16):
-    	yield
+        yield
 
     # write
     yield from generator.reset()
