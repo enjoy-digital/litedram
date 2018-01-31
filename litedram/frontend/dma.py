@@ -21,7 +21,7 @@ class LiteDRAMDMAReader(Module):
         read requests can be outstanding at once).
 
     fifo_buffered : bool
-        ???
+        Implement FIFO in Block Ram.
 
     Attributes
     ----------
@@ -88,7 +88,7 @@ class LiteDRAMDMAWriter(Module):
         requests can be outstanding at once).
 
     fifo_buffered : bool
-        ???
+        Implement FIFO in Block Ram.
 
     Attributes
     ----------
