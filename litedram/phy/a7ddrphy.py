@@ -96,7 +96,9 @@ class A7DDRPHY(Module, AutoCSR):
                     i_D5=self.dfi.phases[2].bank[i], i_D6=self.dfi.phases[2].bank[i],
                     i_D7=self.dfi.phases[3].bank[i], i_D8=self.dfi.phases[3].bank[i]
                 )
-        controls = ["ras_n", "cas_n", "we_n", "cke", "odt", "reset_n"]
+        controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
+        if hasattr(pads, "reset_n"):
+            controls.append("reset_n")
         if hasattr(pads, "cs_n"):
             controls.append("cs_n")
         for name in controls:
