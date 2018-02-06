@@ -143,6 +143,21 @@ class MT47H128M8(SDRAMModule):
     tRFC  = 127.5
 
 
+class MT47H64M16(SDRAMModule):
+    memtype = "DDR2"
+    # geometry
+    nbanks = 8
+    nrows  = 8192
+    ncols  = 1024
+    # timings
+    tRP   = 15
+    tRCD  = 15
+    tWR   = 15
+    tWTR  = 2
+    tREFI = 7800
+    tRFC  = 127.5
+
+
 class P3R1GE4JGF(SDRAMModule):
     memtype = "DDR2"
     # geometry
