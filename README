@@ -3,10 +3,10 @@
        / /__/ / __/ -_) // / , _/ __ |/ /|_/ /
       /____/_/\__/\__/____/_/|_/_/ |_/_/  /_/
 
-           Copyright 2015-2017 / EnjoyDigital
+           Copyright 2015-2018 / EnjoyDigital
 
        A small footprint and configurable DRAM core
-
+                powered by LiteX & Migen
 
 [> Intro
 --------
@@ -14,21 +14,18 @@ LiteDRAM provides a small footprint and configurable DRAM core.
 
 LiteDRAM is part of LiteX libraries whose aims are to lower entry level of
 complex FPGA cores by providing simple, elegant and efficient implementations
-ofcomponents used in today's SoC such as Ethernet, SATA, PCIe, SDRAM Controller...
-
-The core uses simple and specific streaming buses and will provides in the future
-adapters to use standardized AXI or Avalon-ST streaming buses.
+of components used in today's SoC such as Ethernet, SATA, PCIe, SDRAM Controller...
 
 Since Python is used to describe the HDL, the core is highly and easily
 configurable.
 
-LiteDRAM uses technologies developed in partnership with M-Labs Ltd:
+LiteDRAM is built using LiteX and uses technologies developed in partnership with
+M-Labs Ltd:
  - Migen enables generating HDL with Python in an efficient way.
  - MiSoC provides the basic blocks to build a powerful and small footprint SoC.
 
-LiteDRAM can be used as a Migen/MiSoC library (by simply installing it
-with the provided setup.py) or can be integrated with your standard design flow
-by generating the verilog rtl that you will use as a standard core.
+LiteDRAM can be used as LiteX library or can be integrated with your standard
+design flow by generating the verilog rtl that you will use as a standard core.
 
 [> Features
 -----------
@@ -47,29 +44,42 @@ Frontend:
   - DMA reader/writer.
   - BIST.
 
+[> FPGA Proven
+---------------
+LiteDRAM is already used in commercial and open-source designs:
+- HDMI2USB: http://hdmi2usb.tv/home/
+- and others commercial designs...
+
 [> Possible improvements
 ------------------------
 - add standardized interfaces (AXI, Avalon-ST)
 - add support for Altera PHYs.
 - add support for Lattice PHYs.
+- add more documentation
 - ... See below Support and consulting :)
 
 If you want to support these features, please contact us at florent [AT]
-enjoy-digital.fr. You can also contact our partner on the public mailing list
-devel [AT] lists.m-labs.hk.
+enjoy-digital.fr.
 
-
-> Getting started
+[> Getting started
 ------------------
 1. Install Python3 and your vendor's software
 
 2. Obtain LiteX and install it:
   git clone https://github.com/enjoy-digital/litex --recursive
   cd litex
-  python3 setup.py install
+  python3 setup.py develop
   cd ..
 
-3. TODO: add example design(s)
+3. TODO: add/describe example design(s)
+
+[> Tests
+--------
+Unit tests are available in ./test/.
+To run all the unit tests:
+  ./setup.py test
+Tests can also be run individually:
+  python3 -m unittest test.test_name
 
 [> License
 ----------
@@ -88,8 +98,7 @@ do them if possible:
 -------------------------
 We love open-source hardware and like sharing our designs with others.
 
-LiteDRAM is developed and maintained by EnjoyDigital. Initial development
-is based on MiSoC's LASMICON.
+LiteDRAM is developed and maintained by EnjoyDigital.
 
 If you would like to know more about LiteDRAM or if you are already a happy
 user and would like to extend it for your needs, EnjoyDigital can provide standard

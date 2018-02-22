@@ -5,14 +5,14 @@ from setuptools import setup
 from setuptools import find_packages
 
 
-if sys.version_info[:3] < (3, 3):
-    raise SystemExit("You need Python 3.3+")
+if sys.version_info[:3] < (3, 5):
+    raise SystemExit("You need Python 3.5+")
 
 
 setup(
     name="litedram",
     version="0.1",
-    description="Small footprint and configurable dram core",
+    description="Small footprint and configurable DRAM core",
     long_description=open("README").read(),
     author="Florent Kermarrec",
     author_email="florent@enjoy-digital.fr",
