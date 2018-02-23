@@ -1,4 +1,4 @@
-from litex.gen import *
+from migen import *
 
 from litedram.phy import dfi
 from litedram import common

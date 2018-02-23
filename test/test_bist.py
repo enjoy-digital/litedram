@@ -1,7 +1,7 @@
 import unittest
 import random
 
-from litex.gen import *
+from migen import *
 
 from litex.soc.interconnect.stream import *
 

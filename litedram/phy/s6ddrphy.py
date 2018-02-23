@@ -19,9 +19,9 @@
 from functools import reduce
 from operator import or_
 
-from litex.gen import *
-from litex.gen.genlib.record import *
-from litex.gen.fhdl.decorators import ClockDomainsRenamer
+from migen import *
+from migen.genlib.record import *
+from migen.fhdl.decorators import ClockDomainsRenamer
 
 from litedram.common import PhySettings
 from litedram.phy.dfi import *

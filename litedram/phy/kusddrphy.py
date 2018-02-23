@@ -1,8 +1,8 @@
 # 1:4 frequency-ratio DDR3 PHY for Kintex Ultrascale
 # tCK=5ns CL=7 CWL=6
 
-from litex.gen import *
-from litex.gen.genlib.misc import BitSlip
+from migen import *
+from migen.genlib.misc import BitSlip
 
 from litex.soc.interconnect.csr import *
 

@@ -1,4 +1,4 @@
-from litex.gen import *
+from migen import *
 
 
 def seed_to_data(seed, random=True, nbits=32):

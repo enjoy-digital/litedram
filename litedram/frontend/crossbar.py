@@ -1,8 +1,8 @@
 from functools import reduce
 from operator import or_
 
-from litex.gen import *
-from litex.gen.genlib import roundrobin
+from migen import *
+from migen.genlib import roundrobin
 
 from litex.soc.interconnect import stream
 

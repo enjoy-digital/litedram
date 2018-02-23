@@ -1,6 +1,6 @@
 import unittest
 
-from litex.gen import *
+from migen import *
 
 from litex.soc.interconnect.stream import *
 
@@ -55,7 +55,7 @@ def main_generator(write_port, read_port):
         yield write_port.cmd.valid.eq(0)
         yield
         yield write_port.wdata.valid.eq(1)
-        yield write_port.wdata.data.eq(write_data[i])   
+        yield write_port.wdata.data.eq(write_data[i])
         yield
         while (yield write_port.wdata.ready) == 0:
             yield

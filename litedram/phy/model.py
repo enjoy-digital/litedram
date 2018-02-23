@@ -6,7 +6,7 @@
 # TODO:
 # - add $display support to LiteX gen and manage timing violations?
 
-from litex.gen import *
+from migen import *
 
 from litedram.phy.dfi import *
 

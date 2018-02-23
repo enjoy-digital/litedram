@@ -1,5 +1,5 @@
-from litex.gen import *
-from litex.gen.genlib.misc import timeline, WaitTimer
+from migen import *
+from migen.genlib.misc import timeline, WaitTimer
 
 from litex.soc.interconnect import stream
 

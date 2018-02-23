@@ -3,8 +3,8 @@
 from functools import reduce
 from operator import xor
 
-from litex.gen import *
-from litex.gen.genlib.cdc import PulseSynchronizer, BusSynchronizer
+from migen import *
+from migen.genlib.cdc import PulseSynchronizer, BusSynchronizer
 
 from litex.soc.interconnect.csr import *
 

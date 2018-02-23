@@ -1,6 +1,6 @@
 """Direct Memory Access (DMA) reader and writer modules."""
 
-from litex.gen import *
+from migen import *
 
 from litex.soc.interconnect import stream
 

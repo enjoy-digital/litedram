@@ -1,6 +1,6 @@
 from math import ceil
 
-from litex.gen import *
+from migen import *
 
 from litedram.common import GeomSettings, TimingSettings
 

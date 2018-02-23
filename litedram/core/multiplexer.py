@@ -1,8 +1,8 @@
 from functools import reduce
 from operator import or_, and_
 
-from litex.gen import *
-from litex.gen.genlib.roundrobin import *
+from migen import *
+from migen.genlib.roundrobin import *
 
 from litex.soc.interconnect import stream
 from litex.soc.interconnect.csr import AutoCSR
