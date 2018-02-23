@@ -11,7 +11,7 @@ if sys.version_info[:3] < (3, 5):
 
 setup(
     name="litedram",
-    version="0.1",
+    version="0.2.dev",
     description="Small footprint and configurable DRAM core",
     long_description=open("README").read(),
     author="Florent Kermarrec",
