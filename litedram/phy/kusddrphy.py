@@ -17,6 +17,8 @@ class KUSDDRPHY(Module, AutoCSR):
         databits = len(pads.dq)
         nphases = 4
 
+        self._en_vtc = CSRStorage()
+
         self._wlevel_en = CSRStorage()
         self._wlevel_strobe = CSR()
 
@@ -147,7 +149,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
                     i_CLK=ClockSignal(),
-                    i_INC=1, i_EN_VTC=0,
+                    i_INC=1, i_EN_VTC=self._en_vtc.storage,
                     i_RST=self._dly_sel.storage[i] & self._wdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dq_inc.re,
 
@@ -177,7 +179,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=64,
 
                     i_CLK=ClockSignal(),
-                    i_INC=1, i_EN_VTC=0,
+                    i_INC=1, i_EN_VTC=self._en_vtc.storage,
                     i_RST=self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
 
@@ -240,7 +242,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
                     i_CLK=ClockSignal(),
-                    i_INC=1, i_EN_VTC=0,
+                    i_INC=1, i_EN_VTC=self._en_vtc.storage,
                     i_RST=self._dly_sel.storage[i//8] & self._wdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
 
@@ -253,7 +255,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
                     i_CLK=ClockSignal(),
-                    i_INC=1, i_EN_VTC=0,
+                    i_INC=1, i_EN_VTC=self._en_vtc.storage,
                     i_RST=self._dly_sel.storage[i//8] & self._rdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
 
