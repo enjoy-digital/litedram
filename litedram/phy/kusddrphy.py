@@ -2,7 +2,7 @@
 # tCK=5ns CL=7 CWL=6
 
 from migen import *
-from migen.genlib.misc import BitSlip
+from migen.genlib.misc import BitSlip, WaitTimer
 
 from litex.soc.interconnect.csr import *
 
@@ -160,6 +160,17 @@ class KUSDDRPHY(Module, AutoCSR):
             dqs_nodelay = Signal()
             dqs_delayed = Signal()
             dqs_t = Signal()
+            if i == 0:
+                dqs_taps = Signal(9)
+                dqs_taps_timer = WaitTimer(2**16)
+                self.submodules += dqs_taps_timer
+                dqs_taps_done = Signal()
+                self.comb += dqs_taps_timer.wait.eq(~dqs_taps_done)
+                self.sync += \
+                    If(dqs_taps_timer.done,
+                        dqs_taps_done.eq(1),
+                        self._wdly_dqs_taps.status.eq(dqs_taps)
+                    )
             self.specials += [
                 Instance("OSERDESE3",
                     p_DATA_WIDTH=8, p_INIT=0,
@@ -183,7 +194,7 @@ class KUSDDRPHY(Module, AutoCSR):
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
                     i_RST=self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
-                    o_CNTVALUEOUT=self._wdly_dqs_taps.status if i == 0 else Signal(9),
+                    o_CNTVALUEOUT=Signal(9) if i != 0 else dqs_taps,
 
                     i_ODATAIN=dqs_nodelay, o_DATAOUT=dqs_delayed
                 ),
