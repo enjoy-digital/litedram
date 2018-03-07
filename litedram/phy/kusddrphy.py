@@ -17,7 +17,7 @@ class KUSDDRPHY(Module, AutoCSR):
         databits = len(pads.dq)
         nphases = 4
 
-        self._en_vtc = CSRStorage()
+        self._en_vtc = CSRStorage(reset=1)
 
         self._wlevel_en = CSRStorage()
         self._wlevel_strobe = CSR()
@@ -32,6 +32,7 @@ class KUSDDRPHY(Module, AutoCSR):
         self._wdly_dq_inc = CSR()
         self._wdly_dqs_rst = CSR()
         self._wdly_dqs_inc = CSR()
+        self._wdly_dqs_taps = CSRStatus(9)
 
         self.settings = PhySettings(
             memtype="DDR3",
@@ -146,7 +147,7 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
-                    p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
+                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
@@ -176,12 +177,13 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
-                    p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=64,
+                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=500,
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
                     i_RST=self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
+                    o_CNTVALUEOUT=self._wdly_dqs_taps.status if i == 0 else Signal(9),
 
                     i_ODATAIN=dqs_nodelay, o_DATAOUT=dqs_delayed
                 ),
@@ -239,7 +241,7 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
-                    p_DELAY_FORMAT="COUNT", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
+                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
@@ -251,7 +253,7 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("IDELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC",p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
-                    p_DELAY_FORMAT="COUNT", p_DELAY_SRC="IDATAIN",
+                    p_DELAY_FORMAT="TIME", p_DELAY_SRC="IDATAIN",
                     p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
                     i_CLK=ClockSignal(),
