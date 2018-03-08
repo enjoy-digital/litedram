@@ -161,6 +161,8 @@ class KUSDDRPHY(Module, AutoCSR):
             dqs_delayed = Signal()
             dqs_t = Signal()
             if i == 0:
+                # Store initial DQS DELAY_VALUE (in taps) to
+                # be able to reload DELAY_VALUE after reset.
                 dqs_taps = Signal(9)
                 dqs_taps_timer = WaitTimer(2**16)
                 self.submodules += dqs_taps_timer
