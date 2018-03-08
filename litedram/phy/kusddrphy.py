@@ -117,6 +117,8 @@ class KUSDDRPHY(Module, AutoCSR):
 
         # DQS and DM
         oe_dqs = Signal()
+        oe_dqs_preamble = Signal()
+        oe_dqs_postamble = Signal()
         dqs_serdes_pattern = Signal(8)
         self.comb += \
             If(self._wlevel_en.storage,
@@ -126,7 +128,13 @@ class KUSDDRPHY(Module, AutoCSR):
                     dqs_serdes_pattern.eq(0b00000000)
                 )
             ).Else(
-                dqs_serdes_pattern.eq(0b01010101)
+                If(oe_dqs_preamble,
+                    dqs_serdes_pattern.eq(0b01000000)
+                ).Elif(oe_dqs_postamble,
+                    dqs_serdes_pattern.eq(0b00000001)
+                ).Else(
+                    dqs_serdes_pattern.eq(0b01010101)
+                )
             )
         for i in range(databits//8):
             dm_o_nodelay = Signal()
@@ -313,9 +321,12 @@ class KUSDDRPHY(Module, AutoCSR):
         wrphase = self.dfi.phases[self.settings.wrphase]
         self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en[:3]))
         self.comb += oe.eq(last_wrdata_en[1] | last_wrdata_en[2] | last_wrdata_en[3])
-        self.sync += \
+        self.sync += [
+            oe_dqs_preamble.eq(last_wrdata_en[1]),
+            oe_dqs_postamble.eq(last_wrdata_en[3]),
             If(self._wlevel_en.storage,
                 oe_dqs.eq(1), oe_dq.eq(0)
             ).Else(
                 oe_dqs.eq(oe), oe_dq.eq(oe)
             )
+        ]
