@@ -53,19 +53,25 @@ class KUSDDRPHY(Module, AutoCSR):
         # # #
 
         # Clock
-        sd_clk_se = Signal()
+        clk_o_nodelay = Signal()
+        clk_o_delayed = Signal()
         self.specials += [
             Instance("OSERDESE3",
                 p_DATA_WIDTH=8, p_INIT=0,
                 p_IS_CLK_INVERTED=0, p_IS_CLKDIV_INVERTED=0, p_IS_RST_INVERTED=0,
 
-                o_OQ=sd_clk_se,
+                o_OQ=clk_o_nodelay,
                 i_RST=ResetSignal(),
                 i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                 i_D=0b10101010
             ),
+            Instance("ODELAYE3",
+                p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                i_ODATAIN=clk_o_nodelay, o_DATAOUT=clk_o_delayed
+            ),
             Instance("OBUFDS",
-                i_I=sd_clk_se,
+                i_I=clk_o_delayed,
                 o_O=pads.clk_p,
                 o_OB=pads.clk_n
             )
@@ -73,47 +79,69 @@ class KUSDDRPHY(Module, AutoCSR):
 
         # Addresses and commands
         for i in range(addressbits):
-            self.specials += \
+            a_o_nodelay = Signal()
+            self.specials += [
                 Instance("OSERDESE3",
                     p_DATA_WIDTH=8, p_INIT=0,
                     p_IS_CLK_INVERTED=0, p_IS_CLKDIV_INVERTED=0, p_IS_RST_INVERTED=0,
 
-                    o_OQ=pads.a[i],
+                    o_OQ=a_o_nodelay,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     i_D=Cat(self.dfi.phases[0].address[i], self.dfi.phases[0].address[i],
                             self.dfi.phases[1].address[i], self.dfi.phases[1].address[i],
                             self.dfi.phases[2].address[i], self.dfi.phases[2].address[i],
                             self.dfi.phases[3].address[i], self.dfi.phases[3].address[i])
+                ),
+                Instance("ODELAYE3",
+                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                    i_ODATAIN=a_o_nodelay, o_DATAOUT=pads.a[i]
                 )
+            ]
+
         for i in range(bankbits):
-            self.specials += \
+            ba_o_nodelay = Signal()
+            self.specials += [
                 Instance("OSERDESE3",
                     p_DATA_WIDTH=8, p_INIT=0,
                     p_IS_CLK_INVERTED=0, p_IS_CLKDIV_INVERTED=0, p_IS_RST_INVERTED=0,
 
-                    o_OQ=pads.ba[i],
+                    o_OQ=ba_o_nodelay,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     i_D=Cat(self.dfi.phases[0].bank[i], self.dfi.phases[0].bank[i],
                             self.dfi.phases[1].bank[i], self.dfi.phases[1].bank[i],
                             self.dfi.phases[2].bank[i], self.dfi.phases[2].bank[i],
                             self.dfi.phases[3].bank[i], self.dfi.phases[3].bank[i])
+                ),
+                Instance("ODELAYE3",
+                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                    i_ODATAIN=ba_o_nodelay, o_DATAOUT=pads.ba[i]
                 )
+            ]
         for name in "ras_n", "cas_n", "we_n", "cs_n", "cke", "odt", "reset_n":
-            self.specials += \
+            x_o_nodelay = Signal()
+            self.specials += [
                 Instance("OSERDESE3",
                     p_DATA_WIDTH=8, p_INIT=0,
                     p_IS_CLK_INVERTED=0, p_IS_CLKDIV_INVERTED=0, p_IS_RST_INVERTED=0,
 
-                    o_OQ=getattr(pads, name),
+                    o_OQ=x_o_nodelay,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     i_D=Cat(getattr(self.dfi.phases[0], name), getattr(self.dfi.phases[0], name),
                             getattr(self.dfi.phases[1], name), getattr(self.dfi.phases[1], name),
                             getattr(self.dfi.phases[2], name), getattr(self.dfi.phases[2], name),
                             getattr(self.dfi.phases[3], name), getattr(self.dfi.phases[3], name))
+                ),
+                Instance("ODELAYE3",
+                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                    i_ODATAIN=x_o_nodelay, o_DATAOUT=getattr(pads, name)
                 )
+            ]
 
         # DQS and DM
         oe_dqs = Signal()
