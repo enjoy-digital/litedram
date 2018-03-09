@@ -200,9 +200,9 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_ODATAIN=dqs_nodelay, o_DATAOUT=dqs_delayed
                 ),
-                Instance("OBUFTDS",
+                Instance("IOBUFDSE3",
                     i_I=dqs_delayed, i_T=dqs_t,
-                    o_O=pads.dqs_p[i], o_OB=pads.dqs_n[i]
+                    io_IO=pads.dqs_p[i], io_IOB=pads.dqs_n[i]
                 )
             ]
 
