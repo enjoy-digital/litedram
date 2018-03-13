@@ -68,6 +68,9 @@ class KUSDDRPHY(Module, AutoCSR):
             Instance("ODELAYE3",
                 p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                 p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                i_CLK=ClockSignal(),
+                i_RST=ResetSignal(),
+                i_EN_VTC=1,
                 i_ODATAIN=clk_o_nodelay, o_DATAOUT=clk_o_delayed
             ),
             Instance("OBUFDS",
@@ -96,6 +99,9 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                    i_CLK=ClockSignal(),
+                    i_RST=ResetSignal(),
+                    i_EN_VTC=1,
                     i_ODATAIN=a_o_nodelay, o_DATAOUT=pads.a[i]
                 )
             ]
@@ -118,6 +124,9 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                    i_CLK=ClockSignal(),
+                    i_RST=ResetSignal(),
+                    i_EN_VTC=1,
                     i_ODATAIN=ba_o_nodelay, o_DATAOUT=pads.ba[i]
                 )
             ]
@@ -139,6 +148,9 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                    i_CLK=ClockSignal(),
+                    i_RST=ResetSignal(),
+                    i_EN_VTC=1,
                     i_ODATAIN=x_o_nodelay, o_DATAOUT=getattr(pads, name)
                 )
             ]
@@ -179,7 +191,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
-                    i_RST=self._dly_sel.storage[i] & self._wdly_dq_rst.re,
+                    i_RST=ResetSignal() | (self._dly_sel.storage[i] & self._wdly_dq_rst.re),
                     i_CE=self._dly_sel.storage[i] & self._wdly_dq_inc.re,
 
                     i_ODATAIN=dm_o_nodelay, o_DATAOUT=pads.dm[i]
@@ -222,7 +234,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
-                    i_RST=self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
+                    i_RST=ResetSignal() | (self._dly_sel.storage[i] & self._wdly_dqs_rst.re),
                     i_CE=self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
                     o_CNTVALUEOUT=Signal(9) if i != 0 else dqs_taps,
 
@@ -273,7 +285,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_D=dq_i_delayed,
                     i_RST=ResetSignal(),
-                    i_FIFO_RD_CLK=0, i_FIFO_RD_EN=0,
+                    i_FIFO_RD_EN=0,
                     i_CLK=ClockSignal("sys4x"),
                     i_CLK_B=ClockSignal("sys4x"), # locally inverted
                     i_CLKDIV=ClockSignal(),
@@ -286,7 +298,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
-                    i_RST=self._dly_sel.storage[i//8] & self._wdly_dq_rst.re,
+                    i_RST=ResetSignal() | (self._dly_sel.storage[i//8] & self._wdly_dq_rst.re),
                     i_CE=self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
 
                     i_ODATAIN=dq_o_nodelay, o_DATAOUT=dq_o_delayed
@@ -299,7 +311,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
-                    i_RST=self._dly_sel.storage[i//8] & self._rdly_dq_rst.re,
+                    i_RST=ResetSignal() | (self._dly_sel.storage[i//8] & self._rdly_dq_rst.re),
                     i_CE=self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
 
                     i_IDATAIN=dq_i_nodelay, o_DATAOUT=dq_i_delayed
