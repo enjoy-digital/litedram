@@ -68,19 +68,6 @@ class BankMachine(Module):
             req.lock.eq(cmd_buffer.source.valid),
         ]
         
-        #Set row change buffer
-        self.comb += [
-            rowchg_buffer.sink.differentRow.eq(slicer.row(req.adr) != row_last),
-            rowchg_buffer.sink.valid.eq(cmd_buffer.source.valid & cmd_buffer.sink.valid & cmd_buffer.sink.ready),
-            rowchg_buffer.source.ready.eq(cmd_buffer.source.ready),
-            auto_precharge.eq(rowchg_buffer.source.differentRow & rowchg_buffer.source.valid),
-        ]
-        self.sync += [
-            If(cmd_buffer.sink.valid & cmd_buffer.sink.ready,
-                row_last.eq(slicer.row(req.adr))
-            )
-        ]
-
         # Row tracking
         has_openrow = Signal()
         openrow = Signal(settings.geom.rowbits, reset_less=True)
@@ -95,6 +82,19 @@ class BankMachine(Module):
                 has_openrow.eq(1),
                 openrow.eq(slicer.row(cmd_buffer.source.adr))
             )
+
+        #Set row change buffer
+        self.comb += [
+            rowchg_buffer.sink.differentRow.eq(slicer.row(req.adr) != row_last),
+            rowchg_buffer.sink.valid.eq(cmd_buffer.source.valid & cmd_buffer.sink.valid & cmd_buffer.sink.ready),
+            rowchg_buffer.source.ready.eq(cmd_buffer.source.ready),
+            auto_precharge.eq(rowchg_buffer.source.differentRow & rowchg_buffer.source.valid & (track_close == 0)),
+        ]
+        self.sync += [
+            If(cmd_buffer.sink.valid & cmd_buffer.sink.ready,
+                row_last.eq(slicer.row(req.adr))
+            )
+        ]
 
         # Address generation
         sel_row_adr = Signal()
