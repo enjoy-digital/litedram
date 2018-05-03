@@ -35,7 +35,21 @@ class BankMachine(Module):
         ba = settings.geom.bankbits
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
 
+        row_last = Signal(settings.geom.rowbits);
+        auto_precharge = Signal()
+
         # # #
+        slicer = _AddressSlicer(settings.geom.colbits, address_align)
+
+        # Row Change buffer
+        #  Note: This would be a lot better if we could instead peek at the next value from cmd_buffer
+        rowchg_buffer_layout = [("differentRow", 1)]
+        if (settings.cmd_buffer_depth-1) < 2:
+            rowchg_buffer = stream.Buffer(rowchg_buffer_layout)
+        else:
+            rowchg_buffer = stream.SyncFIFO(rowchg_buffer_layout,
+                                        settings.cmd_buffer_depth-1)
+        self.submodules += rowchg_buffer
 
         # Command buffer
         cmd_buffer_layout = [("we", 1), ("adr", len(req.adr))]
@@ -44,6 +58,7 @@ class BankMachine(Module):
         else:
             cmd_buffer = stream.SyncFIFO(cmd_buffer_layout,
                                          settings.cmd_buffer_depth)
+
         self.submodules += cmd_buffer
         self.comb += [
             req.connect(cmd_buffer.sink, omit=["wdata_valid", "wdata_ready",
@@ -52,8 +67,19 @@ class BankMachine(Module):
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer.source.valid),
         ]
-
-        slicer = _AddressSlicer(settings.geom.colbits, address_align)
+        
+        #Set row change buffer
+        self.comb += [
+            rowchg_buffer.sink.differentRow.eq(slicer.row(req.adr) != row_last),
+            rowchg_buffer.sink.valid.eq(cmd_buffer.source.valid & cmd_buffer.sink.valid & cmd_buffer.sink.ready),
+            rowchg_buffer.source.ready.eq(cmd_buffer.source.ready),
+            auto_precharge.eq(rowchg_buffer.source.differentRow & rowchg_buffer.source.valid),
+        ]
+        self.sync += [
+            If(cmd_buffer.sink.valid & cmd_buffer.sink.ready,
+                row_last.eq(slicer.row(req.adr))
+            )
+        ]
 
         # Row tracking
         has_openrow = Signal()
@@ -77,7 +103,7 @@ class BankMachine(Module):
             If(sel_row_adr,
                 cmd.a.eq(slicer.row(cmd_buffer.source.adr))
             ).Else(
-                cmd.a.eq(slicer.col(cmd_buffer.source.adr))
+                cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.source.adr))
             )
         ]
 
@@ -107,7 +133,10 @@ class BankMachine(Module):
                             req.rdata_valid.eq(cmd.ready),
                             cmd.is_read.eq(1)
                         ),
-                        cmd.cas.eq(1)
+                        cmd.cas.eq(1),
+                        If(cmd.ready & auto_precharge,
+                            NextState("AUTOPRECHARGE")
+                        )
                     ).Else(
                         NextState("PRECHARGE")
                     )
@@ -115,6 +144,13 @@ class BankMachine(Module):
                     NextState("ACTIVATE")
                 )
             )
+        )
+        fsm.act("AUTOPRECHARGE",
+            If(self.precharge_timer.done,
+                cmd.valid.eq(0),
+                NextState("TRP")
+            ),
+            track_close.eq(1)
         )
         fsm.act("PRECHARGE",
             # Note: we are presenting the column address, A10 is always low
