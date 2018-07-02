@@ -10,9 +10,23 @@ from litedram.common import PhySettings
 from litedram.phy.dfi import *
 
 
+def get_cl_cw(tck):
+     # ddr3-1066
+    if tck >= 1.875e-9:
+        cl = 7
+        cwl = 6
+     # ddr3-1333
+    elif tck >= 1.5e-9:
+        cl = 10
+        cwl = 7
+    # ddr3-1600
+    elif tck >= 1.25e-9:
+        cl = 11
+        cwl = 8
+    return cl, cwl
+
 def get_sys_latency(cas_latency):
     return math.ceil(cas_latency/4)
-
 
 def get_sys_phases(sys_latency, cas_latency, write=False):
     cmd_phase = 0
@@ -58,22 +72,12 @@ class S7DDRPHY(Module, AutoCSR):
             self._wdly_dqs_inc = CSR()
 
         # compute phy settings
-        if tck >= 1.875e-9: # ddr3-1066
-            cl = 7
-            cwl = 6
-        elif tck >= 1.5e-9: # ddr3-1333
-            cl = 10
-            cwl = 7
-        elif tck >= 1.25e-9: # ddr3-1600
-            cl = 11
-            cwl = 8
-
+        cl, cwl = get_cl_cw(tck)
         cl_sys_latency = get_sys_latency(cl)
         cwl_sys_latency = get_sys_latency(cwl)
 
         rdcmdphase, rdphase = get_sys_phases(cl_sys_latency, cl)
         wrcmdphase, wrphase = get_sys_phases(cwl_sys_latency, cwl, write=True)
-
         self.settings = PhySettings(
             memtype="DDR3",
             dfi_databits=2*databits,
