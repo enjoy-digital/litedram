@@ -45,14 +45,18 @@ def get_sys_phases(sys_latency, cas_latency, write=False):
 
 
 class S7DDRPHY(Module, AutoCSR):
-    def __init__(self, pads, with_odelay, sys_clk_freq=100e6):
+    def __init__(self, pads, with_odelay, sys_clk_freq=100e6, iodelay_clk_freq=200e6):
         tck = 2/(8*sys_clk_freq)
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
         databits = len(pads.dq)
         nphases = 4
 
-        half_sys8x_taps = math.floor(tck/(4*78e-12))
+        iodelay_tap_average = {
+            200e6: 78e-12,
+            300e6: 52e-12,
+        }
+        half_sys8x_taps = math.floor(tck/(4*iodelay_tap_average[iodelay_clk_freq]))
         self._half_sys8x_taps = CSRStorage(4, reset=half_sys8x_taps)
 
         if with_odelay:
@@ -209,7 +213,7 @@ class S7DDRPHY(Module, AutoCSR):
                 self.specials += \
                     Instance("ODELAYE2",
                         p_DELAY_SRC="ODATAIN", p_SIGNAL_PATTERN="DATA",
-                        p_CINVCTRL_SEL="FALSE", p_HIGH_PERFORMANCE_MODE="TRUE", p_REFCLK_FREQUENCY=200.0,
+                        p_CINVCTRL_SEL="FALSE", p_HIGH_PERFORMANCE_MODE="TRUE", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                         p_PIPE_SEL="FALSE", p_ODELAY_TYPE="VARIABLE", p_ODELAY_VALUE=0,
 
                         i_C=ClockSignal(),
@@ -245,7 +249,7 @@ class S7DDRPHY(Module, AutoCSR):
                 self.specials += \
                     Instance("ODELAYE2",
                         p_DELAY_SRC="ODATAIN", p_SIGNAL_PATTERN="DATA",
-                        p_CINVCTRL_SEL="FALSE", p_HIGH_PERFORMANCE_MODE="TRUE", p_REFCLK_FREQUENCY=200.0,
+                        p_CINVCTRL_SEL="FALSE", p_HIGH_PERFORMANCE_MODE="TRUE", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                         p_PIPE_SEL="FALSE", p_ODELAY_TYPE="VARIABLE", p_ODELAY_VALUE=half_sys8x_taps,
 
                         i_C=ClockSignal(),
@@ -310,7 +314,7 @@ class S7DDRPHY(Module, AutoCSR):
                 self.specials += \
                     Instance("ODELAYE2",
                         p_DELAY_SRC="ODATAIN", p_SIGNAL_PATTERN="DATA",
-                        p_CINVCTRL_SEL="FALSE", p_HIGH_PERFORMANCE_MODE="TRUE", p_REFCLK_FREQUENCY=200.0,
+                        p_CINVCTRL_SEL="FALSE", p_HIGH_PERFORMANCE_MODE="TRUE", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                         p_PIPE_SEL="FALSE", p_ODELAY_TYPE="VARIABLE", p_ODELAY_VALUE=0,
 
                         i_C=ClockSignal(),
@@ -323,7 +327,7 @@ class S7DDRPHY(Module, AutoCSR):
             self.specials += \
                 Instance("IDELAYE2",
                     p_DELAY_SRC="IDATAIN", p_SIGNAL_PATTERN="DATA",
-                    p_CINVCTRL_SEL="FALSE", p_HIGH_PERFORMANCE_MODE="TRUE", p_REFCLK_FREQUENCY=200.0,
+                    p_CINVCTRL_SEL="FALSE", p_HIGH_PERFORMANCE_MODE="TRUE", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_PIPE_SEL="FALSE", p_IDELAY_TYPE="VARIABLE", p_IDELAY_VALUE=0,
 
                     i_C=ClockSignal(),
