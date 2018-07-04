@@ -25,16 +25,16 @@ def get_cl_cw(tck):
         cwl = 8
     return cl, cwl
 
-def get_sys_latency(cas_latency):
-    return math.ceil(cas_latency/4)
+def get_sys_latency(nphases, cas_latency):
+    return math.ceil(cas_latency/nphases)
 
-def get_sys_phases(sys_latency, cas_latency, write=False):
+def get_sys_phases(nphases, sys_latency, cas_latency, write=False):
     cmd_phase = 0
     dat_phase = 0
     diff_phase = 0
-    while (diff_phase + cas_latency) != sys_latency*4:
+    while (diff_phase + cas_latency) != sys_latency*nphases:
         dat_phase += 1
-        if dat_phase == 4:
+        if dat_phase == nphases:
             dat_phase = 0
             cmd_phase += 1
         if write:
@@ -77,11 +77,11 @@ class S7DDRPHY(Module, AutoCSR):
 
         # compute phy settings
         cl, cwl = get_cl_cw(tck)
-        cl_sys_latency = get_sys_latency(cl)
-        cwl_sys_latency = get_sys_latency(cwl)
+        cl_sys_latency = get_sys_latency(nphases, cl)
+        cwl_sys_latency = get_sys_latency(nphases, cwl)
 
-        rdcmdphase, rdphase = get_sys_phases(cl_sys_latency, cl)
-        wrcmdphase, wrphase = get_sys_phases(cwl_sys_latency, cwl, write=True)
+        rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
+        wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl, write=True)
         self.settings = PhySettings(
             memtype="DDR3",
             dfi_databits=2*databits,
