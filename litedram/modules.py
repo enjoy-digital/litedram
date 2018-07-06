@@ -214,7 +214,7 @@ class MT41K128M16(SDRAMModule):
     tRP   = 13.75
     tRCD  = 13.75
     tWR   = 15
-    tWTR  = 8
+    tWTR  = 3
     tREFI = 64*1000*1000/8192
     tRFC  = 160
 
@@ -229,7 +229,7 @@ class MT41K256M16(SDRAMModule):
     tRP   = 13.75
     tRCD  = 13.75
     tWR   = 15
-    tWTR  = 8
+    tWTR  = 3
     tREFI = 64*1000*1000/8192
     tRFC  = 260
 
@@ -244,7 +244,7 @@ class MT41J256M16(SDRAMModule):
     tRP   = 13.75
     tRCD  = 13.75
     tWR   = 15
-    tWTR  = 8
+    tWTR  = 3
     tREFI = 64*1000*1000/8192
     tRFC  = 260
 
@@ -259,6 +259,6 @@ class MT18KSF1G72HZ_1G6(SDRAMModule):
     tRP   = 13.75
     tRCD  = 13.75
     tWR   = 15
-    tWTR  = 8
+    tWTR  = 3
     tREFI = 64*1000*1000/8192
     tRFC  = 260
