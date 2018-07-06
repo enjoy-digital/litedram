@@ -44,21 +44,12 @@ class BankMachine(Module):
         # Row Change buffer
         #  Note: This would be a lot better if we could instead peek at the next value from cmd_buffer
         rowchg_buffer_layout = [("differentRow", 1)]
-        if (settings.cmd_buffer_depth-1) < 2:
-            rowchg_buffer = stream.Buffer(rowchg_buffer_layout)
-        else:
-            rowchg_buffer = stream.SyncFIFO(rowchg_buffer_layout,
-                                        settings.cmd_buffer_depth-1)
+        rowchg_buffer = stream.SyncFIFO(rowchg_buffer_layout, settings.cmd_buffer_depth-1)
         self.submodules += rowchg_buffer
 
         # Command buffer
         cmd_buffer_layout = [("we", 1), ("adr", len(req.adr))]
-        if settings.cmd_buffer_depth < 2:
-            cmd_buffer = stream.Buffer(cmd_buffer_layout)
-        else:
-            cmd_buffer = stream.SyncFIFO(cmd_buffer_layout,
-                                         settings.cmd_buffer_depth)
-
+        cmd_buffer = stream.SyncFIFO(cmd_buffer_layout, settings.cmd_buffer_depth)
         self.submodules += cmd_buffer
         self.comb += [
             req.connect(cmd_buffer.sink, omit=["wdata_valid", "wdata_ready",
@@ -67,7 +58,7 @@ class BankMachine(Module):
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer.source.valid),
         ]
-        
+
         # Row tracking
         has_openrow = Signal()
         openrow = Signal(settings.geom.rowbits, reset_less=True)
