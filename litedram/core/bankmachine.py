@@ -35,35 +35,31 @@ class BankMachine(Module):
         ba = settings.geom.bankbits
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
 
-        row_last = Signal(settings.geom.rowbits);
+        # # #
+
         auto_precharge = Signal()
 
-        # # #
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
-
-        # Row Change buffer
-        #  Note: This would be a lot better if we could instead peek at the next value from cmd_buffer
-        rowchg_buffer_layout = [("differentRow", 1)]
-        rowchg_buffer = stream.SyncFIFO(rowchg_buffer_layout, settings.cmd_buffer_depth-1)
-        self.submodules += rowchg_buffer
 
         # Command buffer
         cmd_buffer_layout = [("we", 1), ("adr", len(req.adr))]
-        cmd_buffer = stream.SyncFIFO(cmd_buffer_layout, settings.cmd_buffer_depth)
-        self.submodules += cmd_buffer
+        cmd_buffer0 = stream.SyncFIFO(cmd_buffer_layout, settings.cmd_buffer_depth-1)
+        cmd_buffer1 = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
+        self.submodules += cmd_buffer0, cmd_buffer1
         self.comb += [
-            req.connect(cmd_buffer.sink, omit=["wdata_valid", "wdata_ready",
-                                               "rdata_valid", "rdata_ready",
-                                               "lock"]),
-            cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
-            req.lock.eq(cmd_buffer.source.valid),
+            req.connect(cmd_buffer0.sink, omit=["wdata_valid", "wdata_ready",
+                                                "rdata_valid", "rdata_ready",
+                                                "lock"]),
+            cmd_buffer0.source.connect(cmd_buffer1.sink),
+            cmd_buffer1.source.ready.eq(req.wdata_ready | req.rdata_valid),
+            req.lock.eq(cmd_buffer1.source.valid),
         ]
 
         # Row tracking
         has_openrow = Signal()
         openrow = Signal(settings.geom.rowbits, reset_less=True)
         hit = Signal()
-        self.comb += hit.eq(openrow == slicer.row(cmd_buffer.source.adr))
+        self.comb += hit.eq(openrow == slicer.row(cmd_buffer1.source.adr))
         track_open = Signal()
         track_close = Signal()
         self.sync += \
@@ -71,19 +67,17 @@ class BankMachine(Module):
                 has_openrow.eq(0)
             ).Elif(track_open,
                 has_openrow.eq(1),
-                openrow.eq(slicer.row(cmd_buffer.source.adr))
+                openrow.eq(slicer.row(cmd_buffer1.source.adr))
             )
 
-        #Set row change buffer
+        # Auto Precharge
         self.comb += [
-            rowchg_buffer.sink.differentRow.eq(slicer.row(req.adr) != row_last),
-            rowchg_buffer.sink.valid.eq(cmd_buffer.source.valid & cmd_buffer.sink.valid & cmd_buffer.sink.ready),
-            rowchg_buffer.source.ready.eq(cmd_buffer.source.ready),
-            auto_precharge.eq(rowchg_buffer.source.differentRow & rowchg_buffer.source.valid & (track_close == 0)),
-        ]
-        self.sync += [
-            If(cmd_buffer.sink.valid & cmd_buffer.sink.ready,
-                row_last.eq(slicer.row(req.adr))
+            # If both buffers have data to output, check row to see
+            # if we can embed an autoprecharge in current cmd.
+            If(cmd_buffer0.source.valid & cmd_buffer1.source.valid,
+                If(slicer.row(cmd_buffer0.source.adr) != slicer.row(cmd_buffer1.source.adr),
+                    auto_precharge.eq((track_close == 0))
+                )
             )
         ]
 
@@ -92,9 +86,9 @@ class BankMachine(Module):
         self.comb += [
             cmd.ba.eq(n),
             If(sel_row_adr,
-                cmd.a.eq(slicer.row(cmd_buffer.source.adr))
+                cmd.a.eq(slicer.row(cmd_buffer1.source.adr))
             ).Else(
-                cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.source.adr))
+                cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer1.source.adr))
             )
         ]
 
@@ -110,13 +104,13 @@ class BankMachine(Module):
         fsm.act("REGULAR",
             If(self.refresh_req,
                 NextState("REFRESH")
-            ).Elif(cmd_buffer.source.valid,
+            ).Elif(cmd_buffer1.source.valid,
                 If(has_openrow,
                     If(hit,
                         # Note: write-to-read specification is enforced by
                         # multiplexer
                         cmd.valid.eq(1),
-                        If(cmd_buffer.source.we,
+                        If(cmd_buffer1.source.we,
                             req.wdata_ready.eq(cmd.ready),
                             cmd.is_write.eq(1),
                             cmd.we.eq(1),
