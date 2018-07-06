@@ -67,6 +67,7 @@ class S7DDRPHY(Module, AutoCSR):
 
         self._rdly_dq_rst = CSR()
         self._rdly_dq_inc = CSR()
+        self._rdly_dq_bitslip_rst = CSR()
         self._rdly_dq_bitslip = CSR()
 
         if with_odelay:
@@ -289,11 +290,6 @@ class S7DDRPHY(Module, AutoCSR):
                     i_D7=self.dfi.phases[3].wrdata[i], i_D8=self.dfi.phases[3].wrdata[databits+i],
                     i_T1=~oe_dq
                 )
-            iserdese2_rst = Signal()
-            if with_odelay:
-                self.comb += iserdese2_rst.eq(self._dly_sel.storage[i//8] & self._wdly_dq_rst.re)
-            else:
-                self.comb += iserdese2_rst.eq(self._dly_sel.storage[i//8] & self._rdly_dq_rst.re)
             self.specials += \
                 Instance("ISERDESE2",
                     p_DATA_WIDTH=8, p_DATA_RATE="DDR",
@@ -302,7 +298,7 @@ class S7DDRPHY(Module, AutoCSR):
 
                     i_DDLY=dq_i_delayed,
                     i_CE1=1,
-                    i_RST=ResetSignal() | iserdese2_rst,
+                    i_RST=ResetSignal() | (self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re),
                     i_CLK=ClockSignal("sys4x"), i_CLKB=~ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
                     i_BITSLIP=self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
                     o_Q8=self.dfi.phases[0].rddata[i], o_Q7=self.dfi.phases[0].rddata[databits+i],
