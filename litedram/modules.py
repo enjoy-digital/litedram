@@ -4,31 +4,47 @@ from migen import *
 
 from litedram.common import GeomSettings, TimingSettings
 
-# TODO:
-# - add speedgrade support
-# - specify tWTR, tFAW in ck or ns
 
 class SDRAMModule:
-    def __init__(self, clk_freq, rate):
+    """SDRAM module geometry and timings.
+
+    SDRAM controller has to ensure that all geometry and
+    timings parameters are fulfilled. Timings parameters
+    can be expressed in ns, in SDRAM clock cycles or both
+    and controller needs to use the greater value.
+
+    SDRAM modules with the same geometry exist can have
+    various speedgrades.
+    """
+    def __init__(self, clk_freq, rate, speedgrade=None):
         self.clk_freq = clk_freq
         self.rate = rate
+        self.speedgrade = speedgrade
         self.geom_settings = GeomSettings(
             bankbits=log2_int(self.nbanks),
             rowbits=log2_int(self.nrows),
             colbits=log2_int(self.ncols),
         )
         self.timing_settings = TimingSettings(
-            tRP=self.ns(self.tRP),
-            tRCD=self.ns(self.tRCD),
-            tWR=self.ns(self.tWR),
-            tREFI=self.ns(self.tREFI, False),
-            tRFC=self.ns(self.tRFC),
-            tWTR=self.tWTR,
-            tFAW=None if not hasattr(self, "tFAW") else self.tFAW
+            tRP=self.ns_to_cycles(self.get("tRP")),
+            tRCD=self.ns_to_cycles(self.get("tRCD")),
+            tWR=self.ns_to_cycles(self.get("tWR")),
+            tREFI=self.ns_to_cycles(self.get("tREFI"), False),
+            tRFC=self.ns_to_cycles(self.get("tRFC")),
+            tWTR=self.ck_ns_to_cycles(*self.get("tWTR")),
+            tFAW=None if self.get("tFAW") is None else self.ck_ns_to_cycles(*self.get("tFAW"))
         )
 
-    def ns(self, t, margin=True):
-        clk_period_ns = 1000000000/self.clk_freq
+    def get(self, name):
+        if self.speedgrade is not None and name in ["tRP", "tRCD", "tWR", "tRFC", "tFAW"]:
+            name += "_" + self.speedgrade
+        try:
+            return getattr(self, name)
+        except:
+            return None
+
+    def ns_to_cycles(self, t, margin=True):
+        clk_period_ns = 1e9/self.clk_freq
         if margin:
             margins = {
                 "1:1" : 0,
@@ -38,6 +54,19 @@ class SDRAMModule:
             t += margins[self.rate]
         return ceil(t/clk_period_ns)
 
+    def ck_to_cycles(self, c):
+        d = {
+            "1:1" : 1,
+            "1:2" : 2,
+            "1:4" : 4
+        }
+        return ceil(c/d[self.rate])
+
+    def ck_ns_to_cycles(self, c, t):
+        c = 0 if c is None else c
+        t = 0 if t is None else t
+        return max(self.ck_to_cycles(c), self.ns_to_cycles(t))
+
 
 # SDR
 class IS42S16160(SDRAMModule):
@@ -46,15 +75,14 @@ class IS42S16160(SDRAMModule):
     nbanks = 4
     nrows  = 8192
     ncols  = 512
-    # timings (ns)
+    # speedgrade invariant timings
     tRP   = 20
     tRCD  = 20
     tWR   = 20
-    tREFI = 64*1000*1000/8192
+    tREFI = 64e6/8192
     tRFC  = 70
-    # timings (sys_clk cycles)
-    tWTR = 2
-    tFAW = None
+    # speedgrade related timings
+    tWTR = (2, None)
 
 
 class MT48LC4M16(SDRAMModule):
@@ -63,15 +91,14 @@ class MT48LC4M16(SDRAMModule):
     nbanks = 4
     nrows  = 4096
     ncols  = 256
-    # timings (ns)
+    # speedgrade invariant timings
+    tREFI = 64e6/4096
+    tWTR = (2, None)
+    # speedgrade related timings
     tRP   = 15
     tRCD  = 15
     tWR   = 14
-    tREFI = 64*1000*1000/4096
     tRFC  = 66
-    # timings (sys_clk cycles)
-    tWTR = 2
-    tFAW = None
 
 
 class AS4C16M16(SDRAMModule):
@@ -80,16 +107,14 @@ class AS4C16M16(SDRAMModule):
     nbanks = 4
     nrows  = 8192
     ncols  = 512
-    # timings (ns)
+    # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR = (2, None)
+    # speedgrade related timings
     tRP   = 18
     tRCD  = 18
     tWR   = 12
-
-    tREFI = 64*1000*1000/8192
     tRFC  = 60
-    # timings (sys_clk cycles)
-    tWTR = 2
-    tFAW = None
 
 
 # DDR
@@ -99,15 +124,14 @@ class MT46V32M16(SDRAMModule):
     nbanks = 4
     nrows  = 8192
     ncols  = 1024
-    # timings (ns)
+    # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR = (2, None)
+    # speedgrade related timings
     tRP   = 15
     tRCD  = 15
     tWR   = 15
-    tREFI = 64*1000*1000/8192
     tRFC  = 70
-    # timings (sys_clk cycles)
-    tWTR = 2
-    tFAW = None
 
 
 # LPDDR
@@ -117,15 +141,15 @@ class MT46H32M16(SDRAMModule):
     nbanks = 4
     nrows  = 8192
     ncols  = 1024
-    # timings (ns)
+    # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR = (2, None)
+    # speedgrade related timings
     tRP   = 15
     tRCD  = 15
     tWR   = 15
-    tREFI = 64*1000*1000/8192
     tRFC  = 72
-    # timings (sys_clk cycles)
-    tWTR = 2
-    tFAW = None
+
 
 class MT46H32M32(SDRAMModule):
     memtype = "LPDDR"
@@ -133,15 +157,14 @@ class MT46H32M32(SDRAMModule):
     nbanks = 4
     nrows  = 8192
     ncols  = 1024
-    # timings (ns)
+    # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR = (2, None)
+    # speedgrade related timings
     tRP   = 15
     tRCD  = 15
     tWR   = 15
-    tREFI = 64*1000*1000/8192
     tRFC  = 72
-    # timings (sys_clk cycles)
-    tWTR = 2
-    tFAW = None
 
 
 # DDR2
@@ -151,15 +174,14 @@ class MT47H128M8(SDRAMModule):
     nbanks = 8
     nrows  = 16384
     ncols  = 1024
-    # timings (ns)
+    # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR = (None, 7.5)
+    # speedgrade related timings
     tRP   = 15
     tRCD  = 15
     tWR   = 15
-    tREFI = 7800
     tRFC  = 127.5
-    # timings (sys_clk cycles)
-    tWTR = 2
-    tFAW = None
 
 
 class MT47H64M16(SDRAMModule):
@@ -168,15 +190,15 @@ class MT47H64M16(SDRAMModule):
     nbanks = 8
     nrows  = 8192
     ncols  = 1024
-    # timings (ns)
+    # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR = (None, 7.5)
+    # speedgrade related timings
     tRP   = 15
     tRCD  = 15
     tWR   = 15
-    tREFI = 7800
+    tREFI = 64e6/8192
     tRFC  = 127.5
-    # timings (sys_clk cycles)
-    tWTR = 2
-    tFAW = None
 
 
 class P3R1GE4JGF(SDRAMModule):
@@ -185,114 +207,131 @@ class P3R1GE4JGF(SDRAMModule):
     nbanks = 8
     nrows  = 8192
     ncols  = 1024
-    # timings (ns)
+    # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR = (None, 7.5)
+    # speedgrade related timings
     tRP   = 12.5
     tRCD  = 12.5
     tWR   = 15
-    tREFI = 7800
+    tREFI = 64e6/8192
     tRFC  = 127.5
-    # timings (sys_clk cycles)
-    tWTR = 3
-    tFAW = None
+
 
 # DDR3
-class MT8JTF12864(SDRAMModule):
-    memtype = "DDR3"
-    # geometry
-    nbanks = 8
-    nrows  = 16384
-    ncols  = 1024
-    # timings (ns)
-    tRP   = 15
-    tRCD  = 15
-    tWR   = 15
-    tREFI = 7800
-    tRFC  = 70
-    # timings (sys_clk cycles)
-    tWTR = 2
-    tFAW = ceil(32/4)
-
-
 class MT41J128M16(SDRAMModule):
     memtype = "DDR3"
     # geometry
     nbanks = 8
     nrows  = 16384
     ncols  = 1024
-    # timings (ns)
-    tRP   = 15
-    tRCD  = 15
-    tWR   = 15
-    tREFI = 64*1000*1000/16384
-    tRFC  = 260
-    # timings (sys_clk cycles)
-    tWTR = 3
-    tFAW = ceil(32/4)
+    # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR  = (4, 7.5)
+    # speedgrade related timings
+    # DDR3-1066
+    tRP_1066  = 13.1
+    tRCD_1066 = 13.1
+    tWR_1066  = 13.1
+    tRFC_1066 = 86
+    tFAW_1066 = (27, None)
+    # DDR3-1333
+    tRP_1333  = 13.5
+    tRCD_1333 = 13.5
+    tWR_1333  = 13.5
+    tRFC_1333 = 107
+    tFAW_1333 = (30, None)
+    # DDR3-1600
+    tRP_1600  = 13.75
+    tRCD_1600 = 13.75
+    tWR_1600  = 13.75
+    tRFC_1600 = 128
+    tFAW_1600 = (32, None)
+    # API retro-compatibility
+    tRP  = tRP_1600
+    tRCD = tRCD_1600
+    tWR  = tWR_1600
+    tRFC = tRFC_1600
+    tFAW = tFAW_1600
 
 
-class MT41K128M16(SDRAMModule):
+class MT41K128M16(MT41J128M16):
+    pass
+
+
+class MT41J256M16(MT41J128M16):
+    # geometry
+    nrows  = 32768
+    # speedgrade related timings
+    tRFC_1066 = 139
+    tRFC_1333 = 174
+    tRFC_1600 = 208
+
+
+class MT41K256M16(MT41J256M16):
+    pass
+
+
+class MT8JTF12864(SDRAMModule):
     memtype = "DDR3"
     # geometry
     nbanks = 8
     nrows  = 16384
     ncols  = 1024
-    # timings (ns)
-    tRP   = 13.75
-    tRCD  = 13.75
-    tWR   = 15
-    tREFI = 64*1000*1000/8192
-    tRFC  = 160
-    # timings (sys_clk cycles)
-    tWTR = 3
-    tFAW = ceil(32/4)
+    # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR  = (4, 7.5)
+    # speedgrade related timings
+    # DDR3-1066
+    tRP_1066  = 15
+    tRCD_1066 = 15
+    tWR_1066  = 15
+    tRFC_1066 = 86
+    tFAW_1066 = (27, None)
+    # DDR3-1333
+    tRP_1333  = 15
+    tRCD_1333 = 15
+    tWR_1333  = 15
+    tRFC_1333 = 107
+    tFAW_1333 = (30, None)
+    # API retro-compatibility
+    tRP  = tRP_1333
+    tRCD = tRCD_1333
+    tWR  = tWR_1333
+    tRFC = tRFC_1333
+    tFAW = tFAW_1333
 
 
-class MT41K256M16(SDRAMModule):
-    memtype = "DDR3"
-    # geometry
-    nbanks = 8
-    nrows  = 32768
-    ncols  = 1024
-    # timings (ns)
-    tRP   = 13.75
-    tRCD  = 13.75
-    tWR   = 15
-    tREFI = 64*1000*1000/8192
-    tRFC  = 260
-    # timings (sys_clk cycles)
-    tWTR = 3
-    tFAW = ceil(32/4)
-
-
-class MT41J256M16(SDRAMModule):
-    memtype = "DDR3"
-    # geometry
-    nbanks = 8
-    nrows  = 32768
-    ncols  = 1024
-    # timings (ns)
-    tRP   = 13.75
-    tRCD  = 13.75
-    tWR   = 15
-    tREFI = 64*1000*1000/8192
-    tRFC  = 260
-    # timings (sys_clk cycles)
-    tWTR = 3
-    tFAW = ceil(32/4)
-
-
-class MT18KSF1G72HZ_1G6(SDRAMModule):
+class MT18KSF1G72HZ(SDRAMModule):
     memtype = "DDR3"
     # geometry
     nbanks = 8
     nrows  = 65536
     ncols  = 1024
-    # timings (ns)
-    tRP   = 13.75
-    tRCD  = 13.75
-    tWR   = 15
-    tREFI = 64*1000*1000/8192
-    tRFC  = 260
-    # timings (sys_clk cycles)
-    tWTR = 3
-    tFAW = ceil(32/4)
+    # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR = (4, 7.5)
+    # DDR3-1066
+    tRP_1066  = 15
+    tRCD_1066 = 15
+    tWR_1066  = 15
+    tRFC_1066 = 86
+    tFAW_1066 = (27, None)
+    # DDR3-1333
+    tRP_1333  = 15
+    tRCD_1333 = 15
+    tWR_1333  = 15
+    tRFC_1333 = 107
+    tFAW_1333 = (30, None)
+    # DDR3-1600
+    tRP_1600  = 13.125
+    tRCD_1600 = 13.125
+    tWR_1600  = 13.125
+    tRFC_1600 = 128
+    tFAW_1600 = (32, None)
+    # API retro-compatibility
+    tRP  = tRP_1600
+    tRCD = tRCD_1600
+    tWR  = tWR_1600
+    tRFC = tRFC_1600
+    tFAW = tFAW_1600
