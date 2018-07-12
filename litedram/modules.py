@@ -266,6 +266,8 @@ class MT41J256M16(MT41J128M16):
     tRFC_1066 = 139
     tRFC_1333 = 174
     tRFC_1600 = 208
+    # API retro-compatibility
+    tRFC = tRFC_1600
 
 
 class MT41K256M16(MT41J256M16):
