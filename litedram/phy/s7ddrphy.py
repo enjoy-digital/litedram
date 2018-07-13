@@ -1,4 +1,5 @@
-# 1:4 frequency-ratio DDR3 PHY for Xilinx's Series7
+# 1:4, 1:2 frequency-ratio DDR3 PHY for Xilinx's Series7
+# DDR3-1066, 1333, 1600
 
 import math
 
@@ -45,12 +46,12 @@ def get_sys_phases(nphases, sys_latency, cas_latency, write=False):
 
 
 class S7DDRPHY(Module, AutoCSR):
-    def __init__(self, pads, with_odelay, sys_clk_freq=100e6, iodelay_clk_freq=200e6):
-        tck = 2/(8*sys_clk_freq)
+    def __init__(self, pads, with_odelay, nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6):
+        tck = 2/(2*nphases*sys_clk_freq)
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
         databits = len(pads.dq)
-        nphases = 4
+        nphases = nphases
 
         iodelay_tap_average = {
             200e6: 78e-12,
@@ -97,23 +98,24 @@ class S7DDRPHY(Module, AutoCSR):
             write_latency=cwl_sys_latency
         )
 
-        self.dfi = Interface(addressbits, bankbits, 2*databits, nphases)
+        self.dfi = Interface(addressbits, bankbits, 2*databits, 4)
 
         # # #
 
         # Clock
+        ddr_clk = "sys2x" if nphases == 2 else "sys4x"
         for i in range(len(pads.clk_p)):
             sd_clk_se = Signal()
             self.specials += [
                 Instance("OSERDESE2",
-                    p_DATA_WIDTH=8, p_TRISTATE_WIDTH=1,
+                    p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
                     p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
                     p_SERDES_MODE="MASTER",
 
                     o_OQ=sd_clk_se,
                     i_OCE=1,
                     i_RST=ResetSignal(),
-                    i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                    i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
                     i_D1=0, i_D2=1, i_D3=0, i_D4=1,
                     i_D5=0, i_D6=1, i_D7=0, i_D8=1
                 ),
@@ -128,14 +130,14 @@ class S7DDRPHY(Module, AutoCSR):
         for i in range(addressbits):
             self.specials += \
                 Instance("OSERDESE2",
-                    p_DATA_WIDTH=8, p_TRISTATE_WIDTH=1,
+                    p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
                     p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
                     p_SERDES_MODE="MASTER",
 
                     o_OQ=pads.a[i],
                     i_OCE=1,
                     i_RST=ResetSignal(),
-                    i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                    i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
                     i_D1=self.dfi.phases[0].address[i], i_D2=self.dfi.phases[0].address[i],
                     i_D3=self.dfi.phases[1].address[i], i_D4=self.dfi.phases[1].address[i],
                     i_D5=self.dfi.phases[2].address[i], i_D6=self.dfi.phases[2].address[i],
@@ -144,14 +146,14 @@ class S7DDRPHY(Module, AutoCSR):
         for i in range(bankbits):
             self.specials += \
                 Instance("OSERDESE2",
-                    p_DATA_WIDTH=8, p_TRISTATE_WIDTH=1,
+                    p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
                     p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
                     p_SERDES_MODE="MASTER",
 
                     o_OQ=pads.ba[i],
                     i_OCE=1,
                     i_RST=ResetSignal(),
-                    i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                    i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
                     i_D1=self.dfi.phases[0].bank[i], i_D2=self.dfi.phases[0].bank[i],
                     i_D3=self.dfi.phases[1].bank[i], i_D4=self.dfi.phases[1].bank[i],
                     i_D5=self.dfi.phases[2].bank[i], i_D6=self.dfi.phases[2].bank[i],
@@ -165,14 +167,14 @@ class S7DDRPHY(Module, AutoCSR):
         for name in controls:
             self.specials += \
                 Instance("OSERDESE2",
-                   p_DATA_WIDTH=8, p_TRISTATE_WIDTH=1,
+                   p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
                    p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
                    p_SERDES_MODE="MASTER",
 
                    o_OQ=getattr(pads, name),
                    i_OCE=1,
                    i_RST=ResetSignal(),
-                   i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                   i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
                    i_D1=getattr(self.dfi.phases[0], name), i_D2=getattr(self.dfi.phases[0], name),
                    i_D3=getattr(self.dfi.phases[1], name), i_D4=getattr(self.dfi.phases[1], name),
                    i_D5=getattr(self.dfi.phases[2], name), i_D6=getattr(self.dfi.phases[2], name),
@@ -197,14 +199,14 @@ class S7DDRPHY(Module, AutoCSR):
             dm_o_nodelay = Signal()
             self.specials += \
                 Instance("OSERDESE2",
-                    p_DATA_WIDTH=8, p_TRISTATE_WIDTH=1,
+                    p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
                     p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
                     p_SERDES_MODE="MASTER",
 
                     o_OQ=dm_o_nodelay if with_odelay else pads.dm[i],
                     i_OCE=1,
                     i_RST=ResetSignal(),
-                    i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                    i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
                     i_D1=self.dfi.phases[0].wrdata_mask[i], i_D2=self.dfi.phases[0].wrdata_mask[databits//8+i],
                     i_D3=self.dfi.phases[1].wrdata_mask[i], i_D4=self.dfi.phases[1].wrdata_mask[databits//8+i],
                     i_D5=self.dfi.phases[2].wrdata_mask[i], i_D6=self.dfi.phases[2].wrdata_mask[databits//8+i],
@@ -230,7 +232,7 @@ class S7DDRPHY(Module, AutoCSR):
             dqs_t = Signal()
             self.specials += \
                 Instance("OSERDESE2",
-                    p_DATA_WIDTH=8, p_TRISTATE_WIDTH=1,
+                    p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
                     p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
                     p_SERDES_MODE="MASTER",
 
@@ -239,7 +241,7 @@ class S7DDRPHY(Module, AutoCSR):
                     o_TQ=dqs_t,
                     i_OCE=1, i_TCE=1,
                     i_RST=ResetSignal(),
-                    i_CLK=ClockSignal("sys4x") if with_odelay else ClockSignal("sys4x_dqs"), i_CLKDIV=ClockSignal(),
+                    i_CLK=ClockSignal(ddr_clk) if with_odelay else ClockSignal(ddr_clk+"_dqs"), i_CLKDIV=ClockSignal(),
                     i_D1=dqs_serdes_pattern[0], i_D2=dqs_serdes_pattern[1],
                     i_D3=dqs_serdes_pattern[2], i_D4=dqs_serdes_pattern[3],
                     i_D5=dqs_serdes_pattern[4], i_D6=dqs_serdes_pattern[5],
@@ -276,36 +278,50 @@ class S7DDRPHY(Module, AutoCSR):
             dq_t = Signal()
             self.specials += \
                 Instance("OSERDESE2",
-                    p_DATA_WIDTH=8, p_TRISTATE_WIDTH=1,
+                    p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
                     p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
                     p_SERDES_MODE="MASTER",
 
                     o_OQ=dq_o_nodelay, o_TQ=dq_t,
                     i_OCE=1, i_TCE=1,
                     i_RST=ResetSignal(),
-                    i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                    i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
                     i_D1=self.dfi.phases[0].wrdata[i], i_D2=self.dfi.phases[0].wrdata[databits+i],
                     i_D3=self.dfi.phases[1].wrdata[i], i_D4=self.dfi.phases[1].wrdata[databits+i],
                     i_D5=self.dfi.phases[2].wrdata[i], i_D6=self.dfi.phases[2].wrdata[databits+i],
                     i_D7=self.dfi.phases[3].wrdata[i], i_D8=self.dfi.phases[3].wrdata[databits+i],
                     i_T1=~oe_dq
                 )
+            dq_i_data = Signal(8)
             self.specials += \
                 Instance("ISERDESE2",
-                    p_DATA_WIDTH=8, p_DATA_RATE="DDR",
+                    p_DATA_WIDTH=2*nphases, p_DATA_RATE="DDR",
                     p_SERDES_MODE="MASTER", p_INTERFACE_TYPE="NETWORKING",
                     p_NUM_CE=1, p_IOBDELAY="IFD",
 
                     i_DDLY=dq_i_delayed,
                     i_CE1=1,
                     i_RST=ResetSignal() | (self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re),
-                    i_CLK=ClockSignal("sys4x"), i_CLKB=~ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
+                    i_CLK=ClockSignal(ddr_clk), i_CLKB=~ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
                     i_BITSLIP=self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
-                    o_Q8=self.dfi.phases[0].rddata[i], o_Q7=self.dfi.phases[0].rddata[databits+i],
-                    o_Q6=self.dfi.phases[1].rddata[i], o_Q5=self.dfi.phases[1].rddata[databits+i],
-                    o_Q4=self.dfi.phases[2].rddata[i], o_Q3=self.dfi.phases[2].rddata[databits+i],
-                    o_Q2=self.dfi.phases[3].rddata[i], o_Q1=self.dfi.phases[3].rddata[databits+i]
+                    o_Q8=dq_i_data[7], o_Q7=dq_i_data[6],
+                    o_Q6=dq_i_data[5], o_Q5=dq_i_data[4],
+                    o_Q4=dq_i_data[3], o_Q3=dq_i_data[2],
+                    o_Q2=dq_i_data[1], o_Q1=dq_i_data[0]
                 )
+            if nphases == 2:
+                self.comb += [
+                    self.dfi.phases[0].rddata[i].eq(dq_i_data[3]), self.dfi.phases[0].rddata[databits+i].eq(dq_i_data[2]),
+                    self.dfi.phases[1].rddata[i].eq(dq_i_data[1]), self.dfi.phases[1].rddata[databits+i].eq(dq_i_data[0])
+                ]
+            else:
+                self.comb += [
+                    self.dfi.phases[0].rddata[i].eq(dq_i_data[7]), self.dfi.phases[0].rddata[databits+i].eq(dq_i_data[6]),
+                    self.dfi.phases[1].rddata[i].eq(dq_i_data[5]), self.dfi.phases[1].rddata[databits+i].eq(dq_i_data[4]),
+                    self.dfi.phases[2].rddata[i].eq(dq_i_data[3]), self.dfi.phases[2].rddata[databits+i].eq(dq_i_data[2]),
+                    self.dfi.phases[3].rddata[i].eq(dq_i_data[1]), self.dfi.phases[3].rddata[databits+i].eq(dq_i_data[0])
+                ]
+
             if with_odelay:
                 self.specials += \
                     Instance("ODELAYE2",
