@@ -94,6 +94,20 @@ class BankMachine(Module):
                 activate_count = next_activate_count
             self.comb += If(activate_count >=4, activate_allowed.eq(0))
 
+        # CAS to CAS
+        cas = Signal()
+        cas_allowed = Signal(reset=1)
+        tccd =  settings.timing.tCCD
+        if tccd is not None:
+            cas_count = Signal(max=tccd)
+            self.sync += \
+                If(cas,
+                    cas_count.eq(tccd-1)
+                ).Elif(~cas_allowed,
+                    cas_count.eq(cas_count-1)
+                )
+            self.comb += cas_allowed.eq(cas_count == 0)
+
         # Address generation
         sel_row_adr = Signal()
         self.comb += [
@@ -120,23 +134,26 @@ class BankMachine(Module):
             ).Elif(cmd_buffer1.source.valid,
                 If(has_openrow,
                     If(hit,
-                        # Note: write-to-read specification is enforced by
-                        # multiplexer
-                        cmd.valid.eq(1),
-                        If(cmd_buffer1.source.we,
-                            req.wdata_ready.eq(cmd.ready),
-                            cmd.is_write.eq(1),
-                            cmd.we.eq(1),
+                        If(cas_allowed,
+                            cas.eq(1),
+                            # Note: write-to-read specification is enforced by
+                            # multiplexer
+                            cmd.valid.eq(1),
+                            If(cmd_buffer1.source.we,
+                                req.wdata_ready.eq(cmd.ready),
+                                cmd.is_write.eq(1),
+                                cmd.we.eq(1),
+                            ).Else(
+                                req.rdata_valid.eq(cmd.ready),
+                                cmd.is_read.eq(1)
+                            ),
+                            cmd.cas.eq(1),
+                            If(cmd.ready & auto_precharge,
+                                NextState("AUTOPRECHARGE")
+                            )
                         ).Else(
-                            req.rdata_valid.eq(cmd.ready),
-                            cmd.is_read.eq(1)
-                        ),
-                        cmd.cas.eq(1),
-                        If(cmd.ready & auto_precharge,
-                            NextState("AUTOPRECHARGE")
+                            NextState("PRECHARGE")
                         )
-                    ).Else(
-                        NextState("PRECHARGE")
                     )
                 ).Else(
                     If(activate_allowed,

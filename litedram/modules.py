@@ -32,7 +32,8 @@ class SDRAMModule:
             tREFI=self.ns_to_cycles(self.get("tREFI"), False),
             tRFC=self.ns_to_cycles(self.get("tRFC")),
             tWTR=self.ck_ns_to_cycles(*self.get("tWTR")),
-            tFAW=None if self.get("tFAW") is None else self.ck_ns_to_cycles(*self.get("tFAW"))
+            tFAW=None if self.get("tFAW") is None else self.ck_ns_to_cycles(*self.get("tFAW")),
+            tCCD=None if self.get("tCCD") is None else self.ck_ns_to_cycles(*self.get("tCCD")),
         )
 
     def get(self, name):
@@ -228,6 +229,7 @@ class MT41J128M16(SDRAMModule):
     # speedgrade invariant timings
     tREFI = 64e6/8192
     tWTR  = (4, 7.5)
+    tCCD  = (4, None)
     # speedgrade related timings
     # DDR3-1066
     tRP_1066  = 13.1
@@ -283,6 +285,7 @@ class MT8JTF12864(SDRAMModule):
     # speedgrade invariant timings
     tREFI = 64e6/8192
     tWTR  = (4, 7.5)
+    tCCD  = (4, None)
     # speedgrade related timings
     # DDR3-1066
     tRP_1066  = 15
@@ -313,6 +316,7 @@ class MT18KSF1G72HZ(SDRAMModule):
     # speedgrade invariant timings
     tREFI = 64e6/8192
     tWTR = (4, 7.5)
+    tCCD  = (4, None)
     # DDR3-1066
     tRP_1066  = 15
     tRCD_1066 = 15
