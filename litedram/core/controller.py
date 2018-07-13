@@ -54,6 +54,9 @@ class LiteDRAMController(Module):
             bank_machines.append(bank_machine)
             self.submodules += bank_machine
             self.comb += getattr(self.interface, "bank"+str(i)).connect(bank_machine.req)
+            # FIXME: simulation workaround
+            if phy_settings.memtype == "DDR3" and phy_settings.nphases == 2:
+                self.comb += bank_machine.req.adr[-1].eq(0)
 
         self.submodules.multiplexer = Multiplexer(settings,
                                                   bank_machines,
