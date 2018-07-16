@@ -26,11 +26,14 @@ class LiteDRAMController(Module):
         self.settings.geom = geom_settings
         self.settings.timing = timing_settings
 
-        if settings.phy.memtype in ["SDR"]:
-            burst_length = phy_settings.nphases*1  # command multiplication*SDR
-        elif phy_settings.memtype in ["DDR", "LPDDR", "DDR2", "DDR3"]:
-            burst_length = phy_settings.nphases*2  # command multiplication*DDR
-        address_align = log2_int(burst_length)
+        burst_lengths = {
+        	"SDR":   1,
+        	"DDR":   4,
+        	"LPDDR": 4,
+        	"DDR2":  4,
+        	"DDR3":  8
+        }
+        address_align = log2_int(burst_lengths[phy_settings.memtype])
 
         self.dfi = dfi.Interface(geom_settings.addressbits,
             geom_settings.bankbits,
