@@ -1,5 +1,6 @@
-# 1:4, 1:2 frequency-ratio DDR3 PHY for Xilinx's Series7
-# DDR3-1066, 1333, 1600
+# 1:4, 1:2 frequency-ratio DDR2/DDR3 PHY for Xilinx's Series7
+# DDR2: 400, 533, 667, 800 and 1066 MT/s
+# DDR3: 1066, 1333 and 1600 MT/s
 
 import math
 
@@ -11,19 +12,37 @@ from litedram.common import PhySettings
 from litedram.phy.dfi import *
 
 
-def get_cl_cw(tck):
-     # ddr3-1066
-    if tck >= 1.875e-9:
-        cl = 7
-        cwl = 6
-     # ddr3-1333
-    elif tck >= 1.5e-9:
-        cl = 10
-        cwl = 7
-    # ddr3-1600
-    elif tck >= 1.25e-9:
-        cl = 11
-        cwl = 8
+def get_cl_cw(memtype, tck):
+    if memtype == "DDR2":
+        # ddr2-400
+        if tck >= 2/400e6:
+            cl, cwl = 3, 2
+        # ddr2-533
+        elif tck >= 2/533e6:
+            cl, cwl = 4, 3
+        # ddr2-667
+        elif tck >= 2/677e6:
+            cl, cwl = 5, 4
+        # ddr2-800
+        elif tck >= 2/800e6:
+            cl, cwl = 6, 5
+        # ddr2-1066
+        elif tck >= 2/1066e6:
+            cl, cwl = 7, 5
+        else:
+            raise ValueError
+    elif memtype == "DDR3":
+        # ddr3-1066
+        if tck >= 2/1066e6:
+            cl, cwl = 7, 6
+        # ddr3-1333
+        elif tck >= 2/1333e6:
+            cl, cwl = 10, 7
+        # ddr3-1600
+        elif tck >= 2/1600e6:
+            cl, cwl = 11, 8
+        else:
+            raise ValueError
     return cl, cwl
 
 def get_sys_latency(nphases, cas_latency):
@@ -46,7 +65,7 @@ def get_sys_phases(nphases, sys_latency, cas_latency, write=False):
 
 
 class S7DDRPHY(Module, AutoCSR):
-    def __init__(self, pads, with_odelay, nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6):
+    def __init__(self, pads, with_odelay, memtype="DDR3", nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6):
         tck = 2/(2*nphases*sys_clk_freq)
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
@@ -78,14 +97,14 @@ class S7DDRPHY(Module, AutoCSR):
             self._wdly_dqs_inc = CSR()
 
         # compute phy settings
-        cl, cwl = get_cl_cw(tck)
+        cl, cwl = get_cl_cw(memtype, tck)
         cl_sys_latency = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
 
         rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
         wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl, write=True)
         self.settings = PhySettings(
-            memtype="DDR3",
+            memtype=memtype,
             dfi_databits=2*databits,
             nphases=nphases,
             rdphase=rdphase,
