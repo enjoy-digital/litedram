@@ -99,7 +99,7 @@ class BankMachine(Module):
         cas_allowed = Signal(reset=1)
         tccd =  settings.timing.tCCD
         if tccd is not None:
-            cas_count = Signal(max=tccd)
+            cas_count = Signal(max=tccd+1)
             self.sync += \
                 If(cas,
                     cas_count.eq(tccd-1)
