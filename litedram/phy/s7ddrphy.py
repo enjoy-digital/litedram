@@ -61,6 +61,7 @@ def get_sys_phases(nphases, sys_latency, cas_latency, write=False):
             diff_phase = dat_phase - cmd_phase
         else:
             diff_phase = cmd_phase - dat_phase
+    assert cmd_phase != dat_phase
     return cmd_phase, dat_phase
 
 
