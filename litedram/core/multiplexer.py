@@ -16,6 +16,7 @@ class _CommandChooser(Module):
         self.want_reads = Signal()
         self.want_writes = Signal()
         self.want_cmds = Signal()
+        self.want_activates = Signal()
 
         a = len(requests[0].a)
         ba = len(requests[0].ba)
@@ -28,7 +29,8 @@ class _CommandChooser(Module):
 
         valids = Signal(n)
         for i, request in enumerate(requests):
-            command = request.is_cmd & self.want_cmds
+            is_act_cmd = request.ras & ~request.cas & ~request.we
+            command = request.is_cmd & self.want_cmds & (~is_act_cmd | self.want_activates)
             read = request.is_read == self.want_reads
             write = request.is_write == self.want_writes
             self.comb += valids[i].eq(request.valid & (command | (read & write)))
@@ -110,6 +112,9 @@ class Multiplexer(Module, AutoCSR):
             with_bandwidth=False):
         assert(settings.phy.nphases == len(dfi.phases))
 
+        # Forward Declares
+        activate_allowed = Signal(reset=1)
+        
         # Command choosing
         requests = [bm.cmd for bm in bank_machines]
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
@@ -117,6 +122,7 @@ class Multiplexer(Module, AutoCSR):
         if settings.phy.nphases == 1:
             self.comb += [
                 choose_cmd.want_cmds.eq(1),
+                choose_cmd.want_activates(activate_allowed),
                 choose_req.want_cmds.eq(1)
             ]
 
@@ -128,6 +134,51 @@ class Multiplexer(Module, AutoCSR):
         (STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH) = range(4)
         steerer = _Steerer(commands, dfi)
         self.submodules += steerer
+
+        # tRRD Command Timing
+        tRRD = settings.timing.tRRD
+        trrd_allowed = Signal(reset=1)
+        activate_count = Signal(max=tRRD)
+        is_act_cmd = Signal()
+        self.comb += is_act_cmd.eq(choose_cmd.cmd.ras & ~choose_cmd.cmd.cas & ~choose_cmd.cmd.we)
+        self.sync += \
+            If(choose_cmd.cmd.ready & choose_cmd.cmd.valid & is_act_cmd,
+                activate_count.eq(tRRD-1)
+            ).Elif(~activate_allowed,
+                activate_count.eq(activate_count-1)
+            )
+        self.comb += trrd_allowed.eq(activate_count == 0)
+        
+        # tFAW Command Timing
+        tfaw = settings.timing.tFAW
+        tfaw_allowed = Signal(reset=1)
+        if tfaw is not None:
+            tfaw_count = Signal(max=tfaw)
+            tfaw_window = Signal(tfaw)
+            self.sync += tfaw_window.eq(Cat((is_act_cmd & choose_cmd.cmd.ready & choose_cmd.cmd.valid), tfaw_window))
+            for i in range(tfaw):
+                next_tfaw_count = Signal(max=tfaw)
+                self.comb += next_tfaw_count.eq(tfaw_count + tfaw_window[i])
+                tfaw_count = next_tfaw_count
+            self.comb += If(tfaw_count >=4, tfaw_allowed.eq(0))
+
+        self.comb += activate_allowed.eq(trrd_allowed & tfaw_allowed)
+        self.comb += [bm.activate_allowed.eq(activate_allowed) for bm in bank_machines]
+        
+        # CAS to CAS
+        cas = choose_req.cmd.valid & choose_req.cmd.ready & (choose_req.cmd.is_read | choose_req.cmd.is_write)
+        cas_allowed = Signal(reset=1)
+        tccd =  settings.timing.tCCD
+        if tccd is not None:
+            cas_count = Signal(max=tccd+1)
+            self.sync += \
+            If(cas,
+                cas_count.eq(tccd-1)
+            ).Elif(~cas_allowed,
+                cas_count.eq(cas_count-1)
+            )
+            self.comb += cas_allowed.eq(cas_count == 0)
+        self.comb += [bm.cas_allowed.eq(cas_allowed) for bm in bank_machines]
 
         # Read/write turnaround
         read_available = Signal()
@@ -198,7 +249,8 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("READ",
             read_time_en.eq(1),
             choose_req.want_reads.eq(1),
-            choose_cmd.cmd.ready.eq(1),
+            choose_cmd.want_activates.eq(activate_allowed),
+            choose_cmd.cmd.ready.eq(~is_act_cmd | activate_allowed),
             choose_req.cmd.ready.eq(1),
             steerer_sel(steerer, "read"),
             If(write_available,
@@ -214,7 +266,8 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("WRITE",
             write_time_en.eq(1),
             choose_req.want_writes.eq(1),
-            choose_cmd.cmd.ready.eq(1),
+            choose_cmd.want_activates.eq(activate_allowed),
+            choose_cmd.cmd.ready.eq(~is_act_cmd | activate_allowed),
             choose_req.cmd.ready.eq(1),
             steerer_sel(steerer, "write"),
             If(read_available,
