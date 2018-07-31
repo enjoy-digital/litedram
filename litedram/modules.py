@@ -34,6 +34,7 @@ class SDRAMModule:
             tWTR=self.ck_ns_to_cycles(*self.get("tWTR")),
             tFAW=None if self.get("tFAW") is None else self.ck_ns_to_cycles(*self.get("tFAW")),
             tCCD=None if self.get("tCCD") is None else self.ck_ns_to_cycles(*self.get("tCCD")),
+            tRRD=self.ns_to_cycles_trrd(self.get("tRRD")),
         )
 
     def get(self, name):
@@ -43,6 +44,19 @@ class SDRAMModule:
             return getattr(self, name)
         except:
             return None
+
+    def ns_to_cycles_trrd(self, t):
+        lower_bound = {
+            "1:1" : 4,
+            "1:2" : 2,
+            "1:4" : 1
+        }
+        if (t is None):
+            if self.memtype == "DDR3":
+                return lower_bound[self.rate]
+            else:
+                return 0    #Review: Is this needed for DDR2 and below?
+        return max(lower_bound[self.rate], self.ns_to_cycles(t, margin=False))
 
     def ns_to_cycles(self, t, margin=True):
         clk_period_ns = 1e9/self.clk_freq
@@ -230,6 +244,7 @@ class MT41J128M16(SDRAMModule):
     tREFI = 64e6/8192
     tWTR  = (4, 7.5)
     tCCD  = (4, None)
+    tRRD  = 10
     # speedgrade related timings
     # DDR3-1066
     tRP_1066  = 13.1

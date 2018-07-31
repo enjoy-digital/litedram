@@ -31,6 +31,7 @@ class BankMachine(Module):
         self.req = req = Record(cmd_layout(aw))
         self.refresh_req = Signal()
         self.refresh_gnt = Signal()
+        self.activate_allowed = activate_allowed = Signal()
         a = settings.geom.addressbits
         ba = settings.geom.bankbits
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
@@ -65,21 +66,6 @@ class BankMachine(Module):
                 has_openrow.eq(1),
                 openrow.eq(slicer.row(cmd_buffer.source.adr))
             )
-
-
-        # Four Activate Window
-        activate = Signal()
-        activate_allowed = Signal(reset=1)
-        tfaw = settings.timing.tFAW
-        if tfaw is not None:
-            activate_count = Signal(max=tfaw)
-            activate_window = Signal(tfaw)
-            self.sync += activate_window.eq(Cat(activate, activate_window))
-            for i in range(tfaw):
-                next_activate_count = Signal(max=tfaw)
-                self.comb += next_activate_count.eq(activate_count + activate_window[i])
-                activate_count = next_activate_count
-            self.comb += If(activate_count >=4, activate_allowed.eq(0))
 
         # CAS to CAS
         cas = Signal()
@@ -140,9 +126,7 @@ class BankMachine(Module):
                         NextState("PRECHARGE")
                     )
                 ).Else(
-                    If(activate_allowed,
-                        NextState("ACTIVATE")
-                    )
+                    NextState("ACTIVATE")
                 )
             )
         )
@@ -160,12 +144,11 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("ACTIVATE",
-            activate.eq(1),
             sel_row_adr.eq(1),
             track_open.eq(1),
-            cmd.valid.eq(1),
+            cmd.valid.eq(activate_allowed),
             cmd.is_cmd.eq(1),
-            If(cmd.ready,
+            If(cmd.ready & activate_allowed,
                 NextState("TRCD")
             ),
             cmd.ras.eq(1)
