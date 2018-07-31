@@ -31,6 +31,7 @@ class BankMachine(Module):
         self.req = req = Record(cmd_layout(aw))
         self.refresh_req = Signal()
         self.refresh_gnt = Signal()
+        self.cas_allowed = cas_allowed = Signal()
         self.activate_allowed = activate_allowed = Signal()
         a = settings.geom.addressbits
         ba = settings.geom.bankbits
@@ -67,20 +68,6 @@ class BankMachine(Module):
                 openrow.eq(slicer.row(cmd_buffer.source.adr))
             )
 
-        # CAS to CAS
-        cas = Signal()
-        cas_allowed = Signal(reset=1)
-        tccd =  settings.timing.tCCD
-        if tccd is not None:
-            cas_count = Signal(max=tccd+1)
-            self.sync += \
-                If(cas,
-                    cas_count.eq(tccd-1)
-                ).Elif(~cas_allowed,
-                    cas_count.eq(cas_count-1)
-                )
-            self.comb += cas_allowed.eq(cas_count == 0)
-
         # Address generation
         sel_row_adr = Signal()
         self.comb += [
@@ -108,7 +95,6 @@ class BankMachine(Module):
                 If(has_openrow,
                     If(hit,
                         If(cas_allowed,
-                            cas.eq(1),
                             # Note: write-to-read specification is enforced by
                             # multiplexer
                             cmd.valid.eq(1),

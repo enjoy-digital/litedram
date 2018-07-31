@@ -165,6 +165,21 @@ class Multiplexer(Module, AutoCSR):
         self.comb += activate_allowed.eq(trrd_allowed & tfaw_allowed)
         self.comb += [bm.activate_allowed.eq(activate_allowed) for bm in bank_machines]
         
+        # CAS to CAS
+        cas = choose_req.cmd.valid & choose_req.cmd.ready & (choose_req.cmd.is_read | choose_req.cmd.is_write)
+        cas_allowed = Signal(reset=1)
+        tccd =  settings.timing.tCCD
+        if tccd is not None:
+            cas_count = Signal(max=tccd+1)
+            self.sync += \
+            If(cas,
+                cas_count.eq(tccd-1)
+            ).Elif(~cas_allowed,
+                cas_count.eq(cas_count-1)
+            )
+            self.comb += cas_allowed.eq(cas_count == 0)
+        self.comb += [bm.cas_allowed.eq(cas_allowed) for bm in bank_machines]
+
         # Read/write turnaround
         read_available = Signal()
         write_available = Signal()
