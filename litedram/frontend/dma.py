@@ -69,7 +69,7 @@ class LiteDRAMDMAReader(Module):
         self.submodules += fifo
 
         self.comb += [
-            port.rdata.connect(fifo.sink),
+            port.rdata.connect(fifo.sink, omit=["bank"]),
             fifo.source.connect(source),
             data_dequeued.eq(source.valid & source.ready)
         ]
