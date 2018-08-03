@@ -158,13 +158,11 @@ class LiteDRAMCrossbar(Module):
     def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
         m_ba = []    # bank address
         m_rca = []    # row and column address
-        print("cba_shift: " + str(cba_shift))
         for master in self.masters:
             cba = Signal(self.bank_bits)
             rca = Signal(self.rca_bits)
             cba_upper = cba_shift + bank_bits
             self.comb += cba.eq(master.cmd.adr[cba_shift:cba_upper])
-            print("cba_shift: " + str(cba_shift) + " cba_upper: " + str(cba_upper))
             if cba_shift < self.rca_bits:
                 if cba_shift:
                     self.comb += rca.eq(Cat(master.cmd.adr[:cba_shift],
