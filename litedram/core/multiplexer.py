@@ -114,7 +114,7 @@ class Multiplexer(Module, AutoCSR):
 
         # Forward Declares
         activate_allowed = Signal(reset=1)
-        
+
         # Command choosing
         requests = [bm.cmd for bm in bank_machines]
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
@@ -136,19 +136,20 @@ class Multiplexer(Module, AutoCSR):
         self.submodules += steerer
 
         # tRRD Command Timing
-        tRRD = settings.timing.tRRD
+        trrd = settings.timing.tRRD
         trrd_allowed = Signal(reset=1)
-        activate_count = Signal(max=tRRD)
-        is_act_cmd = Signal()
-        self.comb += is_act_cmd.eq(choose_cmd.cmd.ras & ~choose_cmd.cmd.cas & ~choose_cmd.cmd.we)
-        self.sync += \
-            If(choose_cmd.cmd.ready & choose_cmd.cmd.valid & is_act_cmd,
-                activate_count.eq(tRRD-1)
-            ).Elif(~activate_allowed,
-                activate_count.eq(activate_count-1)
-            )
-        self.comb += trrd_allowed.eq(activate_count == 0)
-        
+        if trrd is not None:
+            trrd_count = Signal(max=trrd+1)
+            is_act_cmd = Signal()
+            self.comb += is_act_cmd.eq(choose_cmd.cmd.ras & ~choose_cmd.cmd.cas & ~choose_cmd.cmd.we)
+            self.sync += \
+                If(choose_cmd.cmd.ready & choose_cmd.cmd.valid & is_act_cmd,
+                    trrd_count.eq(trrd-1)
+                ).Elif(~activate_allowed,
+                    trrd_count.eq(trrd_count-1)
+                )
+            self.comb += trrd_allowed.eq(trrd_count == 0)
+
         # tFAW Command Timing
         tfaw = settings.timing.tFAW
         tfaw_allowed = Signal(reset=1)
@@ -164,7 +165,7 @@ class Multiplexer(Module, AutoCSR):
 
         self.comb += activate_allowed.eq(trrd_allowed & tfaw_allowed)
         self.comb += [bm.activate_allowed.eq(activate_allowed) for bm in bank_machines]
-        
+
         # CAS to CAS
         cas = choose_req.cmd.valid & choose_req.cmd.ready & (choose_req.cmd.is_read | choose_req.cmd.is_write)
         cas_allowed = Signal(reset=1)
