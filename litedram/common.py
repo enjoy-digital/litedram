@@ -92,12 +92,16 @@ def wdata_description(dw):
         ("we",   dw//8)
     ]
 
-def rdata_description(dw):
-    return [("data", dw), ("bank", bankbits_max)]
+def rdata_description(dw, with_bank):
+    r = [("data", dw)]
+    if with_bank:
+        r += [("bank", bankbits_max)]
+    return r
 
 
 class LiteDRAMPort:
-    def __init__(self, mode, aw, dw, cd="sys", id=0):
+    def __init__(self, mode, aw, dw, cd="sys", id=0,
+        with_rdata_bank=False):
         self.mode = mode
         self.aw = aw
         self.dw = dw
@@ -108,7 +112,7 @@ class LiteDRAMPort:
 
         self.cmd = stream.Endpoint(cmd_description(aw))
         self.wdata = stream.Endpoint(wdata_description(dw))
-        self.rdata = stream.Endpoint(rdata_description(dw))
+        self.rdata = stream.Endpoint(rdata_description(dw, with_rdata_bank))
 
         self.flush = Signal()
 

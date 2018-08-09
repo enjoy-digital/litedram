@@ -150,7 +150,8 @@ class LiteDRAMCrossbar(Module):
         # route data reads
         for master in self.masters:
             self.comb += master.rdata.data.eq(self.controller.rdata)
-            self.comb += master.rdata.bank.eq(rbank)
+            if hasattr(master.rdata, "bank"):
+                self.comb += master.rdata.bank.eq(rbank)
 
     def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
         m_ba = []    # bank address
