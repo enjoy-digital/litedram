@@ -9,6 +9,8 @@ from litedram.frontend.adaptation import LiteDRAMPortConverter
 
 from test.common import *
 
+from litex.gen.sim import *
+
 
 class DUT(Module):
     def __init__(self):
