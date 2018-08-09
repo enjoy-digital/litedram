@@ -173,13 +173,25 @@ class Multiplexer(Module, AutoCSR):
         if tccd is not None:
             cas_count = Signal(max=tccd+1)
             self.sync += \
-            If(cas,
-                cas_count.eq(tccd-1)
-            ).Elif(~cas_allowed,
-                cas_count.eq(cas_count-1)
-            )
+                If(cas,
+                    cas_count.eq(tccd-1)
+                ).Elif(~cas_allowed,
+                    cas_count.eq(cas_count-1)
+                )
             self.comb += cas_allowed.eq(cas_count == 0)
         self.comb += [bm.cas_allowed.eq(cas_allowed) for bm in bank_machines]
+
+        # tWTR timing
+        tWTR = settings.timing.tWTR + settings.timing.tCCD # tWTR begins after the transfer is complete, tccd accounts for this
+        wtr_allowed = Signal(reset=1)
+        wtr_count = Signal(max=tWTR)
+        self.sync += [
+            If(choose_req.cmd.ready & choose_req.cmd.valid & choose_req.cmd.is_write,
+                wtr_count.eq(tWTR-1)
+            ).Elif(wtr_count != 0,
+                wtr_count.eq(wtr_count-1)
+            )
+        ]
 
         # Read/write turnaround
         read_available = Signal()
@@ -287,9 +299,13 @@ class Multiplexer(Module, AutoCSR):
                 NextState("READ")
             )
         )
+        fsm.act("WTR",
+            If(wtr_count == 0,
+                NextState("READ")
+            )
+        )
         # TODO: reduce this, actual limit is around (cl+1)/nphases
         fsm.delayed_enter("RTW", "WRITE", settings.phy.read_latency-1)
-        fsm.delayed_enter("WTR", "READ", settings.timing.tWTR-1)
 
         if settings.with_bandwidth:
             data_width = settings.phy.dfi_databits*settings.phy.nphases

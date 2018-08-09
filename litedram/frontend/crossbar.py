@@ -33,12 +33,12 @@ class LiteDRAMCrossbar(Module):
             dw = self.dw
 
         # crossbar port
-        port = LiteDRAMPort(mode, self.rca_bits + self.bank_bits, self.dw, "sys", len(self.masters))
+        port = LiteDRAMPort(mode, self.rca_bits + self.bank_bits, self.dw, self.bank_bits, "sys", len(self.masters))
         self.masters.append(port)
 
         # clock domain crossing
         if cd != "sys":
-            new_port = LiteDRAMPort(mode, port.aw, port.dw, cd, port.id)
+            new_port = LiteDRAMPort(mode, port.aw, port.dw, self.bank_bits, cd, port.id)
             self.submodules += LiteDRAMPortCDC(new_port, port)
             port = new_port
 
@@ -48,7 +48,7 @@ class LiteDRAMCrossbar(Module):
                 adr_shift = -log2_int(dw//self.dw)
             else:
                 adr_shift = log2_int(self.dw//dw)
-            new_port = LiteDRAMPort(mode, port.aw + adr_shift, dw, cd, port.id)
+            new_port = LiteDRAMPort(mode, port.aw + adr_shift, dw, self.bank_bits, cd, port.id)
             self.submodules += ClockDomainsRenamer(cd)(LiteDRAMPortConverter(new_port, port, reverse))
             port = new_port
 
@@ -68,6 +68,8 @@ class LiteDRAMCrossbar(Module):
 
         arbiters = [roundrobin.RoundRobin(nmasters, roundrobin.SP_CE) for n in range(self.nbanks)]
         self.submodules += arbiters
+        
+        rbank = Signal(max=self.nbanks)
         for nb, arbiter in enumerate(arbiters):
             bank = getattr(controller, "bank"+str(nb))
 
@@ -88,6 +90,12 @@ class LiteDRAMCrossbar(Module):
                 arbiter.request.eq(Cat(*bank_requested)),
                 arbiter.ce.eq(~bank.valid & ~bank.lock)
             ]
+
+            # Get rdata source bank
+            self.sync += \
+                If((arbiter.grant == nm) & bank.rdata_valid,
+                    rbank.eq(nb)
+                )
 
             # route requests
             self.comb += [
@@ -116,6 +124,12 @@ class LiteDRAMCrossbar(Module):
                     master_rdata_valid = new_master_rdata_valid
                 master_rdata_valids[nm] = master_rdata_valid
 
+        # Delay bank output to match rvalid
+        for i in range(self.read_latency-1):
+            new_master_rbank = Signal(max=self.nbanks)
+            self.sync += new_master_rbank.eq(rbank)
+            rbank = new_master_rbank
+
         for master, master_ready in zip(self.masters, master_readys):
             self.comb += master.cmd.ready.eq(master_ready)
         for master, master_wdata_ready in zip(self.masters, master_wdata_readys):
@@ -139,6 +153,7 @@ class LiteDRAMCrossbar(Module):
         # route data reads
         for master in self.masters:
             self.comb += master.rdata.data.eq(self.controller.rdata)
+            self.comb += master.rdata.bank.eq(rbank)
 
     def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
         m_ba = []    # bank address
