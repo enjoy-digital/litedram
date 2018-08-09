@@ -1,6 +1,10 @@
 from migen import *
 from litex.soc.interconnect import stream
 
+
+bankbits_max = 3
+
+
 class PhySettings:
     def __init__(self, memtype, dfi_databits,
                  nphases,
@@ -56,12 +60,12 @@ def cmd_layout(aw):
     ]
 
 
-def data_layout(dw, bankbits):
+def data_layout(dw):
     return [
-        ("wdata",       dw, DIR_M_TO_S),
-        ("wdata_we", dw//8, DIR_M_TO_S),
-        ("rdata",       dw, DIR_S_TO_M),
-        ("rbank",   bankbits, DIR_S_TO_M)
+        ("wdata",           dw, DIR_M_TO_S),
+        ("wdata_we",     dw//8, DIR_M_TO_S),
+        ("rdata",           dw, DIR_S_TO_M),
+        ("rbank", bankbits_max, DIR_S_TO_M)
     ]
 
 
@@ -73,7 +77,7 @@ class LiteDRAMInterface(Record):
         self.settings = settings
 
         layout = [("bank"+str(i), cmd_layout(self.aw)) for i in range(self.nbanks)]
-        layout += data_layout(self.dw, settings.geom.bankbits)
+        layout += data_layout(self.dw)
         Record.__init__(self, layout)
 
 def cmd_description(aw):
@@ -88,12 +92,12 @@ def wdata_description(dw):
         ("we",   dw//8)
     ]
 
-def rdata_description(dw, nbanks):
-    return [("data", dw), ("bank", nbanks)]
+def rdata_description(dw):
+    return [("data", dw), ("bank", bankbits_max)]
 
 
 class LiteDRAMPort:
-    def __init__(self, mode, aw, dw, bankbits, cd="sys", id=0):
+    def __init__(self, mode, aw, dw, cd="sys", id=0):
         self.mode = mode
         self.aw = aw
         self.dw = dw
@@ -104,7 +108,7 @@ class LiteDRAMPort:
 
         self.cmd = stream.Endpoint(cmd_description(aw))
         self.wdata = stream.Endpoint(wdata_description(dw))
-        self.rdata = stream.Endpoint(rdata_description(dw, bankbits))
+        self.rdata = stream.Endpoint(rdata_description(dw))
 
         self.flush = Signal()
 
