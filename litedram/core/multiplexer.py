@@ -138,16 +138,17 @@ class Multiplexer(Module, AutoCSR):
         # tRRD Command Timing
         tRRD = settings.timing.tRRD
         trrd_allowed = Signal(reset=1)
-        activate_count = Signal(max=tRRD)
         is_act_cmd = Signal()
         self.comb += is_act_cmd.eq(choose_cmd.cmd.ras & ~choose_cmd.cmd.cas & ~choose_cmd.cmd.we)
-        self.sync += \
-            If(choose_cmd.cmd.ready & choose_cmd.cmd.valid & is_act_cmd,
-                activate_count.eq(tRRD-1)
-            ).Elif(~activate_allowed,
-                activate_count.eq(activate_count-1)
-            )
-        self.comb += trrd_allowed.eq(activate_count == 0)
+        if tRRD > 1:
+            activate_count = Signal(max=tRRD)
+            self.sync += \
+                If(choose_cmd.cmd.ready & choose_cmd.cmd.valid & is_act_cmd,
+                    activate_count.eq(tRRD-1)
+                ).Elif(~activate_allowed,
+                    activate_count.eq(activate_count-1)
+                )
+            self.comb += trrd_allowed.eq(activate_count == 0)
         
         # tFAW Command Timing
         tfaw = settings.timing.tFAW
