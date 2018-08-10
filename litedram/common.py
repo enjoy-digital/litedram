@@ -105,7 +105,7 @@ def rdata_description(dw, with_bank):
 
 class LiteDRAMPort:
     def __init__(self, mode, aw, dw, cd="sys", id=0,
-        with_data_bank=False):
+        reorder=False):
         self.mode = mode
         self.aw = aw
         self.dw = dw
@@ -115,9 +115,11 @@ class LiteDRAMPort:
         self.lock = Signal()
 
         self.cmd = stream.Endpoint(cmd_description(aw))
-        self.wdata = stream.Endpoint(wdata_description(dw, with_data_bank))
-        self.rdata = stream.Endpoint(rdata_description(dw, with_data_bank))
+        self.wdata = stream.Endpoint(wdata_description(dw, reorder))
+        self.rdata = stream.Endpoint(rdata_description(dw, reorder))
 
+        if reorder:
+            print("WARNING: Reordering controller is experimental")
         self.flush = Signal()
 
 
