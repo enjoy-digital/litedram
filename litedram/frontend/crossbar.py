@@ -33,12 +33,12 @@ class LiteDRAMCrossbar(Module):
             dw = self.dw
 
         # crossbar port
-        port = LiteDRAMPort(mode, self.rca_bits + self.bank_bits, self.dw, self.bank_bits, "sys", len(self.masters))
+        port = LiteDRAMPort(mode, self.rca_bits + self.bank_bits, self.dw, "sys", len(self.masters))
         self.masters.append(port)
 
         # clock domain crossing
         if cd != "sys":
-            new_port = LiteDRAMPort(mode, port.aw, port.dw, self.bank_bits, cd, port.id)
+            new_port = LiteDRAMPort(mode, port.aw, port.dw, cd, port.id)
             self.submodules += LiteDRAMPortCDC(new_port, port)
             port = new_port
 
@@ -48,7 +48,7 @@ class LiteDRAMCrossbar(Module):
                 adr_shift = -log2_int(dw//self.dw)
             else:
                 adr_shift = log2_int(self.dw//dw)
-            new_port = LiteDRAMPort(mode, port.aw + adr_shift, dw, self.bank_bits, cd, port.id)
+            new_port = LiteDRAMPort(mode, port.aw + adr_shift, dw, cd, port.id)
             self.submodules += ClockDomainsRenamer(cd)(LiteDRAMPortConverter(new_port, port, reverse))
             port = new_port
 
@@ -68,7 +68,7 @@ class LiteDRAMCrossbar(Module):
 
         arbiters = [roundrobin.RoundRobin(nmasters, roundrobin.SP_CE) for n in range(self.nbanks)]
         self.submodules += arbiters
-        
+
         rbank = Signal(max=self.nbanks)
         wbank = Signal(max=self.nbanks)
         for nb, arbiter in enumerate(arbiters):
@@ -93,10 +93,7 @@ class LiteDRAMCrossbar(Module):
             ]
 
             # Get rdata source bank
-            self.sync += \
-                If((arbiter.grant == nm) & bank.rdata_valid,
-                    rbank.eq(nb)
-                )
+            self.sync += If((arbiter.grant == nm) & bank.rdata_valid, rbank.eq(nb))
 
             # Get wdata source bank
             self.sync += \
@@ -165,8 +162,9 @@ class LiteDRAMCrossbar(Module):
         # route data reads
         for master in self.masters:
             self.comb += master.rdata.data.eq(self.controller.rdata)
-            self.comb += master.rdata.bank.eq(rbank)
-            self.comb += master.wdata.bank.eq(wbank)
+            if hasattr(master.rdata, "bank"):
+                self.comb += master.rdata.bank.eq(rbank)
+                self.comb += master.wdata.bank.eq(wbank)
 
     def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
         m_ba = []    # bank address

@@ -34,7 +34,7 @@ class SDRAMModule:
             tWTR=self.ck_ns_to_cycles(*self.get("tWTR")),
             tFAW=None if self.get("tFAW") is None else self.ck_ns_to_cycles(*self.get("tFAW")),
             tCCD=None if self.get("tCCD") is None else self.ck_ns_to_cycles(*self.get("tCCD")),
-            tRRD=self.ns_to_cycles_trrd(self.get("tRRD")),
+            tRRD=None if self.get("tRRD") is None else self.ns_to_cycles_trrd(self.get("tRRD")),
         )
 
     def get(self, name):

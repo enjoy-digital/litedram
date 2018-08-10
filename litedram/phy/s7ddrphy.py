@@ -76,7 +76,9 @@ class S7DDRPHY(Module, AutoCSR):
         iodelay_tap_average = {
             200e6: 78e-12,
             300e6: 52e-12,
+            400e6: 39e-12, # Only valid for -3 and -2/2E speed grades
         }
+
         half_sys8x_taps = math.floor(tck/(4*iodelay_tap_average[iodelay_clk_freq]))
         self._half_sys8x_taps = CSRStorage(4, reset=half_sys8x_taps)
 

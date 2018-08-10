@@ -16,6 +16,8 @@ from litedram.phy.model import SDRAMPHYModel
 
 from test.common import *
 
+from litex.gen.sim import *
+
 
 class SimModule(SDRAMModule):
     # geometry
@@ -26,7 +28,7 @@ class SimModule(SDRAMModule):
     tRP   = 1
     tRCD  = 1
     tWR   = 1
-    tWTR  = 1
+    tWTR  = (1, None)
     tREFI = 1
     tRFC  = 1
 

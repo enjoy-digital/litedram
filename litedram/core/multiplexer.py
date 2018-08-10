@@ -114,7 +114,7 @@ class Multiplexer(Module, AutoCSR):
 
         # Forward Declares
         activate_allowed = Signal(reset=1)
-        
+
         # Command choosing
         requests = [bm.cmd for bm in bank_machines]
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
@@ -122,7 +122,7 @@ class Multiplexer(Module, AutoCSR):
         if settings.phy.nphases == 1:
             self.comb += [
                 choose_cmd.want_cmds.eq(1),
-                choose_cmd.want_activates(activate_allowed),
+                choose_cmd.want_activates.eq(activate_allowed),
                 choose_req.want_cmds.eq(1)
             ]
 
@@ -136,20 +136,20 @@ class Multiplexer(Module, AutoCSR):
         self.submodules += steerer
 
         # tRRD Command Timing
-        tRRD = settings.timing.tRRD
+        trrd = settings.timing.tRRD
         trrd_allowed = Signal(reset=1)
         is_act_cmd = Signal()
         self.comb += is_act_cmd.eq(choose_cmd.cmd.ras & ~choose_cmd.cmd.cas & ~choose_cmd.cmd.we)
-        if tRRD > 1:
-            activate_count = Signal(max=tRRD)
+        if trrd is not None:
+            trrd_count = Signal(max=trrd+1)
             self.sync += \
                 If(choose_cmd.cmd.ready & choose_cmd.cmd.valid & is_act_cmd,
-                    activate_count.eq(tRRD-1)
+                    trrd_count.eq(trrd-1)
                 ).Elif(~activate_allowed,
-                    activate_count.eq(activate_count-1)
+                    trrd_count.eq(trrd_count-1)
                 )
-            self.comb += trrd_allowed.eq(activate_count == 0)
-        
+            self.comb += trrd_allowed.eq(trrd_count == 0)
+
         # tFAW Command Timing
         tfaw = settings.timing.tFAW
         tfaw_allowed = Signal(reset=1)
@@ -165,7 +165,7 @@ class Multiplexer(Module, AutoCSR):
 
         self.comb += activate_allowed.eq(trrd_allowed & tfaw_allowed)
         self.comb += [bm.activate_allowed.eq(activate_allowed) for bm in bank_machines]
-        
+
         # CAS to CAS
         cas = choose_req.cmd.valid & choose_req.cmd.ready & (choose_req.cmd.is_read | choose_req.cmd.is_write)
         cas_allowed = Signal(reset=1)
@@ -181,17 +181,20 @@ class Multiplexer(Module, AutoCSR):
             self.comb += cas_allowed.eq(cas_count == 0)
         self.comb += [bm.cas_allowed.eq(cas_allowed) for bm in bank_machines]
 
-        # tWTR timing
-        tWTR = settings.timing.tWTR + settings.timing.tCCD # tWTR begins after the transfer is complete, tccd accounts for this
+        # Write to Read
         wtr_allowed = Signal(reset=1)
-        wtr_count = Signal(max=tWTR)
+        twtr = settings.timing.tWTR
+        if tccd is not None:
+            twtr += settings.timing.tCCD # tWTR begins after the transfer is complete, tCCD accounts for this
+        wtr_count = Signal(max=twtr+1)
         self.sync += [
             If(choose_req.cmd.ready & choose_req.cmd.valid & choose_req.cmd.is_write,
-                wtr_count.eq(tWTR-1)
+                wtr_count.eq(twtr-1)
             ).Elif(wtr_count != 0,
                 wtr_count.eq(wtr_count-1)
             )
         ]
+        self.comb += wtr_allowed.eq(wtr_count == 0)
 
         # Read/write turnaround
         read_available = Signal()
@@ -300,7 +303,7 @@ class Multiplexer(Module, AutoCSR):
             )
         )
         fsm.act("WTR",
-            If(wtr_count == 0,
+            If(wtr_allowed,
                 NextState("READ")
             )
         )
