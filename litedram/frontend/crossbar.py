@@ -78,14 +78,15 @@ class LiteDRAMCrossbar(Module):
             master_locked = []
             for nm, master in enumerate(self.masters):
                 locked = 0
-                for other_nb, other_arbiter in enumerate(arbiters):
-                    if other_nb != nb:
-                        other_bank = getattr(controller, "bank"+str(other_nb))
-                        locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
+                if not master.reorder:
+                    for other_nb, other_arbiter in enumerate(arbiters):
+                        if other_nb != nb:
+                            other_bank = getattr(controller, "bank"+str(other_nb))
+                            locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
                 master_locked.append(locked)
 
             # arbitrate
-            bank_selected = [(ba == nb) for ba, locked in zip(m_ba, master_locked)]
+            bank_selected = [(ba == nb) & ~locked for ba, locked in zip(m_ba, master_locked)]
             bank_requested = [bs & master.cmd.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 arbiter.request.eq(Cat(*bank_requested)),

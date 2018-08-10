@@ -114,6 +114,8 @@ class LiteDRAMPort:
 
         self.lock = Signal()
 
+        self.reorder = reorder
+
         self.cmd = stream.Endpoint(cmd_description(aw))
         self.wdata = stream.Endpoint(wdata_description(dw, reorder))
         self.rdata = stream.Endpoint(rdata_description(dw, reorder))
