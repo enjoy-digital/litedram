@@ -70,6 +70,7 @@ class LiteDRAMCrossbar(Module):
         self.submodules += arbiters
         
         rbank = Signal(max=self.nbanks)
+        wbank = Signal(max=self.nbanks)
         for nb, arbiter in enumerate(arbiters):
             bank = getattr(controller, "bank"+str(nb))
 
@@ -84,7 +85,7 @@ class LiteDRAMCrossbar(Module):
                 master_locked.append(locked)
 
             # arbitrate
-            bank_selected = [(ba == nb) & ~locked for ba, locked in zip(m_ba, master_locked)]
+            bank_selected = [(ba == nb) for ba, locked in zip(m_ba, master_locked)]
             bank_requested = [bs & master.cmd.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 arbiter.request.eq(Cat(*bank_requested)),
@@ -95,6 +96,12 @@ class LiteDRAMCrossbar(Module):
             self.sync += \
                 If((arbiter.grant == nm) & bank.rdata_valid,
                     rbank.eq(nb)
+                )
+
+            # Get wdata source bank
+            self.sync += \
+                If((arbiter.grant == nm) & bank.wdata_ready,
+                    wbank.eq(nb)
                 )
 
             # route requests
@@ -129,6 +136,11 @@ class LiteDRAMCrossbar(Module):
             new_master_rbank = Signal(max=self.nbanks)
             self.sync += new_master_rbank.eq(rbank)
             rbank = new_master_rbank
+        # Delay wbank output to match wready
+        for i in range(self.write_latency-1):
+            new_master_wbank = Signal(max=self.nbanks)
+            self.sync += new_master_wbank.eq(wbank)
+            wbank = new_master_wbank
 
         for master, master_ready in zip(self.masters, master_readys):
             self.comb += master.cmd.ready.eq(master_ready)
@@ -154,6 +166,7 @@ class LiteDRAMCrossbar(Module):
         for master in self.masters:
             self.comb += master.rdata.data.eq(self.controller.rdata)
             self.comb += master.rdata.bank.eq(rbank)
+            self.comb += master.wdata.bank.eq(wbank)
 
     def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
         m_ba = []    # bank address

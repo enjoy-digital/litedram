@@ -60,6 +60,7 @@ def data_layout(dw, bankbits):
     return [
         ("wdata",       dw, DIR_M_TO_S),
         ("wdata_we", dw//8, DIR_M_TO_S),
+        ("wbank",   bankbits, DIR_S_TO_M),
         ("rdata",       dw, DIR_S_TO_M),
         ("rbank",   bankbits, DIR_S_TO_M)
     ]
@@ -82,14 +83,18 @@ def cmd_description(aw):
         ("adr", aw)
     ]
 
-def wdata_description(dw):
+def wdata_description(dw, nbanks):
     return [
         ("data", dw),
-        ("we",   dw//8)
+        ("we",   dw//8),
+        ("bank", nbanks)
     ]
 
 def rdata_description(dw, nbanks):
-    return [("data", dw), ("bank", nbanks)]
+    return [
+        ("data", dw), 
+        ("bank", nbanks)
+    ]
 
 
 class LiteDRAMPort:
@@ -103,7 +108,7 @@ class LiteDRAMPort:
         self.lock = Signal()
 
         self.cmd = stream.Endpoint(cmd_description(aw))
-        self.wdata = stream.Endpoint(wdata_description(dw))
+        self.wdata = stream.Endpoint(wdata_description(dw, bankbits))
         self.rdata = stream.Endpoint(rdata_description(dw, bankbits))
 
         self.flush = Signal()
