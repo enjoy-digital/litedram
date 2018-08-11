@@ -144,6 +144,12 @@ class BankMachine(Module):
             ),
             track_close.eq(1)
         )
+        fsm.act("AUTOPRECHARGE",
+            If(self.precharge_timer.done,
+                NextState("TRP")
+            ),
+            track_close.eq(1)
+        )
         fsm.act("ACTIVATE",
             sel_row_adr.eq(1),
             track_open.eq(1),
@@ -166,4 +172,3 @@ class BankMachine(Module):
         )
         fsm.delayed_enter("TRP", "ACTIVATE", settings.timing.tRP-1)
         fsm.delayed_enter("TRCD", "REGULAR", settings.timing.tRCD-1)
-        fsm.delayed_enter("AUTOPRECHARGE", "TRP", precharge_time-1)
