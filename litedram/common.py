@@ -64,6 +64,7 @@ def data_layout(dw):
     return [
         ("wdata",           dw, DIR_M_TO_S),
         ("wdata_we",     dw//8, DIR_M_TO_S),
+        ("wbank", bankbits_max, DIR_S_TO_M),
         ("rdata",           dw, DIR_S_TO_M),
         ("rbank", bankbits_max, DIR_S_TO_M)
     ]
@@ -86,11 +87,14 @@ def cmd_description(aw):
         ("adr", aw)
     ]
 
-def wdata_description(dw):
-    return [
+def wdata_description(dw, with_bank):
+    r = [
         ("data", dw),
         ("we",   dw//8)
     ]
+    if with_bank:
+        r += [("bank", bankbits_max)]
+    return r
 
 def rdata_description(dw, with_bank):
     r = [("data", dw)]
@@ -101,7 +105,7 @@ def rdata_description(dw, with_bank):
 
 class LiteDRAMPort:
     def __init__(self, mode, aw, dw, cd="sys", id=0,
-        with_rdata_bank=False):
+        reorder=False):
         self.mode = mode
         self.aw = aw
         self.dw = dw
@@ -110,10 +114,14 @@ class LiteDRAMPort:
 
         self.lock = Signal()
 
-        self.cmd = stream.Endpoint(cmd_description(aw))
-        self.wdata = stream.Endpoint(wdata_description(dw))
-        self.rdata = stream.Endpoint(rdata_description(dw, with_rdata_bank))
+        self.reorder = reorder
 
+        self.cmd = stream.Endpoint(cmd_description(aw))
+        self.wdata = stream.Endpoint(wdata_description(dw, reorder))
+        self.rdata = stream.Endpoint(rdata_description(dw, reorder))
+
+        if reorder:
+            print("WARNING: Reordering controller is experimental")
         self.flush = Signal()
 
 
