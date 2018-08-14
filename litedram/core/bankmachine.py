@@ -87,6 +87,7 @@ class BankMachine(Module):
                                                     cmd.is_write))
 
         # Control and command generation FSM
+        # Note: tRRD, tFAW, tCCD, tWTR timings are enforced by the multiplexer
         self.submodules.fsm = fsm = FSM()
         fsm.act("REGULAR",
             If(self.refresh_req,
@@ -95,8 +96,6 @@ class BankMachine(Module):
                 If(has_openrow,
                     If(hit,
                         If(cas_allowed,
-                            # Note: write-to-read specification is enforced by
-                            # multiplexer
                             cmd.valid.eq(1),
                             If(cmd_buffer.source.we,
                                 req.wdata_ready.eq(cmd.ready),
