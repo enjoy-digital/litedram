@@ -20,6 +20,7 @@ class _CommandChooser(Module):
 
         a = len(requests[0].a)
         ba = len(requests[0].ba)
+
         # cas/ras/we are 0 when valid is inactive
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
 
@@ -63,6 +64,19 @@ class _CommandChooser(Module):
                 )
         self.comb += arbiter.ce.eq(cmd.ready)
 
+    # helpers
+    def accept(self):
+        return self.cmd.valid & self.cmd.ready
+
+    def activate(self):
+        return self.cmd.ras & ~self.cmd.cas & ~self.cmd.we
+
+    def write(self):
+        return self.cmd.is_write
+
+    def read(self):
+        return self.cmd.is_read
+
 
 class _Steerer(Module):
     def __init__(self, commands, dfi):
@@ -102,6 +116,42 @@ class _Steerer(Module):
             ]
 
 
+class tXXDController(Module):
+    def __init__(self, txxd):
+        self.valid = Signal()
+        self.ready = Signal(reset=1)
+
+        # # #
+
+        if txxd is not None:
+            count = Signal(max=txxd+1)
+            self.sync += \
+                If(self.valid,
+                    count.eq(txxd-1)
+                ).Elif(~self.ready,
+                    count.eq(count-1)
+                )
+            self.comb += self.ready.eq(count == 0)
+
+
+class tFAWController(Module):
+    def __init__(self, tfaw):
+        self.valid = Signal()
+        self.ready = Signal(reset=1)
+
+        # # #
+
+        if tfaw is not None:
+            count = Signal(max=tfaw)
+            window = Signal(tfaw)
+            self.sync += window.eq(Cat(self.valid, window))
+            for i in range(tfaw):
+                next_count = Signal(max=tfaw)
+                self.comb += next_count.eq(count + window[i])
+                count = next_count
+            self.comb += If(count >= 4, self.ready.eq(0))
+
+
 class Multiplexer(Module, AutoCSR):
     def __init__(self,
             settings,
@@ -112,8 +162,8 @@ class Multiplexer(Module, AutoCSR):
             with_bandwidth=False):
         assert(settings.phy.nphases == len(dfi.phases))
 
-        # Forward Declares
-        activate_allowed = Signal(reset=1)
+        ras_allowed = Signal(reset=1)
+        cas_allowed = Signal(reset=1)
 
         # Command choosing
         requests = [bm.cmd for bm in bank_machines]
@@ -122,7 +172,7 @@ class Multiplexer(Module, AutoCSR):
         if settings.phy.nphases == 1:
             self.comb += [
                 choose_cmd.want_cmds.eq(1),
-                choose_cmd.want_activates.eq(activate_allowed),
+                choose_cmd.want_activates.eq(ras_allowed),
                 choose_req.want_cmds.eq(1)
             ]
 
@@ -135,66 +185,32 @@ class Multiplexer(Module, AutoCSR):
         steerer = _Steerer(commands, dfi)
         self.submodules += steerer
 
-        # tRRD Command Timing
-        trrd = settings.timing.tRRD
-        trrd_allowed = Signal(reset=1)
-        is_act_cmd = Signal()
-        self.comb += is_act_cmd.eq(choose_cmd.cmd.ras & ~choose_cmd.cmd.cas & ~choose_cmd.cmd.we)
-        if trrd is not None:
-            trrd_count = Signal(max=trrd+1)
-            self.sync += \
-                If(choose_cmd.cmd.ready & choose_cmd.cmd.valid & is_act_cmd,
-                    trrd_count.eq(trrd-1)
-                ).Elif(~activate_allowed,
-                    trrd_count.eq(trrd_count-1)
-                )
-            self.comb += trrd_allowed.eq(trrd_count == 0)
+        # tRRD timing (Row to Row delay)
+        self.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
+        self.comb += trrdcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
 
-        # tFAW Command Timing
-        tfaw = settings.timing.tFAW
-        tfaw_allowed = Signal(reset=1)
-        if tfaw is not None:
-            tfaw_count = Signal(max=tfaw)
-            tfaw_window = Signal(tfaw)
-            self.sync += tfaw_window.eq(Cat((is_act_cmd & choose_cmd.cmd.ready & choose_cmd.cmd.valid), tfaw_window))
-            for i in range(tfaw):
-                next_tfaw_count = Signal(max=tfaw)
-                self.comb += next_tfaw_count.eq(tfaw_count + tfaw_window[i])
-                tfaw_count = next_tfaw_count
-            self.comb += If(tfaw_count >=4, tfaw_allowed.eq(0))
+        # tFAW timing (Four Activate Window)
+        self.tfawcon = tfawcon = tFAWController(settings.timing.tFAW)
+        self.comb += tfawcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
 
-        self.comb += activate_allowed.eq(trrd_allowed & tfaw_allowed)
-        self.comb += [bm.activate_allowed.eq(activate_allowed) for bm in bank_machines]
+        # RAS control
+        self.comb += ras_allowed.eq(trrdcon.ready & tfawcon.ready)
+        self.comb += [bm.ras_allowed.eq(ras_allowed) for bm in bank_machines]
 
-        # CAS to CAS
-        cas = choose_req.cmd.valid & choose_req.cmd.ready & (choose_req.cmd.is_read | choose_req.cmd.is_write)
-        cas_allowed = Signal(reset=1)
-        tccd =  settings.timing.tCCD
-        if tccd is not None:
-            cas_count = Signal(max=tccd+1)
-            self.sync += \
-                If(cas,
-                    cas_count.eq(tccd-1)
-                ).Elif(~cas_allowed,
-                    cas_count.eq(cas_count-1)
-                )
-            self.comb += cas_allowed.eq(cas_count == 0)
+        # tCCD timing (Column to Column delay)
+        self.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
+        self.comb += tccdcon.valid.eq(choose_cmd.accept() & (choose_cmd.write() | choose_cmd.read()))
+
+        # CAS control
+        self.comb += cas_allowed.eq(tccdcon.ready)
         self.comb += [bm.cas_allowed.eq(cas_allowed) for bm in bank_machines]
 
-        # Write to Read
-        wtr_allowed = Signal(reset=1)
-        twtr = settings.timing.tWTR
-        if tccd is not None:
-            twtr += settings.timing.tCCD # tWTR begins after the transfer is complete, tCCD accounts for this
-        wtr_count = Signal(max=twtr+1)
-        self.sync += [
-            If(choose_req.cmd.ready & choose_req.cmd.valid & choose_req.cmd.is_write,
-                wtr_count.eq(twtr-1)
-            ).Elif(wtr_count != 0,
-                wtr_count.eq(wtr_count-1)
-            )
-        ]
-        self.comb += wtr_allowed.eq(wtr_count == 0)
+        # tWTR timing (Write to Read delay)
+        self.twtrcon = twtrcon = tXXDController(
+            settings.timing.tWTR +
+            # tCCD must be added since tWTR begins after the transfer is complete
+            settings.timing.tCCD if settings.timing.tCCD is not None else 0)
+        self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
 
         # Read/write turnaround
         read_available = Signal()
@@ -265,8 +281,8 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("READ",
             read_time_en.eq(1),
             choose_req.want_reads.eq(1),
-            choose_cmd.want_activates.eq(activate_allowed),
-            choose_cmd.cmd.ready.eq(~is_act_cmd | activate_allowed),
+            choose_cmd.want_activates.eq(ras_allowed),
+            choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
             choose_req.cmd.ready.eq(1),
             steerer_sel(steerer, "read"),
             If(write_available,
@@ -282,8 +298,8 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("WRITE",
             write_time_en.eq(1),
             choose_req.want_writes.eq(1),
-            choose_cmd.want_activates.eq(activate_allowed),
-            choose_cmd.cmd.ready.eq(~is_act_cmd | activate_allowed),
+            choose_cmd.want_activates.eq(ras_allowed),
+            choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
             choose_req.cmd.ready.eq(1),
             steerer_sel(steerer, "write"),
             If(read_available,
@@ -303,7 +319,7 @@ class Multiplexer(Module, AutoCSR):
             )
         )
         fsm.act("WTR",
-            If(wtr_allowed,
+            If(twtrcon.ready,
                 NextState("READ")
             )
         )
