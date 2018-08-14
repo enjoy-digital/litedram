@@ -31,8 +31,8 @@ class BankMachine(Module):
         self.req = req = Record(cmd_layout(aw))
         self.refresh_req = Signal()
         self.refresh_gnt = Signal()
+        self.ras_allowed = ras_allowed = Signal()
         self.cas_allowed = cas_allowed = Signal()
-        self.activate_allowed = activate_allowed = Signal()
         a = settings.geom.addressbits
         ba = settings.geom.bankbits
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
@@ -99,6 +99,7 @@ class BankMachine(Module):
         ]
 
         # Control and command generation FSM
+        # Note: tRRD, tFAW, tCCD, tWTR timings are enforced by the multiplexer
         self.submodules.fsm = fsm = FSM()
         fsm.act("REGULAR",
             If(self.refresh_req,
@@ -107,8 +108,6 @@ class BankMachine(Module):
                 If(has_openrow,
                     If(hit,
                         If(cas_allowed,
-                            # Note: write-to-read specification is enforced by
-                            # multiplexer
                             cmd.valid.eq(1),
                             If(cmd_buffer.source.we,
                                 req.wdata_ready.eq(cmd.ready),
@@ -153,9 +152,9 @@ class BankMachine(Module):
         fsm.act("ACTIVATE",
             sel_row_adr.eq(1),
             track_open.eq(1),
-            cmd.valid.eq(activate_allowed),
+            cmd.valid.eq(ras_allowed),
             cmd.is_cmd.eq(1),
-            If(cmd.ready & activate_allowed,
+            If(cmd.ready & ras_allowed,
                 NextState("TRCD")
             ),
             cmd.ras.eq(1)
