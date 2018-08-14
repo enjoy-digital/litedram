@@ -325,7 +325,7 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("REFRESH",
             steerer.sel[0].eq(STEER_REFRESH),
             refresher.cmd.ready.eq(1),
-            If(refresher.cmd.last,
+            If(~refresher.cmd.valid,
                 NextState("READ")
             )
         )
