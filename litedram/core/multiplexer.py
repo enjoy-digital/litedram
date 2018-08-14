@@ -1,5 +1,5 @@
 from functools import reduce
-from operator import or_, and_
+from operator import add, or_, and_
 
 from migen import *
 from migen.genlib.roundrobin import *
@@ -118,38 +118,49 @@ class _Steerer(Module):
 
 class tXXDController(Module):
     def __init__(self, txxd):
-        self.valid = Signal()
-        self.ready = Signal(reset=1)
+        self.valid = valid = Signal()
+        self.ready = ready = Signal(reset=1)
+        ready.attr.add("no_retiming")
 
         # # #
 
         if txxd is not None:
-            count = Signal(max=txxd+1)
+            count = Signal(max=txxd + 1)
             self.sync += \
-                If(self.valid,
-                    count.eq(txxd-1)
-                ).Elif(~self.ready,
-                    count.eq(count-1)
+                If(valid,
+                    count.eq(txxd - 1),
+                    If((txxd - 1) == 0,
+                        ready.eq(1)
+                    ).Else(
+                        ready.eq(0)
+                    )
+                ).Elif(~ready,
+                    count.eq(count - 1),
+                    If(count == 1, ready.eq(1))
                 )
-            self.comb += self.ready.eq(count == 0)
 
 
 class tFAWController(Module):
     def __init__(self, tfaw):
-        self.valid = Signal()
-        self.ready = Signal(reset=1)
+        self.valid = valid = Signal()
+        self.ready = ready = Signal(reset=1)
+        ready.attr.add("no_retiming")
 
         # # #
 
         if tfaw is not None:
             count = Signal(max=tfaw)
             window = Signal(tfaw)
-            self.sync += window.eq(Cat(self.valid, window))
-            for i in range(tfaw):
-                next_count = Signal(max=tfaw)
-                self.comb += next_count.eq(count + window[i])
-                count = next_count
-            self.comb += If(count >= 4, self.ready.eq(0))
+            self.sync += window.eq(Cat(valid, window))
+            self.comb += reduce(add, [window[i] for i in range(tfaw)])
+            self.sync += \
+                If(count < 4,
+                    If(count == 3,
+                        ready.eq(~valid)
+                    ).Else(
+                        ready.eq(1)
+                    )
+                )
 
 
 class Multiplexer(Module, AutoCSR):
