@@ -198,10 +198,12 @@ class Multiplexer(Module, AutoCSR):
 
         # tRRD timing (Row to Row delay)
         self.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
+        self.submodules += trrdcon
         self.comb += trrdcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
 
         # tFAW timing (Four Activate Window)
         self.tfawcon = tfawcon = tFAWController(settings.timing.tFAW)
+        self.submodules += tfawcon
         self.comb += tfawcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
 
         # RAS control
@@ -210,6 +212,7 @@ class Multiplexer(Module, AutoCSR):
 
         # tCCD timing (Column to Column delay)
         self.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
+        self.submodules += tccdcon
         self.comb += tccdcon.valid.eq(choose_cmd.accept() & (choose_cmd.write() | choose_cmd.read()))
 
         # CAS control
@@ -221,6 +224,7 @@ class Multiplexer(Module, AutoCSR):
             settings.timing.tWTR +
             # tCCD must be added since tWTR begins after the transfer is complete
             settings.timing.tCCD if settings.timing.tCCD is not None else 0)
+        self.submodules += twtrcon
         self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
 
         # Read/write turnaround
