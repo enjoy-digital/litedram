@@ -45,16 +45,14 @@ class Refresher(Module):
         self.comb += self.timer.wait.eq(settings.with_refresh & ~self.timer.done)
 
         # Control FSM
-        cmd_valid = Signal()
         self.submodules.fsm = fsm = FSM()
         fsm.act("IDLE",
             If(self.timer.done,
-                cmd_valid.eq(1),
                 NextState("WAIT_GRANT")
             )
         )
         fsm.act("WAIT_GRANT",
-            cmd_valid.eq(1),
+            cmd.valid.eq(1),
             If(cmd.ready,
                 seq_start.eq(1),
                 NextState("WAIT_SEQ")
@@ -62,8 +60,9 @@ class Refresher(Module):
         )
         fsm.act("WAIT_SEQ",
             If(seq_done,
-                cmd_valid.eq(0),
+                cmd.last.eq(1),
                 NextState("IDLE")
+            ).Else(
+                cmd.valid.eq(1)
             )
         )
-        self.sync += cmd.valid.eq(cmd_valid)
