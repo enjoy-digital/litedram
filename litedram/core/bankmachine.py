@@ -43,14 +43,25 @@ class BankMachine(Module):
 
         # Command buffer
         cmd_buffer_layout = [("we", 1), ("adr", len(req.adr))]
-        cmd_buffer_lookahead = stream.SyncFIFO(cmd_buffer_layout, settings.cmd_buffer_depth)
-        cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
-        self.submodules += cmd_buffer_lookahead, cmd_buffer
+        if settings.with_auto_precharge:
+            cmd_buffer_lookahead = stream.SyncFIFO(cmd_buffer_layout, settings.cmd_buffer_depth)
+            cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
+            self.submodules += cmd_buffer_lookahead, cmd_buffer
+            self.comb += [
+                req.connect(cmd_buffer_lookahead.sink, omit=["wdata_valid", "wdata_ready",
+                                                             "rdata_valid", "rdata_ready",
+                                                             "lock"]),
+                cmd_buffer_lookahead.source.connect(cmd_buffer.sink)
+            ]
+        else:
+            cmd_buffer = stream.SyncFIFO(cmd_buffer_layout, settings.cmd_buffer_depth)
+            self.submodules += cmd_buffer
+            self.comb += [
+                req.connect(cmd_buffer.sink, omit=["wdata_valid", "wdata_ready",
+                                                   "rdata_valid", "rdata_ready",
+                                                   "lock"])
+            ]
         self.comb += [
-            req.connect(cmd_buffer_lookahead.sink, omit=["wdata_valid", "wdata_ready",
-                                                         "rdata_valid", "rdata_ready",
-                                                         "lock"]),
-            cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer.source.valid),
         ]
@@ -91,13 +102,14 @@ class BankMachine(Module):
                                                     cmd.is_write))
 
         # Auto Precharge
-        self.comb += [
-            If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
-                If(slicer.row(cmd_buffer_lookahead.source.adr) != slicer.row(cmd_buffer.source.adr),
-                    auto_precharge.eq(self.precharge_timer.done & (track_close == 0))
+        if settings.with_auto_precharge:
+            self.comb += [
+                If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
+                    If(slicer.row(cmd_buffer_lookahead.source.adr) != slicer.row(cmd_buffer.source.adr),
+                        auto_precharge.eq(self.precharge_timer.done & (track_close == 0))
+                    )
                 )
-            )
-        ]
+            ]
 
         # Control and command generation FSM
         # Note: tRRD, tFAW, tCCD, tWTR timings are enforced by the multiplexer

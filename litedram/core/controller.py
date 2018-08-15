@@ -10,12 +10,14 @@ from litedram.core.multiplexer import *
 class ControllerSettings:
     def __init__(self, cmd_buffer_depth=8, read_time=32, write_time=16,
                  with_bandwidth=False,
-                 with_refresh=True):
+                 with_refresh=True,
+                 with_auto_precharge=False):
         self.cmd_buffer_depth = cmd_buffer_depth
         self.read_time = read_time
         self.write_time = write_time
         self.with_bandwidth = with_bandwidth
         self.with_refresh = with_refresh
+        self.with_auto_precharge = with_auto_precharge
 
 
 class LiteDRAMController(Module):
