@@ -38,15 +38,18 @@ class BankMachine(Module):
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
 
         # # #
+        auto_precharge = Signal()
 
         # Command buffer
         cmd_buffer_layout = [("we", 1), ("adr", len(req.adr))]
-        cmd_buffer = stream.SyncFIFO(cmd_buffer_layout, settings.cmd_buffer_depth)
-        self.submodules += cmd_buffer
+        cmd_bufferPre = stream.SyncFIFO(cmd_buffer_layout, settings.cmd_buffer_depth)
+        cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
+        self.submodules += cmd_buffer, cmd_bufferPre
         self.comb += [
-            req.connect(cmd_buffer.sink, omit=["wdata_valid", "wdata_ready",
+            req.connect(cmd_bufferPre.sink, omit=["wdata_valid", "wdata_ready",
                                                "rdata_valid", "rdata_ready",
                                                "lock"]),
+            cmd_bufferPre.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer.source.valid),
         ]
@@ -75,7 +78,7 @@ class BankMachine(Module):
             If(sel_row_adr,
                 cmd.a.eq(slicer.row(cmd_buffer.source.adr))
             ).Else(
-                cmd.a.eq(slicer.col(cmd_buffer.source.adr))
+                cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.source.adr))
             )
         ]
 
@@ -85,6 +88,15 @@ class BankMachine(Module):
         self.comb += self.precharge_timer.wait.eq(~(cmd.valid &
                                                     cmd.ready &
                                                     cmd.is_write))
+
+        # Auto Precharge
+        self.comb += [
+            If(cmd_bufferPre.source.valid & cmd_buffer.source.valid,
+                If(slicer.row(cmd_bufferPre.source.adr) != slicer.row(cmd_buffer.source.adr),
+                    auto_precharge.eq(self.precharge_timer.done & (track_close == 0))
+                )
+            )
+        ]
 
         # Control and command generation FSM
         # Note: tRRD, tFAW, tCCD, tWTR timings are enforced by the multiplexer
@@ -105,7 +117,10 @@ class BankMachine(Module):
                                 req.rdata_valid.eq(cmd.ready),
                                 cmd.is_read.eq(1)
                             ),
-                            cmd.cas.eq(1)
+                            cmd.cas.eq(1),
+                            If(cmd.ready & auto_precharge,
+                               NextState("AUTOPRECHARGE")
+                            )
                         )
                     ).Else(
                         NextState("PRECHARGE")
@@ -125,6 +140,12 @@ class BankMachine(Module):
                 cmd.ras.eq(1),
                 cmd.we.eq(1),
                 cmd.is_cmd.eq(1)
+            ),
+            track_close.eq(1)
+        )
+        fsm.act("AUTOPRECHARGE",
+            If(self.precharge_timer.done,
+                NextState("TRP")
             ),
             track_close.eq(1)
         )
