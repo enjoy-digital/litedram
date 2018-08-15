@@ -213,7 +213,7 @@ class Multiplexer(Module, AutoCSR):
         # tCCD timing (Column to Column delay)
         self.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
         self.submodules += tccdcon
-        self.comb += tccdcon.valid.eq(choose_cmd.accept() & (choose_cmd.write() | choose_cmd.read()))
+        self.comb += tccdcon.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
 
         # CAS control
         self.comb += cas_allowed.eq(tccdcon.ready)
