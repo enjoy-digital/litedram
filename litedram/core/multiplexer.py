@@ -152,7 +152,7 @@ class tFAWController(Module):
             count = Signal(max=tfaw)
             window = Signal(tfaw)
             self.sync += window.eq(Cat(valid, window))
-            self.comb += reduce(add, [window[i] for i in range(tfaw)])
+            self.comb += count.eq(reduce(add, [window[i] for i in range(tfaw)]))
             self.sync += \
                 If(count < 4,
                     If(count == 3,
@@ -197,13 +197,11 @@ class Multiplexer(Module, AutoCSR):
         self.submodules += steerer
 
         # tRRD timing (Row to Row delay)
-        self.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
-        self.submodules += trrdcon
+        self.submodules.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
         self.comb += trrdcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
 
         # tFAW timing (Four Activate Window)
-        self.tfawcon = tfawcon = tFAWController(settings.timing.tFAW)
-        self.submodules += tfawcon
+        self.submodules.tfawcon = tfawcon = tFAWController(settings.timing.tFAW)
         self.comb += tfawcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
 
         # RAS control
@@ -211,8 +209,7 @@ class Multiplexer(Module, AutoCSR):
         self.comb += [bm.ras_allowed.eq(ras_allowed) for bm in bank_machines]
 
         # tCCD timing (Column to Column delay)
-        self.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
-        self.submodules += tccdcon
+        self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
         self.comb += tccdcon.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
 
         # CAS control
@@ -220,11 +217,10 @@ class Multiplexer(Module, AutoCSR):
         self.comb += [bm.cas_allowed.eq(cas_allowed) for bm in bank_machines]
 
         # tWTR timing (Write to Read delay)
-        self.twtrcon = twtrcon = tXXDController(
+        self.submodules.twtrcon = twtrcon = tXXDController(
             settings.timing.tWTR +
             # tCCD must be added since tWTR begins after the transfer is complete
             settings.timing.tCCD if settings.timing.tCCD is not None else 0)
-        self.submodules += twtrcon
         self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
 
         # Read/write turnaround
