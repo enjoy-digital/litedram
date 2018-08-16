@@ -125,7 +125,7 @@ class tXXDController(Module):
         # # #
 
         if txxd is not None:
-            count = Signal(max=txxd + 1)
+            count = Signal(max=max(txxd, 2))
             self.sync += \
                 If(valid,
                     count.eq(txxd - 1),
@@ -149,7 +149,7 @@ class tFAWController(Module):
         # # #
 
         if tfaw is not None:
-            count = Signal(max=tfaw)
+            count = Signal(max=max(tfaw, 2))
             window = Signal(tfaw)
             self.sync += window.eq(Cat(valid, window))
             self.comb += count.eq(reduce(add, [window[i] for i in range(tfaw)]))
