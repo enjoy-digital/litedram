@@ -184,7 +184,8 @@ class Multiplexer(Module, AutoCSR):
             self.comb += [
                 choose_cmd.want_cmds.eq(1),
                 choose_cmd.want_activates.eq(ras_allowed),
-                choose_req.want_cmds.eq(1)
+                choose_req.want_cmds.eq(1),
+                choose_req.want_activates.eq(ras_allowed),
             ]
 
         # Command steering
