@@ -10,7 +10,8 @@ class PhySettings:
                  nphases,
                  rdphase, wrphase,
                  rdcmdphase, wrcmdphase,
-                 cl, read_latency, write_latency, cwl=0):
+                 cl, read_latency, write_latency, cwl=0,
+                 rtt_nom='40ohm', drive_strength='40ohm', dynamic_odt='60ohm'):
         self.memtype = memtype
         self.dfi_databits = dfi_databits
 
@@ -24,6 +25,11 @@ class PhySettings:
         self.read_latency = read_latency
         self.write_latency = write_latency
         self.cwl = cwl
+
+        # board tuning parameters
+        self.rtt_nom = rtt_nom
+        self.drive_strength = drive_strength
+        self.dynamic_odt = dynamic_odt
 
 
 class GeomSettings:
