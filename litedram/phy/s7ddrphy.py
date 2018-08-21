@@ -1,6 +1,6 @@
 # 1:4, 1:2 frequency-ratio DDR2/DDR3 PHY for Xilinx's Series7
 # DDR2: 400, 533, 667, 800 and 1066 MT/s
-# DDR3: 1066, 1333 and 1600 MT/s
+# DDR3: 800, 1066, 1333 and 1600 MT/s
 
 import math
 
@@ -32,8 +32,11 @@ def get_cl_cw(memtype, tck):
         else:
             raise ValueError
     elif memtype == "DDR3":
+        # ddr3-800
+        if tck >= 2/800e6:
+            cl, cwl = 6, 5
         # ddr3-1066
-        if tck >= 2/1066e6:
+        elif tck >= 2/1066e6:
             cl, cwl = 7, 6
         # ddr3-1333
         elif tck >= 2/1333e6:
