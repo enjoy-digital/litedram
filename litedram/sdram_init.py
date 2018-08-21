@@ -210,7 +210,7 @@ const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
 
         # default electrical settings (point to point)
         rtt_nom = "60ohm"
-        rtt_wr = "120ohm"
+        rtt_wr = "60ohm"
         ron = "34ohm"
 
         # override electrical settings if specified
