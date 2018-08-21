@@ -26,7 +26,7 @@ class PhySettings:
         self.cwl = cwl
 
     # Optional DDR3 electrical settings
-    def add_electrical_settings(rtt_nom, rtt_wr, ron):
+    def add_electrical_settings(self, rtt_nom, rtt_wr, ron):
         assert self.memtype == "DDR3"
         self.rtt_nom = rtt_nom # Non-Writes on-die termination impedance
         self.rtt_wr = rtt_wr   # Writes on-die termination impedance
