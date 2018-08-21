@@ -108,8 +108,8 @@ class Generator(Module):
 @ResetInserter()
 class _LiteDRAMBISTGenerator(Module):
     def __init__(self, dram_port):
-        ashift = log2_int(dram_port.dw//8)
-        awidth = dram_port.aw + ashift
+        ashift = log2_int(dram_port.data_width//8)
+        awidth = dram_port.address_width + ashift
         self.start = Signal()
         self.done = Signal()
         self.base = Signal(awidth)
@@ -134,7 +134,7 @@ class _LiteDRAMBISTGenerator(Module):
         dma = LiteDRAMDMAWriter(dram_port)
         self.submodules += dma
 
-        cmd_counter = Signal(dram_port.aw, reset_less=True)
+        cmd_counter = Signal(dram_port.address_width, reset_less=True)
 
         fsm = FSM(reset_state="IDLE")
         self.submodules += fsm
@@ -196,8 +196,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         Duration of the generation.
     """
     def __init__(self, dram_port):
-        ashift = log2_int(dram_port.dw//8)
-        awidth = dram_port.aw + ashift
+        ashift = log2_int(dram_port.data_width//8)
+        awidth = dram_port.address_width + ashift
         self.reset = CSR()
         self.start = CSR()
         self.done = CSRStatus()
@@ -209,14 +209,14 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
         # # #
 
-        cd = dram_port.cd
+        clock_domain = dram_port.clock_domain
 
         core = _LiteDRAMBISTGenerator(dram_port)
-        core = ClockDomainsRenamer(cd)(core)
+        core = ClockDomainsRenamer(clock_domain)(core)
         self.submodules += core
 
-        reset_sync = PulseSynchronizer("sys", cd)
-        start_sync = PulseSynchronizer("sys", cd)
+        reset_sync = PulseSynchronizer("sys", clock_domain)
+        start_sync = PulseSynchronizer("sys", clock_domain)
         self.submodules += reset_sync, start_sync
         self.comb += [
             reset_sync.i.eq(self.reset.re),
@@ -226,15 +226,15 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
             core.start.eq(start_sync.o)
         ]
 
-        done_sync = BusSynchronizer(1, cd, "sys")
+        done_sync = BusSynchronizer(1, clock_domain, "sys")
         self.submodules += done_sync
         self.comb += [
             done_sync.i.eq(core.done),
             self.done.status.eq(done_sync.o)
         ]
 
-        base_sync = BusSynchronizer(awidth, "sys", cd)
-        length_sync = BusSynchronizer(awidth, "sys", cd)
+        base_sync = BusSynchronizer(awidth, "sys", clock_domain)
+        length_sync = BusSynchronizer(awidth, "sys", clock_domain)
         self.submodules += base_sync, length_sync
         self.comb += [
             base_sync.i.eq(self.base.storage),
@@ -245,11 +245,11 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         ]
 
         self.specials += [
-            MultiReg(self.random_data_enable.storage, core.random_data_enable, cd),
-            MultiReg(self.random_addr_enable.storage, core.random_addr_enable, cd),
+            MultiReg(self.random_data_enable.storage, core.random_data_enable, clock_domain),
+            MultiReg(self.random_addr_enable.storage, core.random_addr_enable, clock_domain),
         ]
 
-        ticks_sync = BusSynchronizer(32, cd, "sys")
+        ticks_sync = BusSynchronizer(32, clock_domain, "sys")
         self.submodules += ticks_sync
         self.comb += [
             ticks_sync.i.eq(core.ticks),
@@ -260,8 +260,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 @ResetInserter()
 class _LiteDRAMBISTChecker(Module, AutoCSR):
     def __init__(self, dram_port):
-        ashift = log2_int(dram_port.dw//8)
-        awidth = dram_port.aw + ashift
+        ashift = log2_int(dram_port.data_width//8)
+        awidth = dram_port.address_width + ashift
         self.start = Signal()
         self.done = Signal()
         self.base = Signal(awidth)
@@ -288,7 +288,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.submodules += dma
 
         # address
-        cmd_counter = Signal(dram_port.aw, reset_less=True)
+        cmd_counter = Signal(dram_port.address_width, reset_less=True)
 
         cmd_fsm = FSM(reset_state="IDLE")
         self.submodules += cmd_fsm
@@ -312,7 +312,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.comb += dma.sink.address.eq(self.base[ashift:] + addr_gen.o)
 
         # data
-        data_counter = Signal(dram_port.aw, reset_less=True)
+        data_counter = Signal(dram_port.address_width, reset_less=True)
 
         data_fsm = FSM(reset_state="IDLE")
         self.submodules += data_fsm
@@ -374,8 +374,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         Number of DRAM words which don't match.
     """
     def __init__(self, dram_port):
-        ashift = log2_int(dram_port.dw//8)
-        awidth = dram_port.aw + ashift
+        ashift = log2_int(dram_port.data_width//8)
+        awidth = dram_port.address_width + ashift
         self.reset = CSR()
         self.start = CSR()
         self.done = CSRStatus()
@@ -388,14 +388,14 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
         # # #
 
-        cd = dram_port.cd
+        clock_domain = dram_port.clock_domain
 
         core = _LiteDRAMBISTChecker(dram_port)
-        core = ClockDomainsRenamer(cd)(core)
+        core = ClockDomainsRenamer(clock_domain)(core)
         self.submodules += core
 
-        reset_sync = PulseSynchronizer("sys", cd)
-        start_sync = PulseSynchronizer("sys", cd)
+        reset_sync = PulseSynchronizer("sys", clock_domain)
+        start_sync = PulseSynchronizer("sys", clock_domain)
         self.submodules += reset_sync, start_sync
         self.comb += [
             reset_sync.i.eq(self.reset.re),
@@ -405,15 +405,15 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             core.start.eq(start_sync.o)
         ]
 
-        done_sync = BusSynchronizer(1, cd, "sys")
+        done_sync = BusSynchronizer(1, clock_domain, "sys")
         self.submodules += done_sync
         self.comb += [
             done_sync.i.eq(core.done),
             self.done.status.eq(done_sync.o)
         ]
 
-        base_sync = BusSynchronizer(awidth, "sys", cd)
-        length_sync = BusSynchronizer(awidth, "sys", cd)
+        base_sync = BusSynchronizer(awidth, "sys", clock_domain)
+        length_sync = BusSynchronizer(awidth, "sys", clock_domain)
         self.submodules += base_sync, length_sync
         self.comb += [
             base_sync.i.eq(self.base.storage),
@@ -424,18 +424,18 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         ]
 
         self.specials += [
-            MultiReg(self.random_data_enable.storage, core.random_data_enable, cd),
-            MultiReg(self.random_addr_enable.storage, core.random_addr_enable, cd),
+            MultiReg(self.random_data_enable.storage, core.random_data_enable, clock_domain),
+            MultiReg(self.random_addr_enable.storage, core.random_addr_enable, clock_domain),
         ]
 
-        ticks_sync = BusSynchronizer(32, cd, "sys")
+        ticks_sync = BusSynchronizer(32, clock_domain, "sys")
         self.submodules += ticks_sync
         self.comb += [
             ticks_sync.i.eq(core.ticks),
             self.ticks.status.eq(ticks_sync.o)
         ]
 
-        errors_sync = BusSynchronizer(32, cd, "sys")
+        errors_sync = BusSynchronizer(32, clock_domain, "sys")
         self.submodules += errors_sync
         self.comb += [
             errors_sync.i.eq(core.errors),

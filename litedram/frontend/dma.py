@@ -33,8 +33,8 @@ class LiteDRAMDMAReader(Module):
     """
 
     def __init__(self, port, fifo_depth=16, fifo_buffered=False):
-        self.sink = sink = stream.Endpoint([("address", port.aw)])
-        self.source = source = stream.Endpoint([("data", port.dw)])
+        self.sink = sink = stream.Endpoint([("address", port.address_width)])
+        self.source = source = stream.Endpoint([("data", port.data_width)])
 
         # # #
 
@@ -65,7 +65,7 @@ class LiteDRAMDMAReader(Module):
         self.comb += request_enable.eq(rsv_level != fifo_depth)
 
         # FIFO
-        fifo = stream.SyncFIFO([("data", port.dw)], fifo_depth, fifo_buffered)
+        fifo = stream.SyncFIFO([("data", port.data_width)], fifo_depth, fifo_buffered)
         self.submodules += fifo
 
         self.comb += [
@@ -96,12 +96,12 @@ class LiteDRAMDMAWriter(Module):
         Sink for DRAM addresses and DRAM data word to be written too.
     """
     def __init__(self, port, fifo_depth=16, fifo_buffered=False):
-        self.sink = sink = stream.Endpoint([("address", port.aw),
-                                            ("data", port.dw)])
+        self.sink = sink = stream.Endpoint([("address", port.address_width),
+                                            ("data", port.data_width)])
 
         # # #
 
-        fifo = stream.SyncFIFO([("data", port.dw)], fifo_depth, fifo_buffered)
+        fifo = stream.SyncFIFO([("data", port.data_width)], fifo_depth, fifo_buffered)
         self.submodules += fifo
 
         self.comb += [
@@ -116,6 +116,6 @@ class LiteDRAMDMAWriter(Module):
         self.comb += [
             port.wdata.valid.eq(fifo.source.valid),
             fifo.source.ready.eq(port.wdata.ready),
-            port.wdata.we.eq(2**(port.dw//8)-1),
+            port.wdata.we.eq(2**(port.data_width//8)-1),
             port.wdata.data.eq(fifo.source.data)
         ]

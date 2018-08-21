@@ -4,13 +4,13 @@ from migen import *
 
 from litex.soc.interconnect.stream import *
 
-from litedram.common import PhySettings, LiteDRAMPort
+from litedram.common import PhySettings, LiteDRAMNativePort
 from litedram.core import *
 from litedram.modules import SDRAMModule
 from litedram.frontend.crossbar import LiteDRAMCrossbar
 from litedram.frontend.bist import _LiteDRAMBISTGenerator
 from litedram.frontend.bist import _LiteDRAMBISTChecker
-from litedram.frontend.adaptation import LiteDRAMPortCDC
+from litedram.frontend.adaptation import LiteDRAMNativePortCDC
 
 from litedram.phy.model import SDRAMPHYModel
 

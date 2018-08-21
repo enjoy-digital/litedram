@@ -53,7 +53,7 @@ class LiteDRAMController(Module):
         bank_machines = []
         for i in range(2**geom_settings.bankbits):
             bank_machine = BankMachine(i,
-                                       self.interface.aw,
+                                       self.interface.address_width,
                                        address_align,
                                        settings)
             bank_machines.append(bank_machine)

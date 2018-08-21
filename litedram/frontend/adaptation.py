@@ -5,71 +5,73 @@ from litex.soc.interconnect import stream
 from litedram.common import *
 
 
-class LiteDRAMPortCDC(Module):
+class LiteDRAMNativePortCDC(Module):
     def __init__(self, port_from, port_to,
                  cmd_depth=4,
                  wdata_depth=16,
                  rdata_depth=16):
-        assert port_from.aw == port_to.aw
-        assert port_from.dw == port_to.dw
+        assert port_from.address_width == port_to.address_width
+        assert port_from.data_width == port_to.data_width
         assert port_from.mode == port_to.mode
 
-        aw = port_from.aw
-        dw = port_from.dw
+        address_width = port_from.address_width
+        data_width = port_from.data_width
         mode = port_from.mode
-        cd_from = port_from.cd
-        cd_to = port_to.cd
+        clock_domain_from = port_from.clock_domain
+        clock_domain_to = port_to.clock_domain
 
         # # #
 
-        cmd_fifo = stream.AsyncFIFO([("we", 1), ("adr", aw)], cmd_depth)
-        cmd_fifo = ClockDomainsRenamer({"write": cd_from,
-                                        "read":  cd_to})(cmd_fifo)
+        cmd_fifo = stream.AsyncFIFO(
+            [("we", 1), ("adr", address_width)], cmd_depth)
+        cmd_fifo = ClockDomainsRenamer(
+            {"write": clock_domain_from,
+             "read":  clock_domain_to})(cmd_fifo)
         self.submodules += cmd_fifo
-        self.submodules += stream.Pipeline(port_from.cmd,
-                                           cmd_fifo,
-                                           port_to.cmd)
+        self.submodules += stream.Pipeline(
+            port_from.cmd, cmd_fifo, port_to.cmd)
 
         if mode == "write" or mode == "both":
-            wdata_fifo = stream.AsyncFIFO([("data", dw), ("we", dw//8)], wdata_depth)
-            wdata_fifo = ClockDomainsRenamer({"write": cd_from,
-                                              "read":  cd_to})(wdata_fifo)
+            wdata_fifo = stream.AsyncFIFO(
+                [("data", data_width), ("we", data_width//8)], wdata_depth)
+            wdata_fifo = ClockDomainsRenamer(
+                {"write": clock_domain_from,
+                 "read":  clock_domain_to})(wdata_fifo)
             self.submodules += wdata_fifo
-            self.submodules += stream.Pipeline(port_from.wdata,
-                                               wdata_fifo,
-                                               port_to.wdata)
+            self.submodules += stream.Pipeline(
+                port_from.wdata, wdata_fifo, port_to.wdata)
 
         if mode == "read" or mode == "both":
-            rdata_fifo = stream.AsyncFIFO([("data", dw)], rdata_depth)
-            rdata_fifo = ClockDomainsRenamer({"write": cd_to,
-                                              "read":  cd_from})(rdata_fifo)
+            rdata_fifo = stream.AsyncFIFO([("data", data_width)], rdata_depth)
+            rdata_fifo = ClockDomainsRenamer(
+                {"write": clock_domain_to,
+                 "read":  clock_domain_from})(rdata_fifo)
             self.submodules += rdata_fifo
-            self.submodules += stream.Pipeline(port_to.rdata,
-                                               rdata_fifo,
-                                               port_from.rdata)
+            self.submodules += stream.Pipeline(
+                port_to.rdata, rdata_fifo, port_from.rdata)
 
 
-class LiteDRAMPortDownConverter(Module):
+class LiteDRAMNativePortDownConverter(Module):
     """LiteDRAM port DownConverter
 
     This module reduces user port data width to fit controller data width.
-    With N = port_from.dw/port_to.dw:
+    With N = port_from.data_width/port_to.data_width:
     - Address is adapted (multiplied by N + internal increments)
     - A write from the user is splitted and generates N writes to the
     controller.
-    - A read from the user generates N reads to the controller and returned datas are regrouped
-    in a single data presented to the user.
+    - A read from the user generates N reads to the controller and returned
+      datas are regrouped in a single data presented to the user.
     """
     def __init__(self, port_from, port_to, reverse=False):
-        assert port_from.cd == port_to.cd
-        assert port_from.dw > port_to.dw
+        assert port_from.clock_domain == port_to.clock_domain
+        assert port_from.data_width > port_to.data_width
         assert port_from.mode == port_to.mode
-        if port_from.dw % port_to.dw:
+        if port_from.data_width % port_to.data_width:
             raise ValueError("Ratio must be an int")
 
         # # #
 
-        ratio = port_from.dw//port_to.dw
+        ratio = port_from.data_width//port_to.data_width
         mode = port_from.mode
 
         counter = Signal(max=ratio)
@@ -103,48 +105,48 @@ class LiteDRAMPortDownConverter(Module):
         )
 
         if mode == "write" or mode == "both":
-            wdata_converter = stream.StrideConverter(port_from.wdata.description,
-                                                     port_to.wdata.description,
-                                                     reverse=reverse)
+            wdata_converter = stream.StrideConverter(
+                port_from.wdata.description,
+                port_to.wdata.description,
+                reverse=reverse)
             self.submodules += wdata_converter
-            self.submodules += stream.Pipeline(port_from.wdata,
-                                               wdata_converter,
-                                               port_to.wdata)
+            self.submodules += stream.Pipeline(
+                port_from.wdata, wdata_converter, port_to.wdata)
 
         if mode == "read" or mode == "both":
-            rdata_converter = stream.StrideConverter(port_to.rdata.description,
-                                                     port_from.rdata.description,
-                                                     reverse=reverse)
+            rdata_converter = stream.StrideConverter(
+                port_to.rdata.description,
+                port_from.rdata.description,
+                reverse=reverse)
             self.submodules += rdata_converter
-            self.submodules += stream.Pipeline(port_to.rdata,
-                                               rdata_converter,
-                                               port_from.rdata)
+            self.submodules += stream.Pipeline(
+                port_to.rdata, rdata_converter, port_from.rdata)
 
 
-class LiteDRAMWritePortUpConverter(Module):
+class LiteDRAMNativeWritePortUpConverter(Module):
     # TODO: finish and remove hack
     """LiteDRAM write port UpConverter
 
     This module increase user port data width to fit controller data width.
-    With N = port_to.dw/port_from.dw:
+    With N = port_to.data_width/port_from.data_width:
     - Address is adapted (divided by N)
     - N writes from user are regrouped in a single one to the controller
     (when possible, ie when consecutive and bursting)
     """
     def __init__(self, port_from, port_to, reverse=False):
-        assert port_from.cd == port_to.cd
-        assert port_from.dw < port_to.dw
+        assert port_from.clock_domain == port_to.clock_domain
+        assert port_from.data_width < port_to.data_width
         assert port_from.mode == port_to.mode
         assert port_from.mode == "write"
-        if port_to.dw % port_from.dw:
+        if port_to.data_width % port_from.data_width:
             raise ValueError("Ratio must be an int")
 
         # # #
 
-        ratio = port_to.dw//port_from.dw
+        ratio = port_to.data_width//port_from.data_width
 
         we = Signal()
-        address = Signal(port_to.aw)
+        address = Signal(port_to.address_width)
 
         counter = Signal(max=ratio)
         counter_reset = Signal()
@@ -184,35 +186,37 @@ class LiteDRAMWritePortUpConverter(Module):
             )
         )
 
-        wdata_converter = stream.StrideConverter(port_from.wdata.description,
-                                                 port_to.wdata.description,
-                                                 reverse=reverse)
+        wdata_converter = stream.StrideConverter(
+            port_from.wdata.description,
+            port_to.wdata.description,
+            reverse=reverse)
         self.submodules += wdata_converter
-        self.submodules += stream.Pipeline(port_from.wdata,
-                                           wdata_converter,
-                                           port_to.wdata)
+        self.submodules += stream.Pipeline(
+            port_from.wdata,
+            wdata_converter,
+            port_to.wdata)
 
 
-class LiteDRAMReadPortUpConverter(Module):
+class LiteDRAMNativeReadPortUpConverter(Module):
     """LiteDRAM port UpConverter
 
     This module increase user port data width to fit controller data width.
-    With N = port_to.dw/port_from.dw:
+    With N = port_to.data_width/port_from.data_width:
     - Address is adapted (divided by N)
     - N read from user are regrouped in a single one to the controller
     (when possible, ie when consecutive and bursting)
     """
     def __init__(self, port_from, port_to, reverse=False):
-        assert port_from.cd == port_to.cd
-        assert port_from.dw < port_to.dw
+        assert port_from.clock_domain == port_to.clock_domain
+        assert port_from.data_width < port_to.data_width
         assert port_from.mode == port_to.mode
         assert port_from.mode == "read"
-        if port_to.dw % port_from.dw:
+        if port_to.data_width % port_from.data_width:
             raise ValueError("Ratio must be an int")
 
         # # #
 
-        ratio = port_to.dw//port_from.dw
+        ratio = port_to.data_width//port_from.data_width
 
 
         # cmd
@@ -250,9 +254,10 @@ class LiteDRAMReadPortUpConverter(Module):
         # datapath
 
         rdata_buffer  = stream.Buffer(port_to.rdata.description)
-        rdata_converter = stream.StrideConverter(port_to.rdata.description,
-                                                 port_from.rdata.description,
-                                                 reverse=reverse)
+        rdata_converter = stream.StrideConverter(
+            port_to.rdata.description,
+            port_from.rdata.description,
+            reverse=reverse)
         self.submodules +=  rdata_buffer, rdata_converter
 
         rdata_chunk = Signal(ratio, reset=1)
@@ -278,31 +283,30 @@ class LiteDRAMReadPortUpConverter(Module):
                     rdata_converter.source.ready.eq(1)
                 )
             ),
-            cmd_buffer.source.ready.eq(rdata_converter.source.ready & rdata_chunk[ratio-1])
+            cmd_buffer.source.ready.eq(
+                rdata_converter.source.ready & rdata_chunk[ratio-1])
         ]
 
 
-class LiteDRAMPortConverter(Module):
+class LiteDRAMNativePortConverter(Module):
     def __init__(self, port_from, port_to, reverse=False):
-        assert port_from.cd == port_to.cd
+        assert port_from.clock_domain == port_to.clock_domain
         assert port_from.mode == port_to.mode
 
         # # #
 
         mode = port_from.mode
 
-        if port_from.dw > port_to.dw:
-            converter = LiteDRAMPortDownConverter(port_from, port_to, reverse)
+        if port_from.data_width > port_to.data_width:
+            converter = LiteDRAMNativePortDownConverter(port_from, port_to, reverse)
             self.submodules += converter
-        elif port_from.dw < port_to.dw:
+        elif port_from.data_width < port_to.data_width:
             if mode == "write":
-                converter = LiteDRAMWritePortUpConverter(port_from, port_to, reverse)
+                converter = LiteDRAMNativeWritePortUpConverter(port_from, port_to, reverse)
             elif mode == "read":
-                converter = LiteDRAMReadPortUpConverter(port_from, port_to, reverse)
+                converter = LiteDRAMNativeReadPortUpConverter(port_from, port_to, reverse)
             else:
                 raise NotImplementedError
-
-            converter
             self.submodules += converter
         else:
             self.comb += [

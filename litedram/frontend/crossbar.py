@@ -7,7 +7,7 @@ from migen.genlib import roundrobin
 from litex.soc.interconnect import stream
 
 from litedram.common import *
-from litedram.frontend.adaptation import LiteDRAMPortCDC, LiteDRAMPortConverter
+from litedram.frontend.adaptation import LiteDRAMNativePortCDC, LiteDRAMNativePortConverter
 
 
 class LiteDRAMCrossbar(Module):
@@ -15,8 +15,7 @@ class LiteDRAMCrossbar(Module):
         self.controller = controller
         self.cba_shift = cba_shift
 
-        self.rca_bits = controller.aw
-        self.dw = controller.dw
+        self.rca_bits = controller.address_width
         self.nbanks = controller.nbanks
         self.cmd_buffer_depth = controller.settings.cmd_buffer_depth
         self.read_latency = controller.settings.phy.read_latency + 1
@@ -26,30 +25,40 @@ class LiteDRAMCrossbar(Module):
 
         self.masters = []
 
-    def get_port(self, mode="both", dw=None, cd="sys", reverse=False, reorder=False):
+    def get_port(self, mode="both", data_width=None, clock_domain="sys", with_reordering=False, reverse=False, **kwargs):
+        # retro-compatibility # FIXME: remove
+        if "cd" in kwargs:
+            print("[WARNING] Please update LiteDRAMCrossbar.get_port's \"cd\" parameter to \"clock_domain\"")
+            clock_domain = kwargs["cd"]
+        if "dw" in kwargs:
+            print("[WARNING] Please update LiteDRAMCrossbar.get_port's \"dw\" parameter to \"data_width\"")
+            data_width = kwargs["dw"]
+
         if self.finalized:
             raise FinalizeError
-        if dw is None:
-            dw = self.dw
+
+        if data_width is None:
+            # use internal data_width when no width adaptation is requested
+            data_width = self.controller.data_width
 
         # crossbar port
-        port = LiteDRAMPort(mode, self.rca_bits + self.bank_bits, self.dw, "sys", len(self.masters), reorder)
+        port = LiteDRAMNativePort(mode, self.rca_bits + self.bank_bits, self.controller.data_width, "sys", len(self.masters), with_reordering)
         self.masters.append(port)
 
         # clock domain crossing
-        if cd != "sys":
-            new_port = LiteDRAMPort(mode, port.aw, port.dw, cd, port.id, reorder)
-            self.submodules += LiteDRAMPortCDC(new_port, port)
+        if clock_domain != "sys":
+            new_port = LiteDRAMNativePort(mode, port.address_width, port.data_width, clock_domain, port.id, with_reordering)
+            self.submodules += LiteDRAMNativePortCDC(new_port, port)
             port = new_port
 
         # data width convertion
-        if dw != self.dw:
-            if dw > self.dw:
-                adr_shift = -log2_int(dw//self.dw)
+        if data_width != self.controller.data_width:
+            if data_width > self.controller.data_width:
+                adr_shift = -log2_int(data_width//self.controller.data_width)
             else:
-                adr_shift = log2_int(self.dw//dw)
-            new_port = LiteDRAMPort(mode, port.aw + adr_shift, dw, cd, port.id, reorder)
-            self.submodules += ClockDomainsRenamer(cd)(LiteDRAMPortConverter(new_port, port, reverse))
+                adr_shift = log2_int(self.controller.data_width//data_width)
+            new_port = LiteDRAMNativePort(mode, port.address_width + adr_shift, data_width, clock_domain, port.id, with_reordering)
+            self.submodules += ClockDomainsRenamer(clock_domain)(LiteDRAMNativePortConverter(new_port, port, reverse))
             port = new_port
 
         return port
@@ -78,7 +87,7 @@ class LiteDRAMCrossbar(Module):
             master_locked = []
             for nm, master in enumerate(self.masters):
                 locked = 0
-                if not master.reorder:
+                if not master.with_reordering:
                     for other_nb, other_arbiter in enumerate(arbiters):
                         if other_nb != nb:
                             other_bank = getattr(controller, "bank"+str(other_nb))

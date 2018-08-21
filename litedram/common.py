@@ -54,92 +54,96 @@ class TimingSettings:
         self.tRRD = tRRD
 
 
-def cmd_layout(aw):
+def cmd_layout(address_width):
     return [
-        ("valid",        1, DIR_M_TO_S),
-        ("ready",        1, DIR_S_TO_M),
-        ("we",           1, DIR_M_TO_S),
-        ("adr",         aw, DIR_M_TO_S),
-        ("lock",         1, DIR_S_TO_M), # only used internally
+        ("valid",           1, DIR_M_TO_S),
+        ("ready",           1, DIR_S_TO_M),
+        ("we",              1, DIR_M_TO_S),
+        ("adr", address_width, DIR_M_TO_S),
+        ("lock",            1, DIR_S_TO_M), # only used internally
 
-        ("wdata_ready",  1, DIR_S_TO_M),
-        ("rdata_valid",  1, DIR_S_TO_M)
+        ("wdata_ready",     1, DIR_S_TO_M),
+        ("rdata_valid",     1, DIR_S_TO_M)
     ]
 
 
-def data_layout(dw):
+def data_layout(data_width):
     return [
-        ("wdata",           dw, DIR_M_TO_S),
-        ("wdata_we",     dw//8, DIR_M_TO_S),
-        ("wbank", bankbits_max, DIR_S_TO_M),
-        ("rdata",           dw, DIR_S_TO_M),
-        ("rbank", bankbits_max, DIR_S_TO_M)
+        ("wdata",       data_width, DIR_M_TO_S),
+        ("wdata_we", data_width//8, DIR_M_TO_S),
+        ("wbank",     bankbits_max, DIR_S_TO_M),
+        ("rdata",       data_width, DIR_S_TO_M),
+        ("rbank",     bankbits_max, DIR_S_TO_M)
     ]
 
 
 class LiteDRAMInterface(Record):
     def __init__(self, address_align, settings):
-        self.aw = settings.geom.rowbits + settings.geom.colbits - address_align
-        self.dw = settings.phy.dfi_databits*settings.phy.nphases
+        self.address_width = settings.geom.rowbits + settings.geom.colbits - address_align
+        self.data_width = settings.phy.dfi_databits*settings.phy.nphases
         self.nbanks = 2**settings.geom.bankbits
         self.settings = settings
 
-        layout = [("bank"+str(i), cmd_layout(self.aw)) for i in range(self.nbanks)]
-        layout += data_layout(self.dw)
+        layout = [("bank"+str(i), cmd_layout(self.address_width)) for i in range(self.nbanks)]
+        layout += data_layout(self.data_width)
         Record.__init__(self, layout)
 
-def cmd_description(aw):
+def cmd_description(address_width):
     return [
         ("we",   1),
-        ("adr", aw)
+        ("adr", address_width)
     ]
 
-def wdata_description(dw, with_bank):
+def wdata_description(data_width, with_bank):
     r = [
-        ("data", dw),
-        ("we",   dw//8)
+        ("data", data_width),
+        ("we",   data_width//8)
     ]
     if with_bank:
         r += [("bank", bankbits_max)]
     return r
 
-def rdata_description(dw, with_bank):
-    r = [("data", dw)]
+def rdata_description(data_width, with_bank):
+    r = [("data", data_width)]
     if with_bank:
         r += [("bank", bankbits_max)]
     return r
 
 
-class LiteDRAMPort:
-    def __init__(self, mode, aw, dw, cd="sys", id=0,
-        reorder=False):
+class LiteDRAMNativePort:
+    def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0, with_reordering=False):
         self.mode = mode
-        self.aw = aw
-        self.dw = dw
-        self.cd = cd
+        self.address_width = address_width
+        self.data_width = data_width
+        self.clock_domain = clock_domain
         self.id = id
 
         self.lock = Signal()
 
-        self.reorder = reorder
+        self.with_reordering = with_reordering
 
-        self.cmd = stream.Endpoint(cmd_description(aw))
-        self.wdata = stream.Endpoint(wdata_description(dw, reorder))
-        self.rdata = stream.Endpoint(rdata_description(dw, reorder))
+        self.cmd = stream.Endpoint(cmd_description(address_width))
+        self.wdata = stream.Endpoint(wdata_description(data_width, with_reordering))
+        self.rdata = stream.Endpoint(rdata_description(data_width, with_reordering))
 
-        if reorder:
-            print("WARNING: Reordering controller is experimental")
+        if with_reordering:
+            print("[WARNING] Reordering controller is still experimental")
         self.flush = Signal()
 
+        # retro-compatibility # FIXME: remove
+        self.aw = self.address_width
+        self.dw = self.data_width
+        self.cd = self.clock_domain
 
-class LiteDRAMWritePort(LiteDRAMPort):
+
+class LiteDRAMNativeWritePort(LiteDRAMNativePort):
     def __init__(self, *args, **kwargs):
-        LiteDRAMPort.__init__(self, "write", *args, **kwargs)
+        LiteDRAMNativePort.__init__(self, "write", *args, **kwargs)
 
 
-class LiteDRAMReadPort(LiteDRAMPort):
+class LiteDRAMNativeReadPort(LiteDRAMNativePort):
     def __init__(self, *args, **kwargs):
-        LiteDRAMPort.__init__(self, "read", *args, **kwargs)
+        LiteDRAMNativePort.__init__(self, "read", *args, **kwargs)
 
 
 def cmd_request_layout(a, ba):

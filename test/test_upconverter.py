@@ -5,7 +5,7 @@ from migen import *
 from litex.soc.interconnect.stream import *
 
 from litedram.common import LiteDRAMWritePort, LiteDRAMReadPort
-from litedram.frontend.adaptation import LiteDRAMPortConverter
+from litedram.frontend.adaptation import LiteDRAMNativePortConverter
 
 from test.common import *
 
@@ -17,14 +17,14 @@ class DUT(Module):
         # write port and converter
         self.write_user_port = LiteDRAMWritePort(aw=32, dw=32)
         self.write_crossbar_port = LiteDRAMWritePort(aw=32, dw=128)
-        write_converter = LiteDRAMPortConverter(self.write_user_port,
+        write_converter = LiteDRAMNativePortConverter(self.write_user_port,
                                                 self.write_crossbar_port)
         self.submodules += write_converter
 
         # read port and converter
         self.read_user_port = LiteDRAMReadPort(aw=32, dw=32)
         self.read_crossbar_port = LiteDRAMReadPort(aw=32, dw=128)
-        read_converter = LiteDRAMPortConverter(self.read_user_port,
+        read_converter = LiteDRAMNativePortConverter(self.read_user_port,
                                                self.read_crossbar_port)
         self.submodules += read_converter
 
