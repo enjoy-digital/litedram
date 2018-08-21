@@ -10,8 +10,7 @@ class PhySettings:
                  nphases,
                  rdphase, wrphase,
                  rdcmdphase, wrcmdphase,
-                 cl, read_latency, write_latency, cwl=0,
-                 rtt_nom='40ohm', drive_strength='40ohm', dynamic_odt='60ohm'):
+                 cl, read_latency, write_latency, cwl=None):
         self.memtype = memtype
         self.dfi_databits = dfi_databits
 
@@ -26,10 +25,12 @@ class PhySettings:
         self.write_latency = write_latency
         self.cwl = cwl
 
-        # board tuning parameters
-        self.rtt_nom = rtt_nom
-        self.drive_strength = drive_strength
-        self.dynamic_odt = dynamic_odt
+    # Optional DDR3 electrical settings
+    def add_electrical_settings(rtt_nom, rtt_wr, ron):
+        assert self.memtype == "DDR3"
+        self.rtt_nom = rtt_nom # Non-Writes on-die termination impedance
+        self.rtt_wr = rtt_wr   # Writes on-die termination impedance
+        self.ron = ron         # Output driver impedance
 
 
 class GeomSettings:
