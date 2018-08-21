@@ -38,10 +38,11 @@ def r_description(data_width, id_width):
 
 
 class LiteDRAMAXIPort(Record):
-    def __init__(self, data_width, address_width, id_width):
+    def __init__(self, data_width, address_width, id_width, clock_domain="sys"):
         self.data_width = data_width
         self.address_width = address_width
         self.id_width = id_width
+        self.clock_domain = clock_domain
 
         self.aw = stream.Endpoint(aw_description(address_width, id_width))
         self.w = stream.Endpoint(w_description(data_width))

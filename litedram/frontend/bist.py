@@ -1,4 +1,4 @@
-"""Built In Self Test (BIST) modules for testing liteDRAM functionality."""
+"""Built In Self Test (BIST) modules for testing LiteDRAM functionality."""
 
 from functools import reduce
 from operator import xor
