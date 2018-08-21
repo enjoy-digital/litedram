@@ -1,59 +1,7 @@
 from migen import log2_int
 
 
-def get_sdram_phy_header(sdram_phy_settings):
-    r = "#ifndef __GENERATED_SDRAM_PHY_H\n#define __GENERATED_SDRAM_PHY_H\n"
-    r += "#include <hw/common.h>\n#include <generated/csr.h>\n#include <hw/flags.h>\n\n"
-
-    nphases = sdram_phy_settings.nphases
-    r += "#define DFII_NPHASES "+str(nphases)+"\n\n"
-
-    r += "static void cdelay(int i);\n"
-
-    # commands_px functions
-    for n in range(nphases):
-        r += """
-static void command_p{n}(int cmd)
-{{
-    sdram_dfii_pi{n}_command_write(cmd);
-    sdram_dfii_pi{n}_command_issue_write(1);
-}}""".format(n=str(n))
-    r += "\n\n"
-
-    # rd/wr access macros
-    r += """
-#define sdram_dfii_pird_address_write(X) sdram_dfii_pi{rdphase}_address_write(X)
-#define sdram_dfii_piwr_address_write(X) sdram_dfii_pi{wrphase}_address_write(X)
-#define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi{rdphase}_baddress_write(X)
-#define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi{wrphase}_baddress_write(X)
-#define command_prd(X) command_p{rdphase}(X)
-#define command_pwr(X) command_p{wrphase}(X)
-""".format(rdphase=str(sdram_phy_settings.rdphase), wrphase=str(sdram_phy_settings.wrphase))
-    r += "\n"
-
-    #
-    # sdrrd/sdrwr functions utilities
-    #
-    r += "#define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE\n"
-    sdram_dfii_pix_wrdata_addr = []
-    for n in range(nphases):
-        sdram_dfii_pix_wrdata_addr.append("CSR_SDRAM_DFII_PI{n}_WRDATA_ADDR".format(n=n))
-    r += """
-const unsigned int sdram_dfii_pix_wrdata_addr[{n}] = {{
-    {sdram_dfii_pix_wrdata_addr}
-}};
-""".format(n=nphases, sdram_dfii_pix_wrdata_addr=",\n\t".join(sdram_dfii_pix_wrdata_addr))
-
-    sdram_dfii_pix_rddata_addr = []
-    for n in range(nphases):
-        sdram_dfii_pix_rddata_addr.append("CSR_SDRAM_DFII_PI{n}_RDDATA_ADDR".format(n=n))
-    r += """
-const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
-    {sdram_dfii_pix_rddata_addr}
-}};
-""".format(n=nphases, sdram_dfii_pix_rddata_addr=",\n\t".join(sdram_dfii_pix_rddata_addr))
-    r += "\n"
-
+def get_sdram_phy_init_sequence(sdram_phy_settings):
     # init sequence
     cmds = {
         "PRECHARGE_ALL": "DFII_COMMAND_RAS|DFII_COMMAND_WE|DFII_COMMAND_CS",
@@ -64,6 +12,7 @@ const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
     }
 
     cl = sdram_phy_settings.cl
+    mr1 = None
 
     if sdram_phy_settings.memtype == "SDR":
         bl = 1
@@ -140,6 +89,7 @@ const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
         ]
     elif sdram_phy_settings.memtype == "DDR3":
         bl = 8
+        cwl = sdram_phy_settings.cwl
 
         def format_mr0(bl, cl, wr, dll_reset):
             bl_to_mr0 = {
@@ -226,24 +176,84 @@ const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
             z_to_ron[ron],
             z_to_rtt_nom[rtt_nom])
         mr2 = format_mr2(
-            sdram_phy_settings.cwl,
+            cwl,
             z_to_rtt_wr[rtt_wr])
         mr3 = 0
 
         init_sequence = [
             ("Release reset", 0x0000, 0, cmds["UNRESET"], 50000),
             ("Bring CKE high", 0x0000, 0, cmds["CKE"], 10000),
-            ("Load Mode Register 2", mr2, 2, cmds["MODE_REGISTER"], 0),
+            ("Load Mode Register 2, CWL={0:d}".format(cwl), mr2, 2, cmds["MODE_REGISTER"], 0),
             ("Load Mode Register 3", mr3, 3, cmds["MODE_REGISTER"], 0),
             ("Load Mode Register 1", mr1, 1, cmds["MODE_REGISTER"], 0),
             ("Load Mode Register 0, CL={0:d}, BL={1:d}".format(cl, bl), mr0, 0, cmds["MODE_REGISTER"], 200),
             ("ZQ Calibration", 0x0400, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", 200),
         ]
+    else:
+        raise NotImplementedError("Unsupported memory type: " + sdram_phy_settings.memtype)
 
+
+    return init_sequence, mr1
+
+
+def get_sdram_phy_c_header(sdram_phy_settings):
+    r = "#ifndef __GENERATED_SDRAM_PHY_H\n#define __GENERATED_SDRAM_PHY_H\n"
+    r += "#include <hw/common.h>\n#include <generated/csr.h>\n#include <hw/flags.h>\n\n"
+
+    nphases = sdram_phy_settings.nphases
+    r += "#define DFII_NPHASES "+str(nphases)+"\n\n"
+
+    r += "static void cdelay(int i);\n"
+
+    # commands_px functions
+    for n in range(nphases):
+        r += """
+static void command_p{n}(int cmd)
+{{
+    sdram_dfii_pi{n}_command_write(cmd);
+    sdram_dfii_pi{n}_command_issue_write(1);
+}}""".format(n=str(n))
+    r += "\n\n"
+
+    # rd/wr access macros
+    r += """
+#define sdram_dfii_pird_address_write(X) sdram_dfii_pi{rdphase}_address_write(X)
+#define sdram_dfii_piwr_address_write(X) sdram_dfii_pi{wrphase}_address_write(X)
+#define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi{rdphase}_baddress_write(X)
+#define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi{wrphase}_baddress_write(X)
+#define command_prd(X) command_p{rdphase}(X)
+#define command_pwr(X) command_p{wrphase}(X)
+""".format(rdphase=str(sdram_phy_settings.rdphase), wrphase=str(sdram_phy_settings.wrphase))
+    r += "\n"
+
+    #
+    # sdrrd/sdrwr functions utilities
+    #
+    r += "#define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE\n"
+    sdram_dfii_pix_wrdata_addr = []
+    for n in range(nphases):
+        sdram_dfii_pix_wrdata_addr.append("CSR_SDRAM_DFII_PI{n}_WRDATA_ADDR".format(n=n))
+    r += """
+const unsigned int sdram_dfii_pix_wrdata_addr[{n}] = {{
+    {sdram_dfii_pix_wrdata_addr}
+}};
+""".format(n=nphases, sdram_dfii_pix_wrdata_addr=",\n\t".join(sdram_dfii_pix_wrdata_addr))
+
+    sdram_dfii_pix_rddata_addr = []
+    for n in range(nphases):
+        sdram_dfii_pix_rddata_addr.append("CSR_SDRAM_DFII_PI{n}_RDDATA_ADDR".format(n=n))
+    r += """
+const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
+    {sdram_dfii_pix_rddata_addr}
+}};
+""".format(n=nphases, sdram_dfii_pix_rddata_addr=",\n\t".join(sdram_dfii_pix_rddata_addr))
+    r += "\n"
+
+    init_sequence, mr1 = get_sdram_phy_init_sequence(sdram_phy_settings)
+
+    if sdram_phy_settings.memtype == "DDR3":
         # the value of MR1 needs to be modified during write leveling
         r += "#define DDR3_MR1 {}\n\n".format(mr1)
-    else:
-        raise NotImplementedError("Unsupported memory type: "+sdram_phy_settings.memtype)
 
     r += "static void init_sequence(void)\n{\n"
     for comment, a, ba, cmd, delay in init_sequence:
@@ -261,4 +271,32 @@ const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
 
     r += "#endif\n"
 
+    return r
+
+def get_sdram_phy_py_header(sdram_phy_settings):
+    r = ""
+    r += "dfii_control_sel     = 0x01\n"
+    r += "dfii_control_cke     = 0x02\n"
+    r += "dfii_control_odt     = 0x04\n"
+    r += "dfii_control_reset_n = 0x08\n"
+    r += "\n"
+    r += "dfii_command_cs     = 0x01\n"
+    r += "dfii_command_we     = 0x02\n"
+    r += "dfii_command_cas    = 0x04\n"
+    r += "dfii_command_ras    = 0x08\n"
+    r += "dfii_command_wrdata = 0x10\n"
+    r += "dfii_command_rddata = 0x20\n"
+    r += "\n"
+
+    init_sequence, _ = get_sdram_phy_init_sequence(sdram_phy_settings)
+
+    r += "init_sequence = [\n"
+    for comment, a, ba, cmd, delay in init_sequence:
+        r += "(\"" + comment + "\", "
+        r += str(a) + ", "
+        r += str(ba) + ", "
+        r += cmd.lower() + ", "
+        r += str(delay) + "),"
+        r += "\n"
+    r += "]\n"
     return r
