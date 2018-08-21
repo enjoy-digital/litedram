@@ -1,7 +1,9 @@
+"""Wishbone frontend for LiteDRAM"""
+
 from migen import *
 
 
-class LiteDRAMWishboneBridge(Module):
+class LiteDRAMWishbone2Native(Module):
     def __init__(self, wishbone, port):
 
         # # #
