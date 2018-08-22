@@ -1,7 +1,7 @@
 from migen import log2_int
 
 
-def get_sdram_phy_init_sequence(sdram_phy_settings):
+def get_sdram_phy_init_sequence(phy_settings, timing_settings):
     # init sequence
     cmds = {
         "PRECHARGE_ALL": "DFII_COMMAND_RAS|DFII_COMMAND_WE|DFII_COMMAND_CS",
@@ -11,10 +11,10 @@ def get_sdram_phy_init_sequence(sdram_phy_settings):
         "CKE":           "DFII_CONTROL_CKE|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N"
     }
 
-    cl = sdram_phy_settings.cl
+    cl = phy_settings.cl
     mr1 = None
 
-    if sdram_phy_settings.memtype == "SDR":
+    if phy_settings.memtype == "SDR":
         bl = 1
         mr = log2_int(bl) + (cl << 4)
         reset_dll = 1 << 8
@@ -29,7 +29,7 @@ def get_sdram_phy_init_sequence(sdram_phy_settings):
             ("Load Mode Register / CL={0:d}, BL={1:d}".format(cl, bl), mr, 0, cmds["MODE_REGISTER"], 200)
         ]
 
-    elif sdram_phy_settings.memtype == "DDR":
+    elif phy_settings.memtype == "DDR":
         bl = 4
         mr  = log2_int(bl) + (cl << 4)
         emr = 0
@@ -46,7 +46,7 @@ def get_sdram_phy_init_sequence(sdram_phy_settings):
             ("Load Mode Register / CL={0:d}, BL={1:d}".format(cl, bl), mr, 0, cmds["MODE_REGISTER"], 200)
         ]
 
-    elif sdram_phy_settings.memtype == "LPDDR":
+    elif phy_settings.memtype == "LPDDR":
         bl = 4
         mr  = log2_int(bl) + (cl << 4)
         emr = 0
@@ -63,7 +63,7 @@ def get_sdram_phy_init_sequence(sdram_phy_settings):
             ("Load Mode Register / CL={0:d}, BL={1:d}".format(cl, bl), mr, 0, cmds["MODE_REGISTER"], 200)
         ]
 
-    elif sdram_phy_settings.memtype == "DDR2":
+    elif phy_settings.memtype == "DDR2":
         bl = 4
         wr = 2
         mr = log2_int(bl) + (cl << 4) + (wr << 9)
@@ -87,9 +87,9 @@ def get_sdram_phy_init_sequence(sdram_phy_settings):
             ("Load Extended Mode Register / OCD Default", emr+ocd, 1, cmds["MODE_REGISTER"], 0),
             ("Load Extended Mode Register / OCD Exit", emr, 1, cmds["MODE_REGISTER"], 0),
         ]
-    elif sdram_phy_settings.memtype == "DDR3":
+    elif phy_settings.memtype == "DDR3":
         bl = 8
-        cwl = sdram_phy_settings.cwl
+        cwl = phy_settings.cwl
 
         def format_mr0(bl, cl, wr, dll_reset):
             bl_to_mr0 = {
@@ -164,14 +164,15 @@ def get_sdram_phy_init_sequence(sdram_phy_settings):
         ron = "34ohm"
 
         # override electrical settings if specified
-        if hasattr(sdram_phy_settings, "rtt_nom"):
-            rtt_nom = sdram_phy_settings.rtt_nom
-        if hasattr(sdram_phy_settings, "rtt_wr"):
-            rtt_wr = sdram_phy_settings.rtt_wr
-        if hasattr(sdram_phy_settings, "ron"):
-            ron = sdram_phy_settings.ron
+        if hasattr(phy_settings, "rtt_nom"):
+            rtt_nom = phy_settings.rtt_nom
+        if hasattr(phy_settings, "rtt_wr"):
+            rtt_wr = phy_settings.rtt_wr
+        if hasattr(phy_settings, "ron"):
+            ron = phy_settings.ron
 
-        mr0 = format_mr0(bl, cl, 14, 1)  # wr=8 FIXME: this should be ceiling(tWR/tCK)
+        wr = timing_settings.tWTR*phy_settings.nphases # >= ceiling(tWR/tCK)
+        mr0 = format_mr0(bl, cl, wr, 1)
         mr1 = format_mr1(
             z_to_ron[ron],
             z_to_rtt_nom[rtt_nom])
@@ -190,17 +191,17 @@ def get_sdram_phy_init_sequence(sdram_phy_settings):
             ("ZQ Calibration", 0x0400, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", 200),
         ]
     else:
-        raise NotImplementedError("Unsupported memory type: " + sdram_phy_settings.memtype)
+        raise NotImplementedError("Unsupported memory type: " + phy_settings.memtype)
 
 
     return init_sequence, mr1
 
 
-def get_sdram_phy_c_header(sdram_phy_settings):
+def get_sdram_phy_c_header(phy_settings, timing_settings):
     r = "#ifndef __GENERATED_SDRAM_PHY_H\n#define __GENERATED_SDRAM_PHY_H\n"
     r += "#include <hw/common.h>\n#include <generated/csr.h>\n#include <hw/flags.h>\n\n"
 
-    nphases = sdram_phy_settings.nphases
+    nphases = phy_settings.nphases
     r += "#define DFII_NPHASES "+str(nphases)+"\n\n"
 
     r += "static void cdelay(int i);\n"
@@ -223,7 +224,7 @@ static void command_p{n}(int cmd)
 #define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi{wrphase}_baddress_write(X)
 #define command_prd(X) command_p{rdphase}(X)
 #define command_pwr(X) command_p{wrphase}(X)
-""".format(rdphase=str(sdram_phy_settings.rdphase), wrphase=str(sdram_phy_settings.wrphase))
+""".format(rdphase=str(phy_settings.rdphase), wrphase=str(phy_settings.wrphase))
     r += "\n"
 
     #
@@ -249,9 +250,9 @@ const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
 """.format(n=nphases, sdram_dfii_pix_rddata_addr=",\n\t".join(sdram_dfii_pix_rddata_addr))
     r += "\n"
 
-    init_sequence, mr1 = get_sdram_phy_init_sequence(sdram_phy_settings)
+    init_sequence, mr1 = get_sdram_phy_init_sequence(phy_settings, timing_settings)
 
-    if sdram_phy_settings.memtype == "DDR3":
+    if phy_settings.memtype == "DDR3":
         # the value of MR1 needs to be modified during write leveling
         r += "#define DDR3_MR1 {}\n\n".format(mr1)
 
@@ -273,7 +274,7 @@ const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
 
     return r
 
-def get_sdram_phy_py_header(sdram_phy_settings):
+def get_sdram_phy_py_header(phy_settings, timing_settings):
     r = ""
     r += "dfii_control_sel     = 0x01\n"
     r += "dfii_control_cke     = 0x02\n"
@@ -288,7 +289,7 @@ def get_sdram_phy_py_header(sdram_phy_settings):
     r += "dfii_command_rddata = 0x20\n"
     r += "\n"
 
-    init_sequence, _ = get_sdram_phy_init_sequence(sdram_phy_settings)
+    init_sequence, _ = get_sdram_phy_init_sequence(phy_settings, timing_settings)
 
     r += "init_sequence = [\n"
     for comment, a, ba, cmd, delay in init_sequence:
