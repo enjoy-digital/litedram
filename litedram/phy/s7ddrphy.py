@@ -208,6 +208,8 @@ class S7DDRPHY(Module, AutoCSR):
 
         # DQS and DM
         oe_dqs = Signal()
+        dqs_preamble = Signal()
+        dqs_postamble = Signal()
         dqs_serdes_pattern = Signal(8, reset=0b01010101)
         if with_odelay:
             self.comb += \
@@ -217,9 +219,20 @@ class S7DDRPHY(Module, AutoCSR):
                     ).Else(
                         dqs_serdes_pattern.eq(0b00000000)
                     )
+                ).Elif(dqs_preamble | dqs_postamble,
+                    dqs_serdes_pattern.eq(0b0000000)
                 ).Else(
                     dqs_serdes_pattern.eq(0b01010101)
                 )
+        else:
+            self.comb += [
+                If(dqs_preamble | dqs_postamble,
+                    dqs_serdes_pattern.eq(0b0000000)
+                ).Else(
+                    dqs_serdes_pattern.eq(0b01010101)
+                )
+            ]
+
         for i in range(databits//8):
             dm_o_nodelay = Signal()
             self.specials += \
@@ -418,6 +431,14 @@ class S7DDRPHY(Module, AutoCSR):
                 oe_dqs.eq(oe),
                 oe_dq.eq(oe)
             ]
+
+        # dqs preamble/postamble
+        self.comb += [
+            dqs_preamble.eq(last_wrdata_en[cwl_sys_latency-1] & 
+                            ~last_wrdata_en[cwl_sys_latency]),
+            dqs_postamble.eq(last_wrdata_en[cwl_sys_latency+1] & 
+                            ~last_wrdata_en[cwl_sys_latency]),
+        ]
 
 
 class V7DDRPHY(S7DDRPHY):
