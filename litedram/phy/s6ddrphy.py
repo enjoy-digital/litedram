@@ -375,7 +375,10 @@ class S6HalfRateDDRPHY(Module):
         wrdata_en_d = Signal()
         sd_sys += wrdata_en_d.eq(wrdata_en)
 
-        r_dfi_wrdata_en = Signal(max(self.settings.cwl, self.settings.cl))
+        if memtype == "DDR3":
+            r_dfi_wrdata_en = Signal(max(self.settings.cwl, self.settings.cl))
+        else:
+            r_dfi_wrdata_en = Signal(self.settings.cl)
         sd_sdram_half += r_dfi_wrdata_en.eq(Cat(wrdata_en_d, r_dfi_wrdata_en))
 
         if memtype == "DDR3":
