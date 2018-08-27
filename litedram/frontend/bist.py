@@ -10,6 +10,8 @@ from migen.genlib.cdc import BusSynchronizer
 
 from litex.soc.interconnect.csr import *
 
+from litedram.common import LiteDRAMNativePort
+from litedram.frontend.axi import LiteDRAMAXIPort
 from litedram.frontend.dma import LiteDRAMDMAWriter, LiteDRAMDMAReader
 
 
@@ -105,11 +107,22 @@ class Generator(Module):
             )
 
 
+def get_ashift_awidth(dram_port):
+    if isinstance(dram_port, LiteDRAMNativePort):
+        ashift = log2_int(dram_port.data_width//8)
+        awidth = dram_port.address_width + ashift
+    elif isinstance(dram_port, LiteDRAMAXIPort):
+        ashift = log2_int(dram_port.data_width//8)
+        awidth = dram_port.address_width
+    else:
+        raise NotImplementedError
+    return ashift, awidth
+
+
 @ResetInserter()
 class _LiteDRAMBISTGenerator(Module):
     def __init__(self, dram_port):
-        ashift = log2_int(dram_port.data_width//8)
-        awidth = dram_port.address_width + ashift
+        ashift, awidth = get_ashift_awidth(dram_port)
         self.start = Signal()
         self.done = Signal()
         self.base = Signal(awidth)
@@ -160,10 +173,13 @@ class _LiteDRAMBISTGenerator(Module):
         fsm.act("DONE",
             self.done.eq(1)
         )
-        self.comb += [
-            dma.sink.address.eq(self.base[ashift:] + addr_gen.o),
-            dma.sink.data.eq(data_gen.o)
-        ]
+        if isinstance(dram_port, LiteDRAMNativePort): # addressing in dwords
+            self.comb += dma.sink.address.eq(self.base[ashift:] + addr_gen.o)
+        elif isinstance(dram_port, LiteDRAMAXIPort):  # addressing in bytes
+            self.comb += dma.sink.address[ashift:].eq(self.base[ashift:] + addr_gen.o)
+        else:
+            raise NotImplementedError
+        self.comb += dma.sink.data.eq(data_gen.o)
 
 
 class LiteDRAMBISTGenerator(Module, AutoCSR):
@@ -196,8 +212,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         Duration of the generation.
     """
     def __init__(self, dram_port):
-        ashift = log2_int(dram_port.data_width//8)
-        awidth = dram_port.address_width + ashift
+        ashift, awidth = get_ashift_awidth(dram_port)
         self.reset = CSR()
         self.start = CSR()
         self.done = CSRStatus()
@@ -260,8 +275,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 @ResetInserter()
 class _LiteDRAMBISTChecker(Module, AutoCSR):
     def __init__(self, dram_port):
-        ashift = log2_int(dram_port.data_width//8)
-        awidth = dram_port.address_width + ashift
+        ashift, awidth = get_ashift_awidth(dram_port)
         self.start = Signal()
         self.done = Signal()
         self.base = Signal(awidth)
@@ -309,7 +323,12 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             )
         )
         cmd_fsm.act("DONE")
-        self.comb += dma.sink.address.eq(self.base[ashift:] + addr_gen.o)
+        if isinstance(dram_port, LiteDRAMNativePort): # addressing in dwords
+            self.comb += dma.sink.address.eq(self.base[ashift:] + addr_gen.o)
+        elif isinstance(dram_port, LiteDRAMAXIPort):  # addressing in bytes
+            self.comb += dma.sink.address[ashift:].eq(self.base[ashift:] + addr_gen.o)
+        else:
+            raise NotImplementedError
 
         # data
         data_counter = Signal(dram_port.address_width, reset_less=True)
@@ -374,8 +393,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         Number of DRAM words which don't match.
     """
     def __init__(self, dram_port):
-        ashift = log2_int(dram_port.data_width//8)
-        awidth = dram_port.address_width + ashift
+        ashift, awidth = get_ashift_awidth(dram_port)
         self.reset = CSR()
         self.start = CSR()
         self.done = CSRStatus()
