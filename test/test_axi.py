@@ -11,66 +11,65 @@ from litex.gen.sim import *
 
 class TestAXI(unittest.TestCase):
     def test_axi2native(self):
-        def main_generator(axi_port, dram_port, dut):
-            prng = random.Random(42)
-            # axi_port always accepting wresps/rdatas
-            yield axi_port.b.ready.eq(1)
-            yield axi_port.r.ready.eq(1)
-            yield
-            # test writes
+        def writes_generator(axi_port):
+            yield axi_port.b.ready.eq(1) # always accepting write response
             for i in range(16):
-                # write command
+                # command
                 yield axi_port.aw.valid.eq(1)
                 yield axi_port.aw.addr.eq(i)
-                while (yield dram_port.cmd.ready) == 0:
-                    if prng.randrange(100) < 20:
-                        yield dram_port.cmd.ready.eq(1)
+                yield
+                while (yield axi_port.aw.ready) == 0:
                     yield
                 yield axi_port.aw.valid.eq(0)
-                yield dram_port.cmd.ready.eq(0)
                 yield
-                # write data
+                # data
                 yield axi_port.w.valid.eq(1)
                 yield axi_port.w.data.eq(i)
-                while (yield dram_port.wdata.ready) == 0:
-                    if prng.randrange(100) < 20:
-                        yield dram_port.wdata.ready.eq(1)
-                    yield
-                    if (yield axi_port.w.ready) == 1:
-                        yield axi_port.w.valid.eq(0)
-                yield axi_port.aw.valid.eq(0)
-                yield dram_port.wdata.ready.eq(0)
                 yield
-            # test reads
-            for i in range(16):
-                # read command
-                yield axi_port.ar.valid.eq(1)
-                yield axi_port.ar.addr.eq(i)
-                while (yield dram_port.cmd.ready) == 0:
-                    if prng.randrange(100) < 20:
-                        yield dram_port.cmd.ready.eq(1)
+                while (yield axi_port.w.ready) == 0:
                     yield
-                yield axi_port.ar.valid.eq(0)
-                yield dram_port.cmd.ready.eq(0)
-                yield
-                # read data
-                yield dram_port.rdata.valid.eq(1)
-                yield dram_port.rdata.data.eq(i)
-                while (yield dram_port.rdata.valid) == 0:
-                    if prng.randrange(100) < 20:
-                        yield dram_port.rdata.valid.eq(1)
-                    yield
-                yield axi_port.ar.valid.eq(0)
-                yield dram_port.rdata.valid.eq(0)
-                yield
-            for i in range(128):
+                yield axi_port.w.valid.eq(0)
                 yield
 
+        def reads_generator(axi_port):
+            yield axi_port.r.ready.eq(1) # always accepting read response
+            for i in range(16):
+                # command
+                yield axi_port.ar.valid.eq(1)
+                yield axi_port.ar.addr.eq(i)
+                yield
+                while (yield axi_port.ar.ready) == 0:
+                    yield
+                yield axi_port.ar.valid.eq(0)
+                yield
+                # data
+                while (yield axi_port.r.valid) == 0:
+                    yield
+                yield
+
+        @passive
+        def dram_generator(dram_port):
+            yield dram_port.cmd.ready.eq(1)
+            yield dram_port.wdata.ready.eq(1)
+            while True:
+                yield dram_port.rdata.valid.eq(0)
+                if (yield dram_port.cmd.valid):
+                    if (yield dram_port.cmd.we) == 0:
+                        yield dram_port.rdata.valid.eq(1)
+                yield
+
+        # dut
         axi_port = LiteDRAMAXIPort(32, 32, 32)
         dram_port = LiteDRAMNativePort("both", 32, 32)
         dut = LiteDRAMAXI2Native(axi_port, dram_port)
-        run_simulation(dut, main_generator(axi_port, dram_port, dut), vcd_name="axi2native.vcd")
 
+        # simulation
+        generators = [
+            writes_generator(axi_port),
+            reads_generator(axi_port),
+            dram_generator(dram_port)
+        ]
+        run_simulation(dut, generators, vcd_name="axi2native.vcd")
 
     def test_burst2beat(self):
         class Beat:
