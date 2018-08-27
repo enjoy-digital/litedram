@@ -16,9 +16,9 @@ burst_types = {
 def ax_description(address_width, id_width):
     return [
         ("addr",  address_width),
-        ("burst", 2), # burst type
-        ("len",   8), # number of data transfers (up to 256)
-        ("size",  4), # number of bytes of each data transfer (up to 1024 bits)
+        ("burst", 2), # Burst type
+        ("len",   8), # Number of data transfers (up to 256)
+        ("size",  4), # Number of bytes of each data transfer (up to 1024 bits)
         ("id",    id_width)
     ]
 
@@ -60,8 +60,8 @@ class LiteDRAMAXIBurst2Beat(Module):
         # # #
 
         count = Signal(8)
-        size = Signal(8+4)
-        offset = Signal(8+4)
+        size = Signal(8 + 4)
+        offset = Signal(8 + 4)
 
         # convert burst size to bytes
         cases = {}
@@ -105,48 +105,85 @@ class LiteDRAMAXIBurst2Beat(Module):
         )
 
 
-class LiteDRAMAXI2Native(Module):
-    def __init__(self, axi, port, w_buffer_depth=8, r_buffer_depth=8):
+class LiteDRAMAXI2NativeW(Module):
+    def __init__(self, axi, port, buffer_depth=8):
+        self.cmd_request = Signal()
+        self.cmd_grant = Signal()
 
         # # #
 
+        can_write = Signal()
+
         ashift = log2_int(port.data_width//8)
 
-        can_write = Signal()
-        can_read = Signal()
-
-        # Burst to beat
+        # Burst to Beat
         aw = stream.Endpoint(ax_description(axi.address_width, axi.id_width))
-        ar = stream.Endpoint(ax_description(axi.address_width, axi.id_width))
         aw_burst2beat = LiteDRAMAXIBurst2Beat(axi.aw, aw)
-        ar_burst2beat = LiteDRAMAXIBurst2Beat(axi.ar, ar)
-        self.submodules += aw_burst2beat, ar_burst2beat
+        self.submodules += aw_burst2beat
 
-        # Write / Read buffers
-        w_buffer = stream.SyncFIFO(w_description(axi.data_width), w_buffer_depth)
-        r_buffer = stream.SyncFIFO(r_description(axi.data_width, axi.id_width), r_buffer_depth)
-        self.submodules += w_buffer, r_buffer
+        # Write Buffer
+        w_buffer = stream.SyncFIFO(w_description(axi.data_width), buffer_depth)
+        self.submodules += w_buffer
 
         # Write Buffer reservation
         self.comb += can_write.eq(w_buffer.sink.ready)
 
-        # Write Buffer ID & Response
-        w_buffer_id = stream.SyncFIFO([("id", axi.id_width)], w_buffer_depth)
-        self.submodules += w_buffer_id
+        # Write ID Buffer & Response
+        id_buffer = stream.SyncFIFO([("id", axi.id_width)], buffer_depth)
+        self.submodules += id_buffer
         self.comb += [
-            w_buffer_id.sink.valid.eq(aw.valid & aw.ready),
-            w_buffer_id.sink.id.eq(aw.id),
+            id_buffer.sink.valid.eq(aw.valid & aw.ready),
+            id_buffer.sink.id.eq(aw.id),
             axi.b.valid.eq(axi.w.valid & axi.w.ready), # FIXME: axi.b always supposed to be ready
-            axi.b.id.eq(w_buffer_id.source.id),
-            w_buffer_id.source.ready.eq(axi.b.valid & axi.b.ready)
+            axi.b.id.eq(id_buffer.source.id),
+            id_buffer.source.ready.eq(axi.b.valid & axi.b.ready)
         ]
 
+        # Command
+        self.comb += [
+            self.cmd_request.eq(aw.valid & can_write),
+            If(self.cmd_grant,
+                port.cmd.valid.eq(aw.valid & can_write),
+                aw.ready.eq(port.cmd.ready & can_write),
+                port.cmd.we.eq(1),
+                port.cmd.adr.eq(aw.addr >> ashift)
+            )
+        ]
+
+        # Write Data
+        self.comb += [
+            axi.w.connect(w_buffer.sink),
+            w_buffer.source.connect(port.wdata, omit={"strb"}),
+            port.wdata.we.eq(w_buffer.source.strb)
+        ]
+
+
+class LiteDRAMAXI2NativeR(Module):
+    def __init__(self, axi, port, buffer_depth=8):
+        self.cmd_request = Signal()
+        self.cmd_grant = Signal()
+
+        # # #
+
+        can_read = Signal()
+
+        ashift = log2_int(port.data_width//8)
+
+        # Burst to Beat
+        ar = stream.Endpoint(ax_description(axi.address_width, axi.id_width))
+        ar_burst2beat = LiteDRAMAXIBurst2Beat(axi.ar, ar)
+        self.submodules += ar_burst2beat
+
+        # Read buffer
+        r_buffer = stream.SyncFIFO(r_description(axi.data_width, axi.id_width), buffer_depth)
+        self.submodules += r_buffer
+
         # Read Buffer reservation
-        # - incremented when data is planned to be queued
-        # - decremented when data is dequeued
+        # - Incremented when data is planned to be queued
+        # - Decremented when data is dequeued
         r_buffer_queue = Signal()
         r_buffer_dequeue = Signal()
-        r_buffer_level = Signal(max=r_buffer_depth+1)
+        r_buffer_level = Signal(max=buffer_depth + 1)
         self.comb += [
             r_buffer_queue.eq(port.cmd.valid & port.cmd.ready & ~port.cmd.we),
             r_buffer_dequeue.eq(r_buffer.source.valid & r_buffer.source.ready)
@@ -158,46 +195,27 @@ class LiteDRAMAXI2Native(Module):
                 r_buffer_level.eq(r_buffer_level - 1)
             )
         ]
-        self.comb += can_read.eq(r_buffer_level != r_buffer_depth)
+        self.comb += can_read.eq(r_buffer_level != buffer_depth)
 
-        # Read Buffer ID
-        r_buffer_id = stream.SyncFIFO([("id", axi.id_width)], r_buffer_depth)
-        self.submodules += r_buffer_id
+        # Read ID Buffer
+        id_buffer = stream.SyncFIFO([("id", axi.id_width)], buffer_depth)
+        self.submodules += id_buffer
         self.comb += [
-            r_buffer_id.sink.valid.eq(ar.valid & ar.ready),
-            r_buffer_id.sink.id.eq(ar.id),
-            axi.r.id.eq(r_buffer_id.source.id),
-            r_buffer_id.source.ready.eq(axi.r.valid & axi.r.ready)
+            id_buffer.sink.valid.eq(ar.valid & ar.ready),
+            id_buffer.sink.id.eq(ar.id),
+            axi.r.id.eq(id_buffer.source.id),
+            id_buffer.source.ready.eq(axi.r.valid & axi.r.ready)
         ]
 
-        # Write / Read command arbitration
-        arbiter = RoundRobin(2, SP_CE)
-        self.submodules += arbiter
+        # Command
         self.comb += [
-            arbiter.request[0].eq(aw.valid & can_write),
-            arbiter.request[1].eq(ar.valid & can_read),
-            arbiter.ce.eq(~port.cmd.valid | port.cmd.ready)
-        ]
-
-        self.comb += [
-            If(arbiter.grant,
+            self.cmd_request.eq(ar.valid & can_read),
+            If(self.cmd_grant,
                 port.cmd.valid.eq(ar.valid & can_read),
                 ar.ready.eq(port.cmd.ready & can_read),
                 port.cmd.we.eq(0),
                 port.cmd.adr.eq(ar.addr >> ashift)
-            ).Else(
-                port.cmd.valid.eq(aw.valid & can_write),
-                aw.ready.eq(port.cmd.ready & can_write),
-                port.cmd.we.eq(1),
-                port.cmd.adr.eq(aw.addr >> ashift)
             )
-        ]
-
-        # Write data
-        self.comb += [
-            axi.w.connect(w_buffer.sink),
-            w_buffer.source.connect(port.wdata, omit={"strb"}),
-            port.wdata.we.eq(w_buffer.source.strb)
         ]
 
         # Read data
@@ -205,3 +223,23 @@ class LiteDRAMAXI2Native(Module):
             port.rdata.connect(r_buffer.sink),
             r_buffer.source.connect(axi.r)
         ]
+
+
+class LiteDRAMAXI2Native(Module):
+    def __init__(self, axi, port, w_buffer_depth=8, r_buffer_depth=8):
+
+        # # #
+
+        # Write path
+        self.submodules.write = LiteDRAMAXI2NativeW(axi, port, w_buffer_depth)
+
+        # Read path
+        self.submodules.read = LiteDRAMAXI2NativeR(axi, port, r_buffer_depth)
+
+        # Write / Read arbitration
+        arbiter = RoundRobin(2, SP_CE)
+        self.submodules += arbiter
+        self.comb += arbiter.ce.eq(~port.cmd.valid | port.cmd.ready)
+        for i, master in enumerate([self.write, self.read]):
+            self.comb += arbiter.request[i].eq(master.cmd_request)
+            self.comb += master.cmd_grant.eq(arbiter.grant == i)
