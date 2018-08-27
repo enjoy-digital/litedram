@@ -56,6 +56,8 @@ class LiteDRAMAXI2Native(Module):
 
         # # #
 
+        ashift = log2_int(port.data_width//8)
+
         can_write = Signal()
         can_read = Signal()
 
@@ -121,12 +123,12 @@ class LiteDRAMAXI2Native(Module):
                 port.cmd.valid.eq(axi.ar.valid & can_read),
                 axi.ar.ready.eq(port.cmd.ready & can_read),
                 port.cmd.we.eq(0),
-                port.cmd.adr.eq(axi.ar.addr)
+                port.cmd.adr.eq(axi.ar.addr >> ashift)
             ).Else(
                 port.cmd.valid.eq(axi.aw.valid & can_write),
                 axi.aw.ready.eq(port.cmd.ready & can_write),
                 port.cmd.we.eq(1),
-                port.cmd.adr.eq(axi.aw.addr)
+                port.cmd.adr.eq(axi.aw.addr >> ashift)
             )
         ]
 
