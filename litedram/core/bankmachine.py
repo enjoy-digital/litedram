@@ -43,13 +43,13 @@ class BankMachine(Module):
 
         # Command buffer
         cmd_buffer_layout = [("we", 1), ("adr", len(req.adr))]
-        cmd_buffer_lookahead = stream.SyncFIFO(cmd_buffer_layout, settings.cmd_buffer_depth)
+        cmd_buffer_lookahead = stream.SyncFIFO(
+            cmd_buffer_layout, settings.cmd_buffer_depth,
+            buffered=settings.cmd_buffer_buffered)
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            req.connect(cmd_buffer_lookahead.sink, omit=["wdata_valid", "wdata_ready",
-                                                         "rdata_valid", "rdata_ready",
-                                                         "lock"]),
+            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "adr"}),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
@@ -85,10 +85,9 @@ class BankMachine(Module):
 
         # Respect write-to-precharge specification
         precharge_time = 2 + settings.timing.tWR - 1 + 1
-        self.submodules.precharge_timer = WaitTimer(precharge_time)
-        self.comb += self.precharge_timer.wait.eq(~(cmd.valid &
-                                                    cmd.ready &
-                                                    cmd.is_write))
+        precharge_timer = WaitTimer(precharge_time)
+        self.submodules += precharge_timer
+        self.comb += precharge_timer.wait.eq(~(cmd.valid & cmd.ready & cmd.is_write))
 
         # Auto Precharge
         if settings.with_auto_precharge:
@@ -134,7 +133,7 @@ class BankMachine(Module):
         )
         fsm.act("PRECHARGE",
             # Note: we are presenting the column address, A10 is always low
-            If(self.precharge_timer.done,
+            If(precharge_timer.done,
                 cmd.valid.eq(1),
                 If(cmd.ready,
                     NextState("TRP")
@@ -146,7 +145,7 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
-            If(self.precharge_timer.done,
+            If(precharge_timer.done,
                 NextState("TRP")
             ),
             track_close.eq(1)
@@ -162,7 +161,7 @@ class BankMachine(Module):
             cmd.ras.eq(1)
         )
         fsm.act("REFRESH",
-            If(self.precharge_timer.done,
+            If(precharge_timer.done,
                 self.refresh_gnt.eq(1),
             ),
             track_close.eq(1),
@@ -171,5 +170,5 @@ class BankMachine(Module):
                 NextState("REGULAR")
             )
         )
-        fsm.delayed_enter("TRP", "ACTIVATE", settings.timing.tRP-1)
-        fsm.delayed_enter("TRCD", "REGULAR", settings.timing.tRCD-1)
+        fsm.delayed_enter("TRP", "ACTIVATE", settings.timing.tRP - 1)
+        fsm.delayed_enter("TRCD", "REGULAR", settings.timing.tRCD - 1)

@@ -8,11 +8,14 @@ from litedram.core.multiplexer import *
 
 
 class ControllerSettings:
-    def __init__(self, cmd_buffer_depth=8, read_time=32, write_time=16,
+    def __init__(self,
+                 cmd_buffer_depth=8, cmd_buffer_buffered=False,
+                 read_time=32, write_time=16,
                  with_bandwidth=False,
                  with_refresh=True,
                  with_auto_precharge=True):
         self.cmd_buffer_depth = cmd_buffer_depth
+        self.cmd_buffer_buffered = cmd_buffer_buffered
         self.read_time = read_time
         self.write_time = write_time
         self.with_bandwidth = with_bandwidth
