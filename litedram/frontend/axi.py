@@ -133,9 +133,11 @@ class LiteDRAMAXI2NativeW(Module):
         ashift = log2_int(port.data_width//8)
 
         # Burst to Beat
+        aw_buffer = stream.Buffer(ax_description(axi.address_width, axi.id_width))
+        self.comb += axi.aw.connect(aw_buffer.sink)
         aw = stream.Endpoint(ax_description(axi.address_width, axi.id_width))
-        aw_burst2beat = LiteDRAMAXIBurst2Beat(axi.aw, aw)
-        self.submodules += aw_burst2beat
+        aw_burst2beat = LiteDRAMAXIBurst2Beat(aw_buffer.source, aw)
+        self.submodules += aw_buffer, aw_burst2beat
 
         # Write Buffer
         w_buffer = stream.SyncFIFO(w_description(axi.data_width), buffer_depth)
@@ -168,7 +170,7 @@ class LiteDRAMAXI2NativeW(Module):
 
         # Write Data
         self.comb += [
-            axi.w.connect(w_buffer.sink),
+            If(id_buffer.source.valid, axi.w.connect(w_buffer.sink)),
             w_buffer.source.connect(port.wdata, omit={"strb"}),
             port.wdata.we.eq(w_buffer.source.strb)
         ]
@@ -186,9 +188,11 @@ class LiteDRAMAXI2NativeR(Module):
         ashift = log2_int(port.data_width//8)
 
         # Burst to Beat
+        ar_buffer = stream.Buffer(ax_description(axi.address_width, axi.id_width))
+        self.comb += axi.ar.connect(ar_buffer.sink)
         ar = stream.Endpoint(ax_description(axi.address_width, axi.id_width))
-        ar_burst2beat = LiteDRAMAXIBurst2Beat(axi.ar, ar)
-        self.submodules += ar_burst2beat
+        ar_burst2beat = LiteDRAMAXIBurst2Beat(ar_buffer.source, ar)
+        self.submodules += ar_buffer, ar_burst2beat
 
         # Read buffer
         r_buffer = stream.SyncFIFO(r_description(axi.data_width, axi.id_width), buffer_depth)
