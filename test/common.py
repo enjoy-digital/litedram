@@ -26,6 +26,10 @@ class DRAMMemory:
         for _ in range(depth-len(init)):
             self.mem.append(0)
 
+    def show_content(self):
+        for addr in range(self.depth):
+            print("0x{:08x}: 0x{:08x}".format(addr, self.mem[addr]))
+
     @passive
     def read_generator(self, dram_port):
         address = 0
@@ -57,6 +61,8 @@ class DRAMMemory:
         while True:
             yield dram_port.wdata.ready.eq(0)
             if pending:
+                while (yield dram_port.wdata.valid) == 0:
+                    yield
                 yield dram_port.wdata.ready.eq(1)
                 yield
                 self.mem[address%self.depth] = (yield dram_port.wdata.data) # TODO manage we

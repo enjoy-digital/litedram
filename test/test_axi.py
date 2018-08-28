@@ -6,70 +6,106 @@ from migen import *
 from litedram.common import LiteDRAMNativePort
 from litedram.frontend.axi import *
 
+from test.common import *
+
 from litex.gen.sim import *
 
 
 class TestAXI(unittest.TestCase):
     def test_axi2native(self):
-        def writes_generator(axi_port):
+        class Access:
+            def __init__(self, addr, data, id):
+                self.addr = addr
+                self.data = data
+                self.id = id
+
+        class Write(Access):
+            pass
+
+        class Read(Access):
+            pass
+
+        def writes_generator(axi_port, writes):
+            self.writes_id_errors = 0
             yield axi_port.b.ready.eq(1) # always accepting write response
-            for i in range(16):
-                # command
+            for write in writes:
+                # send command
                 yield axi_port.aw.valid.eq(1)
-                yield axi_port.aw.addr.eq(i)
+                yield axi_port.aw.addr.eq(write.addr<<2)
+                yield axi_port.aw.id.eq(write.id)
                 yield
                 while (yield axi_port.aw.ready) == 0:
                     yield
                 yield axi_port.aw.valid.eq(0)
                 yield
-                # data
+                # send data
                 yield axi_port.w.valid.eq(1)
-                yield axi_port.w.data.eq(i)
+                yield axi_port.w.data.eq(write.data)
                 yield
                 while (yield axi_port.w.ready) == 0:
                     yield
                 yield axi_port.w.valid.eq(0)
+                # wait response
+                while (yield axi_port.b.valid) == 0:
+                    yield
+                if (yield axi_port.b.id) != write.id:
+                    self.writes_id_errors += 1
                 yield
 
-        def reads_generator(axi_port):
+        def reads_generator(axi_port, reads):
+            self.reads_data_errors = 0
+            self.reads_id_errors = 0
             yield axi_port.r.ready.eq(1) # always accepting read response
-            for i in range(16):
-                # command
+            for read in reads:
+                # send command
                 yield axi_port.ar.valid.eq(1)
-                yield axi_port.ar.addr.eq(i)
+                yield axi_port.ar.addr.eq(read.addr<<2)
+                yield axi_port.ar.id.eq(read.id)
                 yield
                 while (yield axi_port.ar.ready) == 0:
                     yield
                 yield axi_port.ar.valid.eq(0)
                 yield
-                # data
+                # wait data / response
                 while (yield axi_port.r.valid) == 0:
                     yield
-                yield
-
-        @passive
-        def dram_generator(dram_port):
-            yield dram_port.cmd.ready.eq(1)
-            yield dram_port.wdata.ready.eq(1)
-            while True:
-                yield dram_port.rdata.valid.eq(0)
-                if (yield dram_port.cmd.valid):
-                    if (yield dram_port.cmd.we) == 0:
-                        yield dram_port.rdata.valid.eq(1)
+                if (yield axi_port.r.data) != read.data:
+                    self.reads_data_errors += 1
+                if (yield axi_port.r.id) != read.id:
+                    self.reads_id_errors += 1
                 yield
 
         # dut
-        axi_port = LiteDRAMAXIPort(32, 32, 32)
+        axi_port = LiteDRAMAXIPort(32, 32, 8)
         dram_port = LiteDRAMNativePort("both", 32, 32)
         dut = LiteDRAMAXI2Native(axi_port, dram_port)
+        mem = DRAMMemory(32, 128)
+
+        # generate writes/reads
+        prng = random.Random(42)
+        writes = []
+        for i in range(64):
+            writes.append(Write(i, prng.randrange(2**32), prng.randrange(2**8)))
+        reads = []
+        for i in range(64): # dummy reads while content not yet written
+            reads.append(Read(64, 0x00000000, 0x00))
+        for i in range(64):
+              reads.append(Read(i, writes[i].data, prng.randrange(2**8)))
 
         # simulation
         generators = [
-            writes_generator(axi_port),
-            reads_generator(axi_port),
-            dram_generator(dram_port)
+            writes_generator(axi_port, writes),
+            reads_generator(axi_port, reads),
+            mem.read_generator(dram_port),
+            mem.write_generator(dram_port)
         ]
         run_simulation(dut, generators, vcd_name="axi2native.vcd")
+
+        mem.show_content()
+
+        self.assertEqual(self.writes_id_errors, 0)
+        self.assertEqual(self.reads_data_errors, 0)
+        self.assertEqual(self.reads_id_errors, 0)
 
     def test_burst2beat(self):
         class Beat:
