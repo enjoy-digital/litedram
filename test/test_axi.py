@@ -25,9 +25,7 @@ class TestAXI(unittest.TestCase):
         class Read(Access):
             pass
 
-        def writes_generator(axi_port, writes):
-            self.writes_id_errors = 0
-            yield axi_port.b.ready.eq(1) # always accepting write response
+        def writes_cmd_data_generator(axi_port, writes):
             for write in writes:
                 # send command
                 yield axi_port.aw.valid.eq(1)
@@ -45,17 +43,19 @@ class TestAXI(unittest.TestCase):
                 while (yield axi_port.w.ready) == 0:
                     yield
                 yield axi_port.w.valid.eq(0)
-                # wait response
+
+        def writes_response_generator(axi_port, writes):
+            self.writes_id_errors = 0
+            yield axi_port.b.ready.eq(1) # always accepting write response
+            for write in writes:
+              # wait response
                 while (yield axi_port.b.valid) == 0:
                     yield
                 if (yield axi_port.b.id) != write.id:
                     self.writes_id_errors += 1
                 yield
 
-        def reads_generator(axi_port, reads):
-            self.reads_data_errors = 0
-            self.reads_id_errors = 0
-            yield axi_port.r.ready.eq(1) # always accepting read response
+        def reads_cmd_generator(axi_port, reads):
             for read in reads:
                 # send command
                 yield axi_port.ar.valid.eq(1)
@@ -66,6 +66,12 @@ class TestAXI(unittest.TestCase):
                     yield
                 yield axi_port.ar.valid.eq(0)
                 yield
+
+        def reads_response_data_generator(axi_port, reads):
+            self.reads_data_errors = 0
+            self.reads_id_errors = 0
+            yield axi_port.r.ready.eq(1) # always accepting read response
+            for read in reads:
                 # wait data / response
                 while (yield axi_port.r.valid) == 0:
                     yield
@@ -85,24 +91,30 @@ class TestAXI(unittest.TestCase):
         prng = random.Random(42)
         writes = []
         for i in range(64):
+            # incrementing addr, random data &id
             writes.append(Write(i, prng.randrange(2**32), prng.randrange(2**8)))
+            # incrementing addr, data & id (debug)
+            #writes.append(Write(i, i, i))
         reads = []
         for i in range(64): # dummy reads while content not yet written
             reads.append(Read(64, 0x00000000, 0x00))
         for i in range(64):
-              reads.append(Read(i, writes[i].data, prng.randrange(2**8)))
+            # incrementing addr, written data, random id
+            reads.append(Read(i, writes[i].data, prng.randrange(2**8)))
+            # incrementing addr, written data, incrementing id (debug)
+            #reads.append(Read(i, writes[i].data, i))
 
         # simulation
         generators = [
-            writes_generator(axi_port, writes),
-            reads_generator(axi_port, reads),
+            writes_cmd_data_generator(axi_port, writes),
+            writes_response_generator(axi_port, writes),
+            reads_cmd_generator(axi_port, reads),
+            reads_response_data_generator(axi_port, reads),
             mem.read_handler(dram_port),
             mem.write_handler(dram_port)
         ]
         run_simulation(dut, generators, vcd_name="axi2native.vcd")
-
-        mem.show_content()
-
+        #mem.show_content()
         self.assertEqual(self.writes_id_errors, 0)
         self.assertEqual(self.reads_data_errors, 0)
         self.assertEqual(self.reads_id_errors, 0)
