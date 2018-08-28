@@ -127,21 +127,16 @@ class _LiteDRAMBISTGenerator(Module):
         self.done = Signal()
         self.base = Signal(awidth)
         self.length = Signal(awidth)
-        self.random_data_enable = Signal()
-        self.random_addr_enable = Signal()
+        self.random = Signal()
         self.ticks = Signal(32)
 
         # # #
 
         # data / address generators
         data_gen = Generator(31, n_state=31, taps=[27, 30]) # PRBS31
-        addr_gen = Generator(23, n_state=23, taps=[17, 22]) # PRBS23
-        assert (23 + ashift) < awidth # addressing large enough for random
+        addr_gen = CEInserter()(Counter(awidth))
         self.submodules += data_gen, addr_gen
-        self.comb += [
-            data_gen.random_enable.eq(self.random_data_enable),
-            addr_gen.random_enable.eq(self.random_addr_enable)
-        ]
+        self.comb += data_gen.random_enable.eq(self.random)
 
         # dma
         dma = LiteDRAMDMAWriter(dram_port)
@@ -202,11 +197,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
     length : in
         Number of DRAM words to write.
 
-    random_data_enable : in
+    random : in
         Enable random data (LFSR)
-
-    random_addr_enable : in
-        Enable random addressing (LFSR)
 
     ticks : out
         Duration of the generation.
@@ -218,8 +210,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         self.done = CSRStatus()
         self.base = CSRStorage(awidth)
         self.length = CSRStorage(awidth)
-        self.random_data_enable = CSRStorage()
-        self.random_addr_enable = CSRStorage()
+        self.random = CSRStorage()
         self.ticks = CSRStatus(32)
 
         # # #
@@ -260,10 +251,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
                 core.length.eq(length_sync.o)
             ]
 
-            self.specials += [
-                MultiReg(self.random_data_enable.storage, core.random_data_enable, clock_domain),
-                MultiReg(self.random_addr_enable.storage, core.random_addr_enable, clock_domain),
-            ]
+            self.specials += MultiReg(self.random.storage, core.random, clock_domain)
 
             ticks_sync = BusSynchronizer(32, clock_domain, "sys")
             self.submodules += ticks_sync
@@ -278,8 +266,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
                 self.done.status.eq(core.done),
                 core.base.eq(self.base.storage),
                 core.length.eq(self.length.storage),
-                core.random_data_enable.eq(self.random_data_enable.storage),
-                core.random_addr_enable.eq(self.random_addr_enable.storage),
+                core.random.eq(self.random.storage),
                 self.ticks.status.eq(core.ticks)
             ]
 
@@ -292,8 +279,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.done = Signal()
         self.base = Signal(awidth)
         self.length = Signal(awidth)
-        self.random_data_enable = Signal()
-        self.random_addr_enable = Signal()
+        self.random = Signal()
         self.ticks = Signal(32)
         self.errors = Signal(32)
 
@@ -301,13 +287,9 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
         # data / address generators
         data_gen = Generator(31, n_state=31, taps=[27, 30]) # PRBS31
-        addr_gen = Generator(23, n_state=23, taps=[17, 22]) # PRBS23
-        assert (23 + ashift) < awidth # addressing large enough for random
+        addr_gen = CEInserter()(Counter(awidth))
         self.submodules += data_gen, addr_gen
-        self.comb += [
-            data_gen.random_enable.eq(self.random_data_enable),
-            addr_gen.random_enable.eq(self.random_addr_enable)
-        ]
+        self.comb += data_gen.random_enable.eq(self.random)
 
         # dma
         dma = LiteDRAMDMAReader(dram_port)
@@ -392,11 +374,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
     length : in
         Number of DRAM words to check.
 
-    random_data_enable : in
+    random : in
         Enable random data (LFSR)
-
-    random_addr_enable : in
-        Enable random addressing (LFSR)
 
     ticks: out
         Duration of the check.
@@ -411,8 +390,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         self.done = CSRStatus()
         self.base = CSRStorage(awidth)
         self.length = CSRStorage(awidth)
-        self.random_data_enable = CSRStorage()
-        self.random_addr_enable = CSRStorage()
+        self.random = CSRStorage()
         self.ticks = CSRStatus(32)
         self.errors = CSRStatus(32)
 
@@ -454,10 +432,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
                 core.length.eq(length_sync.o)
             ]
 
-            self.specials += [
-                MultiReg(self.random_data_enable.storage, core.random_data_enable, clock_domain),
-                MultiReg(self.random_addr_enable.storage, core.random_addr_enable, clock_domain),
-            ]
+            self.specials += MultiReg(self.random.storage, core.random, clock_domain)
 
             ticks_sync = BusSynchronizer(32, clock_domain, "sys")
             self.submodules += ticks_sync
@@ -479,8 +454,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
                 self.done.status.eq(core.done),
                 core.base.eq(self.base.storage),
                 core.length.eq(self.length.storage),
-                core.random_data_enable.eq(self.random_data_enable.storage),
-                core.random_addr_enable.eq(self.random_addr_enable.storage),
+                core.random.eq(self.random.storage),
                 self.ticks.status.eq(core.ticks),
                 self.errors.status.eq(core.errors)
             ]
