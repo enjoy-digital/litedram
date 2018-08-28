@@ -237,7 +237,7 @@ class LiteDRAMAXI2NativeR(Module):
         # Read data
         self.comb += [
             port.rdata.connect(r_buffer.sink),
-            r_buffer.source.connect(axi.r)
+            r_buffer.source.connect(axi.r, omit={"id"})
         ]
 
 
