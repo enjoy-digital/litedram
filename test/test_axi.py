@@ -123,7 +123,7 @@ class TestAXI(unittest.TestCase):
                 if ax_addr != beat.addr:
                     self.errors += 1
                 yield
-        
+
         # dut
         ax_burst = stream.Endpoint(ax_description(32, 32))
         ax_beat = stream.Endpoint(ax_description(32, 32))
@@ -135,7 +135,7 @@ class TestAXI(unittest.TestCase):
         for i in range(32):
             bursts.append(Burst(burst_types["fixed"], prng.randrange(2**32), prng.randrange(256), log2_int(32//8)))
             bursts.append(Burst(burst_types["incr"], prng.randrange(2**32), prng.randrange(256), log2_int(32//8)))
-        
+
         # generate expexted dut output (beats for reference)
         beats = []
         for burst in bursts:
