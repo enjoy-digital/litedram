@@ -230,46 +230,58 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         core = ClockDomainsRenamer(clock_domain)(core)
         self.submodules += core
 
-        reset_sync = PulseSynchronizer("sys", clock_domain)
-        start_sync = PulseSynchronizer("sys", clock_domain)
-        self.submodules += reset_sync, start_sync
-        self.comb += [
-            reset_sync.i.eq(self.reset.re),
-            core.reset.eq(reset_sync.o),
+        if clock_domain != "sys":
+            reset_sync = PulseSynchronizer("sys", clock_domain)
+            start_sync = PulseSynchronizer("sys", clock_domain)
+            self.submodules += reset_sync, start_sync
+            self.comb += [
+                reset_sync.i.eq(self.reset.re),
+                core.reset.eq(reset_sync.o),
 
-            start_sync.i.eq(self.start.re),
-            core.start.eq(start_sync.o)
-        ]
+                start_sync.i.eq(self.start.re),
+                core.start.eq(start_sync.o)
+            ]
 
-        done_sync = BusSynchronizer(1, clock_domain, "sys")
-        self.submodules += done_sync
-        self.comb += [
-            done_sync.i.eq(core.done),
-            self.done.status.eq(done_sync.o)
-        ]
+            done_sync = BusSynchronizer(1, clock_domain, "sys")
+            self.submodules += done_sync
+            self.comb += [
+                done_sync.i.eq(core.done),
+                self.done.status.eq(done_sync.o)
+            ]
 
-        base_sync = BusSynchronizer(awidth, "sys", clock_domain)
-        length_sync = BusSynchronizer(awidth, "sys", clock_domain)
-        self.submodules += base_sync, length_sync
-        self.comb += [
-            base_sync.i.eq(self.base.storage),
-            core.base.eq(base_sync.o),
+            base_sync = BusSynchronizer(awidth, "sys", clock_domain)
+            length_sync = BusSynchronizer(awidth, "sys", clock_domain)
+            self.submodules += base_sync, length_sync
+            self.comb += [
+                base_sync.i.eq(self.base.storage),
+                core.base.eq(base_sync.o),
 
-            length_sync.i.eq(self.length.storage),
-            core.length.eq(length_sync.o)
-        ]
+                length_sync.i.eq(self.length.storage),
+                core.length.eq(length_sync.o)
+            ]
 
-        self.specials += [
-            MultiReg(self.random_data_enable.storage, core.random_data_enable, clock_domain),
-            MultiReg(self.random_addr_enable.storage, core.random_addr_enable, clock_domain),
-        ]
+            self.specials += [
+                MultiReg(self.random_data_enable.storage, core.random_data_enable, clock_domain),
+                MultiReg(self.random_addr_enable.storage, core.random_addr_enable, clock_domain),
+            ]
 
-        ticks_sync = BusSynchronizer(32, clock_domain, "sys")
-        self.submodules += ticks_sync
-        self.comb += [
-            ticks_sync.i.eq(core.ticks),
-            self.ticks.status.eq(ticks_sync.o)
-        ]
+            ticks_sync = BusSynchronizer(32, clock_domain, "sys")
+            self.submodules += ticks_sync
+            self.comb += [
+                ticks_sync.i.eq(core.ticks),
+                self.ticks.status.eq(ticks_sync.o)
+            ]
+        else:
+            self.comb += [
+                core.reset.eq(self.reset.re),
+                core.start.eq(self.start.re),
+                self.done.status.eq(core.done),
+                core.base.eq(self.base.storage),
+                core.length.eq(self.length.storage),
+                core.random_data_enable.eq(self.random_data_enable.storage),
+                core.random_addr_enable.eq(self.random_addr_enable.storage),
+                self.ticks.status.eq(core.ticks)
+            ]
 
 
 @ResetInserter()
@@ -412,50 +424,63 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         core = ClockDomainsRenamer(clock_domain)(core)
         self.submodules += core
 
-        reset_sync = PulseSynchronizer("sys", clock_domain)
-        start_sync = PulseSynchronizer("sys", clock_domain)
-        self.submodules += reset_sync, start_sync
-        self.comb += [
-            reset_sync.i.eq(self.reset.re),
-            core.reset.eq(reset_sync.o),
+        if clock_domain != "sys":
+            reset_sync = PulseSynchronizer("sys", clock_domain)
+            start_sync = PulseSynchronizer("sys", clock_domain)
+            self.submodules += reset_sync, start_sync
+            self.comb += [
+                reset_sync.i.eq(self.reset.re),
+                core.reset.eq(reset_sync.o),
 
-            start_sync.i.eq(self.start.re),
-            core.start.eq(start_sync.o)
-        ]
+                start_sync.i.eq(self.start.re),
+                core.start.eq(start_sync.o)
+            ]
 
-        done_sync = BusSynchronizer(1, clock_domain, "sys")
-        self.submodules += done_sync
-        self.comb += [
-            done_sync.i.eq(core.done),
-            self.done.status.eq(done_sync.o)
-        ]
+            done_sync = BusSynchronizer(1, clock_domain, "sys")
+            self.submodules += done_sync
+            self.comb += [
+                done_sync.i.eq(core.done),
+                self.done.status.eq(done_sync.o)
+            ]
 
-        base_sync = BusSynchronizer(awidth, "sys", clock_domain)
-        length_sync = BusSynchronizer(awidth, "sys", clock_domain)
-        self.submodules += base_sync, length_sync
-        self.comb += [
-            base_sync.i.eq(self.base.storage),
-            core.base.eq(base_sync.o),
+            base_sync = BusSynchronizer(awidth, "sys", clock_domain)
+            length_sync = BusSynchronizer(awidth, "sys", clock_domain)
+            self.submodules += base_sync, length_sync
+            self.comb += [
+                base_sync.i.eq(self.base.storage),
+                core.base.eq(base_sync.o),
 
-            length_sync.i.eq(self.length.storage),
-            core.length.eq(length_sync.o)
-        ]
+                length_sync.i.eq(self.length.storage),
+                core.length.eq(length_sync.o)
+            ]
 
-        self.specials += [
-            MultiReg(self.random_data_enable.storage, core.random_data_enable, clock_domain),
-            MultiReg(self.random_addr_enable.storage, core.random_addr_enable, clock_domain),
-        ]
+            self.specials += [
+                MultiReg(self.random_data_enable.storage, core.random_data_enable, clock_domain),
+                MultiReg(self.random_addr_enable.storage, core.random_addr_enable, clock_domain),
+            ]
 
-        ticks_sync = BusSynchronizer(32, clock_domain, "sys")
-        self.submodules += ticks_sync
-        self.comb += [
-            ticks_sync.i.eq(core.ticks),
-            self.ticks.status.eq(ticks_sync.o)
-        ]
+            ticks_sync = BusSynchronizer(32, clock_domain, "sys")
+            self.submodules += ticks_sync
+            self.comb += [
+                ticks_sync.i.eq(core.ticks),
+                self.ticks.status.eq(ticks_sync.o)
+            ]
 
-        errors_sync = BusSynchronizer(32, clock_domain, "sys")
-        self.submodules += errors_sync
-        self.comb += [
-            errors_sync.i.eq(core.errors),
-            self.errors.status.eq(errors_sync.o)
-        ]
+            errors_sync = BusSynchronizer(32, clock_domain, "sys")
+            self.submodules += errors_sync
+            self.comb += [
+                errors_sync.i.eq(core.errors),
+                self.errors.status.eq(errors_sync.o)
+            ]
+        else:
+            self.comb += [
+                core.reset.eq(self.reset.re),
+                core.start.eq(self.start.re),
+                self.done.status.eq(core.done),
+                core.base.eq(self.base.storage),
+                core.length.eq(self.length.storage),
+                core.random_data_enable.eq(self.random_data_enable.storage),
+                core.random_addr_enable.eq(self.random_addr_enable.storage),
+                self.ticks.status.eq(core.ticks),
+                self.errors.status.eq(core.errors)
+            ]
