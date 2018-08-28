@@ -116,7 +116,7 @@ class TestBIST(unittest.TestCase):
         # simulation
         generators = [
             main_generator(dut, mem),
-            mem.write_generator(dut.write_port),
-            mem.read_generator(dut.read_port)
+            mem.write_handler(dut.write_port),
+            mem.read_handler(dut.read_port)
          ]
         run_simulation(dut, generators, vcd_name="bist.vcd")

@@ -96,8 +96,8 @@ class TestAXI(unittest.TestCase):
         generators = [
             writes_generator(axi_port, writes),
             reads_generator(axi_port, reads),
-            mem.read_generator(dram_port),
-            mem.write_generator(dram_port)
+            mem.read_handler(dram_port),
+            mem.write_handler(dram_port)
         ]
         run_simulation(dut, generators, vcd_name="axi2native.vcd")
 

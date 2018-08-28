@@ -31,7 +31,7 @@ class DRAMMemory:
             print("0x{:08x}: 0x{:08x}".format(addr, self.mem[addr]))
 
     @passive
-    def read_generator(self, dram_port):
+    def read_handler(self, dram_port):
         address = 0
         pending = 0
         yield dram_port.cmd.ready.eq(0)
@@ -54,7 +54,7 @@ class DRAMMemory:
             yield
 
     @passive
-    def write_generator(self, dram_port):
+    def write_handler(self, dram_port):
         address = 0
         pending = 0
         yield dram_port.cmd.ready.eq(0)

@@ -37,7 +37,7 @@ read_data = []
 
 
 @passive
-def read_generator(read_port):
+def read_handler(read_port):
     yield read_port.rdata.ready.eq(1)
     while True:
         if (yield read_port.rdata.valid):
@@ -86,9 +86,9 @@ class TestUpConverter(unittest.TestCase):
         generators = {
             "sys" :   [
                 main_generator(dut.write_user_port, dut.read_user_port),
-                read_generator(dut.read_user_port),
-                dut.memory.write_generator(dut.write_crossbar_port),
-                dut.memory.read_generator(dut.read_crossbar_port)
+                read_handler(dut.read_user_port),
+                dut.memory.write_handler(dut.write_crossbar_port),
+                dut.memory.read_handler(dut.read_crossbar_port)
             ]
         }
         clocks = {"sys": 10}
