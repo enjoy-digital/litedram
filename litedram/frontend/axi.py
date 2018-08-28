@@ -1,4 +1,20 @@
-"""AXI frontend for LiteDRAM"""
+"""
+AXI frontend for LiteDRAM
+
+Converts AXI ports to Native ports.
+
+Features:
+- Write/Read arbitration.
+- Write/Read data buffers (configurable depth).
+- Burst support (INCR/FIXED).
+- ID support (configurable width).
+
+Limitations:
+- Write response always supposed to be ready.
+- No WRAP burst support.
+- No address alignment (address must be aligned on PHY's datawidth)
+- No reordering.
+"""
 
 from migen import *
 from migen.genlib.record import *
@@ -134,7 +150,7 @@ class LiteDRAMAXI2NativeW(Module):
         self.comb += [
             id_buffer.sink.valid.eq(aw.valid & aw.ready),
             id_buffer.sink.id.eq(aw.id),
-            axi.b.valid.eq(axi.w.valid & axi.w.ready), # FIXME: axi.b always supposed to be ready
+            axi.b.valid.eq(axi.w.valid & axi.w.ready), # Note: Write response always supposed to be ready.
             axi.b.id.eq(id_buffer.source.id),
             id_buffer.source.ready.eq(axi.b.valid & axi.b.ready)
         ]
