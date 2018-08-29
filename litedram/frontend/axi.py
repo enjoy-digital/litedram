@@ -11,7 +11,6 @@ Features:
 
 Limitations:
 - Write response always supposed to be ready.
-- No address alignment (address must be aligned on PHY's datawidth)
 - No reordering.
 """
 
