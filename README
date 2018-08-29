@@ -37,10 +37,11 @@ PHY:
 Core:
   - Fully pipelined, high performance.
   - Configurable commands depth on bankmachines.
+  - Auto-Precharge.
 Frontend:
   - Configurable crossbar (simply declare your crossbar and use crossbar.get_port() to add a new port!)
   - Ports arbitration transparent to the user.
-  - Wishbone bridge.
+  - Native, AXI-MM or Wishbone user interface.
   - DMA reader/writer.
   - BIST.
 
@@ -52,7 +53,7 @@ LiteDRAM is already used in commercial and open-source designs:
 
 [> Possible improvements
 ------------------------
-- add standardized interfaces (AXI, Avalon-ST)
+- add Avalon-ST interface.
 - add support for Altera PHYs.
 - add support for Lattice PHYs.
 - add more documentation
