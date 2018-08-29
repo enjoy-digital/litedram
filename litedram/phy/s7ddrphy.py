@@ -433,11 +433,12 @@ class S7DDRPHY(Module, AutoCSR):
             ]
 
         # dqs preamble/postamble
+        dqs_sys_latency = cwl_sys_latency-1 if with_odelay else cwl_sys_latency
         self.comb += [
-            dqs_preamble.eq(last_wrdata_en[cwl_sys_latency-1] & 
-                            ~last_wrdata_en[cwl_sys_latency]),
-            dqs_postamble.eq(last_wrdata_en[cwl_sys_latency+1] & 
-                            ~last_wrdata_en[cwl_sys_latency]),
+            dqs_preamble.eq(last_wrdata_en[dqs_sys_latency-1] &
+                            ~last_wrdata_en[dqs_sys_latency]),
+            dqs_postamble.eq(last_wrdata_en[dqs_sys_latency+1] &
+                            ~last_wrdata_en[dqs_sys_latency]),
         ]
 
 
