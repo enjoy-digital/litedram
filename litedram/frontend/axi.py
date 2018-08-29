@@ -164,7 +164,7 @@ class LiteDRAMAXI2NativeW(Module):
                 port.cmd.valid.eq(aw.valid & can_write),
                 aw.ready.eq(port.cmd.ready & can_write),
                 port.cmd.we.eq(1),
-                port.cmd.adr.eq(aw.addr >> ashift)
+                port.cmd.addr.eq(aw.addr >> ashift)
             )
         ]
 
@@ -234,7 +234,7 @@ class LiteDRAMAXI2NativeR(Module):
                 port.cmd.valid.eq(ar.valid & can_read),
                 ar.ready.eq(port.cmd.ready & can_read),
                 port.cmd.we.eq(0),
-                port.cmd.adr.eq(ar.addr >> ashift)
+                port.cmd.addr.eq(ar.addr >> ashift)
             )
         ]
 

@@ -42,14 +42,14 @@ class BankMachine(Module):
         auto_precharge = Signal()
 
         # Command buffer
-        cmd_buffer_layout = [("we", 1), ("adr", len(req.adr))]
+        cmd_buffer_layout = [("we", 1), ("addr", len(req.addr))]
         cmd_buffer_lookahead = stream.SyncFIFO(
             cmd_buffer_layout, settings.cmd_buffer_depth,
             buffered=settings.cmd_buffer_buffered)
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "adr"}),
+            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
@@ -61,7 +61,7 @@ class BankMachine(Module):
         has_openrow = Signal()
         openrow = Signal(settings.geom.rowbits, reset_less=True)
         hit = Signal()
-        self.comb += hit.eq(openrow == slicer.row(cmd_buffer.source.adr))
+        self.comb += hit.eq(openrow == slicer.row(cmd_buffer.source.addr))
         track_open = Signal()
         track_close = Signal()
         self.sync += \
@@ -69,17 +69,17 @@ class BankMachine(Module):
                 has_openrow.eq(0)
             ).Elif(track_open,
                 has_openrow.eq(1),
-                openrow.eq(slicer.row(cmd_buffer.source.adr))
+                openrow.eq(slicer.row(cmd_buffer.source.addr))
             )
 
         # Address generation
-        sel_row_adr = Signal()
+        sel_row_addr = Signal()
         self.comb += [
             cmd.ba.eq(n),
-            If(sel_row_adr,
-                cmd.a.eq(slicer.row(cmd_buffer.source.adr))
+            If(sel_row_addr,
+                cmd.a.eq(slicer.row(cmd_buffer.source.addr))
             ).Else(
-                cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.source.adr))
+                cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.source.addr))
             )
         ]
 
@@ -93,7 +93,7 @@ class BankMachine(Module):
         if settings.with_auto_precharge:
             self.comb += [
                 If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
-                    If(slicer.row(cmd_buffer_lookahead.source.adr) != slicer.row(cmd_buffer.source.adr),
+                    If(slicer.row(cmd_buffer_lookahead.source.addr) != slicer.row(cmd_buffer.source.addr),
                         auto_precharge.eq((track_close == 0))
                     )
                 )
@@ -151,7 +151,7 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("ACTIVATE",
-            sel_row_adr.eq(1),
+            sel_row_addr.eq(1),
             track_open.eq(1),
             cmd.valid.eq(ras_allowed),
             cmd.is_cmd.eq(1),

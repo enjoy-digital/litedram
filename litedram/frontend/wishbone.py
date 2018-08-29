@@ -43,7 +43,7 @@ class LiteDRAMWishbone2Native(Module):
 
         # Address / Datapath
         self.comb += [
-            port.cmd.adr.eq(wishbone.adr),
+            port.cmd.addr.eq(wishbone.adr),
             port.wdata.we.eq(wishbone.sel),
             port.wdata.data.eq(wishbone.dat_w),
             wishbone.dat_r.eq(port.rdata.data)

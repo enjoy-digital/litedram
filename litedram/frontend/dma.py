@@ -57,10 +57,8 @@ class LiteDRAMDMAReader(Module):
 
         if is_native:
             self.comb += cmd.we.eq(0)
-            self.comb += cmd.adr.eq(sink.address) # FIXME: use addr for both
-        if is_axi:
-            self.comb += cmd.addr.eq(sink.address) # FIXME: use addr for both
         self.comb += [
+            cmd.addr.eq(sink.address),
             cmd.valid.eq(sink.valid & request_enable),
             sink.ready.eq(cmd.ready & request_enable),
             request_issued.eq(cmd.valid & cmd.ready)
@@ -133,10 +131,8 @@ class LiteDRAMDMAWriter(Module):
 
         if is_native:
             self.comb += cmd.we.eq(1)
-            self.comb += cmd.adr.eq(sink.address) # FIXME: use addr for both
-        if is_axi:
-            self.comb += cmd.addr.eq(sink.address) # FIXME: use addr for both
         self.comb += [
+            cmd.addr.eq(sink.address),
             cmd.valid.eq(fifo.sink.ready & sink.valid),
             sink.ready.eq(fifo.sink.ready & cmd.ready),
             fifo.sink.valid.eq(sink.valid & cmd.ready),

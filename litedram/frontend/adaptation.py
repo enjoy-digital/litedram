@@ -23,7 +23,7 @@ class LiteDRAMNativePortCDC(Module):
         # # #
 
         cmd_fifo = stream.AsyncFIFO(
-            [("we", 1), ("adr", address_width)], cmd_depth)
+            [("we", 1), ("addr", address_width)], cmd_depth)
         cmd_fifo = ClockDomainsRenamer(
             {"write": clock_domain_from,
              "read":  clock_domain_to})(cmd_fifo)
@@ -94,7 +94,7 @@ class LiteDRAMNativePortDownConverter(Module):
         fsm.act("CONVERT",
             port_to.cmd.valid.eq(1),
             port_to.cmd.we.eq(port_from.cmd.we),
-            port_to.cmd.adr.eq(port_from.cmd.adr*ratio + counter),
+            port_to.cmd.addr.eq(port_from.cmd.addr*ratio + counter),
             If(port_to.cmd.ready,
                 counter_ce.eq(1),
                 If(counter == ratio - 1,
@@ -164,7 +164,7 @@ class LiteDRAMNativeWritePortUpConverter(Module):
             If(port_from.cmd.valid,
                 counter_ce.eq(1),
                 NextValue(we, port_from.cmd.we),
-                NextValue(address, port_from.cmd.adr),
+                NextValue(address, port_from.cmd.addr),
                 NextState("RECEIVE")
             )
         )
@@ -180,7 +180,7 @@ class LiteDRAMNativeWritePortUpConverter(Module):
         fsm.act("GENERATE",
             port_to.cmd.valid.eq(1),
             port_to.cmd.we.eq(we),
-            port_to.cmd.adr.eq(address[log2_int(ratio):]),
+            port_to.cmd.addr.eq(address[log2_int(ratio):]),
             If(port_to.cmd.ready,
                 NextState("IDLE")
             )
@@ -235,7 +235,7 @@ class LiteDRAMNativeReadPortUpConverter(Module):
             If(port_from.cmd.valid,
                 If(counter == 0,
                     port_to.cmd.valid.eq(1),
-                    port_to.cmd.adr.eq(port_from.cmd.adr[log2_int(ratio):]),
+                    port_to.cmd.addr.eq(port_from.cmd.addr[log2_int(ratio):]),
                     port_from.cmd.ready.eq(port_to.cmd.ready),
                     counter_ce.eq(port_to.cmd.ready)
                 ).Else(

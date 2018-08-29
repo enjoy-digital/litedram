@@ -54,10 +54,10 @@ class LiteDRAMCrossbar(Module):
         # data width convertion
         if data_width != self.controller.data_width:
             if data_width > self.controller.data_width:
-                adr_shift = -log2_int(data_width//self.controller.data_width)
+                addr_shift = -log2_int(data_width//self.controller.data_width)
             else:
-                adr_shift = log2_int(self.controller.data_width//data_width)
-            new_port = LiteDRAMNativePort(mode, port.address_width + adr_shift, data_width, clock_domain, port.id, with_reordering)
+                addr_shift = log2_int(self.controller.data_width//data_width)
+            new_port = LiteDRAMNativePort(mode, port.address_width + addr_shift, data_width, clock_domain, port.id, with_reordering)
             self.submodules += ClockDomainsRenamer(clock_domain)(LiteDRAMNativePortConverter(new_port, port, reverse))
             port = new_port
 
@@ -113,7 +113,7 @@ class LiteDRAMCrossbar(Module):
 
             # route requests
             self.comb += [
-                bank.adr.eq(Array(m_rca)[arbiter.grant]),
+                bank.addr.eq(Array(m_rca)[arbiter.grant]),
                 bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
                 bank.valid.eq(Array(bank_requested)[arbiter.grant])
             ]
@@ -183,15 +183,15 @@ class LiteDRAMCrossbar(Module):
             cba = Signal(self.bank_bits)
             rca = Signal(self.rca_bits)
             cba_upper = cba_shift + bank_bits
-            self.comb += cba.eq(master.cmd.adr[cba_shift:cba_upper])
+            self.comb += cba.eq(master.cmd.addr[cba_shift:cba_upper])
             if cba_shift < self.rca_bits:
                 if cba_shift:
-                    self.comb += rca.eq(Cat(master.cmd.adr[:cba_shift],
-                                            master.cmd.adr[cba_upper:]))
+                    self.comb += rca.eq(Cat(master.cmd.addr[:cba_shift],
+                                            master.cmd.addr[cba_upper:]))
                 else:
-                    self.comb += rca.eq(master.cmd.adr[cba_upper:])
+                    self.comb += rca.eq(master.cmd.addr[cba_upper:])
             else:
-                self.comb += rca.eq(master.cmd.adr[:cba_shift])
+                self.comb += rca.eq(master.cmd.addr[:cba_shift])
 
             ba = cba
 

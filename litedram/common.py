@@ -56,14 +56,14 @@ class TimingSettings:
 
 def cmd_layout(address_width):
     return [
-        ("valid",           1, DIR_M_TO_S),
-        ("ready",           1, DIR_S_TO_M),
-        ("we",              1, DIR_M_TO_S),
-        ("adr", address_width, DIR_M_TO_S),
-        ("lock",            1, DIR_S_TO_M), # only used internally
+        ("valid",            1, DIR_M_TO_S),
+        ("ready",            1, DIR_S_TO_M),
+        ("we",               1, DIR_M_TO_S),
+        ("addr", address_width, DIR_M_TO_S),
+        ("lock",             1, DIR_S_TO_M), # only used internally
 
-        ("wdata_ready",     1, DIR_S_TO_M),
-        ("rdata_valid",     1, DIR_S_TO_M)
+        ("wdata_ready",      1, DIR_S_TO_M),
+        ("rdata_valid",      1, DIR_S_TO_M)
     ]
 
 
@@ -91,7 +91,7 @@ class LiteDRAMInterface(Record):
 def cmd_description(address_width):
     return [
         ("we",   1),
-        ("adr", address_width)
+        ("addr", address_width)
     ]
 
 def wdata_description(data_width, with_bank):
