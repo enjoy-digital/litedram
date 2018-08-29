@@ -122,7 +122,7 @@ class LiteDRAMAXIBurst2Beat(Module):
 
 
 class LiteDRAMAXI2NativeW(Module):
-    def __init__(self, axi, port, buffer_depth=8):
+    def __init__(self, axi, port, buffer_depth):
         self.cmd_request = Signal()
         self.cmd_grant = Signal()
 
@@ -177,7 +177,7 @@ class LiteDRAMAXI2NativeW(Module):
 
 
 class LiteDRAMAXI2NativeR(Module):
-    def __init__(self, axi, port, buffer_depth=8):
+    def __init__(self, axi, port, buffer_depth):
         self.cmd_request = Signal()
         self.cmd_grant = Signal()
 
@@ -246,7 +246,7 @@ class LiteDRAMAXI2NativeR(Module):
 
 
 class LiteDRAMAXI2Native(Module):
-    def __init__(self, axi, port, w_buffer_depth=8, r_buffer_depth=8):
+    def __init__(self, axi, port, w_buffer_depth=16, r_buffer_depth=16):
 
         # # #
 
