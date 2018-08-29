@@ -6,12 +6,11 @@ Converts AXI ports to Native ports.
 Features:
 - Write/Read arbitration.
 - Write/Read data buffers (configurable depth).
-- Burst support (INCR/FIXED).
+- Burst support (FIXED/INCR/WRAP).
 - ID support (configurable width).
 
 Limitations:
 - Write response always supposed to be ready.
-- No WRAP burst support.
 - No address alignment (address must be aligned on PHY's datawidth)
 - No reordering.
 """
@@ -25,7 +24,7 @@ from litex.soc.interconnect import stream
 burst_types = {
     "fixed":    0b00,
     "incr":     0b01,
-    "wrap":     0b10, # FIXME: Not implemented
+    "wrap":     0b10,
     "reserved": 0b11
 }
 
@@ -103,7 +102,8 @@ class LiteDRAMAXIBurst2Beat(Module):
         )
         fsm.act("BURST2BEAT",
             ax_beat.valid.eq(1),
-            If(ax_burst.burst == burst_types["incr"],
+            If((ax_burst.burst == burst_types["incr"]) |
+               (ax_burst.burst == burst_types["wrap"]),
                 ax_beat.addr.eq(ax_burst.addr + offset)
             ).Else(
                 ax_beat.addr.eq(ax_burst.addr)
@@ -115,7 +115,12 @@ class LiteDRAMAXIBurst2Beat(Module):
                     NextState("IDLE")
                 ).Else(
                     NextValue(count, count + 1),
-                    NextValue(offset, offset + size)
+                    NextValue(offset, offset + size),
+                    If(ax_burst.burst == burst_types["wrap"],
+                        If(offset == (ax_burst.len + 1 - 1)*size,
+                            NextValue(offset, 0)
+                        )
+                    )
                 )
             )
         )
