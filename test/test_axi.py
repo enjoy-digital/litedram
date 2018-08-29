@@ -135,7 +135,11 @@ class TestAXI(unittest.TestCase):
                 r = []
                 for i in range(self.len + 1):
                     if self.type == burst_types["incr"]:
-                        r += [Beat(self.addr + i*2**(self.size))]
+                        offset = i*2**(self.size)
+                        r += [Beat(self.addr + offset)]
+                    elif self.type == burst_types["wrap"]:
+                        offset = (i*2**(self.size))%((2**self.size)*(self.len))
+                        r += [Beat(self.addr + offset)]
                     else:
                         r += [Beat(self.addr)]
                 return r
@@ -181,8 +185,9 @@ class TestAXI(unittest.TestCase):
         prng = random.Random(42)
         bursts = []
         for i in range(32):
-            bursts.append(Burst(burst_types["fixed"], prng.randrange(2**32), prng.randrange(256), log2_int(32//8)))
-            bursts.append(Burst(burst_types["incr"], prng.randrange(2**32), prng.randrange(256), log2_int(32//8)))
+            bursts.append(Burst(burst_types["fixed"], prng.randrange(2**32), prng.randrange(255), log2_int(32//8)))
+            bursts.append(Burst(burst_types["incr"], prng.randrange(2**32), prng.randrange(255), log2_int(32//8)))
+        bursts.append(Burst(burst_types["wrap"], 4, 4-1, log2_int(2)))
 
         # generate expexted dut output (beats for reference)
         beats = []

@@ -116,7 +116,7 @@ class LiteDRAMAXIBurst2Beat(Module):
                     NextValue(count, count + 1),
                     NextValue(offset, offset + size),
                     If(ax_burst.burst == burst_types["wrap"],
-                        If(offset == (ax_burst.len + 1 - 1)*size,
+                        If(offset == (ax_burst.len - 1)*size,
                             NextValue(offset, 0)
                         )
                     )
