@@ -36,22 +36,10 @@ def get_cl_cw(memtype, tck):
 def get_sys_latency(nphases, cas_latency):
     return math.ceil(cas_latency/nphases)
 
-def get_sys_phases(nphases, sys_latency, cas_latency, write=False):
-    cmd_phase = 0
-    dat_phase = 0
-    diff_phase = 0
-    while (diff_phase + cas_latency) != sys_latency*nphases:
-        dat_phase += 1
-        if dat_phase == nphases:
-            dat_phase = 0
-            cmd_phase += 1
-        if write:
-            diff_phase = dat_phase - cmd_phase
-        else:
-            diff_phase = cmd_phase - dat_phase
-    assert cmd_phase != dat_phase
+def get_sys_phases(nphases, sys_latency, cas_latency):
+    dat_phase = sys_latency*nphases - cas_latency
+    cmd_phase = (dat_phase - 1)%nphases
     return cmd_phase, dat_phase
-
 
 class S7DDRPHY(Module, AutoCSR):
     def __init__(self, pads, with_odelay, memtype="DDR3", nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6):
@@ -93,7 +81,7 @@ class S7DDRPHY(Module, AutoCSR):
         cwl_sys_latency = get_sys_latency(nphases, cwl)
 
         rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
-        wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl, write=True)
+        wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
         self.settings = PhySettings(
             memtype=memtype,
             dfi_databits=2*databits,
