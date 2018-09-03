@@ -3,6 +3,7 @@
 # DDR3: 800, 1066, 1333 and 1600 MT/s
 
 import math
+from collections import OrderedDict
 
 from migen import *
 
@@ -13,40 +14,24 @@ from litedram.phy.dfi import *
 
 
 def get_cl_cw(memtype, tck):
+    f_to_cl_cwl = OrderedDict()
     if memtype == "DDR2":
-        # ddr2-400
-        if tck >= 2/400e6:
-            cl, cwl = 3, 2
-        # ddr2-533
-        elif tck >= 2/533e6:
-            cl, cwl = 4, 3
-        # ddr2-667
-        elif tck >= 2/677e6:
-            cl, cwl = 5, 4
-        # ddr2-800
-        elif tck >= 2/800e6:
-            cl, cwl = 6, 5
-        # ddr2-1066
-        elif tck >= 2/1066e6:
-            cl, cwl = 7, 5
-        else:
-            raise ValueError
+        f_to_cl_cwl[400e6]  = (3, 2)
+        f_to_cl_cwl[533e6]  = (4, 3)
+        f_to_cl_cwl[677e6]  = (5, 4)
+        f_to_cl_cwl[800e6]  = (6, 5)
+        f_to_cl_cwl[1066e6] = (7, 5)
     elif memtype == "DDR3":
-        # ddr3-800
-        if tck >= 2/800e6:
-            cl, cwl = 6, 5
-        # ddr3-1066
-        elif tck >= 2/1066e6:
-            cl, cwl = 7, 6
-        # ddr3-1333
-        elif tck >= 2/1333e6:
-            cl, cwl = 10, 7
-        # ddr3-1600
-        elif tck >= 2/1600e6:
-            cl, cwl = 11, 8
-        else:
-            raise ValueError
-    return cl, cwl
+        f_to_cl_cwl[800e6]  = ( 6, 5)
+        f_to_cl_cwl[1066e6] = ( 7, 6)
+        f_to_cl_cwl[1333e6] = (10, 7)
+        f_to_cl_cwl[1600e6] = (11, 8)
+    else:
+        raise ValueError
+    for f, (cl, cwl) in f_to_cl_cwl.items():
+        if tck >= 2/f:
+            return cl, cwl
+    raise ValueError
 
 def get_sys_latency(nphases, cas_latency):
     return math.ceil(cas_latency/nphases)
