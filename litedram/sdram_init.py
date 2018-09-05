@@ -171,7 +171,7 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
         if hasattr(phy_settings, "ron"):
             ron = phy_settings.ron
 
-        wr = timing_settings.tWTR*phy_settings.nphases # >= ceiling(tWR/tCK)
+        wr = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
         mr0 = format_mr0(bl, cl, wr, 1)
         mr1 = format_mr1(
             z_to_ron[ron],
