@@ -105,6 +105,9 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
             Subsignal("aw_valid", Pins(1)),
             Subsignal("aw_ready", Pins(1)),
             Subsignal("aw_addr",  Pins(aw)),
+            Subsignal("aw_burst", Pins(2)),
+            Subsignal("aw_len", Pins(8)),
+            Subsignal("aw_size", Pins(4)),
             Subsignal("aw_id",  Pins(iw)),
 
             # w
@@ -122,6 +125,9 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
             Subsignal("ar_valid", Pins(1)),
             Subsignal("ar_ready", Pins(1)),
             Subsignal("ar_addr",  Pins(aw)),
+            Subsignal("ar_burst", Pins(2)),
+            Subsignal("ar_len", Pins(8)),
+            Subsignal("ar_size", Pins(4)),
             Subsignal("ar_id",  Pins(iw)),
 
             # r
@@ -326,6 +332,9 @@ class LiteDRAMCore(SoCSDRAM):
                     axi_port.aw.valid.eq(_axi_port_io.aw_valid),
                     _axi_port_io.aw_ready.eq(axi_port.aw.ready),
                     axi_port.aw.addr.eq(_axi_port_io.aw_addr),
+                    axi_port.aw.burst.eq(_axi_port_io.aw_burst),
+                    axi_port.aw.len.eq(_axi_port_io.aw_len),
+                    axi_port.aw.size.eq(_axi_port_io.aw_size),
                     axi_port.aw.id.eq(_axi_port_io.aw_id),
 
                     # w
@@ -343,6 +352,9 @@ class LiteDRAMCore(SoCSDRAM):
                     axi_port.ar.valid.eq(_axi_port_io.ar_valid),
                     _axi_port_io.ar_ready.eq(axi_port.ar.ready),
                     axi_port.ar.addr.eq(_axi_port_io.ar_addr),
+                    axi_port.ar.burst.eq(_axi_port_io.ar_burst),
+                    axi_port.ar.len.eq(_axi_port_io.ar_len),
+                    axi_port.ar.size.eq(_axi_port_io.ar_size),
                     axi_port.ar.id.eq(_axi_port_io.ar_id),
 
                     # r
