@@ -113,6 +113,7 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
             # w
             Subsignal("w_valid", Pins(1)),
             Subsignal("w_ready", Pins(1)),
+            Subsignal("w_last", Pins(1)),
             Subsignal("w_strb", Pins(dw//8)),
             Subsignal("w_data", Pins(dw)),
 
@@ -133,6 +134,7 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
             # r
             Subsignal("r_valid", Pins(1)),
             Subsignal("r_ready", Pins(1)),
+            Subsignal("r_last", Pins(1)),
             Subsignal("r_data", Pins(dw)),
             Subsignal("r_id", Pins(iw))
         ),
@@ -340,6 +342,7 @@ class LiteDRAMCore(SoCSDRAM):
                     # w
                     axi_port.w.valid.eq(_axi_port_io.w_valid),
                     _axi_port_io.w_ready.eq(axi_port.w.ready),
+                    axi_port.w.last.eq(_axi_port_io.w_last),
                     axi_port.w.strb.eq(_axi_port_io.w_strb),
                     axi_port.w.data.eq(_axi_port_io.w_data),
 
@@ -360,6 +363,7 @@ class LiteDRAMCore(SoCSDRAM):
                     # r
                     _axi_port_io.r_valid.eq(axi_port.r.valid),
                     axi_port.r.ready.eq(_axi_port_io.r_ready),
+                    _axi_port_io.r_last.eq(axi_port.r.last),
                     _axi_port_io.r_data.eq(axi_port.r.data),
                     _axi_port_io.r_id.eq(axi_port.r.id),
                 ]
