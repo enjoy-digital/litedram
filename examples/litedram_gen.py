@@ -303,7 +303,9 @@ class LiteDRAMCore(SoCSDRAM):
         if core_config["user_ports_type"] == "native":
             for i in range(core_config["user_ports_nb"]):
                 user_port = self.sdram.crossbar.get_port()
-                platform.add_extension(get_native_user_port_ios(i, user_port.aw, user_port.dw))
+                platform.add_extension(get_native_user_port_ios(i,
+                    user_port.address_width,
+                    user_port.data_width))
                 _user_port_io = platform.request("user_port", i)
                 self.comb += [
                     # cmd
@@ -326,10 +328,16 @@ class LiteDRAMCore(SoCSDRAM):
         elif core_config["user_ports_type"] == "axi":
             for i in range(core_config["user_ports_nb"]):
                 user_port = self.sdram.crossbar.get_port()
-                axi_port = LiteDRAMAXIPort(user_port.dw, user_port.aw, 32)
+                axi_port = LiteDRAMAXIPort(
+                    user_port.data_width,
+                    user_port.address_width + log2_int(user_port.data_width//8),
+                    core_config["user_ports_id_width"])
                 axi2native = LiteDRAMAXI2Native(axi_port, user_port)
                 self.submodules += axi2native
-                platform.add_extension(get_axi_user_port_ios(i, user_port.aw, user_port.dw, 32))
+                platform.add_extension(get_axi_user_port_ios(i,
+                        axi_port.address_width,
+                        axi_port.data_width,
+                        core_config["user_ports_id_width"]))
                 _axi_port_io = platform.request("user_port", i)
                 self.comb += [
                     # aw
