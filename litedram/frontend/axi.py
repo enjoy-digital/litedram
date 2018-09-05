@@ -11,6 +11,7 @@ Features:
 
 Limitations:
 - Write response always supposed to be ready.
+- Last signals not used.
 - No reordering.
 """
 
