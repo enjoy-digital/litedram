@@ -12,6 +12,7 @@ Features:
 Limitations:
 - Write response always supposed to be ready.
 - Last signals not used.
+- Response always okay.
 - No reordering.
 """
 
@@ -26,6 +27,13 @@ burst_types = {
     "incr":     0b01,
     "wrap":     0b10,
     "reserved": 0b11
+}
+
+resp_types = {
+    "okay":   0b00,
+    "exokay": 0b01,
+    "slverr": 0b10,
+    "decerr": 0b11
 }
 
 def ax_description(address_width, id_width):
@@ -45,11 +53,13 @@ def w_description(data_width):
 
 def b_description(id_width):
     return [
+        ("resp", 2),
         ("id", id_width)
     ]
 
 def r_description(data_width, id_width):
     return [
+        ("resp", 2),
         ("data", data_width),
         ("id", id_width)
     ]
@@ -158,6 +168,7 @@ class LiteDRAMAXI2NativeW(Module):
             id_buffer.sink.valid.eq(aw.valid & aw.ready),
             id_buffer.sink.id.eq(aw.id),
             axi.b.valid.eq(axi.w.valid & axi.w.ready), # Note: Write response always supposed to be ready.
+            axi.b.resp.eq(resp_types["okay"]),
             axi.b.id.eq(id_buffer.source.id),
             id_buffer.source.ready.eq(axi.b.valid & axi.b.ready)
         ]
@@ -246,7 +257,8 @@ class LiteDRAMAXI2NativeR(Module):
         # Read data
         self.comb += [
             port.rdata.connect(r_buffer.sink),
-            r_buffer.source.connect(axi.r, omit={"id"})
+            r_buffer.source.connect(axi.r, omit={"id"}),
+            axi.r.resp.eq(resp_types["okay"])
         ]
 
 
