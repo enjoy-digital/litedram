@@ -70,6 +70,7 @@ class TestAXI(unittest.TestCase):
         def reads_response_data_generator(axi_port, reads):
             self.reads_data_errors = 0
             self.reads_id_errors = 0
+            self.reads_last_errors = 0
             yield axi_port.r.ready.eq(1) # always accepting read response
             for read in reads:
                 # wait data / response
@@ -79,6 +80,8 @@ class TestAXI(unittest.TestCase):
                     self.reads_data_errors += 1
                 if (yield axi_port.r.id) != read.id:
                     self.reads_id_errors += 1
+                if (yield axi_port.r.last) != 1:
+                    self.reads_last_errors += 1
                 yield
 
         # dut
@@ -118,6 +121,7 @@ class TestAXI(unittest.TestCase):
         self.assertEqual(self.writes_id_errors, 0)
         self.assertEqual(self.reads_data_errors, 0)
         self.assertEqual(self.reads_id_errors, 0)
+        self.assertEqual(self.reads_last_errors, 0)
 
     def test_burst2beat(self):
         class Beat:

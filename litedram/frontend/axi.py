@@ -11,7 +11,6 @@ Features:
 
 Limitations:
 - Write response always supposed to be ready.
-- Last signals not used.
 - Response always okay.
 - No reordering.
 """
@@ -98,6 +97,7 @@ class LiteDRAMAXIBurst2Beat(Module):
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
             ax_beat.valid.eq(ax_burst.valid),
+            ax_beat.last.eq(ax_burst.len == 0),
             ax_beat.addr.eq(ax_burst.addr),
             ax_beat.id.eq(ax_burst.id),
             If(ax_beat.valid & ax_beat.ready,
@@ -112,6 +112,7 @@ class LiteDRAMAXIBurst2Beat(Module):
         )
         fsm.act("BURST2BEAT",
             ax_beat.valid.eq(1),
+            ax_beat.last.eq(count == (ax_burst.len - 1)),
             If((ax_burst.burst == burst_types["incr"]) |
                (ax_burst.burst == burst_types["wrap"]),
                 ax_beat.addr.eq(ax_burst.addr + offset)
@@ -120,7 +121,7 @@ class LiteDRAMAXIBurst2Beat(Module):
             ),
             ax_beat.id.eq(ax_burst.id),
             If(ax_beat.valid & ax_beat.ready,
-                If(count == (ax_burst.len - 1),
+                If(ax_beat.last,
                     ax_burst.ready.eq(1),
                     NextState("IDLE")
                 ).Else(
@@ -238,7 +239,9 @@ class LiteDRAMAXI2NativeR(Module):
         self.submodules += id_buffer
         self.comb += [
             id_buffer.sink.valid.eq(ar.valid & ar.ready),
+            id_buffer.sink.last.eq(ar.last),
             id_buffer.sink.id.eq(ar.id),
+            axi.r.last.eq(id_buffer.source.last),
             axi.r.id.eq(id_buffer.source.id),
             id_buffer.source.ready.eq(axi.r.valid & axi.r.ready)
         ]
@@ -257,7 +260,7 @@ class LiteDRAMAXI2NativeR(Module):
         # Read data
         self.comb += [
             port.rdata.connect(r_buffer.sink),
-            r_buffer.source.connect(axi.r, omit={"id"}),
+            r_buffer.source.connect(axi.r, omit={"id", "last"}),
             axi.r.resp.eq(resp_types["okay"])
         ]
 
