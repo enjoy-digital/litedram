@@ -46,7 +46,7 @@ class DRAMMemory:
                 pending = 0
             elif (yield dram_port.cmd.valid):
                 pending = not (yield dram_port.cmd.we)
-                address = (yield dram_port.cmd.adr)
+                address = (yield dram_port.cmd.addr)
                 if pending:
                     yield dram_port.cmd.ready.eq(1)
                     yield
@@ -72,7 +72,7 @@ class DRAMMemory:
                 yield
             elif (yield dram_port.cmd.valid):
                 pending = (yield dram_port.cmd.we)
-                address = (yield dram_port.cmd.adr)
+                address = (yield dram_port.cmd.addr)
                 if pending:
                     yield dram_port.cmd.ready.eq(1)
                     yield
