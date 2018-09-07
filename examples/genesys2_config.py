@@ -8,6 +8,7 @@ core_config = {
     # modules / phy
     "sdram_module": MT41J256M16,
     "sdram_module_nb": 2,
+    "sdram_rank_nb": 1,
     "sdram_phy": K7DDRPHY,
 
     # electrical
@@ -28,5 +29,6 @@ core_config = {
 
     # user_ports
     "user_ports_nb": 1,
-    "user_ports_type": "axi"
+    "user_ports_type": "axi",
+    "user_ports_id_width": 8
 }

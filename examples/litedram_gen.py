@@ -59,7 +59,8 @@ def get_dram_ios(core_config):
             Subsignal("ras_n", Pins("X")),
             Subsignal("cas_n", Pins("X")),
             Subsignal("we_n", Pins("X")),
-            Subsignal("cs_n", Pins("X")),
+            Subsignal("cs_n", Pins(
+                "X "*core_config["sdram_rank_nb"])),
             Subsignal("dm", Pins(
                 "X "*2*core_config["sdram_module_nb"])),
             Subsignal("dq", Pins(
@@ -83,7 +84,7 @@ def get_native_user_port_ios(_id, aw, dw):
             Subsignal("cmd_valid", Pins(1)),
             Subsignal("cmd_ready", Pins(1)),
             Subsignal("cmd_we",    Pins(1)),
-            Subsignal("cmd_adr",   Pins(aw)),
+            Subsignal("cmd_addr",  Pins(aw)),
 
             # wdata
             Subsignal("wdata_valid", Pins(1)),
@@ -312,7 +313,7 @@ class LiteDRAMCore(SoCSDRAM):
                     user_port.cmd.valid.eq(_user_port_io.cmd_valid),
                     _user_port_io.cmd_ready.eq(user_port.cmd.ready),
                     user_port.cmd.we.eq(_user_port_io.cmd_we),
-                    user_port.cmd.adr.eq(_user_port_io.cmd_adr),
+                    user_port.cmd.addr.eq(_user_port_io.cmd_addr),
 
                     # wdata
                     user_port.wdata.valid.eq(_user_port_io.wdata_valid),
