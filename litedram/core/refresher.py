@@ -9,8 +9,8 @@ from litedram.core.multiplexer import *
 class Refresher(Module):
     def __init__(self, settings):
         # 1st command 1 cycle after assertion of ready
-        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(settings.geom.addressbits,
-                                                               settings.geom.bankbits))
+        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(
+            settings.geom.addressbits, settings.geom.bankbits + log2_int(settings.phy.nranks)))
 
         # # #
 

@@ -3,6 +3,7 @@ from operator import add, or_, and_
 
 from migen import *
 from migen.genlib.roundrobin import *
+from migen.genlib.coding import Decoder
 
 from litex.soc.interconnect import stream
 from litex.soc.interconnect.csr import AutoCSR
@@ -93,21 +94,31 @@ class _Steerer(Module):
                 return cmd.valid & getattr(cmd, attr)
 
         for phase, sel in zip(dfi.phases, self.sel):
-            self.comb += [
-                phase.cke.eq(1),
-                phase.cs_n.eq(0)
-            ]
+            self.comb += phase.cke.eq(1)
             if hasattr(phase, "odt"):
-                self.comb += phase.odt.eq(1)
+                self.comb += phase.odt.eq(1) # FIXME: constant for multi-rank?
             if hasattr(phase, "reset_n"):
                 self.comb += phase.reset_n.eq(1)
+
+            nranks = len(phase.cs_n)
+            rankbits = log2_int(nranks)
+            if rankbits:
+                rank_decoder = Decoder(rankbits)
+                self.submodules += rank_decoder
+                self.comb += rank_decoder.i.eq((Array(cmd.ba[-rankbits:] for cmd in commands)[sel]))
+                self.sync += phase.cs_n.eq(~rank_decoder.o)
+                self.sync += phase.bank.eq(Array(cmd.ba[:-rankbits] for cmd in commands)[sel])
+            else:
+                self.sync += phase.cs_n.eq(0)
+                self.sync += phase.bank.eq(Array(cmd.ba[:] for cmd in commands)[sel])
+
             self.sync += [
                 phase.address.eq(Array(cmd.a for cmd in commands)[sel]),
-                phase.bank.eq(Array(cmd.ba for cmd in commands)[sel]),
                 phase.cas_n.eq(~Array(cmd.cas for cmd in commands)[sel]),
                 phase.ras_n.eq(~Array(cmd.ras for cmd in commands)[sel]),
                 phase.we_n.eq(~Array(cmd.we for cmd in commands)[sel])
             ]
+
             rddata_ens = Array(valid_and(cmd, "is_read") for cmd in commands)
             wrdata_ens = Array(valid_and(cmd, "is_write") for cmd in commands)
             self.sync += [
@@ -190,7 +201,7 @@ class Multiplexer(Module, AutoCSR):
 
         # Command steering
         nop = Record(cmd_request_layout(settings.geom.addressbits,
-                                        settings.geom.bankbits))
+                                        log2_int(len(bank_machines))))
         # nop must be 1st
         commands = [nop, choose_cmd.cmd, choose_req.cmd, refresher.cmd]
         (STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH) = range(4)

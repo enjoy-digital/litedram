@@ -40,8 +40,10 @@ class LiteDRAMController(Module):
         }
         address_align = log2_int(burst_lengths[phy_settings.memtype])
 
-        self.dfi = dfi.Interface(geom_settings.addressbits,
+        self.dfi = dfi.Interface(
+            geom_settings.addressbits,
             geom_settings.bankbits,
+            phy_settings.nranks,
             phy_settings.dfi_databits,
             phy_settings.nphases)
 
@@ -54,10 +56,11 @@ class LiteDRAMController(Module):
         self.submodules.refresher = Refresher(self.settings)
 
         bank_machines = []
-        for i in range(2**geom_settings.bankbits):
+        for i in range(phy_settings.nranks*(2**geom_settings.bankbits)):
             bank_machine = BankMachine(i,
                                        self.interface.address_width,
                                        address_align,
+                                       phy_settings.nranks,
                                        settings)
             bank_machines.append(bank_machine)
             self.submodules += bank_machine

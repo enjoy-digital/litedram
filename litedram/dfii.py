@@ -38,10 +38,10 @@ class PhaseInjector(Module, AutoCSR):
 
 
 class DFIInjector(Module, AutoCSR):
-    def __init__(self, addressbits, bankbits, databits, nphases=1):
-        inti = dfi.Interface(addressbits, bankbits, databits, nphases)
-        self.slave = dfi.Interface(addressbits, bankbits, databits, nphases)
-        self.master = dfi.Interface(addressbits, bankbits, databits, nphases)
+    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
+        inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        self.slave = dfi.Interface(addressbits, nranks, bankbits, databits, nphases)
+        self.master = dfi.Interface(addressbits, nranks, bankbits, databits, nphases)
 
         self._control = CSRStorage(4)  # sel, cke, odt, reset_n
 

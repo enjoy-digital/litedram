@@ -6,12 +6,13 @@ bankbits_max = 3
 
 
 class PhySettings:
-    def __init__(self, memtype, dfi_databits,
+    def __init__(self, memtype, nranks, dfi_databits,
                  nphases,
                  rdphase, wrphase,
                  rdcmdphase, wrcmdphase,
                  cl, read_latency, write_latency, cwl=None):
         self.memtype = memtype
+        self.nranks = nranks
         self.dfi_databits = dfi_databits
 
         self.nphases = nphases
@@ -79,9 +80,12 @@ def data_layout(data_width):
 
 class LiteDRAMInterface(Record):
     def __init__(self, address_align, settings):
-        self.address_width = settings.geom.rowbits + settings.geom.colbits - address_align
+        rankbits = log2_int(settings.phy.nranks)
+        self.address_width = settings.geom.rowbits + settings.geom.colbits + rankbits - address_align
+        print(self.address_width)
         self.data_width = settings.phy.dfi_databits*settings.phy.nphases
-        self.nbanks = 2**settings.geom.bankbits
+        self.nbanks = settings.phy.nranks*(2**settings.geom.bankbits)
+        self.nranks = settings.phy.nranks
         self.settings = settings
 
         layout = [("bank"+str(i), cmd_layout(self.address_width)) for i in range(self.nbanks)]

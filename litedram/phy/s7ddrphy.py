@@ -47,8 +47,11 @@ class S7DDRPHY(Module, AutoCSR):
         tck = 2/(2*nphases*sys_clk_freq)
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
+        if hasattr(pads, "cs_n"):
+            nranks = len(pads.cs_n)
         databits = len(pads.dq)
         nphases = nphases
+
 
         iodelay_tap_average = {
             200e6: 78e-12,
@@ -86,6 +89,7 @@ class S7DDRPHY(Module, AutoCSR):
         self.settings = PhySettings(
             memtype=memtype,
             dfi_databits=2*databits,
+            nranks=nranks,
             nphases=nphases,
             rdphase=rdphase,
             wrphase=wrphase,
@@ -97,7 +101,7 @@ class S7DDRPHY(Module, AutoCSR):
             write_latency=cwl_sys_latency
         )
 
-        self.dfi = Interface(addressbits, bankbits, 2*databits, 4)
+        self.dfi = Interface(addressbits, bankbits, nranks, 2*databits, 4)
 
         # # #
 
@@ -158,11 +162,26 @@ class S7DDRPHY(Module, AutoCSR):
                     i_D5=self.dfi.phases[2].bank[i], i_D6=self.dfi.phases[2].bank[i],
                     i_D7=self.dfi.phases[3].bank[i], i_D8=self.dfi.phases[3].bank[i]
                 )
+        if hasattr(pads, "cs_n"):
+            for i in range(nranks):
+                self.specials += \
+                    Instance("OSERDESE2",
+                        p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
+                        p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
+                        p_SERDES_MODE="MASTER",
+
+                        o_OQ=pads.ba[i],
+                        i_OCE=1,
+                        i_RST=ResetSignal(),
+                        i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
+                        i_D1=self.dfi.phases[0].cs_n[i], i_D2=self.dfi.phases[0].cs_n[i],
+                        i_D3=self.dfi.phases[1].cs_n[i], i_D4=self.dfi.phases[1].cs_n[i],
+                        i_D5=self.dfi.phases[2].cs_n[i], i_D6=self.dfi.phases[2].cs_n[i],
+                        i_D7=self.dfi.phases[3].cs_n[i], i_D8=self.dfi.phases[3].cs_n[i]
+                    )
         controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
         if hasattr(pads, "reset_n"):
             controls.append("reset_n")
-        if hasattr(pads, "cs_n"):
-            controls.append("cs_n")
         for name in controls:
             self.specials += \
                 Instance("OSERDESE2",
