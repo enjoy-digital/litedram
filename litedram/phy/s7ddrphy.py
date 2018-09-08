@@ -170,7 +170,7 @@ class S7DDRPHY(Module, AutoCSR):
                         p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
                         p_SERDES_MODE="MASTER",
 
-                        o_OQ=pads.ba[i],
+                        o_OQ=pads.cs_n[i],
                         i_OCE=1,
                         i_RST=ResetSignal(),
                         i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),

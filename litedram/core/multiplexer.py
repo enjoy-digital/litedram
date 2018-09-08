@@ -95,13 +95,13 @@ class _Steerer(Module):
 
         for phase, sel in zip(dfi.phases, self.sel):
             self.comb += phase.cke.eq(1)
-            if hasattr(phase, "odt"):
-                self.comb += phase.odt.eq(1) # FIXME: constant for multi-rank?
             if hasattr(phase, "reset_n"):
                 self.comb += phase.reset_n.eq(1)
 
             nranks = len(phase.cs_n)
             rankbits = log2_int(nranks)
+            if hasattr(phase, "odt"):
+                self.comb += phase.odt.eq(2**rankbits - 1) # FIXME: dynamic drive for multi-rank
             if rankbits:
                 rank_decoder = Decoder(rankbits)
                 self.submodules += rank_decoder
