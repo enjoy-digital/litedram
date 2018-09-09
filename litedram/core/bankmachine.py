@@ -27,14 +27,14 @@ class _AddressSlicer:
 
 
 class BankMachine(Module):
-    def __init__(self, n, aw, address_align, settings):
+    def __init__(self, n, aw, address_align, nranks, settings):
         self.req = req = Record(cmd_layout(aw))
         self.refresh_req = Signal()
         self.refresh_gnt = Signal()
         self.ras_allowed = ras_allowed = Signal()
         self.cas_allowed = cas_allowed = Signal()
         a = settings.geom.addressbits
-        ba = settings.geom.bankbits
+        ba = settings.geom.bankbits + log2_int(nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
 
         # # #

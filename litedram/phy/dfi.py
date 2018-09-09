@@ -2,12 +2,12 @@ from migen import *
 from migen.genlib.record import *
 
 
-def phase_cmd_description(addressbits, bankbits):
+def phase_cmd_description(addressbits, bankbits, nranks):
     return [
         ("address", addressbits, DIR_M_TO_S),
         ("bank",       bankbits, DIR_M_TO_S),
         ("cas_n",             1, DIR_M_TO_S),
-        ("cs_n",              1, DIR_M_TO_S),
+        ("cs_n",        nranks, DIR_M_TO_S),
         ("ras_n",             1, DIR_M_TO_S),
         ("we_n",              1, DIR_M_TO_S),
         ("cke",               1, DIR_M_TO_S),
@@ -32,21 +32,21 @@ def phase_rddata_description(databits):
     ]
 
 
-def phase_description(addressbits, bankbits, databits):
-    r = phase_cmd_description(addressbits, bankbits)
+def phase_description(addressbits, bankbits, nranks, databits):
+    r = phase_cmd_description(addressbits, bankbits, nranks)
     r += phase_wrdata_description(databits)
     r += phase_rddata_description(databits)
     return r
 
 
 class Interface(Record):
-    def __init__(self, addressbits, bankbits, databits, nphases=1):
-        layout = [("p"+str(i), phase_description(addressbits, bankbits, databits)) for i in range(nphases)]
+    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
+        layout = [("p"+str(i), phase_description(addressbits, bankbits, nranks, databits)) for i in range(nphases)]
         Record.__init__(self, layout)
         self.phases = [getattr(self, "p"+str(i)) for i in range(nphases)]
         for p in self.phases:
             p.cas_n.reset = 1
-            p.cs_n.reset = 1
+            p.cs_n.reset = (2**nranks-1)
             p.ras_n.reset = 1
             p.we_n.reset = 1
 

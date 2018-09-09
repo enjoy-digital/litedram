@@ -17,12 +17,12 @@ class PhaseInjector(Module, AutoCSR):
 
         self.comb += [
             If(self._command_issue.re,
-                phase.cs_n.eq(~self._command.storage[0]),
+                phase.cs_n.eq(Replicate(~self._command.storage[0], len(phase.cs_n))),
                 phase.we_n.eq(~self._command.storage[1]),
                 phase.cas_n.eq(~self._command.storage[2]),
                 phase.ras_n.eq(~self._command.storage[3])
             ).Else(
-                phase.cs_n.eq(1),
+                phase.cs_n.eq(Replicate(1, len(phase.cs_n))),
                 phase.we_n.eq(1),
                 phase.cas_n.eq(1),
                 phase.ras_n.eq(1)
@@ -38,10 +38,10 @@ class PhaseInjector(Module, AutoCSR):
 
 
 class DFIInjector(Module, AutoCSR):
-    def __init__(self, addressbits, bankbits, databits, nphases=1):
-        inti = dfi.Interface(addressbits, bankbits, databits, nphases)
-        self.slave = dfi.Interface(addressbits, bankbits, databits, nphases)
-        self.master = dfi.Interface(addressbits, bankbits, databits, nphases)
+    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
+        inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        self.slave = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        self.master = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
 
         self._control = CSRStorage(4)  # sel, cke, odt, reset_n
 

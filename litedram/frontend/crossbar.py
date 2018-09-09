@@ -17,11 +17,13 @@ class LiteDRAMCrossbar(Module):
 
         self.rca_bits = controller.address_width
         self.nbanks = controller.nbanks
+        self.nranks = controller.nranks
         self.cmd_buffer_depth = controller.settings.cmd_buffer_depth
         self.read_latency = controller.settings.phy.read_latency + 1
         self.write_latency = controller.settings.phy.write_latency + 1
 
         self.bank_bits = log2_int(self.nbanks, False)
+        self.rank_bits = log2_int(self.nranks, False)
 
         self.masters = []
 
@@ -42,7 +44,7 @@ class LiteDRAMCrossbar(Module):
             data_width = self.controller.data_width
 
         # crossbar port
-        port = LiteDRAMNativePort(mode, self.rca_bits + self.bank_bits, self.controller.data_width, "sys", len(self.masters), with_reordering)
+        port = LiteDRAMNativePort(mode, self.rca_bits + self.bank_bits - self.rank_bits, self.controller.data_width, "sys", len(self.masters), with_reordering)
         self.masters.append(port)
 
         # clock domain crossing
@@ -177,8 +179,8 @@ class LiteDRAMCrossbar(Module):
                 self.comb += master.wdata.bank.eq(wbank)
 
     def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
-        m_ba = []    # bank address
-        m_rca = []    # row and column address
+        m_ba = [] # bank address
+        m_rca = [] # row and column address
         for master in self.masters:
             cba = Signal(self.bank_bits)
             rca = Signal(self.rca_bits)

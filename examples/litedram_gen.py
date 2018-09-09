@@ -72,7 +72,8 @@ def get_dram_ios(core_config):
             Subsignal("clk_p", Pins("X")),
             Subsignal("clk_n", Pins("X")),
             Subsignal("cke", Pins("X")),
-            Subsignal("odt", Pins("X")),
+            Subsignal("odt", Pins(
+                "X "*core_config["sdram_rank_nb"])),
             Subsignal("reset_n", Pins("X"))
         ),
     ]
