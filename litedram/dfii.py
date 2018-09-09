@@ -55,6 +55,7 @@ class DFIInjector(Module, AutoCSR):
             ).Else(
                 inti.connect(self.master)
             )
-        self.comb += [phase.cke.eq(self._control.storage[1]) for phase in inti.phases]
-        self.comb += [phase.odt.eq(self._control.storage[2]) for phase in inti.phases if hasattr(phase, "odt")]
+        for i in range(nranks):
+            self.comb += [phase.cke[i].eq(self._control.storage[1]) for phase in inti.phases]
+            self.comb += [phase.odt[i].eq(self._control.storage[2]) for phase in inti.phases if hasattr(phase, "odt")]
         self.comb += [phase.reset_n.eq(self._control.storage[3]) for phase in inti.phases if hasattr(phase, "reset_n")]

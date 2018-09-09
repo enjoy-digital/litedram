@@ -161,42 +161,28 @@ class S7DDRPHY(Module, AutoCSR):
                     i_D5=self.dfi.phases[2].bank[i], i_D6=self.dfi.phases[2].bank[i],
                     i_D7=self.dfi.phases[3].bank[i], i_D8=self.dfi.phases[3].bank[i]
                 )
+        controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
+        if hasattr(pads, "reset_n"):
+            controls.append("reset_n")
         if hasattr(pads, "cs_n"):
-            for i in range(nranks):
+            controls.append("reset_n")
+        for name in controls:
+            for i in range(len(getattr(pads, name))):
                 self.specials += \
                     Instance("OSERDESE2",
                         p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
                         p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
                         p_SERDES_MODE="MASTER",
 
-                        o_OQ=pads.cs_n[i],
+                        o_OQ=getattr(pads, name)[i],
                         i_OCE=1,
                         i_RST=ResetSignal(),
                         i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
-                        i_D1=self.dfi.phases[0].cs_n[i], i_D2=self.dfi.phases[0].cs_n[i],
-                        i_D3=self.dfi.phases[1].cs_n[i], i_D4=self.dfi.phases[1].cs_n[i],
-                        i_D5=self.dfi.phases[2].cs_n[i], i_D6=self.dfi.phases[2].cs_n[i],
-                        i_D7=self.dfi.phases[3].cs_n[i], i_D8=self.dfi.phases[3].cs_n[i]
+                        i_D1=getattr(self.dfi.phases[0], name)[i], i_D2=getattr(self.dfi.phases[0], name)[i],
+                        i_D3=getattr(self.dfi.phases[1], name)[i], i_D4=getattr(self.dfi.phases[1], name)[i],
+                        i_D5=getattr(self.dfi.phases[2], name)[i], i_D6=getattr(self.dfi.phases[2], name)[i],
+                        i_D7=getattr(self.dfi.phases[3], name)[i], i_D8=getattr(self.dfi.phases[3], name)[i]
                     )
-        controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
-        if hasattr(pads, "reset_n"):
-            controls.append("reset_n")
-        for name in controls:
-            self.specials += \
-                Instance("OSERDESE2",
-                   p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
-                   p_DATA_RATE_OQ="DDR", p_DATA_RATE_TQ="BUF",
-                   p_SERDES_MODE="MASTER",
-
-                   o_OQ=getattr(pads, name),
-                   i_OCE=1,
-                   i_RST=ResetSignal(),
-                   i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
-                   i_D1=getattr(self.dfi.phases[0], name), i_D2=getattr(self.dfi.phases[0], name),
-                   i_D3=getattr(self.dfi.phases[1], name), i_D4=getattr(self.dfi.phases[1], name),
-                   i_D5=getattr(self.dfi.phases[2], name), i_D6=getattr(self.dfi.phases[2], name),
-                   i_D7=getattr(self.dfi.phases[3], name), i_D8=getattr(self.dfi.phases[3], name)
-                )
 
         # DQS and DM
         oe_dqs = Signal()

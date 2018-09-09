@@ -7,11 +7,11 @@ def phase_cmd_description(addressbits, bankbits, nranks):
         ("address", addressbits, DIR_M_TO_S),
         ("bank",       bankbits, DIR_M_TO_S),
         ("cas_n",             1, DIR_M_TO_S),
-        ("cs_n",        nranks, DIR_M_TO_S),
+        ("cs_n",         nranks, DIR_M_TO_S),
         ("ras_n",             1, DIR_M_TO_S),
         ("we_n",              1, DIR_M_TO_S),
-        ("cke",               1, DIR_M_TO_S),
-        ("odt",               1, DIR_M_TO_S),
+        ("cke",          nranks, DIR_M_TO_S),
+        ("odt",          nranks, DIR_M_TO_S),
         ("reset_n",           1, DIR_M_TO_S)
     ]
 
