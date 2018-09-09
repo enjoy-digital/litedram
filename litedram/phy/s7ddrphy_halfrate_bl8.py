@@ -43,7 +43,6 @@ def get_sys_phases(nphases, sys_latency, cas_latency):
 
 class S7DDRPHY(Module, AutoCSR):
     def __init__(self, pads, with_odelay, memtype="DDR3", nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6):
-        assert not (memtype == "DDR3" and nphases == 2) # FIXME: Needs BL8 support for nphases=2
         tck = 2/(2*nphases*sys_clk_freq)
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
@@ -87,7 +86,7 @@ class S7DDRPHY(Module, AutoCSR):
         wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
         self.settings = PhySettings(
             memtype=memtype,
-            dfi_databits=2*databits,
+            dfi_databits=4*databits,
             nranks=nranks,
             nphases=nphases,
             rdphase=rdphase,
@@ -96,13 +95,15 @@ class S7DDRPHY(Module, AutoCSR):
             wrcmdphase=wrcmdphase,
             cl=cl,
             cwl=cwl,
-            read_latency=2 + cl_sys_latency + 2,
+            read_latency=2 + cl_sys_latency + 2 + log2_int(4//nphases),
             write_latency=cwl_sys_latency
         )
 
-        self.dfi = Interface(addressbits, bankbits, nranks, 2*databits, 4)
+        self.dfi = Interface(addressbits, bankbits, nranks, 4*databits, 4)
 
         # # #
+
+        bl8_sel = Signal()
 
         # Clock
         ddr_clk = "sys2x" if nphases == 2 else "sys4x"
@@ -227,6 +228,22 @@ class S7DDRPHY(Module, AutoCSR):
 
         for i in range(databits//8):
             dm_o_nodelay = Signal()
+            dm_data = Signal(8)
+            dm_data_d = Signal(8)
+            dm_data_muxed = Signal(4)
+            self.comb += dm_data.eq(Cat(
+                self.dfi.phases[0].wrdata_mask[0*databits//8+i], self.dfi.phases[0].wrdata_mask[1*databits//8+i],
+                self.dfi.phases[0].wrdata_mask[2*databits//8+i], self.dfi.phases[0].wrdata_mask[3*databits//8+i],
+                self.dfi.phases[1].wrdata_mask[0*databits//8+i], self.dfi.phases[1].wrdata_mask[1*databits//8+i],
+                self.dfi.phases[1].wrdata_mask[2*databits//8+i], self.dfi.phases[1].wrdata_mask[3*databits//8+i]),
+            )
+            self.sync += dm_data_d.eq(dm_data)
+            self.comb += \
+                If(bl8_sel,
+                    dm_data_muxed.eq(dm_data_d[4:])
+                ).Else(
+                    dm_data_muxed.eq(dm_data[:4])
+                )
             self.specials += \
                 Instance("OSERDESE2",
                     p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
@@ -237,10 +254,8 @@ class S7DDRPHY(Module, AutoCSR):
                     i_OCE=1,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
-                    i_D1=self.dfi.phases[0].wrdata_mask[i], i_D2=self.dfi.phases[0].wrdata_mask[databits//8+i],
-                    i_D3=self.dfi.phases[1].wrdata_mask[i], i_D4=self.dfi.phases[1].wrdata_mask[databits//8+i],
-                    i_D5=self.dfi.phases[2].wrdata_mask[i], i_D6=self.dfi.phases[2].wrdata_mask[databits//8+i],
-                    i_D7=self.dfi.phases[3].wrdata_mask[i], i_D8=self.dfi.phases[3].wrdata_mask[databits//8+i]
+                    i_D1=dm_data_muxed[0], i_D2=dm_data_muxed[1],
+                    i_D3=dm_data_muxed[2], i_D4=dm_data_muxed[3]
                 )
             if with_odelay:
                 self.specials += \
@@ -306,6 +321,22 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_nodelay = Signal()
             dq_i_delayed = Signal()
             dq_t = Signal()
+            dq_data = Signal(8)
+            dq_data_d = Signal(8)
+            dq_data_muxed = Signal(4)
+            self.comb += dq_data.eq(Cat(
+                self.dfi.phases[0].wrdata[0*databits+i], self.dfi.phases[0].wrdata[1*databits+i],
+                self.dfi.phases[0].wrdata[2*databits+i], self.dfi.phases[0].wrdata[3*databits+i],
+                self.dfi.phases[1].wrdata[0*databits+i], self.dfi.phases[1].wrdata[1*databits+i],
+                self.dfi.phases[1].wrdata[2*databits+i], self.dfi.phases[1].wrdata[3*databits+i])
+            )
+            self.sync += dq_data_d.eq(dq_data)
+            self.comb += \
+                If(bl8_sel,
+                    dq_data_muxed.eq(dq_data_d[4:])
+                ).Else(
+                    dq_data_muxed.eq(dq_data[:4])
+                )
             self.specials += \
                 Instance("OSERDESE2",
                     p_DATA_WIDTH=2*nphases, p_TRISTATE_WIDTH=1,
@@ -316,13 +347,12 @@ class S7DDRPHY(Module, AutoCSR):
                     i_OCE=1, i_TCE=1,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
-                    i_D1=self.dfi.phases[0].wrdata[i], i_D2=self.dfi.phases[0].wrdata[databits+i],
-                    i_D3=self.dfi.phases[1].wrdata[i], i_D4=self.dfi.phases[1].wrdata[databits+i],
-                    i_D5=self.dfi.phases[2].wrdata[i], i_D6=self.dfi.phases[2].wrdata[databits+i],
-                    i_D7=self.dfi.phases[3].wrdata[i], i_D8=self.dfi.phases[3].wrdata[databits+i],
+                    i_D1=dq_data_muxed[0], i_D2=dq_data_muxed[1],
+                    i_D3=dq_data_muxed[2], i_D4=dq_data_muxed[3],
                     i_T1=~oe_dq
                 )
             dq_i_data = Signal(8)
+            dq_i_data_d = Signal(8)
             self.specials += \
                 Instance("ISERDESE2",
                     p_DATA_WIDTH=2*nphases, p_DATA_RATE="DDR",
@@ -339,18 +369,13 @@ class S7DDRPHY(Module, AutoCSR):
                     o_Q4=dq_i_data[3], o_Q3=dq_i_data[2],
                     o_Q2=dq_i_data[1], o_Q1=dq_i_data[0]
                 )
-            if nphases == 2:
-                self.comb += [
-                    self.dfi.phases[0].rddata[i].eq(dq_i_data[3]), self.dfi.phases[0].rddata[databits+i].eq(dq_i_data[2]),
-                    self.dfi.phases[1].rddata[i].eq(dq_i_data[1]), self.dfi.phases[1].rddata[databits+i].eq(dq_i_data[0])
-                ]
-            else:
-                self.comb += [
-                    self.dfi.phases[0].rddata[i].eq(dq_i_data[7]), self.dfi.phases[0].rddata[databits+i].eq(dq_i_data[6]),
-                    self.dfi.phases[1].rddata[i].eq(dq_i_data[5]), self.dfi.phases[1].rddata[databits+i].eq(dq_i_data[4]),
-                    self.dfi.phases[2].rddata[i].eq(dq_i_data[3]), self.dfi.phases[2].rddata[databits+i].eq(dq_i_data[2]),
-                    self.dfi.phases[3].rddata[i].eq(dq_i_data[1]), self.dfi.phases[3].rddata[databits+i].eq(dq_i_data[0])
-                ]
+            self.sync += dq_i_data_d.eq(dq_i_data)
+            self.comb += [
+                self.dfi.phases[0].rddata[0*databits+i].eq(dq_i_data_d[3]), self.dfi.phases[0].rddata[1*databits+i].eq(dq_i_data_d[2]),
+                self.dfi.phases[0].rddata[2*databits+i].eq(dq_i_data_d[1]), self.dfi.phases[0].rddata[3*databits+i].eq(dq_i_data_d[0]),
+                self.dfi.phases[1].rddata[0*databits+i].eq(dq_i_data[3]), self.dfi.phases[1].rddata[1*databits+i].eq(dq_i_data[2]),
+                self.dfi.phases[1].rddata[2*databits+i].eq(dq_i_data[1]), self.dfi.phases[1].rddata[3*databits+i].eq(dq_i_data[0]),
+            ]
 
             if with_odelay:
                 self.specials += \
@@ -404,13 +429,14 @@ class S7DDRPHY(Module, AutoCSR):
                 for phase in self.dfi.phases]
 
         oe = Signal()
-        last_wrdata_en = Signal(cwl_sys_latency+2)
+        last_wrdata_en = Signal(cwl_sys_latency+3)
         wrphase = self.dfi.phases[self.settings.wrphase]
         self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en[:-1]))
         self.comb += oe.eq(
             last_wrdata_en[cwl_sys_latency-1] |
             last_wrdata_en[cwl_sys_latency] |
-            last_wrdata_en[cwl_sys_latency+1])
+            last_wrdata_en[cwl_sys_latency+1] |
+            last_wrdata_en[cwl_sys_latency+2])
         if with_odelay:
             self.sync += \
                 If(self._wlevel_en.storage,
@@ -424,6 +450,8 @@ class S7DDRPHY(Module, AutoCSR):
                 oe_dq.eq(oe)
             ]
 
+        self.sync += bl8_sel.eq(last_wrdata_en[cwl_sys_latency-1])
+
         # dqs preamble/postamble
         if memtype == "DDR2":
             dqs_sys_latency = cwl_sys_latency-1
@@ -432,8 +460,8 @@ class S7DDRPHY(Module, AutoCSR):
         self.comb += [
             dqs_preamble.eq(last_wrdata_en[dqs_sys_latency-1] &
                             ~last_wrdata_en[dqs_sys_latency]),
-            dqs_postamble.eq(last_wrdata_en[dqs_sys_latency+1] &
-                            ~last_wrdata_en[dqs_sys_latency]),
+            dqs_postamble.eq(last_wrdata_en[dqs_sys_latency+2] &
+                            ~last_wrdata_en[dqs_sys_latency+1]),
         ]
 
 
