@@ -110,7 +110,7 @@ class SDRAMPHYModel(Module):
         self.settings = settings
         self.module = module
 
-        self.dfi = Interface(addressbits, bankbits, self.settings.dfi_databits, self.settings.nphases)
+        self.dfi = Interface(addressbits, bankbits, self.settings.nranks, self.settings.dfi_databits, self.settings.nphases)
 
         # # #
 
