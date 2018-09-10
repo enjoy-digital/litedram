@@ -100,7 +100,8 @@ class _Steerer(Module):
                 self.comb += phase.reset_n.eq(1)
             self.comb += phase.cke.eq(2**rankbits - 1)
             if hasattr(phase, "odt"):
-                self.comb += phase.odt.eq(2**rankbits - 1) # FIXME: dynamic drive for multi-rank
+                # FIXME: add dynamic drive for multi-rank (will be needed for high frequencies)
+                self.comb += phase.odt.eq(2**rankbits - 1)
             if rankbits:
                 rank_decoder = Decoder(rankbits)
                 self.submodules += rank_decoder
