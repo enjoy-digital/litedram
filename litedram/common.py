@@ -6,14 +6,14 @@ bankbits_max = 3
 
 
 class PhySettings:
-    def __init__(self, memtype, nranks, dfi_databits,
+    def __init__(self, memtype, dfi_databits,
                  nphases,
                  rdphase, wrphase,
                  rdcmdphase, wrcmdphase,
-                 cl, read_latency, write_latency, cwl=None):
+                 cl, read_latency, write_latency, nranks=1, cwl=None):
         self.memtype = memtype
-        self.nranks = nranks
         self.dfi_databits = dfi_databits
+        self.nranks = nranks
 
         self.nphases = nphases
         self.rdphase = rdphase
