@@ -98,10 +98,10 @@ class _Steerer(Module):
             rankbits = log2_int(nranks)
             if hasattr(phase, "reset_n"):
                 self.comb += phase.reset_n.eq(1)
-            self.comb += phase.cke.eq(2**rankbits - 1)
+            self.comb += phase.cke.eq(Replicate(Signal(reset=1), nranks))
             if hasattr(phase, "odt"):
                 # FIXME: add dynamic drive for multi-rank (will be needed for high frequencies)
-                self.comb += phase.odt.eq(2**rankbits - 1)
+                self.comb += phase.odt.eq(Replicate(Signal(reset=1), nranks))
             if rankbits:
                 rank_decoder = Decoder(rankbits)
                 self.submodules += rank_decoder
