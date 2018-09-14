@@ -166,7 +166,7 @@ class S7DDRPHY(Module, AutoCSR):
         if hasattr(pads, "reset_n"):
             controls.append("reset_n")
         if hasattr(pads, "cs_n"):
-            controls.append("reset_n")
+            controls.append("cs_n")
         for name in controls:
             for i in range(len(getattr(pads, name))):
                 self.specials += \
