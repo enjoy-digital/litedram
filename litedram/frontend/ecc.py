@@ -140,3 +140,58 @@ class ECCDecoder(SECDEC, Module):
                 )
             )
         ]
+
+
+class LiteDRAMNativePortECC(Module):
+    def __init__(self, port_from, port_to):
+        _ , n = compute_m_n(port_from.data_width//8)
+        assert port_to.data_width >= n + 1
+
+        self.clear_errors = clear_errors = Signal()
+        self.sec_errors = sec_errors = Signal(32)
+        self.dec_errors = dec_errors = Signal(32)
+
+        # # #
+
+        # cmd
+        self.comb += port_from.cmd.connect(port_to.cmd)
+
+        # wdata (ecc encoding)
+        for i in range(8):
+            encoder = ECCEncoder(port_from.data_width//8)
+            self.submodules += encoder
+            self.comb += [
+                port_from.wdata.connect(port_to.wdata, omit={"data", "we"}),
+                encoder.i.eq(port_from.wdata.data[i*port_from.data_width//8:(i+1)*port_from.data_width//8]),
+                port_to.wdata.data[i*port_to.data_width//8:(i+1)*port_to.data_width//8].eq(encoder.o)
+            ]
+        self.comb += port_to.wdata.we.eq(2**len(port_to.wdata.we)-1) # FIXME: how to handle we?
+
+        # rdata (ecc decoding)
+        sec = Signal(8)
+        dec = Signal(8)
+        for i in range(8):
+            decoder = ECCDecoder(port_from.data_width//8)
+            self.submodules += decoder
+            self.comb += [
+                port_to.rdata.connect(port_from.rdata, omit={"data", "we"}),
+                decoder.i.eq(port_to.rdata.data[i*port_to.data_width//8:(i+1)*port_to.data_width//8]),
+                port_from.rdata.data[i*port_from.data_width//8:(i+1)*port_from.data_width//8].eq(decoder.o),
+                sec[i].eq(decoder.sec),
+                dec[i].eq(decoder.dec)
+            ]
+
+        # errors count
+        self.sync += [
+            If(clear_errors,
+                sec_errors.eq(0),
+                dec_errors.eq(0)
+            ).Else(
+                If(sec_errors != (2**len(sec_errors) - 1),
+                    If(sec != 0, sec_errors.eq(sec_errors + 1))
+                ),
+                If(dec_errors != (2**len(dec_errors) - 1),
+                    If(dec != 0, dec_errors.eq(dec_errors + 1))
+                )
+            )
+        ]
