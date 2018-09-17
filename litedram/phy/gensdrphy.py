@@ -33,11 +33,13 @@ class GENSDRPHY(Module):
     def __init__(self, pads):
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
+        nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits = len(pads.dq)
 
         self.settings = PhySettings(
             memtype="SDR",
             dfi_databits=databits,
+            nranks=nranks,
             nphases=1,
             rdphase=0,
             wrphase=0,
@@ -48,7 +50,7 @@ class GENSDRPHY(Module):
             write_latency=0
         )
 
-        self.dfi = Interface(addressbits, bankbits, databits)
+        self.dfi = Interface(addressbits, bankbits, nranks, databits)
 
         # # #
 

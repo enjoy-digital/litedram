@@ -33,6 +33,7 @@ class S6HalfRateDDRPHY(Module):
             raise NotImplementedError("S6HalfRateDDRPHY only supports DDR, LPDDR, DDR2 and DDR3")
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
+        nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits = len(pads.dq)
         nphases = 2
 
@@ -40,6 +41,7 @@ class S6HalfRateDDRPHY(Module):
             self.settings = PhySettings(
                 memtype="DDR3",
                 dfi_databits=2*databits,
+                nranks=nranks,
                 nphases=nphases,
                 rdphase=0,
                 wrphase=1,
@@ -54,6 +56,7 @@ class S6HalfRateDDRPHY(Module):
             self.settings = PhySettings(
                 memtype=memtype,
                 dfi_databits=2*databits,
+                nranks=nranks,
                 nphases=nphases,
                 rdphase=0,
                 wrphase=1,
@@ -64,7 +67,7 @@ class S6HalfRateDDRPHY(Module):
                 write_latency=0
             )
 
-        self.dfi = Interface(addressbits, bankbits, 2*databits, nphases)
+        self.dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
         self.clk4x_wr_strb = Signal()
         self.clk4x_rd_strb = Signal()
 
@@ -407,12 +410,14 @@ class S6QuarterRateDDRPHY(Module):
 
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
+        nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits = len(pads.dq)
         nphases = 4
 
         self.settings = PhySettings(
             memtype="DDR3",
             dfi_databits=2*databits,
+            nranks=nranks,
             nphases=nphases,
             rdphase=0,
             wrphase=1,
@@ -424,7 +429,7 @@ class S6QuarterRateDDRPHY(Module):
             write_latency=2//2
         )
 
-        self.dfi = Interface(addressbits, bankbits, 2*databits, nphases)
+        self.dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
         self.clk8x_wr_strb = half_rate_phy.clk4x_wr_strb
         self.clk8x_rd_strb = half_rate_phy.clk4x_rd_strb
 

@@ -14,6 +14,7 @@ class KUSDDRPHY(Module, AutoCSR):
     def __init__(self, pads):
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
+        nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits = len(pads.dq)
         nphases = 4
 
@@ -37,6 +38,7 @@ class KUSDDRPHY(Module, AutoCSR):
         self.settings = PhySettings(
             memtype="DDR3",
             dfi_databits=2*databits,
+            nranks=nranks,
             nphases=nphases,
             rdphase=0,
             wrphase=2,
@@ -48,7 +50,7 @@ class KUSDDRPHY(Module, AutoCSR):
             write_latency=2
         )
 
-        self.dfi = Interface(addressbits, bankbits, 2*databits, nphases)
+        self.dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
 
         # # #
 
