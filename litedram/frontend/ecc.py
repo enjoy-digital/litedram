@@ -4,7 +4,9 @@ from operator import xor
 from migen import *
 
 from litex.soc.interconnect.csr import *
+from litex.soc.interconnect.stream import *
 
+from litedram.common import wdata_description, rdata_description
 
 def compute_m_n(k):
     m = 1
@@ -144,6 +146,45 @@ class ECCDecoder(SECDEC, Module):
         ]
 
 
+class LiteDRAMNativePortECCW(Module):
+    def __init__(self, data_width_from, data_width_to):
+        self.sink = sink = Endpoint(wdata_description(data_width_from, False))
+        self.source = source = Endpoint(wdata_description(data_width_to, False))
+
+        # # #
+
+        for i in range(8):
+            encoder = ECCEncoder(data_width_from//8)
+            self.submodules += encoder
+            self.comb += [
+                sink.connect(source, omit={"data", "we"}),
+                encoder.i.eq(sink.data[i*data_width_from//8:(i+1)*data_width_from//8]),
+                source.data[i*data_width_to//8:(i+1)*data_width_to//8].eq(encoder.o)
+            ]
+        self.comb += source.we.eq(2**len(source.we)-1) # FIXME: how to handle we?
+
+
+class LiteDRAMNativePortECCR(Module):
+    def __init__(self, data_width_from, data_width_to):
+        self.sink = sink = Endpoint(rdata_description(data_width_to, False))
+        self.source = source = Endpoint(rdata_description(data_width_from, False))
+        self.sec = Signal(8)
+        self.dec = Signal(8)
+
+        # # #
+
+        for i in range(8):
+            decoder = ECCDecoder(data_width_from//8)
+            self.submodules += decoder
+            self.comb += [
+                sink.connect(source, omit={"data"}),
+                decoder.i.eq(sink.data[i*data_width_to//8:(i+1)*data_width_to//8]),
+                source.data[i*data_width_from//8:(i+1)*data_width_from//8].eq(decoder.o),
+                self.sec[i].eq(decoder.sec),
+                self.dec[i].eq(decoder.dec)
+            ]
+
+
 class LiteDRAMNativePortECC(Module, AutoCSR):
     def __init__(self, port_from, port_to):
         _ , n = compute_m_n(port_from.data_width//8)
@@ -159,29 +200,22 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         self.comb += port_from.cmd.connect(port_to.cmd)
 
         # wdata (ecc encoding)
-        for i in range(8):
-            encoder = ECCEncoder(port_from.data_width//8)
-            self.submodules += encoder
-            self.comb += [
-                port_from.wdata.connect(port_to.wdata, omit={"data", "we"}),
-                encoder.i.eq(port_from.wdata.data[i*port_from.data_width//8:(i+1)*port_from.data_width//8]),
-                port_to.wdata.data[i*port_to.data_width//8:(i+1)*port_to.data_width//8].eq(encoder.o)
-            ]
-        self.comb += port_to.wdata.we.eq(2**len(port_to.wdata.we)-1) # FIXME: how to handle we?
+        ecc_wdata = LiteDRAMNativePortECCW(port_from.data_width, port_to.data_width)
+        ecc_wdata = BufferizeEndpoints({"source": DIR_SOURCE})(ecc_wdata)
+        self.submodules += ecc_wdata
+        self.comb += [
+            port_from.wdata.connect(ecc_wdata.sink),
+            ecc_wdata.source.connect(port_to.wdata)
+        ]
 
         # rdata (ecc decoding)
-        sec = Signal(8)
-        dec = Signal(8)
-        for i in range(8):
-            decoder = ECCDecoder(port_from.data_width//8)
-            self.submodules += decoder
-            self.comb += [
-                port_to.rdata.connect(port_from.rdata, omit={"data", "we"}),
-                decoder.i.eq(port_to.rdata.data[i*port_to.data_width//8:(i+1)*port_to.data_width//8]),
-                port_from.rdata.data[i*port_from.data_width//8:(i+1)*port_from.data_width//8].eq(decoder.o),
-                sec[i].eq(decoder.sec),
-                dec[i].eq(decoder.dec)
-            ]
+        ecc_rdata = LiteDRAMNativePortECCR(port_from.data_width, port_to.data_width)
+        ecc_rdata = BufferizeEndpoints({"source": DIR_SOURCE})(ecc_rdata)
+        self.submodules += ecc_rdata
+        self.comb += [
+            port_to.rdata.connect(ecc_rdata.sink),
+            ecc_rdata.source.connect(port_from.rdata)
+        ]
 
         # errors count
         sec_errors = self.sec_errors.status
@@ -192,10 +226,10 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
                 dec_errors.eq(0)
             ).Else(
                 If(sec_errors != (2**len(sec_errors) - 1),
-                    If(sec != 0, sec_errors.eq(sec_errors + 1))
+                    If(ecc_rdata.sec != 0, sec_errors.eq(sec_errors + 1))
                 ),
                 If(dec_errors != (2**len(dec_errors) - 1),
-                    If(dec != 0, dec_errors.eq(dec_errors + 1))
+                    If(ecc_rdata.dec != 0, dec_errors.eq(dec_errors + 1))
                 )
             )
         ]
