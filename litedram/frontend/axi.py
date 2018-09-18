@@ -10,7 +10,6 @@ Features:
 - ID support (configurable width).
 
 Limitations:
-- Write response always supposed to be ready.
 - Response always okay.
 - No reordering.
 """
@@ -164,14 +163,18 @@ class LiteDRAMAXI2NativeW(Module):
 
         # Write ID Buffer & Response
         id_buffer = stream.SyncFIFO([("id", axi.id_width)], buffer_depth)
-        self.submodules += id_buffer
+        resp_buffer = stream.SyncFIFO([("id", axi.id_width), ("resp", 2)], buffer_depth)
+        self.submodules += id_buffer, resp_buffer
         self.comb += [
             id_buffer.sink.valid.eq(aw.valid & aw.ready),
             id_buffer.sink.id.eq(aw.id),
-            axi.b.valid.eq(axi.w.valid & axi.w.ready), # Note: Write response always supposed to be ready.
-            axi.b.resp.eq(resp_types["okay"]),
-            axi.b.id.eq(id_buffer.source.id),
-            id_buffer.source.ready.eq(axi.b.valid & axi.b.ready)
+            If(axi.w.valid & axi.w.last & axi.w.ready,
+                resp_buffer.sink.valid.eq(1),
+                resp_buffer.sink.resp.eq(resp_types["okay"]),
+                resp_buffer.sink.id.eq(id_buffer.source.id),
+                id_buffer.source.ready.eq(1)
+            ),
+            resp_buffer.source.connect(axi.b)
         ]
 
         # Command

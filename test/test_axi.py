@@ -38,6 +38,7 @@ class TestAXI(unittest.TestCase):
                 yield
                 # send data
                 yield axi_port.w.valid.eq(1)
+                yield axi_port.w.last.eq(1)
                 yield axi_port.w.data.eq(write.data)
                 yield
                 while (yield axi_port.w.ready) == 0:
