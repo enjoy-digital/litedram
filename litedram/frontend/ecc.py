@@ -3,6 +3,8 @@ from operator import xor
 
 from migen import *
 
+from litex.soc.interconnect.csr import *
+
 
 def compute_m_n(k):
     m = 1
@@ -142,14 +144,14 @@ class ECCDecoder(SECDEC, Module):
         ]
 
 
-class LiteDRAMNativePortECC(Module):
+class LiteDRAMNativePortECC(Module, AutoCSR):
     def __init__(self, port_from, port_to):
         _ , n = compute_m_n(port_from.data_width//8)
-        assert port_to.data_width >= n + 1
+        assert port_to.data_width >= (n + 1)*8
 
-        self.clear_errors = clear_errors = Signal()
-        self.sec_errors = sec_errors = Signal(32)
-        self.dec_errors = dec_errors = Signal(32)
+        self.clear_errors = CSR()
+        self.sec_errors = CSRStatus(32)
+        self.dec_errors = CSRStatus(32)
 
         # # #
 
@@ -182,8 +184,10 @@ class LiteDRAMNativePortECC(Module):
             ]
 
         # errors count
+        sec_errors = self.sec_errors.status
+        dec_errors = self.dec_errors.status
         self.sync += [
-            If(clear_errors,
+            If(self.clear_errors.re,
                 sec_errors.eq(0),
                 dec_errors.eq(0)
             ).Else(
