@@ -88,7 +88,8 @@ class LiteDRAMAXIBurst2Beat(Module):
 
         # convert burst size to bytes
         cases = {}
-        for i in range(11):
+        cases["default"] = size.eq(1024)
+        for i in range(10):
             cases[i] = size.eq(2**i)
         self.comb += Case(ax_burst.size, cases)
 
@@ -101,17 +102,19 @@ class LiteDRAMAXIBurst2Beat(Module):
             ax_beat.id.eq(ax_burst.id),
             If(ax_beat.valid & ax_beat.ready,
                 If(ax_burst.len != 0,
-                    NextValue(count, 0),
-                    NextValue(offset, size),
                     NextState("BURST2BEAT")
                 ).Else(
                     ax_burst.ready.eq(1)
                 )
-            )
+            ),
+            NextValue(count, 1),
+            NextValue(offset, size),
         )
+        wrap_offset = Signal(8 + 4)
+        self.sync += wrap_offset.eq((ax_burst.len - 1)*size)
         fsm.act("BURST2BEAT",
             ax_beat.valid.eq(1),
-            ax_beat.last.eq(count == (ax_burst.len - 1)),
+            ax_beat.last.eq(count == ax_burst.len),
             If((ax_burst.burst == burst_types["incr"]) |
                (ax_burst.burst == burst_types["wrap"]),
                 ax_beat.addr.eq(ax_burst.addr + offset)
@@ -123,13 +126,12 @@ class LiteDRAMAXIBurst2Beat(Module):
                 If(ax_beat.last,
                     ax_burst.ready.eq(1),
                     NextState("IDLE")
-                ).Else(
-                    NextValue(count, count + 1),
-                    NextValue(offset, offset + size),
-                    If(ax_burst.burst == burst_types["wrap"],
-                        If(offset == (ax_burst.len - 1)*size,
-                            NextValue(offset, 0)
-                        )
+                ),
+                NextValue(count, count + 1),
+                NextValue(offset, offset + size),
+                If(ax_burst.burst == burst_types["wrap"],
+                    If(offset == wrap_offset,
+                        NextValue(offset, 0)
                     )
                 )
             )
