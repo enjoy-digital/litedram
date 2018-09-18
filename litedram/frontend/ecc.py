@@ -107,6 +107,7 @@ class ECCDecoder(SECDEC, Module):
     def __init__(self, k):
         m, n = compute_m_n(k)
 
+        self.enable = Signal()
         self.i = i = Signal(n + 1)
         self.o = o = Signal(k)
 
@@ -125,6 +126,7 @@ class ECCDecoder(SECDEC, Module):
         self.comb += codeword.eq(i[1:])
         # compute_syndrome
         self.compute_syndrome(codeword, syndrome)
+        self.comb += If(~self.enable, syndrome.eq(0))
         # locate/correct codeword error bit if any and flip it
         cases = {}
         cases["default"] = codeword_c.eq(codeword)
@@ -168,6 +170,7 @@ class LiteDRAMNativePortECCR(Module):
     def __init__(self, data_width_from, data_width_to):
         self.sink = sink = Endpoint(rdata_description(data_width_to, False))
         self.source = source = Endpoint(rdata_description(data_width_from, False))
+        self.enable = Signal()
         self.sec = Signal(8)
         self.dec = Signal(8)
 
@@ -177,6 +180,7 @@ class LiteDRAMNativePortECCR(Module):
             decoder = ECCDecoder(data_width_from//8)
             self.submodules += decoder
             self.comb += [
+                decoder.enable.eq(self.enable),
                 sink.connect(source, omit={"data"}),
                 decoder.i.eq(sink.data[i*data_width_to//8:(i+1)*data_width_to//8]),
                 source.data[i*data_width_from//8:(i+1)*data_width_from//8].eq(decoder.o),
@@ -190,6 +194,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         _ , n = compute_m_n(port_from.data_width//8)
         assert port_to.data_width >= (n + 1)*8
 
+        self.enable = CSRStorage()
         self.clear_errors = CSR()
         self.sec_errors = CSRStatus(32)
         self.dec_errors = CSRStatus(32)
@@ -213,6 +218,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         ecc_rdata = BufferizeEndpoints({"source": DIR_SOURCE})(ecc_rdata)
         self.submodules += ecc_rdata
         self.comb += [
+            ecc_rdata.enable.eq(self.enable.storage),
             port_to.rdata.connect(ecc_rdata.sink),
             ecc_rdata.source.connect(port_from.rdata)
         ]
