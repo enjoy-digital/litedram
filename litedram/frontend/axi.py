@@ -145,8 +145,6 @@ class LiteDRAMAXI2NativeW(Module):
 
         # # #
 
-        can_write = Signal()
-
         ashift = log2_int(port.data_width//8)
 
         # Burst to Beat
@@ -159,9 +157,6 @@ class LiteDRAMAXI2NativeW(Module):
         # Write Buffer
         w_buffer = stream.SyncFIFO(w_description(axi.data_width), buffer_depth)
         self.submodules += w_buffer
-
-        # Write Buffer reservation
-        self.comb += can_write.eq(w_buffer.sink.ready)
 
         # Write ID Buffer & Response
         id_buffer = stream.SyncFIFO([("id", axi.id_width)], buffer_depth)
@@ -181,10 +176,10 @@ class LiteDRAMAXI2NativeW(Module):
 
         # Command
         self.comb += [
-            self.cmd_request.eq(aw.valid & can_write),
+            self.cmd_request.eq(aw.valid),
             If(self.cmd_grant,
-                port.cmd.valid.eq(aw.valid & can_write),
-                aw.ready.eq(port.cmd.ready & can_write),
+                port.cmd.valid.eq(aw.valid),
+                aw.ready.eq(port.cmd.ready),
                 port.cmd.we.eq(1),
                 port.cmd.addr.eq(aw.addr >> ashift)
             )
