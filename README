@@ -37,6 +37,7 @@ Frontend:
   - Native, AXI-MM or Wishbone user interface.
   - DMA reader/writer.
   - BIST.
+  - ECC (Error-correcting code)
 
 [> FPGA Proven
 ---------------
