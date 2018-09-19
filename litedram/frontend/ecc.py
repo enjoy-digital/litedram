@@ -195,9 +195,11 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         assert port_to.data_width >= (n + 1)*8
 
         self.enable = CSRStorage()
-        self.clear_errors = CSR()
+        self.clear = CSR()
         self.sec_errors = CSRStatus(32)
         self.dec_errors = CSRStatus(32)
+        self.sec_detected = sec_detected = Signal()
+        self.dec_detected = dec_detected = Signal()
 
         # # #
 
@@ -214,6 +216,8 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         ]
 
         # rdata (ecc decoding)
+        sec = Signal()
+        dec = Signal()
         ecc_rdata = LiteDRAMNativePortECCR(port_from.data_width, port_to.data_width)
         ecc_rdata = BufferizeEndpoints({"source": DIR_SOURCE})(ecc_rdata)
         self.submodules += ecc_rdata
@@ -227,15 +231,23 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         sec_errors = self.sec_errors.status
         dec_errors = self.dec_errors.status
         self.sync += [
-            If(self.clear_errors.re,
+            If(self.clear.re,
                 sec_errors.eq(0),
-                dec_errors.eq(0)
+                dec_errors.eq(0),
+                sec_detected.eq(0),
+                sec_detected.eq(0),
             ).Else(
                 If(sec_errors != (2**len(sec_errors) - 1),
-                    If(ecc_rdata.sec != 0, sec_errors.eq(sec_errors + 1))
+                    If(ecc_rdata.sec != 0,
+                        sec_detected.eq(1),
+                        sec_errors.eq(sec_errors + 1)
+                    )
                 ),
                 If(dec_errors != (2**len(dec_errors) - 1),
-                    If(ecc_rdata.dec != 0, dec_errors.eq(dec_errors + 1))
+                    If(ecc_rdata.dec != 0,
+                        dec_detected.eq(1),
+                        dec_errors.eq(dec_errors + 1)
+                    )
                 )
             )
         ]
