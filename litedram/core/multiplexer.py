@@ -226,7 +226,6 @@ class Multiplexer(Module, AutoCSR):
 
         # CAS control
         self.comb += cas_allowed.eq(tccdcon.ready)
-        self.comb += [bm.cas_allowed.eq(cas_allowed) for bm in bank_machines]
 
         # tWTR timing (Write to Read delay)
         self.submodules.twtrcon = twtrcon = tXXDController(
@@ -306,7 +305,7 @@ class Multiplexer(Module, AutoCSR):
             choose_req.want_reads.eq(1),
             choose_cmd.want_activates.eq(ras_allowed),
             choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
-            choose_req.cmd.ready.eq(1),
+            choose_req.cmd.ready.eq(cas_allowed),
             steerer_sel(steerer, "read"),
             If(write_available,
                 # TODO: switch only after several cycles of ~read_available?
