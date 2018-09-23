@@ -63,7 +63,9 @@ class _CommandChooser(Module):
                 If(cmd.valid & cmd.ready & (arbiter.grant == i),
                     request.ready.eq(1)
                 )
-        self.comb += arbiter.ce.eq(cmd.ready)
+	# Arbitrate if we're accepting commands, *or* if we are not but the current selection is not valid
+	#	This is to ensure that a valid command is selected when cmd.ready goes high
+        self.comb += arbiter.ce.eq(cmd.ready | ~cmd.valid)
 
     # helpers
     def accept(self):
@@ -91,7 +93,7 @@ class _Steerer(Module):
             if not hasattr(cmd, "valid"):
                 return 0
             else:
-                return cmd.valid & getattr(cmd, attr)
+                return cmd.valid & cmd.ready & getattr(cmd, attr)
 
         for phase, sel in zip(dfi.phases, self.sel):
             nranks = len(phase.cs_n)
@@ -114,9 +116,9 @@ class _Steerer(Module):
 
             self.sync += [
                 phase.address.eq(Array(cmd.a for cmd in commands)[sel]),
-                phase.cas_n.eq(~Array(cmd.cas for cmd in commands)[sel]),
-                phase.ras_n.eq(~Array(cmd.ras for cmd in commands)[sel]),
-                phase.we_n.eq(~Array(cmd.we for cmd in commands)[sel])
+                phase.cas_n.eq(~Array(valid_and(cmd, "cas") for cmd in commands)[sel]),
+                phase.ras_n.eq(~Array(valid_and(cmd, "ras") for cmd in commands)[sel]),
+                phase.we_n.eq(~Array(valid_and(cmd, "we") for cmd in commands)[sel])
             ]
 
             rddata_ens = Array(valid_and(cmd, "is_read") for cmd in commands)
@@ -218,7 +220,6 @@ class Multiplexer(Module, AutoCSR):
 
         # RAS control
         self.comb += ras_allowed.eq(trrdcon.ready & tfawcon.ready)
-        self.comb += [bm.ras_allowed.eq(ras_allowed) for bm in bank_machines]
 
         # tCCD timing (Column to Column delay)
         self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
@@ -226,7 +227,6 @@ class Multiplexer(Module, AutoCSR):
 
         # CAS control
         self.comb += cas_allowed.eq(tccdcon.ready)
-        self.comb += [bm.cas_allowed.eq(cas_allowed) for bm in bank_machines]
 
         # tWTR timing (Write to Read delay)
         self.submodules.twtrcon = twtrcon = tXXDController(
@@ -306,7 +306,7 @@ class Multiplexer(Module, AutoCSR):
             choose_req.want_reads.eq(1),
             choose_cmd.want_activates.eq(ras_allowed),
             choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
-            choose_req.cmd.ready.eq(1),
+            choose_req.cmd.ready.eq(cas_allowed),
             steerer_sel(steerer, "read"),
             If(write_available,
                 # TODO: switch only after several cycles of ~read_available?
@@ -323,7 +323,7 @@ class Multiplexer(Module, AutoCSR):
             choose_req.want_writes.eq(1),
             choose_cmd.want_activates.eq(ras_allowed),
             choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
-            choose_req.cmd.ready.eq(1),
+            choose_req.cmd.ready.eq(cas_allowed),
             steerer_sel(steerer, "write"),
             If(read_available,
                 If(~write_available | max_write_time,
