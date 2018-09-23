@@ -100,12 +100,23 @@ class BankMachine(Module):
         else:
             self.comb += activate_allowed.eq(1)
 
+        # Respect tRAS activate-precharge time
+        precharge_allowed = Signal()
+        if settings.timing.tRAS is not None:
+            tras_time = settings.timing.tRAS - 1
+            tras_timer = WaitTimer(tras_time)
+            self.submodules += tras_timer
+            self.comb += tras_timer.wait.eq(~(cmd.valid & cmd.ready & track_open))
+            self.comb += precharge_allowed.eq(tras_timer.done)
+        else:
+            self.comb += precharge_allowed.eq(1)
+
         # Auto Precharge
         if settings.with_auto_precharge:
             self.comb += [
                 If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
                     If(slicer.row(cmd_buffer_lookahead.source.addr) != slicer.row(cmd_buffer.source.addr),
-                        auto_precharge.eq((track_close == 0))
+                        auto_precharge.eq((track_close == 0) & precharge_allowed)
                     )
                 )
             ]
@@ -144,7 +155,7 @@ class BankMachine(Module):
         )
         fsm.act("PRECHARGE",
             # Note: we are presenting the column address, A10 is always low
-            If(precharge_timer.done,
+            If(precharge_timer.done & precharge_allowed,
                 cmd.valid.eq(1),
                 If(cmd.ready,
                     NextState("TRP")
