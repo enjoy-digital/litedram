@@ -89,6 +89,17 @@ class BankMachine(Module):
         self.submodules += precharge_timer
         self.comb += precharge_timer.wait.eq(~(cmd.valid & cmd.ready & cmd.is_write))
 
+        # Respect tRC activate-activate time
+        activate_allowed = Signal()
+        if settings.timing.tRC is not None:
+            trc_time = settings.timing.tRC - 1
+            trc_timer = WaitTimer(trc_time)
+            self.submodules += trc_timer
+            self.comb += trc_timer.wait.eq(~(cmd.valid & cmd.ready & track_open))
+            self.comb += activate_allowed.eq(trc_timer.done)
+        else:
+            self.comb += activate_allowed.eq(1)
+
         # Auto Precharge
         if settings.with_auto_precharge:
             self.comb += [
@@ -151,14 +162,16 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("ACTIVATE",
-            sel_row_addr.eq(1),
-            track_open.eq(1),
-            cmd.valid.eq(ras_allowed),
-            cmd.is_cmd.eq(1),
-            If(cmd.ready & ras_allowed,
-                NextState("TRCD")
-            ),
-            cmd.ras.eq(1)
+            If(activate_allowed,
+                sel_row_addr.eq(1),
+                track_open.eq(1),
+                cmd.valid.eq(ras_allowed),
+                cmd.is_cmd.eq(1),
+                If(cmd.ready & ras_allowed,
+                    NextState("TRCD")
+                ),
+                cmd.ras.eq(1)
+            )
         )
         fsm.act("REFRESH",
             If(precharge_timer.done,

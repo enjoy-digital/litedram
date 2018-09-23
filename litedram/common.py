@@ -43,7 +43,7 @@ class GeomSettings:
 
 
 class TimingSettings:
-    def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD):
+    def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD, tRC):
         self.tRP = tRP
         self.tRCD = tRCD
         self.tWR = tWR
@@ -53,6 +53,7 @@ class TimingSettings:
         self.tFAW = tFAW
         self.tCCD = tCCD
         self.tRRD = tRRD
+        self.tRC = tRC
 
 
 def cmd_layout(address_width):
