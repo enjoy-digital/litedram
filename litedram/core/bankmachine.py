@@ -90,26 +90,22 @@ class BankMachine(Module):
         self.comb += precharge_timer.wait.eq(~(cmd.valid & cmd.ready & cmd.is_write))
 
         # Respect tRC activate-activate time
-        activate_allowed = Signal()
+        activate_allowed = Signal(reset=1)
         if settings.timing.tRC is not None:
             trc_time = settings.timing.tRC - 1
             trc_timer = WaitTimer(trc_time)
             self.submodules += trc_timer
             self.comb += trc_timer.wait.eq(~(cmd.valid & cmd.ready & track_open))
             self.comb += activate_allowed.eq(trc_timer.done)
-        else:
-            self.comb += activate_allowed.eq(1)
 
         # Respect tRAS activate-precharge time
-        precharge_allowed = Signal()
+        precharge_allowed = Signal(reset=1)
         if settings.timing.tRAS is not None:
             tras_time = settings.timing.tRAS - 1
             tras_timer = WaitTimer(tras_time)
             self.submodules += tras_timer
             self.comb += tras_timer.wait.eq(~(cmd.valid & cmd.ready & track_open))
             self.comb += precharge_allowed.eq(tras_timer.done)
-        else:
-            self.comb += precharge_allowed.eq(1)
 
         # Auto Precharge
         if settings.with_auto_precharge:
