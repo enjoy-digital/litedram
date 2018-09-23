@@ -116,7 +116,7 @@ class BankMachine(Module):
             self.comb += [
                 If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
                     If(slicer.row(cmd_buffer_lookahead.source.addr) != slicer.row(cmd_buffer.source.addr),
-                        auto_precharge.eq((track_close == 0) & precharge_allowed)
+                        auto_precharge.eq(track_close == 0)
                     )
                 )
             ]
@@ -167,7 +167,7 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
-            If(precharge_timer.done,
+            If(precharge_timer.done & precharge_allowed,
                 NextState("TRP")
             ),
             track_close.eq(1)
