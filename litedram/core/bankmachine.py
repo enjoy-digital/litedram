@@ -86,7 +86,7 @@ class BankMachine(Module):
 
         # Respect write-to-precharge specification
         write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
-        precharge_time = write_latency + settings.timing.tWR - 1 + settings.timing.tCCD
+        precharge_time = write_latency + settings.timing.tWR - 1 + settings.timing.tCCD # AL=0
         precharge_timer = WaitTimer(precharge_time)
         self.submodules += precharge_timer
         self.comb += precharge_timer.wait.eq(~(cmd.valid & cmd.ready & cmd.is_write))
