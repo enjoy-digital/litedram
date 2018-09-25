@@ -1,3 +1,4 @@
+import math
 from migen import *
 from migen.genlib.misc import WaitTimer
 
@@ -84,7 +85,8 @@ class BankMachine(Module):
         ]
 
         # Respect write-to-precharge specification
-        precharge_time = 2 + settings.timing.tWR - 1 + 1
+        write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
+        precharge_time = write_latency + settings.timing.tWR - 1 + settings.timing.tCCD
         precharge_timer = WaitTimer(precharge_time)
         self.submodules += precharge_timer
         self.comb += precharge_timer.wait.eq(~(cmd.valid & cmd.ready & cmd.is_write))
