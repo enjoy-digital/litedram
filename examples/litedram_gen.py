@@ -10,6 +10,7 @@ from migen.genlib.resetsync import AsyncResetSynchronizer
 from litex.build.generic_platform import *
 from litex.build.xilinx import XilinxPlatform
 
+from litex.soc.cores.clock import *
 from litedram.core.controller import ControllerSettings
 from litex.soc.integration.soc_sdram import *
 from litex.soc.integration.builder import *
@@ -160,90 +161,17 @@ class LiteDRAMCRG(Module):
         self.clock_domains.cd_sys4x_dqs = ClockDomain(reset_less=True)
         self.clock_domains.cd_iodelay = ClockDomain()
 
-        clk = platform.request("clk")
-        reset = platform.request("rst")
+        # # #
 
-        assert core_config["input_clk_freq"] in [100e6, 200e6]
-        assert core_config["iodelay_clk_freq"] in [200e6, 300e6]
-        assert core_config["sys_clk_freq"]*4 == core_config["dram_clk_freq"]
-
-        pll_pre_multiplier = 2 if core_config["input_clk_freq"] == 100e6 else 1
-
-        # main pll
-        main_pll_multipliers = {
-            100e6: 4*pll_pre_multiplier,
-            125e6: 5*pll_pre_multiplier,
-            150e6: 6*pll_pre_multiplier,
-            175e6: 7*pll_pre_multiplier,
-            200e6: 8*pll_pre_multiplier,
-        }
-        main_pll_locked = Signal()
-        main_pll_fb = Signal()
-        main_pll_sys = Signal()
-        main_pll_sys4x = Signal()
-        main_pll_sys4x_dqs = Signal()
-        self.specials += [
-            Instance("PLLE2_BASE",
-                     p_STARTUP_WAIT="FALSE", o_LOCKED=main_pll_locked,
-
-                     # VCO @ 0.8 to 1.6GHz
-                     p_REF_JITTER1=0.01, p_CLKIN1_PERIOD=1e9/core_config["input_clk_freq"],
-                     p_CLKFBOUT_MULT=main_pll_multipliers[core_config["sys_clk_freq"]], p_DIVCLK_DIVIDE=1,
-                     i_CLKIN1=clk, i_CLKFBIN=main_pll_fb, o_CLKFBOUT=main_pll_fb,
-
-                     # 100 to 200MHz
-                     p_CLKOUT0_DIVIDE=8, p_CLKOUT0_PHASE=0.0,
-                     o_CLKOUT0=main_pll_sys,
-
-                     # 400 to 800MHz
-                     p_CLKOUT1_DIVIDE=2, p_CLKOUT1_PHASE=0.0,
-                     o_CLKOUT1=main_pll_sys4x,
-
-                     # 400 to 800MHz dqs (use for A7DDRPHY)
-                     p_CLKOUT2_DIVIDE=2, p_CLKOUT2_PHASE=90.0,
-                     o_CLKOUT2=main_pll_sys4x_dqs,
-            ),
-            Instance("BUFG", i_I=main_pll_sys, o_O=self.cd_sys.clk),
-            Instance("BUFG", i_I=main_pll_sys4x, o_O=self.cd_sys4x.clk),
-            Instance("BUFG", i_I=main_pll_sys4x_dqs, o_O=self.cd_sys4x_dqs.clk),
-            AsyncResetSynchronizer(self.cd_sys, ~main_pll_locked | reset),
-        ]
-        self.comb += platform.request("pll_locked").eq(main_pll_locked)
-
-        # iodelay_pll
-        iodelay_dividers = {
-            200e6: 6,
-            300e6: 4
-        }
-        iodelay_pll_locked = Signal()
-        iodelay_pll_fb = Signal()
-        iodelay_pll_iodelay = Signal()
-        self.specials += [
-            Instance("PLLE2_BASE",
-                     p_STARTUP_WAIT="FALSE", o_LOCKED=iodelay_pll_locked,
-
-                     # VCO @ 1.2GHz
-                     p_REF_JITTER1=0.01, p_CLKIN1_PERIOD=1e9/core_config["input_clk_freq"],
-                     p_CLKFBOUT_MULT=6*pll_pre_multiplier, p_DIVCLK_DIVIDE=1,
-                     i_CLKIN1=clk, i_CLKFBIN=iodelay_pll_fb, o_CLKFBOUT=iodelay_pll_fb,
-
-                     # 200/300MHz
-                     p_CLKOUT0_DIVIDE=iodelay_dividers[core_config["iodelay_clk_freq"]], p_CLKOUT0_PHASE=0.0,
-                     o_CLKOUT0=iodelay_pll_iodelay
-            ),
-            Instance("BUFG", i_I=iodelay_pll_iodelay, o_O=self.cd_iodelay.clk),
-            AsyncResetSynchronizer(self.cd_iodelay, ~iodelay_pll_locked | reset),
-        ]
-
-        reset_counter = Signal(4, reset=15)
-        ic_reset = Signal(reset=1)
-        self.sync.iodelay += \
-            If(reset_counter != 0,
-                reset_counter.eq(reset_counter - 1)
-            ).Else(
-                ic_reset.eq(0)
-            )
-        self.specials += Instance("IDELAYCTRL", i_REFCLK=ClockSignal("iodelay"), i_RST=ic_reset)
+        self.submodules.pll = pll = S7PLL()
+        self.comb += pll.reset.eq(platform.request("rst"))
+        pll.register_clkin(platform.request("clk"), core_config["input_clk_freq"])
+        pll.create_clkout(self.cd_sys, core_config["sys_clk_freq"])
+        pll.create_clkout(self.cd_sys4x, 4*core_config["sys_clk_freq"])
+        pll.create_clkout(self.cd_sys4x_dqs, 4*core_config["sys_clk_freq"], phase=90)
+        pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
+        self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_iodelay)
+        self.comb += platform.request("pll_locked").eq(pll.locked)
 
 
 class LiteDRAMCoreControl(Module, AutoCSR):

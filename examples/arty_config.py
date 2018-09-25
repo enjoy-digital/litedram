@@ -19,7 +19,6 @@ core_config = {
     # freqs
     "input_clk_freq": 100e6,
     "sys_clk_freq": 100e6,
-    "dram_clk_freq": 400e6,
     "iodelay_clk_freq": 200e6,
 
     # controller
