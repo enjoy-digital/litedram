@@ -1,3 +1,4 @@
+import math
 from migen import *
 from migen.genlib.misc import WaitTimer
 
@@ -82,17 +83,36 @@ class BankMachine(Module):
         ]
 
         # Respect write-to-precharge specification
-        precharge_time = 2 + settings.timing.tWR - 1 + 1
+        write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
+        precharge_time = write_latency + settings.timing.tWR - 1 + settings.timing.tCCD # AL=0
         precharge_timer = WaitTimer(precharge_time)
         self.submodules += precharge_timer
         self.comb += precharge_timer.wait.eq(~(cmd.valid & cmd.ready & cmd.is_write))
+
+        # Respect tRC activate-activate time
+        activate_allowed = Signal(reset=1)
+        if settings.timing.tRC is not None:
+            trc_time = settings.timing.tRC - 1
+            trc_timer = WaitTimer(trc_time)
+            self.submodules += trc_timer
+            self.comb += trc_timer.wait.eq(~(cmd.valid & cmd.ready & track_open))
+            self.comb += activate_allowed.eq(trc_timer.done)
+
+        # Respect tRAS activate-precharge time
+        precharge_allowed = Signal(reset=1)
+        if settings.timing.tRAS is not None:
+            tras_time = settings.timing.tRAS - 1
+            tras_timer = WaitTimer(tras_time)
+            self.submodules += tras_timer
+            self.comb += tras_timer.wait.eq(~(cmd.valid & cmd.ready & track_open))
+            self.comb += precharge_allowed.eq(tras_timer.done)
 
         # Auto Precharge
         if settings.with_auto_precharge:
             self.comb += [
                 If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
                     If(slicer.row(cmd_buffer_lookahead.source.addr) != slicer.row(cmd_buffer.source.addr),
-                        auto_precharge.eq((track_close == 0))
+                        auto_precharge.eq(track_close == 0)
                     )
                 )
             ]
@@ -129,7 +149,7 @@ class BankMachine(Module):
         )
         fsm.act("PRECHARGE",
             # Note: we are presenting the column address, A10 is always low
-            If(precharge_timer.done,
+            If(precharge_timer.done & precharge_allowed,
                 cmd.valid.eq(1),
                 If(cmd.ready,
                     NextState("TRP")
@@ -141,7 +161,7 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
-            If(precharge_timer.done,
+            If(precharge_timer.done & precharge_allowed,
                 NextState("TRP")
             ),
             track_close.eq(1)

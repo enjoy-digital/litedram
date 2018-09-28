@@ -35,6 +35,8 @@ class SDRAMModule:
             tFAW=None if self.get("tFAW") is None else self.ck_ns_to_cycles(*self.get("tFAW")),
             tCCD=None if self.get("tCCD") is None else self.ck_ns_to_cycles(*self.get("tCCD")),
             tRRD=None if self.get("tRRD") is None else self.ns_to_cycles_trrd(self.get("tRRD")),
+            tRC=None if self.get("tRC") is None else self.ns_to_cycles(self.get("tRC")),
+            tRAS=None if self.get("tRAS") is None else self.ns_to_cycles(self.get("tRAS"))
         )
 
     def get(self, name):
@@ -252,24 +254,32 @@ class MT41J128M16(SDRAMModule):
     tWR_1066  = 13.1
     tRFC_1066 = 86
     tFAW_1066 = (27, None)
+    tRC_1066 = 50.625
+    tRAS_1066 = 37.5
     # DDR3-1333
     tRP_1333  = 13.5
     tRCD_1333 = 13.5
     tWR_1333  = 13.5
     tRFC_1333 = 107
     tFAW_1333 = (30, None)
+    tRC_1333 = 49.5
+    tRAS_1333 = 36
     # DDR3-1600
     tRP_1600  = 13.75
     tRCD_1600 = 13.75
     tWR_1600  = 13.75
     tRFC_1600 = 128
     tFAW_1600 = (32, None)
+    tRC_1600 = 48.75
+    tRAS_1600 = 35
     # API retro-compatibility
     tRP  = tRP_1600
     tRCD = tRCD_1600
     tWR  = tWR_1600
     tRFC = tRFC_1600
     tFAW = tFAW_1600
+    tRC = tRC_1600
+    tRAS = tRAS_1600
 
 
 class MT41K128M16(MT41J128M16):

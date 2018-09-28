@@ -43,7 +43,7 @@ class GeomSettings:
 
 
 class TimingSettings:
-    def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD):
+    def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD, tRC, tRAS):
         self.tRP = tRP
         self.tRCD = tRCD
         self.tWR = tWR
@@ -53,6 +53,8 @@ class TimingSettings:
         self.tFAW = tFAW
         self.tCCD = tCCD
         self.tRRD = tRRD
+        self.tRC = tRC
+        self.tRAS = tRAS
 
 
 def cmd_layout(address_width):
@@ -114,7 +116,7 @@ def rdata_description(data_width, with_bank):
 
 
 class LiteDRAMNativePort:
-    def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0, with_reordering=False):
+    def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0):
         self.mode = mode
         self.address_width = address_width
         self.data_width = data_width
@@ -123,14 +125,10 @@ class LiteDRAMNativePort:
 
         self.lock = Signal()
 
-        self.with_reordering = with_reordering
-
         self.cmd = stream.Endpoint(cmd_description(address_width))
-        self.wdata = stream.Endpoint(wdata_description(data_width, with_reordering))
-        self.rdata = stream.Endpoint(rdata_description(data_width, with_reordering))
+        self.wdata = stream.Endpoint(wdata_description(data_width, True))
+        self.rdata = stream.Endpoint(rdata_description(data_width, True))
 
-        if with_reordering:
-            print("[WARNING] Reordering controller is still experimental")
         self.flush = Signal()
 
         # retro-compatibility # FIXME: remove

@@ -138,10 +138,10 @@ class tXXDController(Module):
         # # #
 
         if txxd is not None:
-            count = Signal(max=max(txxd+1, 2))
+            count = Signal(max=max(txxd, 2))
             self.sync += \
                 If(valid,
-                    count.eq(txxd),
+                    count.eq(txxd-1),
                     If((txxd - 1) == 0,
                         ready.eq(1)
                     ).Else(
