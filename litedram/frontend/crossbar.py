@@ -27,7 +27,7 @@ class LiteDRAMCrossbar(Module):
 
         self.masters = []
 
-    def get_port(self, mode="both", data_width=None, clock_domain="sys", with_reordering=False, reverse=False, **kwargs):
+    def get_port(self, mode="both", data_width=None, clock_domain="sys", reverse=False, **kwargs):
         # retro-compatibility # FIXME: remove
         if "cd" in kwargs:
             print("[WARNING] Please update LiteDRAMCrossbar.get_port's \"cd\" parameter to \"clock_domain\"")
@@ -44,12 +44,12 @@ class LiteDRAMCrossbar(Module):
             data_width = self.controller.data_width
 
         # crossbar port
-        port = LiteDRAMNativePort(mode, self.rca_bits + self.bank_bits - self.rank_bits, self.controller.data_width, "sys", len(self.masters), with_reordering)
+        port = LiteDRAMNativePort(mode, self.rca_bits + self.bank_bits - self.rank_bits, self.controller.data_width, "sys", len(self.masters))
         self.masters.append(port)
 
         # clock domain crossing
         if clock_domain != "sys":
-            new_port = LiteDRAMNativePort(mode, port.address_width, port.data_width, clock_domain, port.id, with_reordering)
+            new_port = LiteDRAMNativePort(mode, port.address_width, port.data_width, clock_domain, port.id)
             self.submodules += LiteDRAMNativePortCDC(new_port, port)
             port = new_port
 
@@ -59,7 +59,7 @@ class LiteDRAMCrossbar(Module):
                 addr_shift = -log2_int(data_width//self.controller.data_width)
             else:
                 addr_shift = log2_int(self.controller.data_width//data_width)
-            new_port = LiteDRAMNativePort(mode, port.address_width + addr_shift, data_width, clock_domain, port.id, with_reordering)
+            new_port = LiteDRAMNativePort(mode, port.address_width + addr_shift, data_width, clock_domain, port.id)
             self.submodules += ClockDomainsRenamer(clock_domain)(LiteDRAMNativePortConverter(new_port, port, reverse))
             port = new_port
 
@@ -89,7 +89,7 @@ class LiteDRAMCrossbar(Module):
             master_locked = []
             for nm, master in enumerate(self.masters):
                 locked = 0
-                if not master.with_reordering:
+                if not self.controller.settings.with_reordering:
                     for other_nb, other_arbiter in enumerate(arbiters):
                         if other_nb != nb:
                             other_bank = getattr(controller, "bank"+str(other_nb))
