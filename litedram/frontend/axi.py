@@ -259,7 +259,7 @@ class LiteDRAMAXI2NativeR(Module):
 
         # Read data
         self.comb += [
-            port.rdata.connect(r_buffer.sink),
+            port.rdata.connect(r_buffer.sink, omit={"bank"}),
             r_buffer.source.connect(axi.r, omit={"id", "last"}),
             axi.r.resp.eq(resp_types["okay"])
         ]
