@@ -88,7 +88,7 @@ class LiteDRAMCrossbar(Module):
             # for each master, determine if another bank locks it
             master_locked = []
             for nm, master in enumerate(self.masters):
-                locked = 0
+                locked = Signal()
                 if not self.controller.settings.with_reordering:
                     for other_nb, other_arbiter in enumerate(arbiters):
                         if other_nb != nb:
