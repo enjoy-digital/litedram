@@ -10,7 +10,7 @@ from litex.soc.interconnect.csr import AutoCSR
 
 from litedram.common import *
 from litedram.core.perf import Bandwidth
-
+import math
 
 class _CommandChooser(Module):
     def __init__(self, requests):
@@ -229,8 +229,9 @@ class Multiplexer(Module, AutoCSR):
         self.comb += cas_allowed.eq(tccdcon.ready)
 
         # tWTR timing (Write to Read delay)
+        write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
         self.submodules.twtrcon = twtrcon = tXXDController(
-            settings.timing.tWTR +
+            settings.timing.tWTR + write_latency +
             # tCCD must be added since tWTR begins after the transfer is complete
             settings.timing.tCCD if settings.timing.tCCD is not None else 0)
         self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
