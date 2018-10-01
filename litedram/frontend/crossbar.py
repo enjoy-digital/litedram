@@ -50,7 +50,7 @@ class LiteDRAMCrossbar(Module):
             data_width=self.controller.data_width,
             clock_domain="sys",
             id=len(self.masters),
-            with_bank=self.controller.settigns.with_reordering)
+            with_bank=self.controller.settings.with_reordering)
         self.masters.append(port)
 
         # clock domain crossing
