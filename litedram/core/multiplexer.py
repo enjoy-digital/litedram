@@ -239,14 +239,28 @@ class Multiplexer(Module, AutoCSR):
             settings.timing.tCCD if settings.timing.tCCD is not None else 0)
         self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
 
+        # tRTW timing (read to write delay)
+        self.submodules.trtwcon = trtwcon = tXXDController(settings.phy.read_latency)
+        self.comb += trtwcon.valid.eq(choose_req.accept() & choose_req.read())
+
         # Read/write turnaround
-        read_available = Signal()
-        write_available = Signal()
-        reads = [req.valid & req.is_read for req in requests]
-        writes = [req.valid & req.is_write for req in requests]
+        #   A ready read means the bank machine is ready to execute the read immediately, a 
+        #   pending read means the bank needs to change rows first, but will read after
+        reads_ready = [req.valid & req.is_read for req in requests]
+        reads_pending = [bm.has_reads for bm in bank_machines]
+        writes_ready = [req.valid & req.is_write for req in requests]
+        writes_pending = [bm.has_writes for bm in bank_machines]
+
+        read_ready = Signal()
+        write_ready = Signal()
+        creads_pending = Signal(max=len(bank_machines)+1)
+        cwrites_pending = Signal(max=len(bank_machines)+1)
+
         self.comb += [
-            read_available.eq(reduce(or_, reads)),
-            write_available.eq(reduce(or_, writes))
+            read_ready.eq(reduce(or_, reads_ready)),
+            write_ready.eq(reduce(or_, writes_ready)),
+            creads_pending.eq(reduce(add, reads_pending)),
+            cwrites_pending.eq(reduce(add, writes_pending))
         ]
 
         def anti_starvation(timeout):
@@ -312,9 +326,9 @@ class Multiplexer(Module, AutoCSR):
             choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
             choose_req.cmd.ready.eq(cas_allowed),
             steerer_sel(steerer, "read"),
-            If(write_available,
+            If(write_ready,
                 # TODO: switch only after several cycles of ~read_available?
-                If(~read_available | max_read_time,
+                If((cwrites_pending > creads_pending) | max_read_time,
                     NextState("RTW")
                 )
             ),
@@ -329,8 +343,8 @@ class Multiplexer(Module, AutoCSR):
             choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
             choose_req.cmd.ready.eq(cas_allowed),
             steerer_sel(steerer, "write"),
-            If(read_available,
-                If(~write_available | max_write_time,
+            If(read_ready,
+                If((creads_pending > cwrites_pending) | max_write_time,
                     NextState("WTR")
                 )
             ),
@@ -346,12 +360,17 @@ class Multiplexer(Module, AutoCSR):
             )
         )
         fsm.act("WTR",
+            choose_req.want_reads.eq(1),
             If(twtrcon.ready,
                 NextState("READ")
             )
         )
-        # TODO: reduce this, actual limit is around (cl+1)/nphases
-        fsm.delayed_enter("RTW", "WRITE", settings.phy.read_latency-1)
+        fsm.act("RTW",
+            choose_req.want_writes.eq(1),
+            If(trtwcon.ready,
+                NextState("WRITE")
+            )
+        )
 
         if settings.with_bandwidth:
             data_width = settings.phy.dfi_databits*settings.phy.nphases

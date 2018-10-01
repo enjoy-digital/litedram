@@ -33,6 +33,8 @@ class BankMachine(Module):
         self.refresh_req = Signal()
         self.refresh_gnt = Signal()
         self.want_writes = Signal()
+        self.has_writes = Signal()
+        self.has_reads = Signal()
         a = settings.geom.addressbits
         ba = settings.geom.bankbits + log2_int(nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
@@ -78,7 +80,9 @@ class BankMachine(Module):
                 cmd_buffer.valid.eq(cmd_bufferRead.source.valid),
                 cmd_buffer.we.eq(cmd_bufferRead.source.we),
                 cmd_buffer.addr.eq(cmd_bufferRead.source.addr)
-            )
+            ),
+            self.has_writes.eq(cmd_bufferWrite.source.valid),
+            self.has_reads.eq(cmd_bufferWrite.source.valid)
         ]
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
