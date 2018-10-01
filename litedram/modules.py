@@ -248,6 +248,14 @@ class MT41J128M16(SDRAMModule):
     tCCD  = (4, None)
     tRRD  = 10
     # speedgrade related timings
+    # DDR3-800
+    tRP_800  = 13.1
+    tRCD_800 = 13.1
+    tWR_800  = 13.1
+    tRFC_800 = 64
+    tFAW_800 = (20, None)
+    tRC_800 = 50.625
+    tRAS_800 = 37.5
     # DDR3-1066
     tRP_1066  = 13.1
     tRCD_1066 = 13.1
