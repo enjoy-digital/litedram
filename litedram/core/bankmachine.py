@@ -75,16 +75,12 @@ class BankMachine(Module):
 
         
         # Row tracking
-        has_openrow = Signal()
         openrow = Signal(settings.geom.rowbits, reset_less=True)
         hit = Signal()
         track_open = Signal()
         track_close = Signal()
         self.sync += \
-            If(track_close,
-                has_openrow.eq(0)
-            ).Elif(track_open,
-                has_openrow.eq(1),
+            If(track_open,
                 openrow.eq(slicer.row(cmd_buffer.addr))
             )
 
@@ -156,30 +152,42 @@ class BankMachine(Module):
         # Control and command generation FSM
         # Note: tRRD, tFAW, tCCD, tWTR timings are enforced by the multiplexer
         self.submodules.fsm = fsm = FSM()
-        fsm.act("REGULAR",
+        fsm.act("ACTIVATE",
+            # The bank is in the IDLE state ready for an ACTIVATE
             If(self.refresh_req,
                 NextState("REFRESH")
             ).Elif(cmd_buffer.valid,
-                If(has_openrow,
-                    If(hit,
-                        cmd.valid.eq(1),
-                        If(cmd_buffer.we,
-                            req.wdata_ready.eq(cmd.ready),
-                            cmd.is_write.eq(1),
-                            cmd.we.eq(1),
-                        ).Else(
-                            req.rdata_valid.eq(cmd.ready),
-                            cmd.is_read.eq(1)
-                        ),
-                        cmd.cas.eq(1),
-                        If(cmd.ready & auto_precharge,
-                           NextState("AUTOPRECHARGE")
-                        )
+                sel_row_addr.eq(1),
+                track_open.eq(1),
+                cmd.valid.eq(1),
+                cmd.is_cmd.eq(1),
+                If(cmd.ready,
+                    NextState("TRCD")
+                ),
+                cmd.ras.eq(1)
+           )
+        )
+        fsm.act("REGULAR",
+            # The bank is open and ready for read/writes
+            If(self.refresh_req,
+                NextState("REFRESH")
+            ).Elif(cmd_buffer.valid,
+                If(hit,
+                    cmd.valid.eq(1),
+                    If(cmd_buffer.we,
+                        req.wdata_ready.eq(cmd.ready),
+                        cmd.is_write.eq(1),
+                        cmd.we.eq(1),
                     ).Else(
-                        NextState("PRECHARGE")
+                        req.rdata_valid.eq(cmd.ready),
+                        cmd.is_read.eq(1)
+                    ),
+                    cmd.cas.eq(1),
+                    If(cmd.ready & auto_precharge,
+                       NextState("AUTOPRECHARGE")
                     )
                 ).Else(
-                    NextState("ACTIVATE")
+                    NextState("PRECHARGE")
                 )
             )
         )
@@ -202,16 +210,6 @@ class BankMachine(Module):
             ),
             track_close.eq(1)
         )
-        fsm.act("ACTIVATE",
-            sel_row_addr.eq(1),
-            track_open.eq(1),
-            cmd.valid.eq(1),
-            cmd.is_cmd.eq(1),
-            If(cmd.ready,
-                NextState("TRCD")
-            ),
-            cmd.ras.eq(1)
-        )
         fsm.act("REFRESH",
             If(precharge_timer.done,
                 self.refresh_gnt.eq(1),
@@ -219,7 +217,7 @@ class BankMachine(Module):
             track_close.eq(1),
             cmd.is_cmd.eq(1),
             If(~self.refresh_req,
-                NextState("REGULAR")
+                NextState("ACTIVATE")
             )
         )
         fsm.delayed_enter("TRP", "ACTIVATE", settings.timing.tRP - 1)
