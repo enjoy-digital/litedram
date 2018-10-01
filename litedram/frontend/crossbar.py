@@ -44,12 +44,24 @@ class LiteDRAMCrossbar(Module):
             data_width = self.controller.data_width
 
         # crossbar port
-        port = LiteDRAMNativePort(mode, self.rca_bits + self.bank_bits - self.rank_bits, self.controller.data_width, "sys", len(self.masters))
+        port = LiteDRAMNativePort(
+            mode=mode,
+            address_width=self.rca_bits + self.bank_bits - self.rank_bits,
+            data_width=self.controller.data_width,
+            clock_domain="sys",
+            id=len(self.masters),
+            with_bank=self.controller.settings.with_reordering)
         self.masters.append(port)
 
         # clock domain crossing
         if clock_domain != "sys":
-            new_port = LiteDRAMNativePort(mode, port.address_width, port.data_width, clock_domain, port.id)
+            new_port = LiteDRAMNativePort(
+                mode=mode,
+                address_width=port.address_width,
+                data_width=port.data_width,
+                clock_domain=clock_domain,
+                id=port.id,
+                with_bank=self.controller.settings.with_reordering)
             self.submodules += LiteDRAMNativePortCDC(new_port, port)
             port = new_port
 
@@ -59,7 +71,13 @@ class LiteDRAMCrossbar(Module):
                 addr_shift = -log2_int(data_width//self.controller.data_width)
             else:
                 addr_shift = log2_int(self.controller.data_width//data_width)
-            new_port = LiteDRAMNativePort(mode, port.address_width + addr_shift, data_width, clock_domain, port.id)
+            new_port = LiteDRAMNativePort(
+                mode=mode,
+                address_width=port.address_width + addr_shift,
+                data_width=data_width,
+                clock_domain=clock_domain,
+                id=port.id,
+                with_bank=self.controller.settings.with_reordering)
             self.submodules += ClockDomainsRenamer(clock_domain)(LiteDRAMNativePortConverter(new_port, port, reverse))
             port = new_port
 

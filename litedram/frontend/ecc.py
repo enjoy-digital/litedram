@@ -211,7 +211,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         ecc_wdata = BufferizeEndpoints({"source": DIR_SOURCE})(ecc_wdata)
         self.submodules += ecc_wdata
         self.comb += [
-            port_from.wdata.connect(ecc_wdata.sink),
+            port_from.wdata.connect(ecc_wdata.sink, omit={"bank"}),
             ecc_wdata.source.connect(port_to.wdata)
         ]
 
@@ -223,7 +223,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         self.submodules += ecc_rdata
         self.comb += [
             ecc_rdata.enable.eq(self.enable.storage),
-            port_to.rdata.connect(ecc_rdata.sink),
+            port_to.rdata.connect(ecc_rdata.sink, omit={"bank"}),
             ecc_rdata.source.connect(port_from.rdata)
         ]
 

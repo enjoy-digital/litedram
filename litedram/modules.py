@@ -235,7 +235,7 @@ class P3R1GE4JGF(SDRAMModule):
     tRFC  = 127.5
 
 
-# DDR3
+# DDR3 (Chips)
 class MT41J128M16(SDRAMModule):
     memtype = "DDR3"
     # geometry
@@ -248,12 +248,20 @@ class MT41J128M16(SDRAMModule):
     tCCD  = (4, None)
     tRRD  = 10
     # speedgrade related timings
+    # DDR3-800
+    tRP_800  = 13.1
+    tRCD_800 = 13.1
+    tWR_800  = 13.1
+    tRFC_800 = 64
+    tFAW_800 = (None, 50)
+    tRC_800 = 50.625
+    tRAS_800 = 37.5
     # DDR3-1066
     tRP_1066  = 13.1
     tRCD_1066 = 13.1
     tWR_1066  = 13.1
     tRFC_1066 = 86
-    tFAW_1066 = (27, None)
+    tFAW_1066 = (None, 50)
     tRC_1066 = 50.625
     tRAS_1066 = 37.5
     # DDR3-1333
@@ -261,7 +269,7 @@ class MT41J128M16(SDRAMModule):
     tRCD_1333 = 13.5
     tWR_1333  = 13.5
     tRFC_1333 = 107
-    tFAW_1333 = (30, None)
+    tFAW_1333 = (None, 45)
     tRC_1333 = 49.5
     tRAS_1333 = 36
     # DDR3-1600
@@ -269,7 +277,7 @@ class MT41J128M16(SDRAMModule):
     tRCD_1600 = 13.75
     tWR_1600  = 13.75
     tRFC_1600 = 128
-    tFAW_1600 = (32, None)
+    tFAW_1600 = (None, 40)
     tRC_1600 = 48.75
     tRAS_1600 = 35
     # API retro-compatibility
@@ -301,6 +309,33 @@ class MT41K256M16(MT41J256M16):
     pass
 
 
+class K4B2G1646FBCK0(SDRAMModule):  ### TODO: optimize and revalidate all timings, at cold and hot temperatures
+    memtype = "DDR3"
+    # geometry
+    nbanks = 8
+    nrows  = 16384
+    ncols  = 1024
+    # speedgrade invariant timings
+    tREFI = 7800  # 3900 refresh more often at 85C+
+    tWTR  = (14, 35)
+    tCCD  = (4, None)
+    tRRD  = 10  # 4 * clk = 10ns
+    # speedgrade related timings
+    # DDR3-1600
+    tRP_1600  = 13.125
+    tRCD_1600 = 13.125
+    tWR_1600  = 35  # this is hard-coded in MR0 to be 14 cycles, 14 * 2.5 = 35, see sdram_init.py@L224
+    tRFC_1600 = 160
+    tFAW_1600 = (None, 40)
+    # API retro-compatibility
+    tRP  = tRP_1600
+    tRCD = tRCD_1600
+    tWR  = tWR_1600
+    tRFC = tRFC_1600
+    tFAW = tFAW_1600
+
+
+# DDR3 (SO-DIMM)
 class MT8JTF12864(SDRAMModule):
     memtype = "DDR3"
     # geometry
@@ -317,13 +352,13 @@ class MT8JTF12864(SDRAMModule):
     tRCD_1066 = 15
     tWR_1066  = 15
     tRFC_1066 = 86
-    tFAW_1066 = (27, None)
+    tFAW_1066 = (None, 50)
     # DDR3-1333
     tRP_1333  = 15
     tRCD_1333 = 15
     tWR_1333  = 15
     tRFC_1333 = 107
-    tFAW_1333 = (30, None)
+    tFAW_1333 = (None, 45)
     # API retro-compatibility
     tRP  = tRP_1333
     tRCD = tRCD_1333
@@ -347,44 +382,18 @@ class MT18KSF1G72HZ(SDRAMModule):
     tRCD_1066 = 15
     tWR_1066  = 15
     tRFC_1066 = 86
-    tFAW_1066 = (27, None)
+    tFAW_1066 = (None, 50)
     # DDR3-1333
     tRP_1333  = 15
     tRCD_1333 = 15
     tWR_1333  = 15
     tRFC_1333 = 107
-    tFAW_1333 = (30, None)
+    tFAW_1333 = (None, 45)
     # DDR3-1600
     tRP_1600  = 13.125
     tRCD_1600 = 13.125
     tWR_1600  = 13.125
     tRFC_1600 = 128
-    tFAW_1600 = (32, None)
-    # API retro-compatibility
-    tRP  = tRP_1600
-    tRCD = tRCD_1600
-    tWR  = tWR_1600
-    tRFC = tRFC_1600
-    tFAW = tFAW_1600
-
-
-class K4B2G1646FBCK0(SDRAMModule):  ### TODO: optimize and revalidate all timings, at cold and hot temperatures
-    memtype = "DDR3"
-    # geometry
-    nbanks = 8
-    nrows  = 16384
-    ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 7800  # 3900 refresh more often at 85C+
-    tWTR  = (14, 35)
-    tCCD  = (4, None)
-    tRRD  = 10  # 4 * clk = 10ns
-    # speedgrade related timings
-    # DDR3-1600
-    tRP_1600  = 13.125
-    tRCD_1600 = 13.125
-    tWR_1600  = 35  # this is hard-coded in MR0 to be 14 cycles, 14 * 2.5 = 35, see sdram_init.py@L224
-    tRFC_1600 = 160
     tFAW_1600 = (None, 40)
     # API retro-compatibility
     tRP  = tRP_1600

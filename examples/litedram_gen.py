@@ -210,7 +210,7 @@ class LiteDRAMCore(SoCSDRAM):
              rtt_nom=core_config["rtt_nom"],
              rtt_wr=core_config["rtt_wr"],
              ron=core_config["ron"])
-        sdram_module = core_config["sdram_module"](sys_clk_freq, "1:4")
+        sdram_module = core_config["sdram_module"](sys_clk_freq, "1:4", speedgrade=core_config["sdram_module_speedgrade"])
         controller_settings = controller_settings=ControllerSettings(
             cmd_buffer_depth=core_config["cmd_buffer_depth"],
             read_time=core_config["read_time"],

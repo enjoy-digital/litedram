@@ -8,6 +8,7 @@ core_config = {
     # modules / phy
     "sdram_module": MT41J256M16,
     "sdram_module_nb": 2,
+    "sdram_module_speedgrade": "1333",
     "sdram_rank_nb": 1,
     "sdram_phy": K7DDRPHY,
 
