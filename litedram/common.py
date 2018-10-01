@@ -24,7 +24,10 @@ class PhySettings:
         self.cl = cl
         self.read_latency = read_latency
         self.write_latency = write_latency
-        self.cwl = cwl
+        if cwl is None:
+            self.cwl = cl
+        else:
+            self.cwl = cwl
 
     # Optional DDR3 electrical settings
     def add_electrical_settings(self, rtt_nom, rtt_wr, ron):
