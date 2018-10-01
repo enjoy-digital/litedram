@@ -99,6 +99,7 @@ def cmd_description(address_width):
         ("addr", address_width)
     ]
 
+
 def wdata_description(data_width, with_bank):
     r = [
         ("data", data_width),
@@ -116,7 +117,7 @@ def rdata_description(data_width, with_bank):
 
 
 class LiteDRAMNativePort:
-    def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0):
+    def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0, with_bank=False):
         self.mode = mode
         self.address_width = address_width
         self.data_width = data_width
@@ -126,8 +127,8 @@ class LiteDRAMNativePort:
         self.lock = Signal()
 
         self.cmd = stream.Endpoint(cmd_description(address_width))
-        self.wdata = stream.Endpoint(wdata_description(data_width, True))
-        self.rdata = stream.Endpoint(rdata_description(data_width, True))
+        self.wdata = stream.Endpoint(wdata_description(data_width, with_bank))
+        self.rdata = stream.Endpoint(rdata_description(data_width, with_bank))
 
         self.flush = Signal()
 
