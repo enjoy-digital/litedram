@@ -201,6 +201,9 @@ class Multiplexer(Module, AutoCSR):
                 choose_req.want_activates.eq(ras_allowed),
             ]
 
+        for bm in bank_machines:
+            self.comb += bm.want_writes.eq(choose_req.want_writes)
+
         # Command steering
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))

@@ -32,6 +32,7 @@ class BankMachine(Module):
         self.req = req = Record(cmd_layout(aw))
         self.refresh_req = Signal()
         self.refresh_gnt = Signal()
+        self.want_writes = Signal()
         a = settings.geom.addressbits
         ba = settings.geom.bankbits + log2_int(nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
@@ -45,13 +46,39 @@ class BankMachine(Module):
         cmd_buffer_lookahead = stream.SyncFIFO(
             cmd_buffer_layout, settings.cmd_buffer_depth,
             buffered=settings.cmd_buffer_buffered)
-        cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
-        self.submodules += cmd_buffer_lookahead, cmd_buffer
+        cmd_bufferRead = stream.Buffer(cmd_buffer_layout)
+        cmd_bufferWrite = stream.Buffer(cmd_buffer_layout)
+        self.submodules += cmd_buffer_lookahead, cmd_bufferRead, cmd_bufferWrite
         self.comb += [
             req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
-            cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
-            cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
-            req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
+            
+            cmd_buffer_lookahead.source.connect(cmd_bufferRead.sink, omit={"valid", "ready"}),
+            cmd_buffer_lookahead.source.connect(cmd_bufferWrite.sink, omit={"valid", "ready"}),
+
+            cmd_bufferRead.sink.valid.eq(cmd_buffer_lookahead.source.valid & ~cmd_buffer_lookahead.source.we),
+            cmd_bufferWrite.sink.valid.eq(cmd_buffer_lookahead.source.valid & cmd_buffer_lookahead.source.we),
+
+            cmd_buffer_lookahead.source.ready.eq(
+                ((cmd_bufferRead.sink.ready | cmd_bufferRead.source.ready) & ~cmd_buffer_lookahead.source.we)
+                | ((cmd_bufferWrite.sink.ready | cmd_bufferWrite.source.ready) & cmd_buffer_lookahead.source.we)),
+
+            cmd_bufferRead.source.ready.eq(req.rdata_valid),
+            cmd_bufferWrite.source.ready.eq(req.wdata_ready),
+
+            req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_bufferRead.source.valid | cmd_bufferWrite.source.valid),
+        ]
+
+        cmd_buffer = Record(cmd_buffer_layout + [("valid",1)])
+        self.comb += [
+            If((self.want_writes & cmd_bufferWrite.source.valid) | ~cmd_bufferRead.source.valid,
+                cmd_buffer.valid.eq(cmd_bufferWrite.source.valid),
+                cmd_buffer.we.eq(cmd_bufferWrite.source.we),
+                cmd_buffer.addr.eq(cmd_bufferWrite.source.addr),
+            ).Else(
+                cmd_buffer.valid.eq(cmd_bufferRead.source.valid),
+                cmd_buffer.we.eq(cmd_bufferRead.source.we),
+                cmd_buffer.addr.eq(cmd_bufferRead.source.addr)
+            )
         ]
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
@@ -60,7 +87,7 @@ class BankMachine(Module):
         has_openrow = Signal()
         openrow = Signal(settings.geom.rowbits, reset_less=True)
         hit = Signal()
-        self.comb += hit.eq(openrow == slicer.row(cmd_buffer.source.addr))
+        self.comb += hit.eq(openrow == slicer.row(cmd_buffer.addr))
         track_open = Signal()
         track_close = Signal()
         self.sync += \
@@ -68,7 +95,7 @@ class BankMachine(Module):
                 has_openrow.eq(0)
             ).Elif(track_open,
                 has_openrow.eq(1),
-                openrow.eq(slicer.row(cmd_buffer.source.addr))
+                openrow.eq(slicer.row(cmd_buffer.addr))
             )
 
         # Address generation
@@ -76,9 +103,9 @@ class BankMachine(Module):
         self.comb += [
             cmd.ba.eq(n),
             If(sel_row_addr,
-                cmd.a.eq(slicer.row(cmd_buffer.source.addr))
+                cmd.a.eq(slicer.row(cmd_buffer.addr))
             ).Else(
-                cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.source.addr))
+                cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.addr))
             )
         ]
 
@@ -110,8 +137,8 @@ class BankMachine(Module):
         # Auto Precharge
         if settings.with_auto_precharge:
             self.comb += [
-                If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
-                    If(slicer.row(cmd_buffer_lookahead.source.addr) != slicer.row(cmd_buffer.source.addr),
+                If(cmd_buffer_lookahead.source.valid & cmd_buffer.valid,
+                    If(slicer.row(cmd_buffer_lookahead.source.addr) != slicer.row(cmd_buffer.addr),
                         auto_precharge.eq(track_close == 0)
                     )
                 )
@@ -123,11 +150,11 @@ class BankMachine(Module):
         fsm.act("REGULAR",
             If(self.refresh_req,
                 NextState("REFRESH")
-            ).Elif(cmd_buffer.source.valid,
+            ).Elif(cmd_buffer.valid,
                 If(has_openrow,
                     If(hit,
                         cmd.valid.eq(1),
-                        If(cmd_buffer.source.we,
+                        If(cmd_buffer.we,
                             req.wdata_ready.eq(cmd.ready),
                             cmd.is_write.eq(1),
                             cmd.we.eq(1),
