@@ -69,29 +69,15 @@ class BankMachine(Module):
 
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_bufferRead.source.valid | cmd_bufferWrite.source.valid),
         ]
-
+        
         cmd_buffer = Record(cmd_buffer_layout + [("valid",1)])
-        self.comb += [
-            If((self.want_writes & cmd_bufferWrite.source.valid) | ~cmd_bufferRead.source.valid,
-                cmd_buffer.valid.eq(cmd_bufferWrite.source.valid),
-                cmd_buffer.we.eq(cmd_bufferWrite.source.we),
-                cmd_buffer.addr.eq(cmd_bufferWrite.source.addr),
-            ).Else(
-                cmd_buffer.valid.eq(cmd_bufferRead.source.valid),
-                cmd_buffer.we.eq(cmd_bufferRead.source.we),
-                cmd_buffer.addr.eq(cmd_bufferRead.source.addr)
-            ),
-            self.has_writes.eq(cmd_bufferWrite.source.valid),
-            self.has_reads.eq(cmd_bufferWrite.source.valid)
-        ]
-
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
+        
         # Row tracking
         has_openrow = Signal()
         openrow = Signal(settings.geom.rowbits, reset_less=True)
         hit = Signal()
-        self.comb += hit.eq(openrow == slicer.row(cmd_buffer.addr))
         track_open = Signal()
         track_close = Signal()
         self.sync += \
@@ -101,6 +87,25 @@ class BankMachine(Module):
                 has_openrow.eq(1),
                 openrow.eq(slicer.row(cmd_buffer.addr))
             )
+
+        # Chose the correct source for the command
+        self.sync += [
+            If((self.want_writes & cmd_bufferWrite.source.valid) | ~cmd_bufferRead.source.valid,
+                cmd_buffer.valid.eq(cmd_bufferWrite.source.valid),
+                cmd_buffer.we.eq(cmd_bufferWrite.source.we),
+                cmd_buffer.addr.eq(cmd_bufferWrite.source.addr),
+                hit.eq(openrow == slicer.row(cmd_bufferWrite.source.addr)),
+            ).Else(
+                cmd_buffer.valid.eq(cmd_bufferRead.source.valid),
+                cmd_buffer.we.eq(cmd_bufferRead.source.we),
+                cmd_buffer.addr.eq(cmd_bufferRead.source.addr),
+                hit.eq(openrow == slicer.row(cmd_bufferRead.source.addr)),
+            ),
+        ]
+        self.comb += [
+            self.has_writes.eq(cmd_bufferWrite.source.valid),
+            self.has_reads.eq(cmd_bufferWrite.source.valid)
+        ]
 
         # Address generation
         sel_row_addr = Signal()
