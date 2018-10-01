@@ -235,7 +235,7 @@ class P3R1GE4JGF(SDRAMModule):
     tRFC  = 127.5
 
 
-# DDR3
+# DDR3 (Chips)
 class MT41J128M16(SDRAMModule):
     memtype = "DDR3"
     # geometry
@@ -309,6 +309,33 @@ class MT41K256M16(MT41J256M16):
     pass
 
 
+class K4B2G1646FBCK0(SDRAMModule):  ### TODO: optimize and revalidate all timings, at cold and hot temperatures
+    memtype = "DDR3"
+    # geometry
+    nbanks = 8
+    nrows  = 16384
+    ncols  = 1024
+    # speedgrade invariant timings
+    tREFI = 7800  # 3900 refresh more often at 85C+
+    tWTR  = (14, 35)
+    tCCD  = (4, None)
+    tRRD  = 10  # 4 * clk = 10ns
+    # speedgrade related timings
+    # DDR3-1600
+    tRP_1600  = 13.125
+    tRCD_1600 = 13.125
+    tWR_1600  = 35  # this is hard-coded in MR0 to be 14 cycles, 14 * 2.5 = 35, see sdram_init.py@L224
+    tRFC_1600 = 160
+    tFAW_1600 = (None, 40)
+    # API retro-compatibility
+    tRP  = tRP_1600
+    tRCD = tRCD_1600
+    tWR  = tWR_1600
+    tRFC = tRFC_1600
+    tFAW = tFAW_1600
+
+
+# DDR3 (SO-DIMM)
 class MT8JTF12864(SDRAMModule):
     memtype = "DDR3"
     # geometry
@@ -368,32 +395,6 @@ class MT18KSF1G72HZ(SDRAMModule):
     tWR_1600  = 13.125
     tRFC_1600 = 128
     tFAW_1600 = (32, None)
-    # API retro-compatibility
-    tRP  = tRP_1600
-    tRCD = tRCD_1600
-    tWR  = tWR_1600
-    tRFC = tRFC_1600
-    tFAW = tFAW_1600
-
-
-class K4B2G1646FBCK0(SDRAMModule):  ### TODO: optimize and revalidate all timings, at cold and hot temperatures
-    memtype = "DDR3"
-    # geometry
-    nbanks = 8
-    nrows  = 16384
-    ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 7800  # 3900 refresh more often at 85C+
-    tWTR  = (14, 35)
-    tCCD  = (4, None)
-    tRRD  = 10  # 4 * clk = 10ns
-    # speedgrade related timings
-    # DDR3-1600
-    tRP_1600  = 13.125
-    tRCD_1600 = 13.125
-    tWR_1600  = 35  # this is hard-coded in MR0 to be 14 cycles, 14 * 2.5 = 35, see sdram_init.py@L224
-    tRFC_1600 = 160
-    tFAW_1600 = (None, 40)
     # API retro-compatibility
     tRP  = tRP_1600
     tRCD = tRCD_1600
