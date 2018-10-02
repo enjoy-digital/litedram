@@ -1,8 +1,15 @@
 from math import ceil
+from collections import namedtuple
 
 from migen import *
 
 from litedram.common import GeomSettings, TimingSettings
+
+
+_technology_timings = ["tREFI", "tWTR", "tCCD", "tRRD"]
+_TechnologyTimings = namedtuple("TechnologyTimings", _technology_timings)
+_speedgrade_timings = ["tRP", "tRCD", "tWR", "tRFC", "tFAW", "tRC", "tRAS"]
+_SpeedgradeTimings = namedtuple("SpeedgradeTimings", _speedgrade_timings)
 
 
 class SDRAMModule:
@@ -40,12 +47,25 @@ class SDRAMModule:
         )
 
     def get(self, name):
-        if self.speedgrade is not None and name in ["tRP", "tRCD", "tWR", "tRFC", "tFAW"]:
-            name += "_" + self.speedgrade
-        try:
-            return getattr(self, name)
-        except:
-            return None
+        if name in _speedgrade_timings:
+            if hasattr(self, "speedgrade_timings"):
+                speedgrade = "default" if self.speedgrade is None else self.speedgrade
+                return getattr(self.speedgrade_timings[speedgrade], name)
+            else:
+                name = name + "_" + self.speedgrade if self.speedgrade is not None else name
+                try:
+                    return getattr(self, name)
+                except:
+                    return None
+        else:
+            if hasattr(self, "technology_timings"):
+                return getattr(self.technology_timings, name)
+            else:
+                try:
+                    return getattr(self, name)
+                except:
+                    return None
+
 
     def ns_to_cycles_trrd(self, t):
         lower_bound = {
@@ -92,15 +112,10 @@ class IS42S16160(SDRAMModule):
     nbanks = 4
     nrows  = 8192
     ncols  = 512
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR = (2, None)
-    tCCD = (1, None)
-    # speedgrade related timings
-    tRP   = 20
-    tRCD  = 20
-    tWR   = 20
-    tRFC  = 70
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=20, tRCD=20, tWR=20, tRFC=70, tFAW=None, tRC=None, tRAS=None)}
+
 
 class MT48LC4M16(SDRAMModule):
     memtype = "SDR"
@@ -108,15 +123,9 @@ class MT48LC4M16(SDRAMModule):
     nbanks = 4
     nrows  = 4096
     ncols  = 256
-    # speedgrade invariant timings
-    tREFI = 64e6/4096
-    tWTR = (2, None)
-    tCCD = (1, None)
-    # speedgrade related timings
-    tRP   = 15
-    tRCD  = 15
-    tWR   = 14
-    tRFC  = 66
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=14, tRFC=66, tFAW=None, tRC=None, tRAS=None)}
 
 
 class AS4C16M16(SDRAMModule):
@@ -125,15 +134,9 @@ class AS4C16M16(SDRAMModule):
     nbanks = 4
     nrows  = 8192
     ncols  = 512
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR = (2, None)
-    tCCD = (1, None)
-    # speedgrade related timings
-    tRP   = 18
-    tRCD  = 18
-    tWR   = 12
-    tRFC  = 60
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=18, tRCD=18, tWR=12, tRFC=60, tFAW=None, tRC=None, tRAS=None)}
 
 
 # DDR
@@ -143,15 +146,9 @@ class MT46V32M16(SDRAMModule):
     nbanks = 4
     nrows  = 8192
     ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR = (2, None)
-    tCCD = (1, None)
-    # speedgrade related timings
-    tRP   = 15
-    tRCD  = 15
-    tWR   = 15
-    tRFC  = 70
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=70, tFAW=None, tRC=None, tRAS=None)}
 
 
 # LPDDR
@@ -161,15 +158,9 @@ class MT46H32M16(SDRAMModule):
     nbanks = 4
     nrows  = 8192
     ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR = (2, None)
-    tCCD = (1, None)
-    # speedgrade related timings
-    tRP   = 15
-    tRCD  = 15
-    tWR   = 15
-    tRFC  = 72
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=72, tFAW=None, tRC=None, tRAS=None)}
 
 
 class MT46H32M32(SDRAMModule):
@@ -178,15 +169,9 @@ class MT46H32M32(SDRAMModule):
     nbanks = 4
     nrows  = 8192
     ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR = (1, None)
-    tCCD = (1, None)
-    # speedgrade related timings
-    tRP   = 15
-    tRCD  = 15
-    tWR   = 15
-    tRFC  = 72
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(1, None), tCCD=(1, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=72, tFAW=None, tRC=None, tRAS=None)}
 
 
 # DDR2
@@ -196,15 +181,9 @@ class MT47H128M8(SDRAMModule):
     nbanks = 8
     nrows  = 16384
     ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR = (None, 7.5)
-    tCCD  = (2, None)
-    # speedgrade related timings
-    tRP   = 15
-    tRCD  = 15
-    tWR   = 15
-    tRFC  = 127.5
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(None, 7.5), tCCD=(2, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=127.5, tFAW=None, tRC=None, tRAS=None)}
 
 
 class MT47H64M16(SDRAMModule):
@@ -213,16 +192,9 @@ class MT47H64M16(SDRAMModule):
     nbanks = 8
     nrows  = 8192
     ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR = (None, 7.5)
-    tCCD  = (2, None)
-    # speedgrade related timings
-    tRP   = 15
-    tRCD  = 15
-    tWR   = 15
-    tREFI = 64e6/8192
-    tRFC  = 127.5
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(None, 7.5), tCCD=(2, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=127.5, tFAW=None, tRC=None, tRAS=None)}
 
 
 class P3R1GE4JGF(SDRAMModule):
@@ -231,16 +203,9 @@ class P3R1GE4JGF(SDRAMModule):
     nbanks = 8
     nrows  = 8192
     ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR = (None, 7.5)
-    tCCD  = (2, None)
-    # speedgrade related timings
-    tRP   = 12.5
-    tRCD  = 12.5
-    tWR   = 15
-    tREFI = 64e6/8192
-    tRFC  = 127.5
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(None, 7.5), tCCD=(2, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=12.5, tRCD=12.5, tWR=15, tRFC=127.5, tFAW=None, tRC=None, tRAS=None)}
 
 
 # DDR3 (Chips)
@@ -250,73 +215,43 @@ class MT41J128M16(SDRAMModule):
     nbanks = 8
     nrows  = 16384
     ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR  = (4, 7.5)
-    tCCD  = (4, None)
-    tRRD  = 10
-    # speedgrade related timings
-    # DDR3-800
-    tRP_800  = 13.1
-    tRCD_800 = 13.1
-    tWR_800  = 13.1
-    tRFC_800 = 64
-    tFAW_800 = (None, 50)
-    tRC_800 = 50.625
-    tRAS_800 = 37.5
-    # DDR3-1066
-    tRP_1066  = 13.1
-    tRCD_1066 = 13.1
-    tWR_1066  = 13.1
-    tRFC_1066 = 86
-    tFAW_1066 = (None, 50)
-    tRC_1066 = 50.625
-    tRAS_1066 = 37.5
-    # DDR3-1333
-    tRP_1333  = 13.5
-    tRCD_1333 = 13.5
-    tWR_1333  = 13.5
-    tRFC_1333 = 107
-    tFAW_1333 = (None, 45)
-    tRC_1333 = 49.5
-    tRAS_1333 = 36
-    # DDR3-1600
-    tRP_1600  = 13.75
-    tRCD_1600 = 13.75
-    tWR_1600  = 13.75
-    tRFC_1600 = 128
-    tFAW_1600 = (None, 40)
-    tRC_1600 = 48.75
-    tRAS_1600 = 35
-    # API retro-compatibility
-    tRP  = tRP_1600
-    tRCD = tRCD_1600
-    tWR  = tWR_1600
-    tRFC = tRFC_1600
-    tFAW = tFAW_1600
-    tRC = tRC_1600
-    tRAS = tRAS_1600
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=10)
+    speedgrade_timings = {
+        "800": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=64, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
+        "1066": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=86, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=13.5, tRFC=107, tFAW=(None, 45), tRC=49.5, tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=13.75, tRFC=128, tFAW=(None, 40), tRC=48.75, tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 
 class MT41K128M16(MT41J128M16):
     pass
 
 
-class MT41J256M16(MT41J128M16):
+class MT41J256M16(SDRAMModule):
+    memtype = "DDR3"
     # geometry
+    nbanks = 8
     nrows  = 32768
-    # speedgrade related timings
-    tRFC_1066 = 139
-    tRFC_1333 = 174
-    tRFC_1600 = 208
-    # API retro-compatibility
-    tRFC = tRFC_1600
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=10)
+    speedgrade_timings = {
+        "800": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=139, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
+        "1066": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=138, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=13.5, tRFC=174, tFAW=(None, 45), tRC=49.5, tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=13.75, tRFC=208, tFAW=(None, 40), tRC=48.75, tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 
 class MT41K256M16(MT41J256M16):
     pass
 
 
+# FIXME: update to new definition when fully tested (old definition still handled)
 class K4B2G1646FBCK0(SDRAMModule):  ### TODO: optimize and revalidate all timings, at cold and hot temperatures
     memtype = "DDR3"
     # geometry
@@ -350,29 +285,13 @@ class MT8JTF12864(SDRAMModule):
     nbanks = 8
     nrows  = 16384
     ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR  = (4, 7.5)
-    tCCD  = (4, None)
-    # speedgrade related timings
-    # DDR3-1066
-    tRP_1066  = 15
-    tRCD_1066 = 15
-    tWR_1066  = 15
-    tRFC_1066 = 86
-    tFAW_1066 = (None, 50)
-    # DDR3-1333
-    tRP_1333  = 15
-    tRCD_1333 = 15
-    tWR_1333  = 15
-    tRFC_1333 = 107
-    tFAW_1333 = (None, 45)
-    # API retro-compatibility
-    tRP  = tRP_1333
-    tRCD = tRCD_1333
-    tWR  = tWR_1333
-    tRFC = tRFC_1333
-    tFAW = tFAW_1333
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=None)
+    speedgrade_timings = {
+        "1066": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=86, tFAW=(None, 50), tRC=None, tRAS=None),
+        "1333": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=107, tFAW=(None, 45), tRC=None, tRAS=None),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1333"]
 
 
 class MT18KSF1G72HZ(SDRAMModule):
@@ -381,31 +300,11 @@ class MT18KSF1G72HZ(SDRAMModule):
     nbanks = 8
     nrows  = 65536
     ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 64e6/8192
-    tWTR = (4, 7.5)
-    tCCD  = (4, None)
-    # DDR3-1066
-    tRP_1066  = 15
-    tRCD_1066 = 15
-    tWR_1066  = 15
-    tRFC_1066 = 86
-    tFAW_1066 = (None, 50)
-    # DDR3-1333
-    tRP_1333  = 15
-    tRCD_1333 = 15
-    tWR_1333  = 15
-    tRFC_1333 = 107
-    tFAW_1333 = (None, 45)
-    # DDR3-1600
-    tRP_1600  = 13.125
-    tRCD_1600 = 13.125
-    tWR_1600  = 13.125
-    tRFC_1600 = 128
-    tFAW_1600 = (None, 40)
-    # API retro-compatibility
-    tRP  = tRP_1600
-    tRCD = tRCD_1600
-    tWR  = tWR_1600
-    tRFC = tRFC_1600
-    tFAW = tFAW_1600
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=None)
+    speedgrade_timings = {
+        "1066": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=86, tFAW=(None, 50), tRC=None, tRAS=None),
+        "1333": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=107, tFAW=(None, 45), tRC=None, tRAS=None),
+        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=13.125, tRFC=128, tFAW=(None, 40), tRC=None, tRAS=None),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
