@@ -120,7 +120,7 @@ def rdata_description(data_width, with_bank):
 
 
 class LiteDRAMNativePort:
-    def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0, with_bank=False):
+    def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0, with_bank=False, write_latency=0):
         self.mode = mode
         self.address_width = address_width
         self.data_width = data_width
@@ -131,6 +131,7 @@ class LiteDRAMNativePort:
 
         self.cmd = stream.Endpoint(cmd_description(address_width))
         self.wdata = stream.Endpoint(wdata_description(data_width, with_bank))
+        self.write_latency = write_latency
         self.rdata = stream.Endpoint(rdata_description(data_width, with_bank))
 
         self.flush = Signal()
