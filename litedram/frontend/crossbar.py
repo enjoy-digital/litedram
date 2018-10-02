@@ -27,7 +27,7 @@ class LiteDRAMCrossbar(Module):
 
         self.masters = []
 
-    def get_port(self, mode="both", data_width=None, clock_domain="sys", reverse=False, **kwargs):
+    def get_port(self, mode="both", data_width=None, clock_domain="sys", reverse=False, write_latency=0, **kwargs):
         # retro-compatibility # FIXME: remove
         if "cd" in kwargs:
             print("[WARNING] Please update LiteDRAMCrossbar.get_port's \"cd\" parameter to \"clock_domain\"")
@@ -50,7 +50,8 @@ class LiteDRAMCrossbar(Module):
             data_width=self.controller.data_width,
             clock_domain="sys",
             id=len(self.masters),
-            with_bank=self.controller.settings.with_reordering)
+            with_bank=self.controller.settings.with_reordering,
+            write_latency=write_latency)
         self.masters.append(port)
 
         # clock domain crossing
@@ -99,7 +100,7 @@ class LiteDRAMCrossbar(Module):
         self.submodules += arbiters
 
         rbank = Signal(max=self.nbanks)
-        wbank = Signal(max=self.nbanks)
+        master_wbank = [Signal(max=self.nbanks)]*nmasters
         for nb, arbiter in enumerate(arbiters):
             bank = getattr(controller, "bank"+str(nb))
 
@@ -126,10 +127,7 @@ class LiteDRAMCrossbar(Module):
             self.sync += If((arbiter.grant == nm) & bank.rdata_valid, rbank.eq(nb))
 
             # Get wdata source bank
-            self.sync += \
-                If((arbiter.grant == nm) & bank.wdata_ready,
-                    wbank.eq(nb)
-                )
+            self.comb += If((arbiter.grant == nm) & bank.wdata_ready, master_wbank[nm].eq(nb))
 
             # route requests
             self.comb += [
@@ -145,10 +143,15 @@ class LiteDRAMCrossbar(Module):
                 for nm, master_rdata_valid in enumerate(master_rdata_valids)]
 
         for nm, master_wdata_ready in enumerate(master_wdata_readys):
-                for i in range(self.write_latency):
+                assert (self.write_latency > self.masters[nm].write_latency)
+                for i in range(self.write_latency - self.masters[nm].write_latency):
                     new_master_wdata_ready = Signal()
                     self.sync += new_master_wdata_ready.eq(master_wdata_ready)
                     master_wdata_ready = new_master_wdata_ready
+
+                    new_master_wbank = Signal(max=self.nbanks)
+                    self.sync += new_master_wbank.eq(master_wbank[nm])
+                    master_wbank[nm] = new_master_wbank
                 master_wdata_readys[nm] = master_wdata_ready
 
         for nm, master_rdata_valid in enumerate(master_rdata_valids):
@@ -163,11 +166,6 @@ class LiteDRAMCrossbar(Module):
             new_master_rbank = Signal(max=self.nbanks)
             self.sync += new_master_rbank.eq(rbank)
             rbank = new_master_rbank
-        # Delay wbank output to match wready
-        for i in range(self.write_latency-1):
-            new_master_wbank = Signal(max=self.nbanks)
-            self.sync += new_master_wbank.eq(wbank)
-            wbank = new_master_wbank
 
         for master, master_ready in zip(self.masters, master_readys):
             self.comb += master.cmd.ready.eq(master_ready)
@@ -190,7 +188,7 @@ class LiteDRAMCrossbar(Module):
         self.comb += Case(Cat(*master_wdata_readys), wdata_cases)
 
         # route data reads
-        for master in self.masters:
+        for master, wbank in zip(self.masters, master_wbank):
             self.comb += master.rdata.data.eq(self.controller.rdata)
             if hasattr(master.rdata, "bank"):
                 self.comb += master.rdata.bank.eq(rbank)
