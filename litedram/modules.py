@@ -93,14 +93,14 @@ class IS42S16160(SDRAMModule):
     nrows  = 8192
     ncols  = 512
     # speedgrade invariant timings
+    tREFI = 64e6/8192
+    tWTR = (2, None)
+    tCCD = (1, None)
+    # speedgrade related timings
     tRP   = 20
     tRCD  = 20
     tWR   = 20
-    tREFI = 64e6/8192
     tRFC  = 70
-    # speedgrade related timings
-    tWTR = (2, None)
-
 
 class MT48LC4M16(SDRAMModule):
     memtype = "SDR"
@@ -111,6 +111,7 @@ class MT48LC4M16(SDRAMModule):
     # speedgrade invariant timings
     tREFI = 64e6/4096
     tWTR = (2, None)
+    tCCD = (1, None)
     # speedgrade related timings
     tRP   = 15
     tRCD  = 15
@@ -127,6 +128,7 @@ class AS4C16M16(SDRAMModule):
     # speedgrade invariant timings
     tREFI = 64e6/8192
     tWTR = (2, None)
+    tCCD = (1, None)
     # speedgrade related timings
     tRP   = 18
     tRCD  = 18
@@ -144,6 +146,7 @@ class MT46V32M16(SDRAMModule):
     # speedgrade invariant timings
     tREFI = 64e6/8192
     tWTR = (2, None)
+    tCCD = (1, None)
     # speedgrade related timings
     tRP   = 15
     tRCD  = 15
@@ -161,6 +164,7 @@ class MT46H32M16(SDRAMModule):
     # speedgrade invariant timings
     tREFI = 64e6/8192
     tWTR = (2, None)
+    tCCD = (1, None)
     # speedgrade related timings
     tRP   = 15
     tRCD  = 15
@@ -176,7 +180,8 @@ class MT46H32M32(SDRAMModule):
     ncols  = 1024
     # speedgrade invariant timings
     tREFI = 64e6/8192
-    tWTR = (2, None)
+    tWTR = (1, None)
+    tCCD = (1, None)
     # speedgrade related timings
     tRP   = 15
     tRCD  = 15
