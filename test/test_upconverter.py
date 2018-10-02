@@ -4,7 +4,7 @@ from migen import *
 
 from litex.soc.interconnect.stream import *
 
-from litedram.common import LiteDRAMWritePort, LiteDRAMReadPort
+from litedram.common import LiteDRAMNativeWritePort, LiteDRAMNativeReadPort
 from litedram.frontend.adaptation import LiteDRAMNativePortConverter
 
 from test.common import *
@@ -15,17 +15,17 @@ from litex.gen.sim import *
 class DUT(Module):
     def __init__(self):
         # write port and converter
-        self.write_user_port = LiteDRAMWritePort(aw=32, dw=32)
-        self.write_crossbar_port = LiteDRAMWritePort(aw=32, dw=128)
-        write_converter = LiteDRAMNativePortConverter(self.write_user_port,
-                                                self.write_crossbar_port)
+        self.write_user_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
+        self.write_crossbar_port = LiteDRAMNativeWritePort(address_width=32, data_width=128)
+        write_converter = LiteDRAMNativePortConverter(
+            self.write_user_port, self.write_crossbar_port)
         self.submodules += write_converter
 
         # read port and converter
-        self.read_user_port = LiteDRAMReadPort(aw=32, dw=32)
-        self.read_crossbar_port = LiteDRAMReadPort(aw=32, dw=128)
-        read_converter = LiteDRAMNativePortConverter(self.read_user_port,
-                                               self.read_crossbar_port)
+        self.read_user_port = LiteDRAMNativeReadPort(address_width=32, data_width=32)
+        self.read_crossbar_port = LiteDRAMNativeReadPort(address_width=32, data_width=128)
+        read_converter = LiteDRAMNativePortConverter(
+            self.read_user_port, self.read_crossbar_port)
         self.submodules += read_converter
 
         # memory
@@ -50,7 +50,7 @@ def main_generator(write_port, read_port):
     for i in range(16):
         yield write_port.cmd.valid.eq(1)
         yield write_port.cmd.we.eq(1)
-        yield write_port.cmd.adr.eq(i)
+        yield write_port.cmd.addr.eq(i)
         yield
         while (yield write_port.cmd.ready) == 0:
             yield
@@ -68,7 +68,7 @@ def main_generator(write_port, read_port):
     for i in range(16):
         yield read_port.cmd.valid.eq(1)
         yield read_port.cmd.we.eq(0)
-        yield read_port.cmd.adr.eq(i)
+        yield read_port.cmd.addr.eq(i)
         yield
         while (yield read_port.cmd.ready) == 0:
             yield
