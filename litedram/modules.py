@@ -194,6 +194,7 @@ class MT47H128M8(SDRAMModule):
     # speedgrade invariant timings
     tREFI = 64e6/8192
     tWTR = (None, 7.5)
+    tCCD  = (2, None)
     # speedgrade related timings
     tRP   = 15
     tRCD  = 15
@@ -210,6 +211,7 @@ class MT47H64M16(SDRAMModule):
     # speedgrade invariant timings
     tREFI = 64e6/8192
     tWTR = (None, 7.5)
+    tCCD  = (2, None)
     # speedgrade related timings
     tRP   = 15
     tRCD  = 15
@@ -227,6 +229,7 @@ class P3R1GE4JGF(SDRAMModule):
     # speedgrade invariant timings
     tREFI = 64e6/8192
     tWTR = (None, 7.5)
+    tCCD  = (2, None)
     # speedgrade related timings
     tRP   = 12.5
     tRCD  = 12.5
