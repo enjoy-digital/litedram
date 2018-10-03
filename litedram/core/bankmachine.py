@@ -61,9 +61,12 @@ class BankMachine(Module):
             cmd_bufferRead.sink.valid.eq(cmd_buffer_lookahead.source.valid & ~cmd_buffer_lookahead.source.we),
             cmd_bufferWrite.sink.valid.eq(cmd_buffer_lookahead.source.valid & cmd_buffer_lookahead.source.we),
 
-            cmd_buffer_lookahead.source.ready.eq(
-                ((cmd_bufferRead.sink.ready | cmd_bufferRead.source.ready) & ~cmd_buffer_lookahead.source.we)
-                | ((cmd_bufferWrite.sink.ready | cmd_bufferWrite.source.ready) & cmd_buffer_lookahead.source.we)),
+            cmd_buffer_lookahead.source.ready.eq(req.rdata_valid | req.wdata_ready
+                | (cmd_buffer_lookahead.source.we & cmd_bufferWrite.source.ready)
+                | (~cmd_buffer_lookahead.source.we & cmd_bufferRead.source.ready)),
+            #cmd_buffer_lookahead.source.ready.eq(
+            #    ((cmd_bufferRead.sink.ready | cmd_bufferRead.source.ready) & ~cmd_buffer_lookahead.source.we)
+            #    | ((cmd_bufferWrite.sink.ready | cmd_bufferWrite.source.ready) & cmd_buffer_lookahead.source.we)),
 
             cmd_bufferRead.source.ready.eq(req.rdata_valid),
             cmd_bufferWrite.source.ready.eq(req.wdata_ready),

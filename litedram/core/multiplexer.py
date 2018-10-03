@@ -46,17 +46,9 @@ class _CommandChooser(Module):
             cmd.valid.eq(choices[arbiter.grant])
         ]
 
-        for name in ["a", "ba", "is_read", "is_write", "is_cmd", "is_activate"]:
+        for name in ["a", "ba", "cas", "ras", "we", "is_read", "is_write", "is_cmd", "is_activate"]:
             choices = Array(getattr(req, name) for req in requests)
             self.comb += getattr(cmd, name).eq(choices[arbiter.grant])
-
-        for name in ["cas", "ras", "we"]:
-            # we should only assert those signals when valid is 1
-            choices = Array(getattr(req, name) for req in requests)
-            self.comb += \
-                If(cmd.valid,
-                    getattr(cmd, name).eq(choices[arbiter.grant])
-                )
 
         for i, request in enumerate(requests):
             self.comb += \
