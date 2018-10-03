@@ -166,5 +166,6 @@ def cmd_request_rw_layout(a, ba):
     return cmd_request_layout(a, ba) + [
         ("is_cmd", 1),
         ("is_read", 1),
-        ("is_write", 1)
+        ("is_write", 1),
+        ("is_activate", 1)
     ]

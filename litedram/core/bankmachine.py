@@ -161,6 +161,7 @@ class BankMachine(Module):
                 track_open.eq(1),
                 cmd.valid.eq(1),
                 cmd.is_cmd.eq(1),
+                cmd.is_activate.eq(1),
                 If(cmd.ready,
                     NextState("TRCD")
                 ),

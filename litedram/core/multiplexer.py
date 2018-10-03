@@ -72,7 +72,7 @@ class _CommandChooser(Module):
         return self.cmd.valid & self.cmd.ready
 
     def activate(self):
-        return self.cmd.ras & ~self.cmd.cas & ~self.cmd.we
+        return self.cmd.is_activate
 
     def write(self):
         return self.cmd.is_write
