@@ -46,7 +46,7 @@ class _CommandChooser(Module):
             cmd.valid.eq(choices[arbiter.grant])
         ]
 
-        for name in ["a", "ba", "is_read", "is_write", "is_cmd"]:
+        for name in ["a", "ba", "is_read", "is_write", "is_cmd", "is_activate"]:
             choices = Array(getattr(req, name) for req in requests)
             self.comb += getattr(cmd, name).eq(choices[arbiter.grant])
 
@@ -128,29 +128,6 @@ class _Steerer(Module):
                 phase.wrdata_en.eq(wrdata_ens[sel])
             ]
 
-
-class tXXDController(Module):
-    def __init__(self, txxd):
-        self.valid = valid = Signal()
-        self.ready = ready = Signal(reset=1)
-        ready.attr.add("no_retiming")
-
-        # # #
-
-        if txxd is not None:
-            count = Signal(max=max(txxd, 2))
-            self.sync += \
-                If(valid,
-                    count.eq(txxd-1),
-                    If((txxd - 1) == 0,
-                        ready.eq(1)
-                    ).Else(
-                        ready.eq(0)
-                    )
-                ).Elif(~ready,
-                    count.eq(count - 1),
-                    If(count == 1, ready.eq(1))
-                )
 
 
 class tFAWController(Module):
