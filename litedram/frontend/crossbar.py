@@ -148,10 +148,16 @@ class LiteDRAMCrossbar(Module):
                     new_master_wdata_ready = Signal()
                     self.sync += new_master_wdata_ready.eq(master_wdata_ready)
                     master_wdata_ready = new_master_wdata_ready
-
                     new_master_wbank = Signal(max=self.nbanks)
                     self.sync += new_master_wbank.eq(master_wbank[nm])
                     master_wbank[nm] = new_master_wbank
+                self.comb += self.masters[nm].wdata.ready.eq(master_wdata_ready)
+
+        for nm, master_wdata_ready in enumerate(master_wdata_readys):
+                for i in range(self.write_latency):
+                    new_master_wdata_ready = Signal()
+                    self.sync += new_master_wdata_ready.eq(master_wdata_ready)
+                    master_wdata_ready = new_master_wdata_ready
                 master_wdata_readys[nm] = master_wdata_ready
 
         for nm, master_rdata_valid in enumerate(master_rdata_valids):
@@ -169,8 +175,8 @@ class LiteDRAMCrossbar(Module):
 
         for master, master_ready in zip(self.masters, master_readys):
             self.comb += master.cmd.ready.eq(master_ready)
-        for master, master_wdata_ready in zip(self.masters, master_wdata_readys):
-            self.comb += master.wdata.ready.eq(master_wdata_ready)
+#        for master, master_wdata_ready in zip(self.masters, master_wdata_readys):
+#            self.comb += master.wdata.ready.eq(master_wdata_ready)
         for master, master_rdata_valid in zip(self.masters, master_rdata_valids):
             self.comb += master.rdata.valid.eq(master_rdata_valid)
 
