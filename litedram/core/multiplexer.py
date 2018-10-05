@@ -222,14 +222,14 @@ class Multiplexer(Module, AutoCSR):
 
         read_ready = Signal()
         write_ready = Signal()
-        creads_pending = Signal(max=len(bank_machines)+1)
-        cwrites_pending = Signal(max=len(bank_machines)+1)
+        read_pending = Signal()
+        write_pending = Signal()
 
         self.comb += [
             read_ready.eq(reduce(or_, reads_ready)),
             write_ready.eq(reduce(or_, writes_ready)),
-            creads_pending.eq(reduce(add, reads_pending)),
-            cwrites_pending.eq(reduce(add, writes_pending))
+            read_pending.eq(reduce(or_, reads_pending)),
+            write_pending.eq(reduce(or_, writes_pending))
         ]
 
         def anti_starvation(timeout):
@@ -297,7 +297,7 @@ class Multiplexer(Module, AutoCSR):
             steerer_sel(steerer, "read"),
             If(write_ready,
                 # TODO: switch only after several cycles of ~read_available?
-                If((cwrites_pending > creads_pending) | max_read_time,
+                If(~read_pending | max_read_time,
                     NextState("RTW")
                 )
             ),
@@ -313,7 +313,7 @@ class Multiplexer(Module, AutoCSR):
             choose_req.cmd.ready.eq(cas_allowed),
             steerer_sel(steerer, "write"),
             If(read_ready,
-                If((creads_pending > cwrites_pending) | max_write_time,
+                If(~write_pending | max_write_time,
                     NextState("WTR")
                 )
             ),

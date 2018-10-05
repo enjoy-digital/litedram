@@ -115,7 +115,7 @@ class BankMachine(Module):
         ]
         self.comb += [
             self.has_writes.eq(cmd_bufferWrite.source.valid),
-            self.has_reads.eq(cmd_bufferWrite.source.valid)
+            self.has_reads.eq(cmd_bufferRead.source.valid)
         ]
 
         # Address generation
