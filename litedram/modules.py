@@ -251,6 +251,23 @@ class MT41K256M16(MT41J256M16):
     pass
 
 
+class K4B1G0446F(SDRAMModule):
+    memtype = "DDR3"
+    # geometry
+    nbanks = 8
+    nrows  = 16384
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=None)
+    speedgrade_timings = {
+        "800": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=120, tFAW=(None, 50), tRC=52.5, tRAS=37.5),
+        "1066": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=160, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=200, tFAW=(None, 45), tRC=49.5, tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=240, tFAW=(None, 40), tRC=48.75, tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
+
 # FIXME: update to new definition when fully tested (old definition still handled)
 class K4B2G1646FBCK0(SDRAMModule):  ### TODO: optimize and revalidate all timings, at cold and hot temperatures
     memtype = "DDR3"
