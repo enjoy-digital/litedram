@@ -100,8 +100,15 @@ class BankMachine(Module):
             )
 
         # Chose the correct source for the command
-        self.sync += [
+        sync_or_comb = None
+        if settings.timing.tCCD > 1:
+            # This inserts a pipeline bubble of one cycle and so cannot be used when a command is required every cycle
+            sync_or_comb = self.sync
+        else:
+            sync_or_comb = self.comb
+        sync_or_comb += [
             If((self.want_writes & cmd_bufferWrite.source.valid) | ~cmd_bufferRead.source.valid,
+                # Note: when sync valid is asserted one extra cycle (OK because tCCD prevents issuing a duplicate command)
                 cmd_buffer.valid.eq(cmd_bufferWrite.source.valid),
                 cmd_buffer.we.eq(1),
                 cmd_buffer.addr.eq(cmd_bufferWrite.source.addr),
