@@ -41,18 +41,20 @@ class _CommandChooser(Module):
         arbiter = RoundRobin(n, SP_CE)
         self.submodules += arbiter
         choices = Array(valids[i] for i in range(n))
+        arbiter_grant = Signal(len(arbiter.grant))
+        self.sync += arbiter_grant.eq(arbiter.grant)
         self.comb += [
             arbiter.request.eq(valids),
-            cmd.valid.eq(choices[arbiter.grant])
+            cmd.valid.eq(choices[arbiter_grant])
         ]
 
         for name in ["a", "ba", "cas", "ras", "we", "is_read", "is_write", "is_cmd", "is_activate"]:
             choices = Array(getattr(req, name) for req in requests)
-            self.comb += getattr(cmd, name).eq(choices[arbiter.grant])
+            self.comb += getattr(cmd, name).eq(choices[arbiter_grant])
 
         for i, request in enumerate(requests):
             self.comb += \
-                If(cmd.valid & cmd.ready & (arbiter.grant == i),
+                If(cmd.valid & cmd.ready & (arbiter_grant == i),
                     request.ready.eq(1)
                 )
 	# Arbitrate if we're accepting commands, *or* if we are not but the current selection is not valid
