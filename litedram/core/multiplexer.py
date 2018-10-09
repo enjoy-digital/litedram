@@ -105,7 +105,7 @@ class _Steerer(Module):
                 # FIXME: add dynamic drive for multi-rank (will be needed for high frequencies)
                 self.comb += phase.odt.eq(Replicate(Signal(reset=1), nranks))
             if rankbits:
-                rank_decoder = Decoder(rankbits)
+                rank_decoder = Decoder(nranks)
                 self.submodules += rank_decoder
                 self.comb += rank_decoder.i.eq((Array(cmd.ba[-rankbits:] for cmd in commands)[sel]))
                 self.sync += phase.cs_n.eq(~rank_decoder.o)
