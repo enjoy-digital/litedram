@@ -5,6 +5,7 @@ from migen.genlib.misc import WaitTimer
 from litex.soc.interconnect import stream
 
 from litedram.core.multiplexer import *
+from litedram.common import *
 
 
 class _AddressSlicer:
@@ -84,28 +85,23 @@ class BankMachine(Module):
 
         # Respect write-to-precharge specification
         write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
-        precharge_time = write_latency + settings.timing.tWR - 1 + settings.timing.tCCD # AL=0
-        precharge_timer = WaitTimer(precharge_time)
-        self.submodules += precharge_timer
-        self.comb += precharge_timer.wait.eq(~(cmd.valid & cmd.ready & cmd.is_write))
+        precharge_time = write_latency + settings.timing.tWR + settings.timing.tCCD # AL=0
+        self.submodules.twtpcon = twtpcon = tXXDController(precharge_time)
+        self.comb += twtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
 
         # Respect tRC activate-activate time
         activate_allowed = Signal(reset=1)
         if settings.timing.tRC is not None:
-            trc_time = settings.timing.tRC - 1
-            trc_timer = WaitTimer(trc_time)
-            self.submodules += trc_timer
-            self.comb += trc_timer.wait.eq(~(cmd.valid & cmd.ready & track_open))
-            self.comb += activate_allowed.eq(trc_timer.done)
+            self.submodules.trccon = trccon = tXXDController(settings.timing.tRC)
+            self.comb += trccon.valid.eq(cmd.valid & cmd.ready & track_open)
+            self.comb += activate_allowed.eq(trccon.ready)
 
         # Respect tRAS activate-precharge time
         precharge_allowed = Signal(reset=1)
         if settings.timing.tRAS is not None:
-            tras_time = settings.timing.tRAS - 1
-            tras_timer = WaitTimer(tras_time)
-            self.submodules += tras_timer
-            self.comb += tras_timer.wait.eq(~(cmd.valid & cmd.ready & track_open))
-            self.comb += precharge_allowed.eq(tras_timer.done)
+            self.submodules.trascon = trascon = tXXDController(settings.timing.tRAS)
+            self.comb += trascon.valid.eq(cmd.valid & cmd.ready & track_open)
+            self.comb += precharge_allowed.eq(trascon.ready)
 
         # Auto Precharge
         if settings.with_auto_precharge:
@@ -149,7 +145,7 @@ class BankMachine(Module):
         )
         fsm.act("PRECHARGE",
             # Note: we are presenting the column address, A10 is always low
-            If(precharge_timer.done & precharge_allowed,
+            If(twtpcon.ready & precharge_allowed,
                 cmd.valid.eq(1),
                 If(cmd.ready,
                     NextState("TRP")
@@ -161,7 +157,7 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
-            If(precharge_timer.done & precharge_allowed,
+            If(twtpcon.ready & precharge_allowed,
                 NextState("TRP")
             ),
             track_close.eq(1)
@@ -177,7 +173,7 @@ class BankMachine(Module):
             cmd.ras.eq(1)
         )
         fsm.act("REFRESH",
-            If(precharge_timer.done,
+            If(twtpcon.ready,
                 self.refresh_gnt.eq(1),
             ),
             track_close.eq(1),
