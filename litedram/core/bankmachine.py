@@ -90,11 +90,8 @@ class BankMachine(Module):
         self.comb += twtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
 
         # Respect tRAS activate-precharge time
-        precharge_allowed = Signal(reset=1)
-        if settings.timing.tRAS is not None:
-            self.submodules.trascon = trascon = tXXDController(settings.timing.tRAS)
-            self.comb += trascon.valid.eq(cmd.valid & cmd.ready & track_open)
-            self.comb += precharge_allowed.eq(trascon.ready)
+        self.submodules.trascon = trascon = tXXDController(settings.timing.tRAS)
+        self.comb += trascon.valid.eq(cmd.valid & cmd.ready & track_open)
 
         # Auto Precharge
         if settings.with_auto_precharge:
@@ -138,7 +135,7 @@ class BankMachine(Module):
         )
         fsm.act("PRECHARGE",
             # Note: we are presenting the column address, A10 is always low
-            If(twtpcon.ready & precharge_allowed,
+            If(twtpcon.ready & trascon.ready,
                 cmd.valid.eq(1),
                 If(cmd.ready,
                     NextState("TRP")
@@ -150,7 +147,7 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
-            If(twtpcon.ready & precharge_allowed,
+            If(twtpcon.ready & trascon.ready,
                 NextState("TRP")
             ),
             track_close.eq(1)
