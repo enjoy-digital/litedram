@@ -89,13 +89,6 @@ class BankMachine(Module):
         self.submodules.twtpcon = twtpcon = tXXDController(precharge_time)
         self.comb += twtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
 
-        # Respect tRC activate-activate time
-        activate_allowed = Signal(reset=1)
-        if settings.timing.tRC is not None:
-            self.submodules.trccon = trccon = tXXDController(settings.timing.tRC)
-            self.comb += trccon.valid.eq(cmd.valid & cmd.ready & track_open)
-            self.comb += activate_allowed.eq(trccon.ready)
-
         # Respect tRAS activate-precharge time
         precharge_allowed = Signal(reset=1)
         if settings.timing.tRAS is not None:
