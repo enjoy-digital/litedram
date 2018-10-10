@@ -80,6 +80,7 @@ class _CommandChooser(Module):
     def read(self):
         return self.cmd.is_read
 
+(STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH) = range(4)
 
 class _Steerer(Module):
     def __init__(self, commands, dfi):
@@ -95,7 +96,7 @@ class _Steerer(Module):
             else:
                 return cmd.valid & cmd.ready & getattr(cmd, attr)
 
-        for phase, sel in zip(dfi.phases, self.sel):
+        for i, (phase, sel) in enumerate(zip(dfi.phases, self.sel)):
             nranks = len(phase.cs_n)
             rankbits = log2_int(nranks)
             if hasattr(phase, "reset_n"):
@@ -108,7 +109,10 @@ class _Steerer(Module):
                 rank_decoder = Decoder(nranks)
                 self.submodules += rank_decoder
                 self.comb += rank_decoder.i.eq((Array(cmd.ba[-rankbits:] for cmd in commands)[sel]))
-                self.sync += phase.cs_n.eq(~rank_decoder.o)
+                if i == 0: # Select all ranks on refresh.
+                    self.sync += If(sel == STEER_REFRESH, phase.cs_n.eq(0)).Else(phase.cs_n.eq(~rank_decoder.o))
+                else:
+                    self.sync += phase.cs_n.eq(~rank_decoder.o)
                 self.sync += phase.bank.eq(Array(cmd.ba[:-rankbits] for cmd in commands)[sel])
             else:
                 self.sync += phase.cs_n.eq(0)
@@ -206,7 +210,6 @@ class Multiplexer(Module, AutoCSR):
                                         log2_int(len(bank_machines))))
         # nop must be 1st
         commands = [nop, choose_cmd.cmd, choose_req.cmd, refresher.cmd]
-        (STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH) = range(4)
         steerer = _Steerer(commands, dfi)
         self.submodules += steerer
 
