@@ -41,7 +41,7 @@ class SDRAMModule:
             tWTR=self.ck_ns_to_cycles(*self.get("tWTR")),
             tFAW=None if self.get("tFAW") is None else self.ck_ns_to_cycles(*self.get("tFAW")),
             tCCD=None if self.get("tCCD") is None else self.ck_ns_to_cycles(*self.get("tCCD")),
-            tRRD=None if self.get("tRRD") is None else self.ns_to_cycles_trrd(self.get("tRRD")),
+            tRRD=None if self.get("tRRD") is None else self.ck_ns_to_cycles(*self.get("tRRD")),
             tRC=None if self.get("tRC") is None else self.ns_to_cycles(self.get("tRC")),
             tRAS=None if self.get("tRAS") is None else self.ns_to_cycles(self.get("tRAS"))
         )
@@ -65,20 +65,6 @@ class SDRAMModule:
                     return getattr(self, name)
                 except:
                     return None
-
-
-    def ns_to_cycles_trrd(self, t):
-        lower_bound = {
-            "1:1" : 4,
-            "1:2" : 2,
-            "1:4" : 1
-        }
-        if (t is None):
-            if self.memtype == "DDR3":
-                return lower_bound[self.rate]
-            else:
-                return 0    #Review: Is this needed for DDR2 and below?
-        return max(lower_bound[self.rate], self.ns_to_cycles(t, margin=False))
 
     def ns_to_cycles(self, t, margin=True):
         clk_period_ns = 1e9/self.clk_freq
@@ -216,7 +202,7 @@ class MT41J128M16(SDRAMModule):
     nrows  = 16384
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=10)
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10))
     speedgrade_timings = {
         "800": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=64, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
         "1066": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=86, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
@@ -237,7 +223,7 @@ class MT41J256M16(SDRAMModule):
     nrows  = 32768
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=10)
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4,10))
     speedgrade_timings = {
         "800": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=139, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
         "1066": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=138, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
@@ -262,7 +248,7 @@ class K4B2G1646FBCK0(SDRAMModule):  ### TODO: optimize and revalidate all timing
     tREFI = 7800  # 3900 refresh more often at 85C+
     tWTR  = (14, 35)
     tCCD  = (4, None)
-    tRRD  = 10  # 4 * clk = 10ns
+    tRRD  = (4, 10)  # 4 * clk = 10ns
     # speedgrade related timings
     # DDR3-1600
     tRP_1600  = 13.125
