@@ -2,9 +2,6 @@ from migen import *
 from litex.soc.interconnect import stream
 
 
-bankbits_max = 3
-
-
 class PhySettings:
     def __init__(self, memtype, dfi_databits,
                  nphases,
@@ -77,9 +74,7 @@ def data_layout(data_width):
     return [
         ("wdata",       data_width, DIR_M_TO_S),
         ("wdata_we", data_width//8, DIR_M_TO_S),
-        ("wbank",     bankbits_max, DIR_S_TO_M),
-        ("rdata",       data_width, DIR_S_TO_M),
-        ("rbank",     bankbits_max, DIR_S_TO_M)
+        ("rdata",       data_width, DIR_S_TO_M)
     ]
 
 
@@ -103,24 +98,20 @@ def cmd_description(address_width):
     ]
 
 
-def wdata_description(data_width, with_bank):
+def wdata_description(data_width):
     r = [
         ("data", data_width),
         ("we",   data_width//8)
     ]
-    if with_bank:
-        r += [("bank", bankbits_max)]
     return r
 
-def rdata_description(data_width, with_bank):
+def rdata_description(data_width):
     r = [("data", data_width)]
-    if with_bank:
-        r += [("bank", bankbits_max)]
     return r
 
 
 class LiteDRAMNativePort:
-    def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0, with_bank=False):
+    def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0):
         self.mode = mode
         self.address_width = address_width
         self.data_width = data_width
@@ -130,8 +121,8 @@ class LiteDRAMNativePort:
         self.lock = Signal()
 
         self.cmd = stream.Endpoint(cmd_description(address_width))
-        self.wdata = stream.Endpoint(wdata_description(data_width, with_bank))
-        self.rdata = stream.Endpoint(rdata_description(data_width, with_bank))
+        self.wdata = stream.Endpoint(wdata_description(data_width))
+        self.rdata = stream.Endpoint(rdata_description(data_width))
 
         self.flush = Signal()
 

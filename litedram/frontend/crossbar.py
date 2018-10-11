@@ -49,8 +49,7 @@ class LiteDRAMCrossbar(Module):
             address_width=self.rca_bits + self.bank_bits - self.rank_bits,
             data_width=self.controller.data_width,
             clock_domain="sys",
-            id=len(self.masters),
-            with_bank=self.controller.settings.with_reordering)
+            id=len(self.masters))
         self.masters.append(port)
 
         # clock domain crossing
@@ -60,8 +59,7 @@ class LiteDRAMCrossbar(Module):
                 address_width=port.address_width,
                 data_width=port.data_width,
                 clock_domain=clock_domain,
-                id=port.id,
-                with_bank=self.controller.settings.with_reordering)
+                id=port.id)
             self.submodules += LiteDRAMNativePortCDC(new_port, port)
             port = new_port
 
@@ -76,8 +74,7 @@ class LiteDRAMCrossbar(Module):
                 address_width=port.address_width + addr_shift,
                 data_width=data_width,
                 clock_domain=clock_domain,
-                id=port.id,
-                with_bank=self.controller.settings.with_reordering)
+                id=port.id)
             self.submodules += ClockDomainsRenamer(clock_domain)(LiteDRAMNativePortConverter(new_port, port, reverse))
             port = new_port
 
@@ -107,11 +104,10 @@ class LiteDRAMCrossbar(Module):
             master_locked = []
             for nm, master in enumerate(self.masters):
                 locked = Signal()
-                if not self.controller.settings.with_reordering:
-                    for other_nb, other_arbiter in enumerate(arbiters):
-                        if other_nb != nb:
-                            other_bank = getattr(controller, "bank"+str(other_nb))
-                            locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
+                for other_nb, other_arbiter in enumerate(arbiters):
+                    if other_nb != nb:
+                        other_bank = getattr(controller, "bank"+str(other_nb))
+                        locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
                 master_locked.append(locked)
 
             # arbitrate
@@ -158,17 +154,6 @@ class LiteDRAMCrossbar(Module):
                     master_rdata_valid = new_master_rdata_valid
                 master_rdata_valids[nm] = master_rdata_valid
 
-        # Delay bank output to match rvalid
-        for i in range(self.read_latency-1):
-            new_master_rbank = Signal(max=self.nbanks)
-            self.sync += new_master_rbank.eq(rbank)
-            rbank = new_master_rbank
-        # Delay wbank output to match wready
-        for i in range(self.write_latency-1):
-            new_master_wbank = Signal(max=self.nbanks)
-            self.sync += new_master_wbank.eq(wbank)
-            wbank = new_master_wbank
-
         for master, master_ready in zip(self.masters, master_readys):
             self.comb += master.cmd.ready.eq(master_ready)
         for master, master_wdata_ready in zip(self.masters, master_wdata_readys):
@@ -192,9 +177,6 @@ class LiteDRAMCrossbar(Module):
         # route data reads
         for master in self.masters:
             self.comb += master.rdata.data.eq(self.controller.rdata)
-            if hasattr(master.rdata, "bank"):
-                self.comb += master.rdata.bank.eq(rbank)
-                self.comb += master.wdata.bank.eq(wbank)
 
     def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
         m_ba = [] # bank address

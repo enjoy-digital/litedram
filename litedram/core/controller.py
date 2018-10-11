@@ -13,8 +13,7 @@ class ControllerSettings:
                  read_time=32, write_time=16,
                  with_bandwidth=False,
                  with_refresh=True,
-                 with_auto_precharge=True,
-                 with_reordering=False):
+                 with_auto_precharge=True):
         self.cmd_buffer_depth = cmd_buffer_depth
         self.cmd_buffer_buffered = cmd_buffer_buffered
         self.read_time = read_time
@@ -22,7 +21,6 @@ class ControllerSettings:
         self.with_bandwidth = with_bandwidth
         self.with_refresh = with_refresh
         self.with_auto_precharge = with_auto_precharge
-        self.with_reordering = with_reordering
 
 
 class LiteDRAMController(Module):
