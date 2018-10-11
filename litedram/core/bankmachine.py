@@ -216,18 +216,20 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("ACTIVATE",
-            sel_row_addr.eq(1),
-            track_open.eq(1),
-            cmd.valid.eq(1),
-            cmd.is_cmd.eq(1),
-            cmd.is_activate.eq(1),
-            If(cmd.ready,
-                NextState("TRCD")
-            ),
-            cmd.ras.eq(1)
+            If(activate_allowed,
+                sel_row_addr.eq(1),
+                track_open.eq(1),
+                cmd.valid.eq(1),
+                cmd.is_cmd.eq(1),
+                cmd.is_activate.eq(1),
+                If(cmd.ready,
+                    NextState("TRCD")
+                ),
+                cmd.ras.eq(1)
+            )
         )
         fsm.act("REFRESH",
-            If(twtpcon.ready,
+            If(twtpcon.ready & precharge_allowed,
                 self.refresh_gnt.eq(1),
             ),
             track_close.eq(1),
