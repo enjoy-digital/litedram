@@ -223,7 +223,7 @@ class MT41J256M16(SDRAMModule):
     nrows  = 32768
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4,10))
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10))
     speedgrade_timings = {
         "800": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=139, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
         "1066": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=138, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
@@ -244,7 +244,7 @@ class K4B1G0446F(SDRAMModule):
     nrows  = 16384
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=None)
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10))
     speedgrade_timings = {
         "800": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=120, tFAW=(None, 50), tRC=52.5, tRAS=37.5),
         "1066": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=160, tFAW=(None, 50), tRC=50.625, tRAS=37.5),
@@ -289,7 +289,7 @@ class MT8JTF12864(SDRAMModule):
     nrows  = 16384
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=None)
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10))
     speedgrade_timings = {
         "1066": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=86, tFAW=(None, 50), tRC=None, tRAS=None),
         "1333": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=107, tFAW=(None, 45), tRC=None, tRAS=None),
@@ -304,7 +304,7 @@ class MT18KSF1G72HZ(SDRAMModule):
     nrows  = 65536
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=None)
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10))
     speedgrade_timings = {
         "1066": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=86, tFAW=(None, 50), tRC=None, tRAS=None),
         "1333": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=107, tFAW=(None, 45), tRC=None, tRAS=None),
