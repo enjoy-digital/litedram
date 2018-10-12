@@ -53,6 +53,7 @@ class TestECC(unittest.TestCase):
         def generator(dut, k, nvalues, nerrors):
             dut.errors = 0
             prng = random.Random(42)
+            yield dut.decoder.enable.eq(1)
             for i in range(nvalues):
                 data = prng.randrange(2**k-1)
                 yield dut.encoder.i.eq(data)

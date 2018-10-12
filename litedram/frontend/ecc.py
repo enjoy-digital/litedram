@@ -150,8 +150,8 @@ class ECCDecoder(SECDEC, Module):
 
 class LiteDRAMNativePortECCW(Module):
     def __init__(self, data_width_from, data_width_to):
-        self.sink = sink = Endpoint(wdata_description(data_width_from, False))
-        self.source = source = Endpoint(wdata_description(data_width_to, False))
+        self.sink = sink = Endpoint(wdata_description(data_width_from))
+        self.source = source = Endpoint(wdata_description(data_width_to))
 
         # # #
 
@@ -168,8 +168,8 @@ class LiteDRAMNativePortECCW(Module):
 
 class LiteDRAMNativePortECCR(Module):
     def __init__(self, data_width_from, data_width_to):
-        self.sink = sink = Endpoint(rdata_description(data_width_to, False))
-        self.source = source = Endpoint(rdata_description(data_width_from, False))
+        self.sink = sink = Endpoint(rdata_description(data_width_to))
+        self.source = source = Endpoint(rdata_description(data_width_from))
         self.enable = Signal()
         self.sec = Signal(8)
         self.dec = Signal(8)
