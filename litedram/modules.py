@@ -254,31 +254,21 @@ class K4B1G0446F(SDRAMModule):
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 
-# FIXME: update to new definition when fully tested (old definition still handled)
-class K4B2G1646FBCK0(SDRAMModule):  ### TODO: optimize and revalidate all timings, at cold and hot temperatures
+class K4B2G1646F(SDRAMModule):
     memtype = "DDR3"
     # geometry
     nbanks = 8
     nrows  = 16384
     ncols  = 1024
-    # speedgrade invariant timings
-    tREFI = 7800  # 3900 refresh more often at 85C+
-    tWTR  = (14, 35)
-    tCCD  = (4, None)
-    tRRD  = (4, 10)  # 4 * clk = 10ns
-    # speedgrade related timings
-    # DDR3-1600
-    tRP_1600  = 13.125
-    tRCD_1600 = 13.125
-    tWR_1600  = 35  # this is hard-coded in MR0 to be 14 cycles, 14 * 2.5 = 35, see sdram_init.py@L224
-    tRFC_1600 = 160
-    tFAW_1600 = (None, 40)
-    # API retro-compatibility
-    tRP  = tRP_1600
-    tRCD = tRCD_1600
-    tWR  = tWR_1600
-    tRFC = tRFC_1600
-    tFAW = tFAW_1600
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10))
+    speedgrade_timings = {
+        "800": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=104, tFAW=(None, 50), tRAS=37.5),
+        "1066": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=139, tFAW=(None, 50), tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=174, tFAW=(None, 45), tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=208, tFAW=(None, 40), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 
 # DDR3 (SO-DIMM)
