@@ -89,6 +89,10 @@ class BankMachine(Module):
         self.submodules.twtpcon = twtpcon = tXXDController(precharge_time)
         self.comb += twtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
 
+        # Respect tRC activate-activate time
+        self.submodules.trccon = trccon = tXXDController(settings.timing.tRC)
+        self.comb += trccon.valid.eq(cmd.valid & cmd.ready & track_open)
+
         # Respect tRAS activate-precharge time
         self.submodules.trascon = trascon = tXXDController(settings.timing.tRAS)
         self.comb += trascon.valid.eq(cmd.valid & cmd.ready & track_open)
@@ -153,14 +157,16 @@ class BankMachine(Module):
             track_close.eq(1)
         )
         fsm.act("ACTIVATE",
-            sel_row_addr.eq(1),
-            track_open.eq(1),
-            cmd.valid.eq(1),
-            cmd.is_cmd.eq(1),
-            If(cmd.ready,
-                NextState("TRCD")
-            ),
-            cmd.ras.eq(1)
+            If(trccon.ready,
+                sel_row_addr.eq(1),
+                track_open.eq(1),
+                cmd.valid.eq(1),
+                cmd.is_cmd.eq(1),
+                If(cmd.ready,
+                    NextState("TRCD")
+                ),
+                cmd.ras.eq(1)
+            )
         )
         fsm.act("REFRESH",
             If(twtpcon.ready,
