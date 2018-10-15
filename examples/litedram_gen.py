@@ -24,61 +24,50 @@ from litedram.frontend.bist import LiteDRAMBISTChecker
 def get_common_ios():
     return [
         # clk / rst
-        ("clk", 0, Pins("X")),
-        ("rst", 0, Pins("X")),
+        ("clk", 0, Pins(1)),
+        ("rst", 0, Pins(1)),
 
         # serial
         ("serial", 0,
-            Subsignal("tx", Pins("X")),
-            Subsignal("rx", Pins("X"))
+            Subsignal("tx", Pins(1)),
+            Subsignal("rx", Pins(1))
         ),
 
         # crg status
-        ("pll_locked", 0, Pins("X")),
+        ("pll_locked", 0, Pins(1)),
 
         # init status
-        ("init_done", 0, Pins("X")),
-        ("init_error", 0, Pins("X")),
+        ("init_done", 0, Pins(1)),
+        ("init_error", 0, Pins(1)),
 
         # iodelay clk / rst
-        ("clk_iodelay", 0, Pins("X")),
-        ("rst_iodelay", 0, Pins("X")),
+        ("clk_iodelay", 0, Pins(1)),
+        ("rst_iodelay", 0, Pins(1)),
 
         # user clk / rst
-        ("user_clk", 0, Pins("X")),
-        ("user_rst", 0, Pins("X"))
+        ("user_clk", 0, Pins(1)),
+        ("user_rst", 0, Pins(1))
     ]
 
 def get_dram_ios(core_config):
     sdram_module = core_config["sdram_module"]
     return [
         ("ddram", 0,
-            Subsignal("a", Pins(
-                "X "*log2_int(core_config["sdram_module"].nrows))),
-            Subsignal("ba", Pins(
-                "X "*log2_int(core_config["sdram_module"].nbanks))),
-            Subsignal("ras_n", Pins("X")),
-            Subsignal("cas_n", Pins("X")),
-            Subsignal("we_n", Pins("X")),
-            Subsignal("cs_n", Pins(
-                "X "*core_config["sdram_rank_nb"])),
-            Subsignal("dm", Pins(
-                "X "*2*core_config["sdram_module_nb"])),
-            Subsignal("dq", Pins(
-                "X "*16*core_config["sdram_module_nb"])),
-            Subsignal("dqs_p", Pins(
-                "X "*2*core_config["sdram_module_nb"])),
-            Subsignal("dqs_n", Pins(
-                "X "*2*core_config["sdram_module_nb"])),
-            Subsignal("clk_p", Pins(
-                "X "*core_config["sdram_rank_nb"])),
-            Subsignal("clk_n", Pins(
-                "X "*core_config["sdram_rank_nb"])),
-            Subsignal("cke", Pins(
-                "X "*core_config["sdram_rank_nb"])),
-            Subsignal("odt", Pins(
-                "X "*core_config["sdram_rank_nb"])),
-            Subsignal("reset_n", Pins("X"))
+            Subsignal("a", Pins(log2_int(core_config["sdram_module"].nrows))),
+            Subsignal("ba", Pins(log2_int(core_config["sdram_module"].nbanks))),
+            Subsignal("ras_n", Pins(1)),
+            Subsignal("cas_n", Pins(1)),
+            Subsignal("we_n", Pins(1)),
+            Subsignal("cs_n", Pins(core_config["sdram_rank_nb"])),
+            Subsignal("dm", Pins(2*core_config["sdram_module_nb"])),
+            Subsignal("dq", Pins(16*core_config["sdram_module_nb"])),
+            Subsignal("dqs_p", Pins(2*core_config["sdram_module_nb"])),
+            Subsignal("dqs_n", Pins(2*core_config["sdram_module_nb"])),
+            Subsignal("clk_p", Pins(core_config["sdram_rank_nb"])),
+            Subsignal("clk_n", Pins(core_config["sdram_rank_nb"])),
+            Subsignal("cke", Pins(core_config["sdram_rank_nb"])),
+            Subsignal("odt", Pins(core_config["sdram_rank_nb"])),
+            Subsignal("reset_n", Pins(1))
         ),
     ]
 
