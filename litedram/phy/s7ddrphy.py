@@ -6,6 +6,7 @@ import math
 from collections import OrderedDict
 
 from migen import *
+from migen.genlib.misc import BitSlip
 
 from litex.soc.interconnect.csr import *
 
@@ -41,9 +42,9 @@ def get_sys_phases(nphases, sys_latency, cas_latency):
     cmd_phase = (dat_phase - 1)%nphases
     return cmd_phase, dat_phase
 
+
 class S7DDRPHY(Module, AutoCSR):
-    def __init__(self, pads, with_odelay, memtype="DDR3", nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6,
-        additional_read_latency=0):
+    def __init__(self, pads, with_odelay, memtype="DDR3", nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6):
         assert not (memtype == "DDR3" and nphases == 2) # FIXME: Needs BL8 support for nphases=2
         tck = 2/(2*nphases*sys_clk_freq)
         addressbits = len(pads.a)
@@ -51,7 +52,6 @@ class S7DDRPHY(Module, AutoCSR):
         nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits = len(pads.dq)
         nphases = nphases
-
 
         iodelay_tap_average = {
             200e6: 78e-12,
@@ -97,7 +97,7 @@ class S7DDRPHY(Module, AutoCSR):
             wrcmdphase=wrcmdphase,
             cl=cl,
             cwl=cwl,
-            read_latency=2 + cl_sys_latency + 2 + additional_read_latency,
+            read_latency=2 + cl_sys_latency + 2 + 3,
             write_latency=cwl_sys_latency
         )
 
@@ -318,25 +318,36 @@ class S7DDRPHY(Module, AutoCSR):
 
                     i_DDLY=dq_i_delayed,
                     i_CE1=1,
-                    i_RST=ResetSignal() | (self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re),
+                    i_RST=ResetSignal(),
                     i_CLK=ClockSignal(ddr_clk), i_CLKB=~ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
-                    i_BITSLIP=self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
-                    o_Q8=dq_i_data[7], o_Q7=dq_i_data[6],
-                    o_Q6=dq_i_data[5], o_Q5=dq_i_data[4],
-                    o_Q4=dq_i_data[3], o_Q3=dq_i_data[2],
-                    o_Q2=dq_i_data[1], o_Q1=dq_i_data[0]
+                    i_BITSLIP=0,
+                    o_Q8=dq_i_data[0], o_Q7=dq_i_data[1],
+                    o_Q6=dq_i_data[2], o_Q5=dq_i_data[3],
+                    o_Q4=dq_i_data[4], o_Q3=dq_i_data[5],
+                    o_Q2=dq_i_data[6], o_Q1=dq_i_data[7]
                 )
+            dq_bitslip = BitSlip(8)
+            self.comb += dq_bitslip.i.eq(dq_i_data)
+            self.sync += \
+                If(self._dly_sel.storage[i//8],
+                    If(self._rdly_dq_bitslip_rst.re,
+                        dq_bitslip.value.eq(0)
+                    ).Elif(self._rdly_dq_bitslip.re,
+                        dq_bitslip.value.eq(dq_bitslip.value + 1)
+                    )
+                )
+            self.submodules += dq_bitslip
             if nphases == 2:
                 self.comb += [
-                    self.dfi.phases[0].rddata[i].eq(dq_i_data[3]), self.dfi.phases[0].rddata[databits+i].eq(dq_i_data[2]),
-                    self.dfi.phases[1].rddata[i].eq(dq_i_data[1]), self.dfi.phases[1].rddata[databits+i].eq(dq_i_data[0])
+                    self.dfi.phases[0].rddata[i].eq(dq_bitslip.o[7]), self.dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[5]),
+                    self.dfi.phases[1].rddata[i].eq(dq_bitslip.o[6]), self.dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[7])
                 ]
             else:
                 self.comb += [
-                    self.dfi.phases[0].rddata[i].eq(dq_i_data[7]), self.dfi.phases[0].rddata[databits+i].eq(dq_i_data[6]),
-                    self.dfi.phases[1].rddata[i].eq(dq_i_data[5]), self.dfi.phases[1].rddata[databits+i].eq(dq_i_data[4]),
-                    self.dfi.phases[2].rddata[i].eq(dq_i_data[3]), self.dfi.phases[2].rddata[databits+i].eq(dq_i_data[2]),
-                    self.dfi.phases[3].rddata[i].eq(dq_i_data[1]), self.dfi.phases[3].rddata[databits+i].eq(dq_i_data[0])
+                    self.dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]), self.dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
+                    self.dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]), self.dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
+                    self.dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]), self.dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
+                    self.dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]), self.dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7])
                 ]
 
             if with_odelay:
@@ -378,6 +389,7 @@ class S7DDRPHY(Module, AutoCSR):
         #  2 cycles through OSERDESE2
         #  cl_sys_latency cycles CAS
         #  2 cycles through ISERDESE2
+        #  3 cycles through Bitslip
         rddata_en = self.dfi.phases[self.settings.rdphase].rddata_en
         for i in range(self.settings.read_latency-1):
             n_rddata_en = Signal()
