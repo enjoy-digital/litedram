@@ -71,6 +71,7 @@ def data_layout(data_width):
 class LiteDRAMInterface(Record):
     def __init__(self, address_align, settings):
         rankbits = log2_int(settings.phy.nranks)
+        self.address_align = address_align
         self.address_width = settings.geom.rowbits + settings.geom.colbits + rankbits - address_align
         self.data_width = settings.phy.dfi_databits*settings.phy.nphases
         self.nbanks = settings.phy.nranks*(2**settings.geom.bankbits)

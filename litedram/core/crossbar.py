@@ -12,10 +12,14 @@ from litedram.common import *
 from litedram.frontend.adaptation import *
 
 
+ROW_BANK_COL = 0b01
+ROW_COL_BANK = 0b10
+
+
 class LiteDRAMCrossbar(Module):
-    def __init__(self, controller, cba_shift):
+    def __init__(self, controller, address_mapping=ROW_BANK_COL):
         self.controller = controller
-        self.cba_shift = cba_shift
+        self.address_mapping = address_mapping
 
         self.rca_bits = controller.address_width
         self.nbanks = controller.nbanks
@@ -86,8 +90,17 @@ class LiteDRAMCrossbar(Module):
     def do_finalize(self):
         nmasters = len(self.masters)
 
-        m_ba = [m.get_bank_address(self.bank_bits, self.cba_shift)for m in self.masters]
-        m_rca = [m.get_row_column_address(self.bank_bits, self.rca_bits, self.cba_shift) for m in self.masters]
+        # address mapping
+        cba_shift = {
+            ROW_BANK_COL: self.controller.settings.geom.colbits -
+                          self.controller.address_align,
+            ROW_COL_BANK: self.controller.settings.geom.rowbits +
+                          self.controller.settings.geom.colbits -
+                          self.controller.address_align
+        }
+
+        m_ba = [m.get_bank_address(self.bank_bits, cba_shift[self.address_mapping])for m in self.masters]
+        m_rca = [m.get_row_column_address(self.bank_bits, self.rca_bits, cba_shift[self.address_mapping]) for m in self.masters]
 
         controller = self.controller
         master_readys = [0]*nmasters

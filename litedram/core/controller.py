@@ -22,6 +22,7 @@ class ControllerSettings(Settings):
 class LiteDRAMController(Module):
     def __init__(self, phy_settings, geom_settings, timing_settings,
                  controller_settings=ControllerSettings()):
+        address_align = log2_int(burst_lengths[phy_settings.memtype])
         self.settings = settings = controller_settings
         self.settings.phy = phy_settings
         self.settings.geom = geom_settings
@@ -34,12 +35,9 @@ class LiteDRAMController(Module):
             phy_settings.dfi_databits,
             phy_settings.nphases)
 
-        address_align = log2_int(burst_lengths[phy_settings.memtype])
         self.interface = interface = LiteDRAMInterface(address_align, settings)
 
         # # #
-
-        self.nrowbits = settings.geom.colbits - address_align # FIXME
 
         # refresher
         refresher = Refresher(settings)
