@@ -1,24 +1,16 @@
-#
 # 1:1 frequency-ratio Generic SDR PHY
 #
-# The GENSDRPHY is validated on CycloneIV (Altera) but since it does
-# not use vendor-dependent code, it can also be used on other architectures.
-#
-# The PHY needs 2 Clock domains:
+# The SDR PHY needs 2 Clock domains:
 #  - sys_clk    : The System Clock domain
-#  - sys_clk_ps : The System Clock domain with its phase shifted
-#                 (-3ns on C4@100MHz)
+#  - sys_clk_ps : The System Clock domain with its phase shifted by -3ns at 100Mhz
 #
-# Assert dfi_wrdata_en and present the data
-# on dfi_wrdata_mask/dfi_wrdata in the same
-# cycle as the write command.
+# Assert dfi_wrdata_en and present the data on dfi_wrdata_mask/dfi_wrdata in the
+# same cycle as the write command.
 #
-# Assert dfi_rddata_en in the same cycle as the read
-# command. The data will come back on dfi_rddata
-# 4 cycles later, along with the assertion of
-# dfi_rddata_valid.
+# Assert dfi_rddata_en in the same cycle as the read command. The data will come
+# back on dfi_rddata 4 cycles later, along with the assertion of dfi_rddata_valid.
 #
-# This PHY only supports CAS Latency 2.
+# This SDR PHY only supports CAS Latency 2.
 #
 
 from migen import *
@@ -50,48 +42,42 @@ class GENSDRPHY(Module):
             write_latency=0
         )
 
-        self.dfi = Interface(addressbits, bankbits, nranks, databits)
+        self.dfi = dfi = Interface(addressbits, bankbits, nranks, databits)
 
         # # #
 
-        #
         # Command/address
-        #
         self.sync += [
-            pads.a.eq(self.dfi.p0.address),
-            pads.ba.eq(self.dfi.p0.bank),
-            pads.cke.eq(self.dfi.p0.cke),
-            pads.cas_n.eq(self.dfi.p0.cas_n),
-            pads.ras_n.eq(self.dfi.p0.ras_n),
-            pads.we_n.eq(self.dfi.p0.we_n)
+            pads.a.eq(dfi.p0.address),
+            pads.ba.eq(dfi.p0.bank),
+            pads.cke.eq(dfi.p0.cke),
+            pads.cas_n.eq(dfi.p0.cas_n),
+            pads.ras_n.eq(dfi.p0.ras_n),
+            pads.we_n.eq(dfi.p0.we_n)
         ]
         if hasattr(pads, "cs_n"):
-            self.sync += pads.cs_n.eq(self.dfi.p0.cs_n)
+            self.sync += pads.cs_n.eq(dfi.p0.cs_n)
 
-        #
         # DQ/DQS/DM data
-        #
-        sd_dq_out = Signal(databits)
-        drive_dq = Signal()
-        self.sync += sd_dq_out.eq(self.dfi.p0.wrdata)
-        self.specials += Tristate(pads.dq, sd_dq_out, drive_dq)
+        dq_o = Signal(databits)
+        dq_oe = Signal()
+        self.sync += dq_o.eq(dfi.p0.wrdata)
+        self.specials += Tristate(pads.dq, dq_o, dq_oe)
         self.sync += \
-            If(self.dfi.p0.wrdata_en,
-                pads.dm.eq(self.dfi.p0.wrdata_mask)
+            If(dfi.p0.wrdata_en,
+                pads.dm.eq(dfi.p0.wrdata_mask)
             ).Else(
                 pads.dm.eq(0)
             )
-        sd_dq_in_ps = Signal(databits)
-        self.sync.sys_ps += sd_dq_in_ps.eq(pads.dq)
-        self.sync += self.dfi.p0.rddata.eq(sd_dq_in_ps)
+        dq_in = Signal(databits)
+        self.sync.sys_ps += dq_in.eq(pads.dq)
+        self.sync += dfi.p0.rddata.eq(dq_in)
 
-        #
         # DQ/DM control
-        #
-        d_dfi_wrdata_en = Signal()
-        self.sync += d_dfi_wrdata_en.eq(self.dfi.p0.wrdata_en)
-        self.comb += drive_dq.eq(d_dfi_wrdata_en)
+        wrdata_en = Signal()
+        self.sync += wrdata_en.eq(dfi.p0.wrdata_en)
+        self.comb += dq_oe.eq(wrdata_en)
 
-        rddata_sr = Signal(4)
-        self.comb += self.dfi.p0.rddata_valid.eq(rddata_sr[3])
-        self.sync += rddata_sr.eq(Cat(self.dfi.p0.rddata_en, rddata_sr[:3]))
+        rddata_en = Signal(4)
+        self.sync += rddata_en.eq(Cat(dfi.p0.rddata_en, rddata_en[:3]))
+        self.comb += dfi.p0.rddata_valid.eq(rddata_en[3])
