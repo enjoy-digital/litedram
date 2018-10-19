@@ -83,7 +83,7 @@ class BankMachine(Module):
         # tWTP (write-to-precharge) controller
         write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
         precharge_time = write_latency + settings.timing.tWR + settings.timing.tCCD # AL=0
-        self.submodules.twtp_con = twtpcon = tXXDController(precharge_time)
+        self.submodules.twtpcon = twtpcon = tXXDController(precharge_time)
         self.comb += twtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
 
         # tRC (activate-activate) controller
