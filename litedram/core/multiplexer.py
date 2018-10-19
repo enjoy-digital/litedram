@@ -1,3 +1,6 @@
+"""LiteDRAM Multiplexer."""
+
+import math
 from functools import reduce
 from operator import add, or_, and_
 
@@ -9,8 +12,8 @@ from litex.soc.interconnect import stream
 from litex.soc.interconnect.csr import AutoCSR
 
 from litedram.common import *
-from litedram.core.perf import Bandwidth
-import math
+from litedram.core.bandwidth import Bandwidth
+
 
 class _CommandChooser(Module):
     def __init__(self, requests):
@@ -162,8 +165,7 @@ class Multiplexer(Module, AutoCSR):
             bank_machines,
             refresher,
             dfi,
-            interface,
-            with_bandwidth=False):
+            interface):
         assert(settings.phy.nphases == len(dfi.phases))
 
         ras_allowed = Signal(reset=1)

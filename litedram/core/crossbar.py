@@ -1,3 +1,5 @@
+"""LiteDRAM Crossbar."""
+
 from functools import reduce
 from operator import or_
 
@@ -7,7 +9,7 @@ from migen.genlib import roundrobin
 from litex.soc.interconnect import stream
 
 from litedram.common import *
-from litedram.frontend.adaptation import LiteDRAMNativePortCDC, LiteDRAMNativePortConverter
+from litedram.frontend.adaptation import *
 
 
 class LiteDRAMCrossbar(Module):
@@ -75,7 +77,8 @@ class LiteDRAMCrossbar(Module):
                 data_width=data_width,
                 clock_domain=clock_domain,
                 id=port.id)
-            self.submodules += ClockDomainsRenamer(clock_domain)(LiteDRAMNativePortConverter(new_port, port, reverse))
+            self.submodules += ClockDomainsRenamer(clock_domain)(
+                LiteDRAMNativePortConverter(new_port, port, reverse))
             port = new_port
 
         return port
@@ -83,9 +86,8 @@ class LiteDRAMCrossbar(Module):
     def do_finalize(self):
         nmasters = len(self.masters)
 
-        m_ba, m_rca = self.split_master_addresses(self.bank_bits,
-                                                  self.rca_bits,
-                                                  self.cba_shift)
+        m_ba = [m.get_bank_address(self.bank_bits, self.cba_shift)for m in self.masters]
+        m_rca = [m.get_row_column_address(self.bank_bits, self.rca_bits, self.cba_shift) for m in self.masters]
 
         controller = self.controller
         master_readys = [0]*nmasters
@@ -177,26 +179,3 @@ class LiteDRAMCrossbar(Module):
         # route data reads
         for master in self.masters:
             self.comb += master.rdata.data.eq(self.controller.rdata)
-
-    def split_master_addresses(self, bank_bits, rca_bits, cba_shift):
-        m_ba = [] # bank address
-        m_rca = [] # row and column address
-        for master in self.masters:
-            cba = Signal(self.bank_bits)
-            rca = Signal(self.rca_bits)
-            cba_upper = cba_shift + bank_bits
-            self.comb += cba.eq(master.cmd.addr[cba_shift:cba_upper])
-            if cba_shift < self.rca_bits:
-                if cba_shift:
-                    self.comb += rca.eq(Cat(master.cmd.addr[:cba_shift],
-                                            master.cmd.addr[cba_upper:]))
-                else:
-                    self.comb += rca.eq(master.cmd.addr[cba_upper:])
-            else:
-                self.comb += rca.eq(master.cmd.addr[:cba_shift])
-
-            ba = cba
-
-            m_ba.append(ba)
-            m_rca.append(rca)
-        return m_ba, m_rca

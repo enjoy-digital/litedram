@@ -1,3 +1,5 @@
+"""LiteDRAM Bandwidth."""
+
 from migen import *
 
 from litex.soc.interconnect.csr import *

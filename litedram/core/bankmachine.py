@@ -1,11 +1,13 @@
+"""LiteDRAM BankMachine (Rows/Columns management)."""
+
 import math
+
 from migen import *
-from migen.genlib.misc import WaitTimer
 
 from litex.soc.interconnect import stream
 
-from litedram.core.multiplexer import *
 from litedram.common import *
+from litedram.core.multiplexer import *
 
 
 class _AddressSlicer:
@@ -15,24 +17,19 @@ class _AddressSlicer:
 
     def row(self, address):
         split = self.colbits - self.address_align
-        if isinstance(address, int):
-            return address >> split
-        else:
-            return address[split:]
+        return address[split:]
 
     def col(self, address):
         split = self.colbits - self.address_align
-        if isinstance(address, int):
-            return (address & (2**split - 1)) << self.address_align
-        else:
-            return Cat(Replicate(0, self.address_align), address[:split])
+        return Cat(Replicate(0, self.address_align), address[:split])
 
 
 class BankMachine(Module):
     def __init__(self, n, aw, address_align, nranks, settings):
         self.req = req = Record(cmd_layout(aw))
-        self.refresh_req = Signal()
-        self.refresh_gnt = Signal()
+        self.refresh_req = refresh_req = Signal()
+        self.refresh_gnt = refresh_gnt = Signal()
+
         a = settings.geom.addressbits
         ba = settings.geom.bankbits + log2_int(nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
@@ -58,64 +55,64 @@ class BankMachine(Module):
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
         # Row tracking
-        has_openrow = Signal()
-        openrow = Signal(settings.geom.rowbits, reset_less=True)
-        hit = Signal()
-        self.comb += hit.eq(openrow == slicer.row(cmd_buffer.source.addr))
-        track_open = Signal()
-        track_close = Signal()
+        row = Signal(settings.geom.rowbits)
+        row_opened = Signal()
+        row_hit = Signal()
+        row_open = Signal()
+        row_close = Signal()
+        self.comb += row_hit.eq(row == slicer.row(cmd_buffer.source.addr))
         self.sync += \
-            If(track_close,
-                has_openrow.eq(0)
-            ).Elif(track_open,
-                has_openrow.eq(1),
-                openrow.eq(slicer.row(cmd_buffer.source.addr))
+            If(row_close,
+                row_opened.eq(0)
+            ).Elif(row_open,
+                row_opened.eq(1),
+                row.eq(slicer.row(cmd_buffer.source.addr))
             )
 
         # Address generation
-        sel_row_addr = Signal()
+        row_col_n_addr_sel = Signal()
         self.comb += [
             cmd.ba.eq(n),
-            If(sel_row_addr,
+            If(row_col_n_addr_sel,
                 cmd.a.eq(slicer.row(cmd_buffer.source.addr))
             ).Else(
                 cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.source.addr))
             )
         ]
 
-        # Respect write-to-precharge specification
+        # tWTP (write-to-precharge) controller
         write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
         precharge_time = write_latency + settings.timing.tWR + settings.timing.tCCD # AL=0
-        self.submodules.twtpcon = twtpcon = tXXDController(precharge_time)
+        self.submodules.twtp_con = twtpcon = tXXDController(precharge_time)
         self.comb += twtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
 
-        # Respect tRC activate-activate time
+        # tRC (activate-activate) controller
         self.submodules.trccon = trccon = tXXDController(settings.timing.tRC)
-        self.comb += trccon.valid.eq(cmd.valid & cmd.ready & track_open)
+        self.comb += trccon.valid.eq(cmd.valid & cmd.ready & row_open)
 
-        # Respect tRAS activate-precharge time
+        # tRAS (activate-precharge) controller
         self.submodules.trascon = trascon = tXXDController(settings.timing.tRAS)
-        self.comb += trascon.valid.eq(cmd.valid & cmd.ready & track_open)
+        self.comb += trascon.valid.eq(cmd.valid & cmd.ready & row_open)
 
-        # Auto Precharge
+        # Auto Precharge generation
         if settings.with_auto_precharge:
-            self.comb += [
+            self.comb += \
                 If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
-                    If(slicer.row(cmd_buffer_lookahead.source.addr) != slicer.row(cmd_buffer.source.addr),
-                        auto_precharge.eq(track_close == 0)
+                    If(slicer.row(cmd_buffer_lookahead.source.addr) !=
+                       slicer.row(cmd_buffer.source.addr),
+                        auto_precharge.eq(row_close == 0)
                     )
                 )
-            ]
 
         # Control and command generation FSM
         # Note: tRRD, tFAW, tCCD, tWTR timings are enforced by the multiplexer
         self.submodules.fsm = fsm = FSM()
         fsm.act("REGULAR",
-            If(self.refresh_req,
+            If(refresh_req,
                 NextState("REFRESH")
             ).Elif(cmd_buffer.source.valid,
-                If(has_openrow,
-                    If(hit,
+                If(row_opened,
+                    If(row_hit,
                         cmd.valid.eq(1),
                         If(cmd_buffer.source.we,
                             req.wdata_ready.eq(cmd.ready),
@@ -148,18 +145,18 @@ class BankMachine(Module):
                 cmd.we.eq(1),
                 cmd.is_cmd.eq(1)
             ),
-            track_close.eq(1)
+            row_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
             If(twtpcon.ready & trascon.ready,
                 NextState("TRP")
             ),
-            track_close.eq(1)
+            row_close.eq(1)
         )
         fsm.act("ACTIVATE",
             If(trccon.ready,
-                sel_row_addr.eq(1),
-                track_open.eq(1),
+                row_col_n_addr_sel.eq(1),
+                row_open.eq(1),
                 cmd.valid.eq(1),
                 cmd.is_cmd.eq(1),
                 If(cmd.ready,
@@ -170,11 +167,11 @@ class BankMachine(Module):
         )
         fsm.act("REFRESH",
             If(twtpcon.ready,
-                self.refresh_gnt.eq(1),
+                refresh_gnt.eq(1),
             ),
-            track_close.eq(1),
+            row_close.eq(1),
             cmd.is_cmd.eq(1),
-            If(~self.refresh_req,
+            If(~refresh_req,
                 NextState("REGULAR")
             )
         )

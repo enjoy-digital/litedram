@@ -1,3 +1,5 @@
+"""LiteDRAM Refresher."""
+
 from migen import *
 from migen.genlib.misc import timeline, WaitTimer
 
