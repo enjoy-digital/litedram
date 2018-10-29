@@ -114,6 +114,17 @@ class MT48LC4M16(SDRAMModule):
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=14, tRFC=66, tFAW=None, tRAS=None)}
 
 
+class MT48LC16M16(SDRAMModule):
+    memtype = "SDR"
+    # geometry
+    nbanks = 4
+    nrows  = 8192
+    ncols  = 512
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=18, tRCD=18, tWR=14, tRFC=66, tFAW=None, tRAS=None)}
+
+
 class AS4C16M16(SDRAMModule):
     memtype = "SDR"
     # geometry
