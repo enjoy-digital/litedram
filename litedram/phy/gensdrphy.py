@@ -61,8 +61,9 @@ class GENSDRPHY(Module):
         # DQ/DQS/DM data
         dq_o = Signal(databits)
         dq_oe = Signal()
+        dq_i = Signal(databits)
         self.sync += dq_o.eq(dfi.p0.wrdata)
-        self.specials += Tristate(pads.dq, dq_o, dq_oe)
+        self.specials += Tristate(pads.dq, dq_o, dq_oe, dq_i)
         self.sync += \
             If(dfi.p0.wrdata_en,
                 pads.dm.eq(dfi.p0.wrdata_mask)
@@ -70,7 +71,7 @@ class GENSDRPHY(Module):
                 pads.dm.eq(0)
             )
         dq_in = Signal(databits)
-        self.sync.sys_ps += dq_in.eq(pads.dq)
+        self.sync.sys_ps += dq_in.eq(dq_i)
         self.sync += dfi.p0.rddata.eq(dq_in)
 
         # DQ/DM control
