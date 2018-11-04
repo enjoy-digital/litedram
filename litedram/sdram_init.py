@@ -173,12 +173,8 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
 
         wr = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
         mr0 = format_mr0(bl, cl, wr, 1)
-        mr1 = format_mr1(
-            z_to_ron[ron],
-            z_to_rtt_nom[rtt_nom])
-        mr2 = format_mr2(
-            cwl,
-            z_to_rtt_wr[rtt_wr])
+        mr1 = format_mr1(z_to_ron[ron], z_to_rtt_nom[rtt_nom])
+        mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
         mr3 = 0
 
         init_sequence = [
@@ -186,6 +182,154 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
             ("Bring CKE high", 0x0000, 0, cmds["CKE"], 10000),
             ("Load Mode Register 2, CWL={0:d}".format(cwl), mr2, 2, cmds["MODE_REGISTER"], 0),
             ("Load Mode Register 3", mr3, 3, cmds["MODE_REGISTER"], 0),
+            ("Load Mode Register 1", mr1, 1, cmds["MODE_REGISTER"], 0),
+            ("Load Mode Register 0, CL={0:d}, BL={1:d}".format(cl, bl), mr0, 0, cmds["MODE_REGISTER"], 200),
+            ("ZQ Calibration", 0x0400, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", 200),
+        ]
+    elif phy_settings.memtype == "DDR4":
+        bl = 8
+        cwl = phy_settings.cwl
+
+        def format_mr0(bl, cl, wr, dll_reset):
+            bl_to_mr0 = {
+                4: 0b10,
+                8: 0b00
+            }
+            cl_to_mr0 = {
+                 9: 0b00000,
+                10: 0b00001,
+                11: 0b00010,
+                12: 0b00011,
+                13: 0b00100,
+                14: 0b00101,
+                15: 0b00110,
+                16: 0b00111,
+                18: 0b01000,
+                20: 0b01001,
+                22: 0b01010,
+                24: 0b01011,
+                23: 0b01100,
+                17: 0b01101,
+                19: 0b01110,
+                21: 0b01111,
+                25: 0b10000,
+                26: 0b10001,
+                27: 0b10010,
+                28: 0b10011,
+                29: 0b10100,
+                30: 0b10101,
+                31: 0b10110,
+                32: 0b10111,
+            }
+            wr_to_mr0 = {
+                10: 0b0000,
+                12: 0b0001,
+                14: 0b0010,
+                16: 0b0011,
+                18: 0b0100,
+                20: 0b0101,
+                24: 0b0110,
+                22: 0b0111,
+                26: 0b1000,
+                28: 0b1001,
+            }
+            mr0 = bl_to_mr0[bl]
+            mr0 |= (cl_to_mr0[cl] & 0b1) << 2
+            mr0 |= ((cl_to_mr0[cl] >> 1) & 0b111) << 4
+            mr0 |= ((cl_to_mr0[cl] >> 4) & 0b1) << 12
+            mr0 |= dll_reset << 8
+            mr0 |= (wr_to_mr0[wr] & 0b111) << 9
+            mr0 |= (wr_to_mr0[wr] >> 3) << 13
+            return mr0
+
+        def format_mr1(ron, rtt_nom):
+            mr1 = ((ron >> 0) & 0b1) << 1
+            mr1 |= ((ron >> 1) & 0b1) << 2
+            mr1 |= ((rtt_nom >> 0) & 0b1) << 8
+            mr1 |= ((rtt_nom >> 1) & 0b1) << 9
+            mr1 |= ((rtt_nom >> 2) & 0b1) << 10
+            return mr1
+
+        def format_mr2(cwl, rtt_wr):
+            cwl_to_mr2 = {
+                 9: 0b000,
+                10: 0b001,
+                11: 0b010,
+                12: 0b011,
+                14: 0b100,
+                16: 0b101,
+                18: 0b110,
+                20: 0b111
+            }
+            mr2 = cwl_to_mr2(cwl) << 3
+            mr2 |= rtt_wr << 9
+            return mr2
+
+        def format_mr6(tccd):
+            tccd_to_mr6 = {
+                4: 0b000,
+                5: 0b001,
+                6: 0b010,
+                7: 0b011,
+                8: 0b100
+            }
+            mr6 = tccd_to_mr6[tccd] << 10
+            return mr6
+
+        z_to_rtt_nom = {
+            "disabled" : 0b000,
+            "60ohm"    : 0b001,
+            "120ohm"   : 0b010,
+            "40ohm"    : 0b011,
+            "240ohm"   : 0b100,
+            "48ohm"    : 0b101,
+            "80ohm"    : 0b110,
+            "34ohm"    : 0b111
+        }
+
+        z_to_rtt_wr = {
+            "disabled" : 0b000,
+            "120ohm"   : 0b001,
+            "240ohm"   : 0b010,
+            "high-z"   : 0b011,
+            "80ohm"    : 0b100,
+        }
+
+        z_to_ron = {
+            "34ohm" : 0b00,
+            "48ohm" : 0b01,
+        }
+
+         # default electrical settings (point to point)
+        rtt_nom = "40ohm"
+        rtt_wr = "120ohm"
+        ron = "34ohm"
+
+        # override electrical settings if specified
+        if hasattr(phy_settings, "rtt_nom"):
+            rtt_nom = phy_settings.rtt_nom
+        if hasattr(phy_settings, "rtt_wr"):
+            rtt_wr = phy_settings.rtt_wr
+        if hasattr(phy_settings, "ron"):
+            ron = phy_settings.ron
+
+        wr = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
+        mr0 = format_mr0(bl, cl, wr, 1)
+        mr1 = format_mr1(z_to_ron[ron], z_to_rtt_nom[rtt_nom])
+        mr2 = format_mr2(cwl, z_to_rtt_wr(rtt_wr))
+        mr3 = 0
+        mr4 = 0
+        mr5 = 0
+        mr6 = format_mr6(4) # FIXME: tCCD
+
+        init_sequence = [
+            ("Release reset", 0x0000, 0, cmds["UNRESET"], 50000),
+            ("Bring CKE high", 0x0000, 0, cmds["CKE"], 10000),
+            ("Load Mode Register 3", mr3, 3, cmds["MODE_REGISTER"], 0),
+            ("Load Mode Register 6", mr6, 6, cmds["MODE_REGISTER"], 0),
+            ("Load Mode Register 5", mr5, 5, cmds["MODE_REGISTER"], 0),
+            ("Load Mode Register 4", mr4, 4, cmds["MODE_REGISTER"], 0),
+            ("Load Mode Register 2, CWL={0:d}".format(cwl), mr2, 2, cmds["MODE_REGISTER"], 0),
             ("Load Mode Register 1", mr1, 1, cmds["MODE_REGISTER"], 0),
             ("Load Mode Register 0, CL={0:d}, BL={1:d}".format(cl, bl), mr0, 0, cmds["MODE_REGISTER"], 200),
             ("ZQ Calibration", 0x0400, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", 200),

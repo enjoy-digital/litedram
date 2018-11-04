@@ -318,8 +318,7 @@ class MT18KSF1G72HZ(SDRAMModule):
 class EDY4016A(SDRAMModule):
     memtype = "DDR4"
     # geometry
-    nbanks_groups = 2
-    nbanks = 4
+    nbanks = 2*4 # 2 groups of 4 banks
     nrows  = 32768
     ncols  = 1024
     # timings
