@@ -8,6 +8,7 @@ from litex.soc.interconnect.stream import *
 
 from litedram.common import wdata_description, rdata_description
 
+
 def compute_m_n(k):
     m = 1
     while (2**m < (m + k + 1)):
@@ -44,7 +45,7 @@ def compute_cover_positions(m, p):
     return r
 
 
-class SECDEC:
+class SECDED:
     def place_data(self, data, codeword):
         d_pos = compute_data_positions(len(codeword))
         for i, d in enumerate(d_pos):
@@ -76,7 +77,7 @@ class SECDEC:
             [codeword[i] for i in range(len(codeword))]))
 
 
-class ECCEncoder(SECDEC, Module):
+class ECCEncoder(SECDED, Module):
     def __init__(self, k):
         m, n = compute_m_n(k)
 
@@ -103,7 +104,7 @@ class ECCEncoder(SECDEC, Module):
         self.comb += o.eq(Cat(parity, codeword_d_p))
 
 
-class ECCDecoder(SECDEC, Module):
+class ECCDecoder(SECDED, Module):
     def __init__(self, k):
         m, n = compute_m_n(k)
 
