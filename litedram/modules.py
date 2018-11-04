@@ -312,3 +312,19 @@ class MT18KSF1G72HZ(SDRAMModule):
         "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=13.125, tRFC=128, tFAW=(None, 40), tRAS=None),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
+
+
+# DDR4 (Chips)
+class EDY4016A(SDRAMModule):
+    memtype = "DDR4"
+    # geometry
+    nbanks_groups = 2
+    nbanks = 4
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9))
+    speedgrade_timings = {
+        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=260, tFAW=(28, 30), tRAS=32),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["2400"]
