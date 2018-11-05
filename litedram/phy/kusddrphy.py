@@ -39,14 +39,37 @@ def get_sys_phases(nphases, sys_latency, cas_latency):
     return cmd_phase, dat_phase
 
 
+class DDR4DFIMux(Module):
+    def __init__(self, dfi_i, dfi_o):
+        for i in range(len(dfi_i.phases)):
+            p_i = dfi_i.phases[i]
+            p_o = dfi_o.phases[i]
+            self.comb += [
+                p_i.connect(p_o),
+                If(~p_i.ras_n & p_i.cas_n & p_i.we_n,
+                   p_o.act_n.eq(0),
+                   p_o.we_n.eq(p_i.address[-3]),
+                   p_o.cas_n.eq(p_i.address[-2]),
+                   p_o.ras_n.eq(p_i.address[-1])
+                ).Else(
+                    p_o.act_n.eq(1),
+                )
+            ]
+
+
 class KUSDDRPHY(Module, AutoCSR):
     def __init__(self, pads, memtype="DDR3", sys_clk_freq=100e6):
         tck = 2/(2*4*sys_clk_freq)
         addressbits = len(pads.a)
+        if memtype == "DDR4":
+            addressbits += 3 # cas_n/ras_n/we_n multiplexed with address
         bankbits = len(pads.ba) if memtype == "DDR3" else len(pads.ba) + len(pads.bg)
         nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits = len(pads.dq)
         nphases = 4
+
+        if hasattr(pads, "ten"):
+            self.comb += pads.ten.eq(0)
 
         self._en_vtc = CSRStorage(reset=1)
 
@@ -89,6 +112,12 @@ class KUSDDRPHY(Module, AutoCSR):
         )
 
         self.dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
+        if memtype == "DDR3":
+            _dfi = self.dfi
+        else:
+            _dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
+            dfi_mux = DDR4DFIMux(self.dfi, _dfi)
+            self.submodules += dfi_mux
 
         # # #
 
@@ -121,7 +150,7 @@ class KUSDDRPHY(Module, AutoCSR):
         ]
 
         # Addresses and commands
-        for i in range(addressbits):
+        for i in range(addressbits if memtype=="DDR3" else addressbits-3):
             a_o_nodelay = Signal()
             self.specials += [
                 Instance("OSERDESE3",
@@ -131,10 +160,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=a_o_nodelay,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D=Cat(self.dfi.phases[0].address[i], self.dfi.phases[0].address[i],
-                            self.dfi.phases[1].address[i], self.dfi.phases[1].address[i],
-                            self.dfi.phases[2].address[i], self.dfi.phases[2].address[i],
-                            self.dfi.phases[3].address[i], self.dfi.phases[3].address[i])
+                    i_D=Cat(_dfi.phases[0].address[i], _dfi.phases[0].address[i],
+                            _dfi.phases[1].address[i], _dfi.phases[1].address[i],
+                            _dfi.phases[2].address[i], _dfi.phases[2].address[i],
+                            _dfi.phases[3].address[i], _dfi.phases[3].address[i])
                 ),
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
@@ -157,10 +186,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=ba_o_nodelay,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D=Cat(self.dfi.phases[0].bank[i], self.dfi.phases[0].bank[i],
-                            self.dfi.phases[1].bank[i], self.dfi.phases[1].bank[i],
-                            self.dfi.phases[2].bank[i], self.dfi.phases[2].bank[i],
-                            self.dfi.phases[3].bank[i], self.dfi.phases[3].bank[i])
+                    i_D=Cat(_dfi.phases[0].bank[i], _dfi.phases[0].bank[i],
+                            _dfi.phases[1].bank[i], _dfi.phases[1].bank[i],
+                            _dfi.phases[2].bank[i], _dfi.phases[2].bank[i],
+                            _dfi.phases[3].bank[i], _dfi.phases[3].bank[i])
                 ),
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
@@ -171,7 +200,15 @@ class KUSDDRPHY(Module, AutoCSR):
                     i_ODATAIN=ba_o_nodelay, o_DATAOUT=pads_ba[i]
                 )
             ]
-        for name in "ras_n", "cas_n", "we_n", "cs_n", "cke", "odt", "reset_n":
+
+        controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
+        if hasattr(pads, "reset_n"):
+            controls.append("reset_n")
+        if hasattr(pads, "cs_n"):
+            controls.append("cs_n")
+        if hasattr(pads, "act_n"):
+            controls.append("act_n")
+        for name in controls:
             x_o_nodelay = Signal()
             self.specials += [
                 Instance("OSERDESE3",
@@ -181,10 +218,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=x_o_nodelay,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D=Cat(getattr(self.dfi.phases[0], name), getattr(self.dfi.phases[0], name),
-                            getattr(self.dfi.phases[1], name), getattr(self.dfi.phases[1], name),
-                            getattr(self.dfi.phases[2], name), getattr(self.dfi.phases[2], name),
-                            getattr(self.dfi.phases[3], name), getattr(self.dfi.phases[3], name))
+                    i_D=Cat(getattr(_dfi.phases[0], name), getattr(_dfi.phases[0], name),
+                            getattr(_dfi.phases[1], name), getattr(_dfi.phases[1], name),
+                            getattr(_dfi.phases[2], name), getattr(_dfi.phases[2], name),
+                            getattr(_dfi.phases[3], name), getattr(_dfi.phases[3], name))
                 ),
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
@@ -219,10 +256,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=dm_o_nodelay,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D=Cat(self.dfi.phases[0].wrdata_mask[i], self.dfi.phases[0].wrdata_mask[databits//8+i],
-                            self.dfi.phases[1].wrdata_mask[i], self.dfi.phases[1].wrdata_mask[databits//8+i],
-                            self.dfi.phases[2].wrdata_mask[i], self.dfi.phases[2].wrdata_mask[databits//8+i],
-                            self.dfi.phases[3].wrdata_mask[i], self.dfi.phases[3].wrdata_mask[databits//8+i])
+                    i_D=Cat(_dfi.phases[0].wrdata_mask[i], _dfi.phases[0].wrdata_mask[databits//8+i],
+                            _dfi.phases[1].wrdata_mask[i], _dfi.phases[1].wrdata_mask[databits//8+i],
+                            _dfi.phases[2].wrdata_mask[i], _dfi.phases[2].wrdata_mask[databits//8+i],
+                            _dfi.phases[3].wrdata_mask[i], _dfi.phases[3].wrdata_mask[databits//8+i])
                 )
             self.specials += \
                 Instance("ODELAYE3",
@@ -313,10 +350,10 @@ class KUSDDRPHY(Module, AutoCSR):
                     o_OQ=dq_o_nodelay, o_T_OUT=dq_t,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal("sys4x"), i_CLKDIV=ClockSignal(),
-                    i_D=Cat(self.dfi.phases[0].wrdata[i], self.dfi.phases[0].wrdata[databits+i],
-                            self.dfi.phases[1].wrdata[i], self.dfi.phases[1].wrdata[databits+i],
-                            self.dfi.phases[2].wrdata[i], self.dfi.phases[2].wrdata[databits+i],
-                            self.dfi.phases[3].wrdata[i], self.dfi.phases[3].wrdata[databits+i]),
+                    i_D=Cat(_dfi.phases[0].wrdata[i], _dfi.phases[0].wrdata[databits+i],
+                            _dfi.phases[1].wrdata[i], _dfi.phases[1].wrdata[databits+i],
+                            _dfi.phases[2].wrdata[i], _dfi.phases[2].wrdata[databits+i],
+                            _dfi.phases[3].wrdata[i], _dfi.phases[3].wrdata[databits+i]),
                     i_T=~oe_dq
                 ),
                 Instance("ISERDESE3",
@@ -363,15 +400,15 @@ class KUSDDRPHY(Module, AutoCSR):
                 )
             ]
             self.comb += [
-                self.dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]),
-                self.dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]),
-                self.dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]),
-                self.dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]),
+                _dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]),
+                _dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]),
+                _dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]),
+                _dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]),
 
-                self.dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
-                self.dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
-                self.dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
-                self.dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7]),
+                _dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
+                _dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
+                _dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
+                _dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7]),
             ]
 
         # Flow control
@@ -381,17 +418,19 @@ class KUSDDRPHY(Module, AutoCSR):
         #  cl_sys_latency cycles CAS
         #  2 cycles through ISERDESE2
         #  3 cycles through Bitslip
-        rddata_en = self.dfi.phases[self.settings.rdphase].rddata_en
+        rddata_en = _dfi.phases[self.settings.rdphase].rddata_en
         for i in range(self.settings.read_latency-1):
             n_rddata_en = Signal()
             self.sync += n_rddata_en.eq(rddata_en)
             rddata_en = n_rddata_en
-        self.sync += [phase.rddata_valid.eq(rddata_en | self._wlevel_en.storage)
-            for phase in self.dfi.phases]
+        for phase in _dfi.phases:
+            phase_rddata_valid = Signal()
+            self.sync += phase_rddata_valid.eq(rddata_en | self._wlevel_en.storage)
+            self.comb += phase.rddata_valid.eq(phase_rddata_valid)
 
         oe = Signal()
         last_wrdata_en = Signal(cwl_sys_latency+2)
-        wrphase = self.dfi.phases[self.settings.wrphase]
+        wrphase = _dfi.phases[self.settings.wrphase]
         self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en[:-1]))
         self.comb += oe.eq(
             last_wrdata_en[cwl_sys_latency-1] |

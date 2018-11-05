@@ -12,7 +12,8 @@ def phase_cmd_description(addressbits, bankbits, nranks):
         ("we_n",              1, DIR_M_TO_S),
         ("cke",          nranks, DIR_M_TO_S),
         ("odt",          nranks, DIR_M_TO_S),
-        ("reset_n",           1, DIR_M_TO_S)
+        ("reset_n",           1, DIR_M_TO_S),
+        ("act_n",             1, DIR_M_TO_S)
     ]
 
 
