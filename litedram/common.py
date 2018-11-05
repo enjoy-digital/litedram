@@ -8,7 +8,8 @@ burst_lengths = {
     "DDR":   4,
     "LPDDR": 4,
     "DDR2":  4,
-    "DDR3":  8
+    "DDR3":  8,
+    "DDR4":  8
 }
 
 
