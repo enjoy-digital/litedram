@@ -261,7 +261,7 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
                 18: 0b110,
                 20: 0b111
             }
-            mr2 = cwl_to_mr2(cwl) << 3
+            mr2 = cwl_to_mr2[cwl] << 3
             mr2 |= rtt_wr << 9
             return mr2
 
@@ -313,10 +313,10 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
         if hasattr(phy_settings, "ron"):
             ron = phy_settings.ron
 
-        wr = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
+        wr = max(timing_settings.tWTR*phy_settings.nphases, 10) # >= ceiling(tWR/tCK)
         mr0 = format_mr0(bl, cl, wr, 1)
         mr1 = format_mr1(z_to_ron[ron], z_to_rtt_nom[rtt_nom])
-        mr2 = format_mr2(cwl, z_to_rtt_wr(rtt_wr))
+        mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
         mr3 = 0
         mr4 = 0
         mr5 = 0
@@ -396,9 +396,9 @@ const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
 
     init_sequence, mr1 = get_sdram_phy_init_sequence(phy_settings, timing_settings)
 
-    if phy_settings.memtype == "DDR3":
+    if phy_settings.memtype in ["DDR3", "DDR4"]:
         # the value of MR1 needs to be modified during write leveling
-        r += "#define DDR3_MR1 {}\n\n".format(mr1)
+        r += "#define DDRX_MR1 {}\n\n".format(mr1)
 
     r += "static void init_sequence(void)\n{\n"
     for comment, a, ba, cmd, delay in init_sequence:
