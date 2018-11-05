@@ -48,9 +48,9 @@ class DDR4DFIMux(Module):
                 p_i.connect(p_o),
                 If(~p_i.ras_n & p_i.cas_n & p_i.we_n,
                    p_o.act_n.eq(0),
-                   p_o.we_n.eq(p_i.address[-3]),
-                   p_o.cas_n.eq(p_i.address[-2]),
-                   p_o.ras_n.eq(p_i.address[-1])
+                   p_o.we_n.eq(p_i.address[14]),
+                   p_o.cas_n.eq(p_i.address[15]),
+                   p_o.ras_n.eq(p_i.address[16])
                 ).Else(
                     p_o.act_n.eq(1),
                 )
@@ -175,7 +175,12 @@ class KUSDDRPHY(Module, AutoCSR):
                 )
             ]
 
-        pads_ba = pads.ba if memtype == "DDR3" else Cat(pads.ba, pads.bg)
+        pads_ba = Signal(bankbits)
+        if memtype == "DDR3":
+            self.comb += pads.ba.eq(pads_ba)
+        else:
+            self.comb += pads.ba.eq(pads_ba[:len(pads.ba)])
+            self.comb += pads.bg.eq(pads_ba[len(pads.ba):])
         for i in range(bankbits):
             ba_o_nodelay = Signal()
             self.specials += [
