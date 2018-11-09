@@ -165,7 +165,9 @@ class LiteDRAMAXI2NativeW(Module):
         self.comb += [
             id_buffer.sink.valid.eq(aw.valid & aw.ready),
             id_buffer.sink.id.eq(aw.id),
-            If(axi.w.valid & axi.w.last & axi.w.ready,
+            If(w_buffer.source.valid &
+               w_buffer.source.last &
+               w_buffer.source.ready,
                 resp_buffer.sink.valid.eq(1),
                 resp_buffer.sink.resp.eq(resp_types["okay"]),
                 resp_buffer.sink.id.eq(id_buffer.source.id),
@@ -176,9 +178,9 @@ class LiteDRAMAXI2NativeW(Module):
 
         # Command
         self.comb += [
-            self.cmd_request.eq(aw.valid),
+            self.cmd_request.eq(aw.valid & w_buffer.source.valid),
             If(self.cmd_grant,
-                port.cmd.valid.eq(aw.valid),
+                port.cmd.valid.eq(aw.valid & w_buffer.source.valid),
                 aw.ready.eq(port.cmd.ready),
                 port.cmd.we.eq(1),
                 port.cmd.addr.eq(aw.addr >> ashift)
@@ -187,8 +189,8 @@ class LiteDRAMAXI2NativeW(Module):
 
         # Write Data
         self.comb += [
-            If(id_buffer.source.valid, axi.w.connect(w_buffer.sink)),
-            w_buffer.source.connect(port.wdata, omit={"strb"}),
+            axi.w.connect(w_buffer.sink),
+            If(id_buffer.source.valid, w_buffer.source.connect(port.wdata, omit={"strb"})),
             port.wdata.we.eq(w_buffer.source.strb)
         ]
 

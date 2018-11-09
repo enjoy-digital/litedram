@@ -31,18 +31,17 @@ class TestAXI(unittest.TestCase):
                 yield axi_port.aw.valid.eq(1)
                 yield axi_port.aw.addr.eq(write.addr<<2)
                 yield axi_port.aw.id.eq(write.id)
-                yield
                 while (yield axi_port.aw.ready) == 0:
                     yield
-                yield axi_port.aw.valid.eq(0)
                 yield
+                yield axi_port.aw.valid.eq(0)
                 # send data
                 yield axi_port.w.valid.eq(1)
                 yield axi_port.w.last.eq(1)
                 yield axi_port.w.data.eq(write.data)
-                yield
                 while (yield axi_port.w.ready) == 0:
                     yield
+                yield
                 yield axi_port.w.valid.eq(0)
 
         def writes_response_generator(axi_port, writes):
