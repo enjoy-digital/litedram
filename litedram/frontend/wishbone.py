@@ -8,46 +8,42 @@ class LiteDRAMWishbone2Native(Module):
 
         # # #
 
-        # Control FSM
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
             If(wishbone.cyc & wishbone.stb,
-                NextState("REQUEST")
+                NextState("ISSUE-CMD")
             )
         )
-        fsm.act("REQUEST",
+        fsm.act("ISSUE-CMD",
             port.cmd.valid.eq(1),
+            port.cmd.addr.eq(wishbone.adr),
             port.cmd.we.eq(wishbone.we),
             If(port.cmd.ready,
                 If(wishbone.we,
-                    NextState("WRITE_DATA")
+                    NextState("WRITE-DATA")
                 ).Else(
-                    NextState("READ_DATA")
+                    NextState("READ-DATA")
                 )
             )
         )
-        fsm.act("WRITE_DATA",
+        fsm.act("WRITE-DATA",
             port.wdata.valid.eq(1),
+            port.wdata.we.eq(wishbone.sel),
+            port.wdata.data.eq(wishbone.dat_w),
             If(port.wdata.ready,
                 wishbone.ack.eq(1),
                 NextState("IDLE")
             )
         )
-        fsm.act("READ_DATA",
+        fsm.act("READ-DATA",
             port.rdata.ready.eq(1),
             If(port.rdata.valid,
+                wishbone.dat_r.eq(port.rdata.data),
                 wishbone.ack.eq(1),
                 NextState("IDLE")
             )
         )
 
-        # Address / Datapath
-        self.comb += [
-            port.cmd.addr.eq(wishbone.adr),
-            port.wdata.we.eq(wishbone.sel),
-            port.wdata.data.eq(wishbone.dat_w),
-            wishbone.dat_r.eq(port.rdata.data)
-        ]
 
 class LiteDRAMWishbone2AXI(Module):
     def __init__(self, wishbone, port):
