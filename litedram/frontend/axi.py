@@ -38,8 +38,8 @@ def ax_description(address_width, id_width):
     return [
         ("addr",  address_width),
         ("burst", 2), # Burst type
-        ("len",   8), # Number of data transfers (up to 256)
-        ("size",  4), # Number of bytes of each data transfer (up to 1024 bits)
+        ("len",   8), # Number of data (-1) transfers (up to 256)
+        ("size",  4), # Number of bytes (-1) of each data transfer (up to 1024 bits)
         ("id",    id_width)
     ]
 
@@ -64,7 +64,7 @@ def r_description(data_width, id_width):
 
 
 class LiteDRAMAXIPort(Record):
-    def __init__(self, data_width, address_width, id_width, clock_domain="sys"):
+    def __init__(self, data_width, address_width, id_width=1, clock_domain="sys"):
         self.data_width = data_width
         self.address_width = address_width
         self.id_width = id_width
