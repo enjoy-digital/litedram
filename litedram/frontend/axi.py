@@ -180,12 +180,15 @@ class LiteDRAMAXI2NativeW(Module):
 
         # Command
         self.comb += [
-            self.cmd_request.eq(aw.valid & w_buffer.source.valid),
-            If(self.cmd_grant,
-                port.cmd.valid.eq(aw.valid & w_buffer.source.valid),
-                aw.ready.eq(port.cmd.ready),
-                port.cmd.we.eq(1),
-                port.cmd.addr.eq(aw.addr >> ashift)
+            # Emits the command only if we have the data
+            If(w_buffer.source.valid,
+                self.cmd_request.eq(aw.valid),
+                If(self.cmd_grant,
+                    port.cmd.valid.eq(aw.valid),
+                    aw.ready.eq(port.cmd.ready),
+                    port.cmd.we.eq(1),
+                    port.cmd.addr.eq(aw.addr >> ashift)
+                )
             )
         ]
 
