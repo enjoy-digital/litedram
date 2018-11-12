@@ -97,6 +97,7 @@ class LiteDRAMAXIBurst2Beat(Module):
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
             ax_beat.valid.eq(ax_burst.valid),
+            ax_beat.first.eq(1),
             ax_beat.last.eq(ax_burst.len == 0),
             ax_beat.addr.eq(ax_burst.addr),
             ax_beat.id.eq(ax_burst.id),
@@ -114,6 +115,7 @@ class LiteDRAMAXIBurst2Beat(Module):
         self.sync += wrap_offset.eq((ax_burst.len - 1)*size)
         fsm.act("BURST2BEAT",
             ax_beat.valid.eq(1),
+            ax_beat.first.eq(0),
             ax_beat.last.eq(count == ax_burst.len),
             If((ax_burst.burst == burst_types["incr"]) |
                (ax_burst.burst == burst_types["wrap"]),
@@ -163,7 +165,7 @@ class LiteDRAMAXI2NativeW(Module):
         resp_buffer = stream.SyncFIFO([("id", axi.id_width), ("resp", 2)], buffer_depth)
         self.submodules += id_buffer, resp_buffer
         self.comb += [
-            id_buffer.sink.valid.eq(aw.valid & aw.ready),
+            id_buffer.sink.valid.eq(aw.valid & aw.first & aw.ready),
             id_buffer.sink.id.eq(aw.id),
             If(w_buffer.source.valid &
                w_buffer.source.last &
