@@ -3,7 +3,7 @@ import random
 
 from migen import *
 
-from litedram.common import LiteDRAMNativePort
+from litedram.common import *
 from litedram.frontend.axi import *
 
 from test.common import *
@@ -11,32 +11,49 @@ from test.common import *
 from litex.gen.sim import *
 
 
+class Burst:
+    def __init__(self, addr, type=burst_types["fixed"], len=0, size=0):
+        self.addr = addr
+        self.type = type
+        self.len = len
+        self.size = size
+
+    def to_beats(self):
+        r = []
+        for i in range(self.len + 1):
+            if self.type == burst_types["incr"]:
+                offset = i*2**(self.size)
+                r += [Beat(self.addr + offset)]
+            elif self.type == burst_types["wrap"]:
+                offset = (i*2**(self.size))%((2**self.size)*(self.len))
+                r += [Beat(self.addr + offset)]
+            else:
+                r += [Beat(self.addr)]
+        return r
+
+
+class Beat:
+    def __init__(self, addr):
+        self.addr = addr
+
+
+class Access(Burst):
+    def __init__(self, addr, data, id, **kwargs):
+        Burst.__init__(self, addr, **kwargs)
+        self.data = data
+        self.id = id
+
+
+class Write(Access):
+    pass
+
+
+class Read(Access):
+    pass
+
+
 class TestAXI(unittest.TestCase):
     def test_burst2beat(self):
-        class Beat:
-            def __init__(self, addr):
-                self.addr = addr
-
-        class Burst:
-            def __init__(self, type, addr, len, size):
-                self.type = type
-                self.addr = addr
-                self.len = len
-                self.size = size
-
-            def to_beats(self):
-                r = []
-                for i in range(self.len + 1):
-                    if self.type == burst_types["incr"]:
-                        offset = i*2**(self.size)
-                        r += [Beat(self.addr + offset)]
-                    elif self.type == burst_types["wrap"]:
-                        offset = (i*2**(self.size))%((2**self.size)*(self.len))
-                        r += [Beat(self.addr + offset)]
-                    else:
-                        r += [Beat(self.addr)]
-                return r
-
         def bursts_generator(ax, bursts, valid_rand=50):
             prng = random.Random(42)
             for burst in bursts:
@@ -78,9 +95,9 @@ class TestAXI(unittest.TestCase):
         prng = random.Random(42)
         bursts = []
         for i in range(32):
-            bursts.append(Burst(burst_types["fixed"], prng.randrange(2**32), prng.randrange(255), log2_int(32//8)))
-            bursts.append(Burst(burst_types["incr"], prng.randrange(2**32), prng.randrange(255), log2_int(32//8)))
-        bursts.append(Burst(burst_types["wrap"], 4, 4-1, log2_int(2)))
+            bursts.append(Burst(prng.randrange(2**32), burst_types["fixed"], prng.randrange(255), log2_int(32//8)))
+            bursts.append(Burst(prng.randrange(2**32), burst_types["incr"], prng.randrange(255), log2_int(32//8)))
+        bursts.append(Burst(4, burst_types["wrap"], 4-1, log2_int(2)))
 
         # generate expexted dut output (beats for reference)
         beats = []
@@ -96,18 +113,6 @@ class TestAXI(unittest.TestCase):
         self.assertEqual(self.errors, 0)
 
     def test_axi2native(self):
-        class Access:
-            def __init__(self, addr, data, id):
-                self.addr = addr
-                self.data = data
-                self.id = id
-
-        class Write(Access):
-            pass
-
-        class Read(Access):
-            pass
-
         def writes_cmd_generator(axi_port, writes):
             for write in writes:
                 # send command
