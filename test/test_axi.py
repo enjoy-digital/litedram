@@ -112,30 +112,35 @@ class TestAXI(unittest.TestCase):
         run_simulation(dut, generators, vcd_name="burst2beat.vcd")
         self.assertEqual(self.errors, 0)
 
-    def test_axi2native(self):
+    def test_axi2native(self, with_random=True):
         def writes_cmd_generator(axi_port, writes):
             for write in writes:
                 # send command
                 yield axi_port.aw.valid.eq(1)
                 yield axi_port.aw.addr.eq(write.addr<<2)
+                yield axi_port.aw.burst.eq(write.type)
+                yield axi_port.aw.len.eq(write.len)
+                yield axi_port.aw.size.eq(write.size)
                 yield axi_port.aw.id.eq(write.id)
+                yield
                 while (yield axi_port.aw.ready) == 0:
                     yield
-                yield
                 yield axi_port.aw.valid.eq(0)
-                yield
 
         def writes_data_generator(axi_port, writes):
             for write in writes:
-                # send data
-                yield axi_port.w.valid.eq(1)
-                yield axi_port.w.last.eq(1)
-                yield axi_port.w.data.eq(write.data)
-                while (yield axi_port.w.ready) == 0:
+                for i, data in enumerate(write.data):
+                    # send data
+                    yield axi_port.w.valid.eq(1)
+                    if (i == (len(write.data) - 1)):
+                        yield axi_port.w.last.eq(1)
+                    else:
+                        yield axi_port.w.last.eq(0)
+                    yield axi_port.w.data.eq(data)
                     yield
-                yield
-                yield axi_port.w.valid.eq(0)
-                yield
+                    while (yield axi_port.w.ready) == 0:
+                        yield
+                    yield axi_port.w.valid.eq(0)
 
         def writes_response_generator(axi_port, writes):
             self.writes_id_errors = 0
@@ -153,29 +158,37 @@ class TestAXI(unittest.TestCase):
                 # send command
                 yield axi_port.ar.valid.eq(1)
                 yield axi_port.ar.addr.eq(read.addr<<2)
+                yield axi_port.ar.burst.eq(read.type)
+                yield axi_port.ar.len.eq(read.len)
+                yield axi_port.ar.size.eq(read.size)
                 yield axi_port.ar.id.eq(read.id)
                 yield
                 while (yield axi_port.ar.ready) == 0:
                     yield
                 yield axi_port.ar.valid.eq(0)
-                yield
 
         def reads_response_data_generator(axi_port, reads):
             self.reads_data_errors = 0
             self.reads_id_errors = 0
             self.reads_last_errors = 0
             yield axi_port.r.ready.eq(1) # always accepting read response
+            yield
             for read in reads:
-                # wait data / response
-                while (yield axi_port.r.valid) == 0:
+                for i, data in enumerate(read.data):
+                    # wait data / response
+                    while (yield axi_port.r.valid) == 0:
+                        yield
+                    if (yield axi_port.r.data) != data:
+                        self.reads_data_errors += 1
+                    if (yield axi_port.r.id) != read.id:
+                        self.reads_id_errors += 1
+                    if i == (len(read.data) - 1):
+                        if (yield axi_port.r.last) != 1:
+                            self.reads_last_errors += 1
+                    else:
+                        if (yield axi_port.r.last) != 0:
+                            self.reads_last_errors += 1
                     yield
-                if (yield axi_port.r.data) != read.data:
-                    self.reads_data_errors += 1
-                if (yield axi_port.r.id) != read.id:
-                    self.reads_id_errors += 1
-                if (yield axi_port.r.last) != 1:
-                    self.reads_last_errors += 1
-                yield
 
         # dut
         axi_port = LiteDRAMAXIPort(32, 32, 8)
@@ -186,19 +199,21 @@ class TestAXI(unittest.TestCase):
         # generate writes/reads
         prng = random.Random(42)
         writes = []
-        for i in range(64):
-            # incrementing addr, random data &id
-            writes.append(Write(i, prng.randrange(2**32), prng.randrange(2**8)))
-            # incrementing addr, data & id (debug)
-            #writes.append(Write(i, i, i))
+        for i in range(16):
+            if with_random:
+                # incrementing addr, random data &id
+                writes.append(Write(i, [prng.randrange(2**32) for _ in range(i+1)], prng.randrange(2**8), type=0b00, len=i))
+            else:
+                # incrementing addr, data & id (debug)
+                writes.append(Write(i, [i for _ in range(i+1)], i, type=0b00, len=i))
         reads = []
-        for i in range(64): # dummy reads while content not yet written
-            reads.append(Read(64, 0x00000000, 0x00))
-        for i in range(64):
-            # incrementing addr, written data, random id
-            reads.append(Read(i, writes[i].data, prng.randrange(2**8)))
-            # incrementing addr, written data, incrementing id (debug)
-            #reads.append(Read(i, writes[i].data, i))
+        for i in range(16):
+            if with_random:
+                # incrementing addr, written data, random id
+                reads.append(Read(i, writes[i].data, prng.randrange(2**8), type=0b00, len=len(writes[i].data)-1))
+            else:
+                # incrementing addr, written data, incrementing id (debug)
+                reads.append(Read(i, writes[i].data, i, type=0b00, len=len(writes[i].data)-1))
 
         # simulation
         generators = [
