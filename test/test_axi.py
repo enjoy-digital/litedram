@@ -25,7 +25,7 @@ class TestAXI(unittest.TestCase):
         class Read(Access):
             pass
 
-        def writes_cmd_data_generator(axi_port, writes):
+        def writes_cmd_generator(axi_port, writes):
             for write in writes:
                 # send command
                 yield axi_port.aw.valid.eq(1)
@@ -35,6 +35,10 @@ class TestAXI(unittest.TestCase):
                     yield
                 yield
                 yield axi_port.aw.valid.eq(0)
+                yield
+
+        def writes_data_generator(axi_port, writes):
+            for write in writes:
                 # send data
                 yield axi_port.w.valid.eq(1)
                 yield axi_port.w.last.eq(1)
@@ -43,6 +47,7 @@ class TestAXI(unittest.TestCase):
                     yield
                 yield
                 yield axi_port.w.valid.eq(0)
+                yield
 
         def writes_response_generator(axi_port, writes):
             self.writes_id_errors = 0
@@ -109,7 +114,8 @@ class TestAXI(unittest.TestCase):
 
         # simulation
         generators = [
-            writes_cmd_data_generator(axi_port, writes),
+            writes_cmd_generator(axi_port, writes),
+            writes_data_generator(axi_port, writes),
             writes_response_generator(axi_port, writes),
             reads_cmd_generator(axi_port, reads),
             reads_response_data_generator(axi_port, reads),
