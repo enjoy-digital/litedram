@@ -9,17 +9,13 @@ from migen.genlib import roundrobin
 from litex.soc.interconnect import stream
 
 from litedram.common import *
+from litedram.core.controller import *
 from litedram.frontend.adaptation import *
 
 
-ROW_BANK_COL = 0b01
-ROW_COL_BANK = 0b10
-
-
 class LiteDRAMCrossbar(Module):
-    def __init__(self, controller, address_mapping=ROW_BANK_COL):
+    def __init__(self, controller, ):
         self.controller = controller
-        self.address_mapping = address_mapping
 
         self.rca_bits = controller.address_width
         self.nbanks = controller.nbanks
@@ -88,21 +84,21 @@ class LiteDRAMCrossbar(Module):
         return port
 
     def do_finalize(self):
+        controller = self.controller
         nmasters = len(self.masters)
 
         # address mapping
-        cba_shift = {
-            ROW_BANK_COL: self.controller.settings.geom.colbits -
-                          self.controller.address_align,
-            ROW_COL_BANK: self.controller.settings.geom.rowbits +
-                          self.controller.settings.geom.colbits -
-                          self.controller.address_align
+        cba_shifts = {
+            "ROW_BANK_COL": controller.settings.geom.colbits -
+                            controller.address_align,
+            "ROW_COL_BANK": controller.settings.geom.rowbits +
+                            controller.settings.geom.colbits -
+                             controller.address_align
         }
+        cba_shift = cba_shifts[controller.settings.address_mapping]
+        m_ba = [m.get_bank_address(self.bank_bits, cba_shift)for m in self.masters]
+        m_rca = [m.get_row_column_address(self.bank_bits, self.rca_bits, cba_shift) for m in self.masters]
 
-        m_ba = [m.get_bank_address(self.bank_bits, cba_shift[self.address_mapping])for m in self.masters]
-        m_rca = [m.get_row_column_address(self.bank_bits, self.rca_bits, cba_shift[self.address_mapping]) for m in self.masters]
-
-        controller = self.controller
         master_readys = [0]*nmasters
         master_wdata_readys = [0]*nmasters
         master_rdata_valids = [0]*nmasters
@@ -191,4 +187,4 @@ class LiteDRAMCrossbar(Module):
 
         # route data reads
         for master in self.masters:
-            self.comb += master.rdata.data.eq(self.controller.rdata)
+            self.comb += master.rdata.data.eq(controller.rdata)

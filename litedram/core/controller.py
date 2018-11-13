@@ -15,7 +15,8 @@ class ControllerSettings(Settings):
                  read_time=32, write_time=16,
                  with_bandwidth=False,
                  with_refresh=True,
-                 with_auto_precharge=True):
+                 with_auto_precharge=True,
+                 address_mapping="ROW_BANK_COL"):
         self.set_attributes(locals())
 
 
