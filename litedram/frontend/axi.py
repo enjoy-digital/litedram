@@ -195,8 +195,10 @@ class LiteDRAMAXI2NativeW(Module):
         # Write Data
         self.comb += [
             axi.w.connect(w_buffer.sink),
-            If(id_buffer.source.valid, w_buffer.source.connect(port.wdata, omit={"strb"})),
-            port.wdata.we.eq(w_buffer.source.strb)
+            If(id_buffer.source.valid,
+                w_buffer.source.connect(port.wdata, omit={"strb"}),
+                port.wdata.we.eq(w_buffer.source.strb)
+            )
         ]
 
 
