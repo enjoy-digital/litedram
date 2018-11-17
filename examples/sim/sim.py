@@ -82,15 +82,6 @@ class LiteDRAMCoreSim(Module):
             i_clk=platform.request("clk"),
             i_rst=platform.request("rst"),
 
-            # apb
-            i_apb_paddr=0,
-            i_apb_pwrite=0,
-            i_apb_psel=0,
-            i_apb_penable=0,
-            #o_apb_ready=,
-            i_apb_pwdata=0,
-            #o_apb_prdata=,
-
             # dram pins
             o_ddram_a=ddram_a,
             o_ddram_ba=ddram_ba,
