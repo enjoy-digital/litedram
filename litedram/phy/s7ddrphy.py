@@ -97,7 +97,7 @@ class S7DDRPHY(Module, AutoCSR):
             wrcmdphase=wrcmdphase,
             cl=cl,
             cwl=cwl,
-            read_latency=2 + cl_sys_latency + 2 + 3,
+            read_latency=2 + cl_sys_latency + 2 + 3 - 1,  # -1 for memory mode
             write_latency=cwl_sys_latency
         )
 
@@ -284,7 +284,7 @@ class S7DDRPHY(Module, AutoCSR):
             self.specials += \
                 Instance("IOBUFDS",
                     i_I=dqs_delayed if with_odelay else dqs_nodelay, i_T=dqs_t,
-                    o_IO=pads.dqs_p[i], o_IOB=pads.dqs_n[i],
+                    io_IO=pads.dqs_p[i], io_IOB=pads.dqs_n[i],
                     o_O=dqs_p[i],
                 )
 
@@ -316,7 +316,7 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_data = Signal(8)
             self.specials += \
                 Instance("ISERDESE2",
-                    p_DATA_WIDTH=2*nphases, p_DATA_RATE="DDR",
+                    p_DATA_WIDTH=nphases, p_DATA_RATE="DDR",
                     p_SERDES_MODE="MASTER", p_INTERFACE_TYPE="MEMORY",
                     p_NUM_CE=1, p_IOBDELAY="IFD",
 
@@ -324,7 +324,7 @@ class S7DDRPHY(Module, AutoCSR):
                     i_CE1=1,
                     i_RST=ResetSignal(),
                     i_CLK=dqs_p[i//8], i_CLKB=~dqs_p[i//8],
-                    i_OCLK=ClockSignal(ddr_clk), i_OCLKB=~ClockSignal(ddr_clk), i_CLKDIV=ClockSignal("clk200"),
+                    i_OCLK=ClockSignal(ddr_clk), i_OCLKB=~ClockSignal(ddr_clk ), i_CLKDIV=ClockSignal("clk200"),
                     i_BITSLIP=0,
                     o_Q4=dq_demux_data[0], o_Q3=dq_demux_data[1],
                     o_Q2=dq_demux_data[2], o_Q1=dq_demux_data[3]
