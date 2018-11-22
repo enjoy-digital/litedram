@@ -212,6 +212,8 @@ class S7DDRPHY(Module, AutoCSR):
                 )
             ]
 
+        dqs_p = Signal(databits//8)
+        dqs_n = Signal(databits//8)
         for i in range(databits//8):
             dm_o_nodelay = Signal()
             self.specials += \
@@ -280,9 +282,10 @@ class S7DDRPHY(Module, AutoCSR):
                         o_ODATAIN=dqs_nodelay, o_DATAOUT=dqs_delayed
                     )
             self.specials += \
-                Instance("OBUFTDS",
+                Instance("IOBUFDS",
                     i_I=dqs_delayed if with_odelay else dqs_nodelay, i_T=dqs_t,
-                    o_O=pads.dqs_p[i], o_OB=pads.dqs_n[i]
+                    o_IO=pads.dqs_p[i], o_IOB=pads.dqs_n[i],
+                    o_O=dqs_p[i],
                 )
 
         # DQ
@@ -309,23 +312,27 @@ class S7DDRPHY(Module, AutoCSR):
                     i_D7=self.dfi.phases[3].wrdata[i], i_D8=self.dfi.phases[3].wrdata[databits+i],
                     i_T1=~oe_dq
                 )
+            dq_demux_data = Signal(4)
             dq_i_data = Signal(8)
             self.specials += \
                 Instance("ISERDESE2",
                     p_DATA_WIDTH=2*nphases, p_DATA_RATE="DDR",
-                    p_SERDES_MODE="MASTER", p_INTERFACE_TYPE="NETWORKING",
+                    p_SERDES_MODE="MASTER", p_INTERFACE_TYPE="MEMORY",
                     p_NUM_CE=1, p_IOBDELAY="IFD",
 
                     i_DDLY=dq_i_delayed,
                     i_CE1=1,
                     i_RST=ResetSignal(),
-                    i_CLK=ClockSignal(ddr_clk), i_CLKB=~ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
+                    i_CLK=dqs_p[i//8], i_CLKB=~dqs_p[i//8],
+                    i_OCLK=ClockSignal(ddr_clk), i_OCLKB=~ClockSignal(ddr_clk), i_CLKDIV=ClockSignal("clk200"),
                     i_BITSLIP=0,
-                    o_Q8=dq_i_data[0], o_Q7=dq_i_data[1],
-                    o_Q6=dq_i_data[2], o_Q5=dq_i_data[3],
-                    o_Q4=dq_i_data[4], o_Q3=dq_i_data[5],
-                    o_Q2=dq_i_data[6], o_Q1=dq_i_data[7]
+                    o_Q4=dq_demux_data[0], o_Q3=dq_demux_data[1],
+                    o_Q2=dq_demux_data[2], o_Q1=dq_demux_data[3]
                 )
+            self.sync.clk200 += [
+                dq_i_data[:4].eq(dq_i_data[4:]),
+                dq_i_data[4:].eq(dq_demux_data)
+            ]
             dq_bitslip = BitSlip(8)
             self.comb += dq_bitslip.i.eq(dq_i_data)
             self.sync += \

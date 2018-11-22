@@ -3,7 +3,8 @@ from litedram.phy import A7DDRPHY
 
 core_config = {
     # cpu
-    "cpu": None,
+    "cpu": "vexriscv",
+#    "cpu": None,
 
     # modules / phy
     "sdram_module": MT41K128M16,
@@ -20,7 +21,7 @@ core_config = {
     # freqs
     "input_clk_freq": 100e6,
     "sys_clk_freq": 100e6,
-    "iodelay_clk_freq": 200e6,
+    "iodelay_clk_freq": 300e6,
 
     # controller
     "cmd_buffer_depth": 8,

@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+
+import lxbuildenv
+
+# This variable defines all the external programs that this module
+# relies on.  lxbuildenv reads this variable in order to ensure
+# the build will finish without exiting due to missing third-party
+# programs.
+LX_DEPENDENCIES = ["riscv", "vivado"]
+
 import sys
 
 from migen import *
@@ -143,9 +152,11 @@ class LiteDRAMCoreSim(Module):
         self.comb += [
             self.sdram_generator.base.eq(0x00000000),
             self.sdram_generator.length.eq(0x00000100),
+            self.sdram_generator.random.eq(1),
 
             self.sdram_checker.base.eq(0x00000000),
             self.sdram_checker.length.eq(0x00000100),
+            self.sdram_checker.random.eq(1),
         ]
 
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
@@ -184,6 +195,10 @@ def generate_top():
     soc = LiteDRAMCoreSim(platform)
     platform.build(soc, build_dir="./", run=False)
 
+#    builder = Builder(soc, output_dir="build", csr_csv="test/csr.csv")
+#    vns = builder.build()
+#    soc.do_exit(vns)
+
 
 def generate_top_tb():
     f = open("top_tb.v", "w")
@@ -217,11 +232,12 @@ def run_sim(gui=False):
     else:
         call_cmd = ""
     os.system(call_cmd + "xvlog glbl.v")
-    os.system(call_cmd + "xvlog micron/4096Mb_ddr3_parameters.vh -sv")
+    os.system(call_cmd + "xvlog micron/2048Mb_ddr3_parameters.vh -sv")
     os.system(call_cmd + "xvlog micron/ddr3.v -sv")
     os.system(call_cmd + "xvlog litedram_core.v -sv")
     os.system(call_cmd + "xvlog top.v -sv")
     os.system(call_cmd + "xvlog top_tb.v -sv ")
+    os.system(call_cmd + "xvlog  deps/litex/litex/soc/cores/cpu/vexriscv/verilog/VexRiscv.v  -sv ")
     os.system(call_cmd + "xelab -debug typical top_tb glbl -s top_tb_sim -L unisims_ver -L unimacro_ver -L SIMPRIM_VER -L secureip -L $xsimdir/xil_defaultlib -timescale 1ns/1ps")
     if gui:
         os.system(call_cmd + "xsim top_tb_sim -gui")

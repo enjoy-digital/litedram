@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+
+import lxbuildenv
+
+# This variable defines all the external programs that this module
+# relies on.  lxbuildenv reads this variable in order to ensure
+# the build will finish without exiting due to missing third-party
+# programs.
+LX_DEPENDENCIES = ["riscv", "vivado"]
+
 import os
 import sys
 import math
@@ -149,6 +158,7 @@ class LiteDRAMCRG(Module):
         self.clock_domains.cd_sys4x = ClockDomain(reset_less=True)
         self.clock_domains.cd_sys4x_dqs = ClockDomain(reset_less=True)
         self.clock_domains.cd_iodelay = ClockDomain()
+        self.clock_domains.cd_clk200 = ClockDomain()
 
         # # #
 
@@ -159,6 +169,7 @@ class LiteDRAMCRG(Module):
         pll.create_clkout(self.cd_sys4x, 4*core_config["sys_clk_freq"])
         pll.create_clkout(self.cd_sys4x_dqs, 4*core_config["sys_clk_freq"], phase=90)
         pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
+        pll.create_clkout(self.cd_clk200, 2*core_config["sys_clk_freq"])
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_iodelay)
         self.comb += platform.request("pll_locked").eq(pll.locked)
 

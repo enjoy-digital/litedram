@@ -116,7 +116,7 @@ module ddr3 (
     odt
 );
 
-`define den4096Mb
+`define den2048Mb
 `define x16
 `define sg125
 

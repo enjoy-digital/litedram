@@ -327,6 +327,10 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         # data
         data_counter = Signal(dram_port.address_width, reset_less=True)
 
+        data_pipe = Signal(31)
+        self.sync += [
+            data_pipe.eq(dma.source.data[127-31:])
+        ]
         data_fsm = FSM(reset_state="IDLE")
         self.submodules += data_fsm
         data_fsm.act("IDLE",
@@ -342,7 +346,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             If(dma.source.valid,
                 data_gen.ce.eq(1),
                 NextValue(data_counter, data_counter + 1),
-                If(dma.source.data != data_gen.o,
+                If(data_pipe != data_gen.o,
                     NextValue(self.errors, self.errors + 1)
                 ),
                 If(data_counter == (self.length[ashift:] - 1),

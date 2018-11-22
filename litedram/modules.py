@@ -366,3 +366,32 @@ class MT40A1G8(SDRAMModule):
         "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=350, tFAW=(20, 25), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
+
+
+
+class MT41J256M16(SDRAMModule):
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10))
+    speedgrade_timings = {
+        "800": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=139, tFAW=(None, 50), tRAS=37.5),
+        "1066": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=138, tFAW=(None, 50), tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=13.5, tRFC=174, tFAW=(None, 45), tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=13.75, tRFC=208, tFAW=(None, 40), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
+
+class K4B2G1646FBCK0(SDRAMModule):  ### Tested boot at 4C and 60C
+    memtype = "DDR3"
+    # geometry
+    nbanks = 8
+    nrows  = 16384
+    ncols  = 1024
+
+    # speedgrade related timings
+    technology_timings = _TechnologyTimings(tREFI=7800, tWTR=(6, 15), tCCD=(4, None), tRRD=(4, 10))
+
+    speedgrade_timings = {
+        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=35, tRFC=160, tFAW=(None, 40), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
