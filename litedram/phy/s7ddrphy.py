@@ -324,7 +324,7 @@ class S7DDRPHY(Module, AutoCSR):
                     i_CE1=1,
                     i_RST=ResetSignal(),
                     i_CLK=dqs_p[i//8], i_CLKB=~dqs_p[i//8],
-                    i_OCLK=ClockSignal(ddr_clk), i_OCLKB=~ClockSignal(ddr_clk ), i_CLKDIV=ClockSignal("clk200"),
+                    i_OCLK=ClockSignal(ddr_clk), i_OCLKB=~ClockSignal(ddr_clk), i_CLKDIV=ClockSignal("clk200"),
                     i_BITSLIP=0,
                     o_Q4=dq_demux_data[0], o_Q3=dq_demux_data[1],
                     o_Q2=dq_demux_data[2], o_Q1=dq_demux_data[3]
