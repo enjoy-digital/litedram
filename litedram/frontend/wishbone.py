@@ -66,6 +66,7 @@ class LiteDRAMWishbone2AXI(Module):
             )
         )
         fsm.act("WRITE",
+            port.aw.size.eq(ashift),
             port.aw.addr[ashift:].eq(wishbone.adr),
             port.w.last.eq(1),
             port.w.data.eq(wishbone.dat_w),
@@ -84,6 +85,7 @@ class LiteDRAMWishbone2AXI(Module):
             )
         )
         fsm.act("READ",
+            port.ar.size.eq(ashift),
             port.ar.addr[ashift:].eq(wishbone.adr),
             If(port.ar.ready,
                 NextValue(port.ar.valid, 0)
