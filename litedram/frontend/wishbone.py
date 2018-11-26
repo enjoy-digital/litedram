@@ -92,7 +92,7 @@ class LiteDRAMWishbone2AXI(Module):
                 port.r.ready.eq(1),
                 wishbone.dat_r.eq(port.r.data),
                 wishbone.ack.eq(1),
-                wishbone.err.eq(port.r.resp != 0b10),
+                wishbone.err.eq(port.r.resp != 0b00),
                 NextState("IDLE")
             )
         )
