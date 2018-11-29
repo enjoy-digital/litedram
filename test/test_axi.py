@@ -201,19 +201,15 @@ class TestAXI(unittest.TestCase):
         writes = []
         for i in range(16):
             if with_random:
-                # incrementing addr, random data & id
-                writes.append(Write(i, [prng.randrange(2**32) for _ in range(i+1)], prng.randrange(2**8), type=0b00, len=i, size=log2_int(32//8)))
+                # incrementing addr, random id, len & datas
+                _id = prng.randrange(2**8)
+                _len = prng.randrange(32)
+                _data = [prng.randrange(2**32) for _ in range(_len + 1)]
+                writes.append(Write(i, _data, _id, type=0b00, len=_len, size=log2_int(32//8)))
             else:
                 # incrementing addr, data & id (debug)
                 writes.append(Write(i, [i for _ in range(i+1)], i, type=0b00, len=i, size=log2_int(32//8)))
-        reads = []
-        for i in range(16):
-            if with_random:
-                # incrementing addr, written data, random id
-                reads.append(Read(i, writes[i].data, prng.randrange(2**8), type=0b00, len=len(writes[i].data)-1, size=log2_int(32//8)))
-            else:
-                # incrementing addr, written data, incrementing id (debug)
-                reads.append(Read(i, writes[i].data, i, type=0b00, len=len(writes[i].data)-1), size=log2_int(32//8))
+        reads = writes
 
         # simulation
         generators = [
