@@ -337,18 +337,12 @@ class S7DDRPHY(Module, AutoCSR):
                     )
                 )
             self.submodules += dq_bitslip
-            if nphases == 2:
-                self.comb += [
-                    self.dfi.phases[0].rddata[i].eq(dq_bitslip.o[7]), self.dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[5]),
-                    self.dfi.phases[1].rddata[i].eq(dq_bitslip.o[6]), self.dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[7])
-                ]
-            else:
-                self.comb += [
-                    self.dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]), self.dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
-                    self.dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]), self.dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
-                    self.dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]), self.dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
-                    self.dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]), self.dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7])
-                ]
+            self.comb += [
+                self.dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]), self.dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
+                self.dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]), self.dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
+                self.dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]), self.dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
+                self.dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]), self.dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7])
+            ]
 
             if with_odelay:
                 self.specials += \
