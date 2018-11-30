@@ -112,9 +112,31 @@ class TestAXI(unittest.TestCase):
         run_simulation(dut, generators, vcd_name="burst2beat.vcd")
         self.assertEqual(self.errors, 0)
 
-    def test_axi2native(self, with_random=True):
+    def _test_axi2native(self,
+        # rand_level: 0: min (no random), 100: max.
+
+        # burst randomness
+        id_rand_enable   = False,
+        len_rand_enable  = False,
+        data_rand_enable = False,
+
+        # flow valid randomness
+        aw_valid_rand_level = 0,
+        w_valid_rand_level  = 0,
+        ar_valid_rand_level = 0,
+
+        # flow ready randomness
+        b_ready_rand_level  = 0,
+        r_ready_rand_level  = 0
+        ):
+
+        def rand_wait(level):
+            while prng.randrange(100) < level:
+                yield
+
         def writes_cmd_generator(axi_port, writes):
             for write in writes:
+                yield from rand_wait(aw_valid_rand_level)
                 # send command
                 yield axi_port.aw.valid.eq(1)
                 yield axi_port.aw.addr.eq(write.addr<<2)
@@ -130,6 +152,7 @@ class TestAXI(unittest.TestCase):
         def writes_data_generator(axi_port, writes):
             for write in writes:
                 for i, data in enumerate(write.data):
+                    yield from rand_wait(w_valid_rand_level)
                     # send data
                     yield axi_port.w.valid.eq(1)
                     if (i == (len(write.data) - 1)):
@@ -144,17 +167,21 @@ class TestAXI(unittest.TestCase):
 
         def writes_response_generator(axi_port, writes):
             self.writes_id_errors = 0
-            yield axi_port.b.ready.eq(1) # always accepting write response
             for write in writes:
-              # wait response
+                # wait response
+                yield axi_port.b.ready.eq(0)
+                yield
                 while (yield axi_port.b.valid) == 0:
                     yield
+                yield from rand_wait(b_ready_rand_level)
+                yield axi_port.b.ready.eq(1)
+                yield
                 if (yield axi_port.b.id) != write.id:
                     self.writes_id_errors += 1
-                yield
 
         def reads_cmd_generator(axi_port, reads):
             for read in reads:
+                yield from rand_wait(ar_valid_rand_level)
                 # send command
                 yield axi_port.ar.valid.eq(1)
                 yield axi_port.ar.addr.eq(read.addr<<2)
@@ -176,8 +203,13 @@ class TestAXI(unittest.TestCase):
             for read in reads:
                 for i, data in enumerate(read.data):
                     # wait data / response
+                    yield axi_port.r.ready.eq(0)
+                    yield
                     while (yield axi_port.r.valid) == 0:
                         yield
+                    yield from rand_wait(r_ready_rand_level)
+                    yield axi_port.r.ready.eq(1)
+                    yield
                     if (yield axi_port.r.data) != data:
                         self.reads_data_errors += 1
                     if (yield axi_port.r.id) != read.id:
@@ -188,7 +220,6 @@ class TestAXI(unittest.TestCase):
                     else:
                         if (yield axi_port.r.last) != 0:
                             self.reads_last_errors += 1
-                    yield
 
         # dut
         axi_port = LiteDRAMAXIPort(32, 32, 8)
@@ -199,16 +230,13 @@ class TestAXI(unittest.TestCase):
         # generate writes/reads
         prng = random.Random(42)
         writes = []
+        offset = 0
         for i in range(16):
-            if with_random:
-                # incrementing addr, random id, len & datas
-                _id = prng.randrange(2**8)
-                _len = prng.randrange(32)
-                _data = [prng.randrange(2**32) for _ in range(_len + 1)]
-                writes.append(Write(i, _data, _id, type=0b00, len=_len, size=log2_int(32//8)))
-            else:
-                # incrementing addr, data & id (debug)
-                writes.append(Write(i, [i for _ in range(i+1)], i, type=0b00, len=i, size=log2_int(32//8)))
+            _id = prng.randrange(2**8) if id_rand_enable else i
+            _len = prng.randrange(32) if len_rand_enable else i
+            _data = [prng.randrange(2**32) if data_rand_enable else i for _ in range(_len + 1)]
+            writes.append(Write(offset, _data, _id, type=0b00, len=_len, size=log2_int(32//8)))
+            offset += _len
         reads = writes
 
         # simulation
@@ -227,3 +255,6 @@ class TestAXI(unittest.TestCase):
         self.assertEqual(self.reads_data_errors, 0)
         self.assertEqual(self.reads_id_errors, 0)
         self.assertEqual(self.reads_last_errors, 0)
+
+    def test_axi2native(self):
+        self._test_axi2native()
