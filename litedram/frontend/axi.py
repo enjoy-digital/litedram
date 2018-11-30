@@ -158,7 +158,7 @@ class LiteDRAMAXI2NativeW(Module):
 
         # Write Buffer
         w_buffer = stream.SyncFIFO(w_description(axi.data_width), buffer_depth)
-        self.submodules += w_buffer
+        self.submodules.w_buffer = w_buffer
 
         # Write ID Buffer & Response
         id_buffer = stream.SyncFIFO([("id", axi.id_width)], buffer_depth)
@@ -222,7 +222,7 @@ class LiteDRAMAXI2NativeR(Module):
 
         # Read buffer
         r_buffer = stream.SyncFIFO(r_description(axi.data_width, axi.id_width), buffer_depth)
-        self.submodules += r_buffer
+        self.submodules.r_buffer = r_buffer
 
         # Read Buffer reservation
         # - Incremented when data is planned to be queued
