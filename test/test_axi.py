@@ -113,18 +113,16 @@ class TestAXI(unittest.TestCase):
         self.assertEqual(self.errors, 0)
 
     def _test_axi2native(self,
+        naccesses=16, simultaneous_writes_reads=True,
         # rand_level: 0: min (no random), 100: max.
-
         # burst randomness
         id_rand_enable   = False,
         len_rand_enable  = False,
         data_rand_enable = False,
-
         # flow valid randomness
         aw_valid_rand_level = 0,
         w_valid_rand_level  = 0,
         ar_valid_rand_level = 0,
-
         # flow ready randomness
         b_ready_rand_level  = 0,
         r_ready_rand_level  = 0
@@ -164,6 +162,7 @@ class TestAXI(unittest.TestCase):
                     while (yield axi_port.w.ready) == 0:
                         yield
                     yield axi_port.w.valid.eq(0)
+            axi_port.reads_enable = True
 
         def writes_response_generator(axi_port, writes):
             self.writes_id_errors = 0
@@ -180,6 +179,8 @@ class TestAXI(unittest.TestCase):
                     self.writes_id_errors += 1
 
         def reads_cmd_generator(axi_port, reads):
+            while not axi_port.reads_enable:
+                yield
             for read in reads:
                 yield from rand_wait(ar_valid_rand_level)
                 # send command
@@ -198,8 +199,8 @@ class TestAXI(unittest.TestCase):
             self.reads_data_errors = 0
             self.reads_id_errors = 0
             self.reads_last_errors = 0
-            yield axi_port.r.ready.eq(1) # always accepting read response
-            yield
+            while not axi_port.reads_enable:
+                yield
             for read in reads:
                 for i, data in enumerate(read.data):
                     # wait data / response
@@ -225,21 +226,25 @@ class TestAXI(unittest.TestCase):
         axi_port = LiteDRAMAXIPort(32, 32, 8)
         dram_port = LiteDRAMNativePort("both", 32, 32)
         dut = LiteDRAMAXI2Native(axi_port, dram_port)
-        mem = DRAMMemory(32, 128)
+        mem = DRAMMemory(32, 1024)
 
         # generate writes/reads
         prng = random.Random(42)
         writes = []
         offset = 0
-        for i in range(16):
+        for i in range(naccesses):
             _id = prng.randrange(2**8) if id_rand_enable else i
             _len = prng.randrange(32) if len_rand_enable else i
             _data = [prng.randrange(2**32) if data_rand_enable else i for _ in range(_len + 1)]
             writes.append(Write(offset, _data, _id, type=0b00, len=_len, size=log2_int(32//8)))
-            offset += _len
+            offset += _len + 1
         reads = writes
 
         # simulation
+        if simultaneous_writes_reads:
+            axi_port.reads_enable = True
+        else:
+            axi_port.reads_enable = False # will be set by writes_data_generator
         generators = [
             writes_cmd_generator(axi_port, writes),
             writes_data_generator(axi_port, writes),
@@ -256,5 +261,44 @@ class TestAXI(unittest.TestCase):
         self.assertEqual(self.reads_id_errors, 0)
         self.assertEqual(self.reads_last_errors, 0)
 
-    def test_axi2native(self):
+    # test with no randomness
+    def test_axi2native_writes_then_reads_no_random(self):
+        self._test_axi2native(simultaneous_writes_reads=False)
+
+    def test_axi2native_writes_and_reads_no_random(self):
         self._test_axi2native()
+
+    # test randomness one parameter at a time
+    def test_axi2native_random_bursts(self):
+        self._test_axi2native(
+            id_rand_enable=True,
+            len_rand_enable=True,
+            data_rand_enable=True)
+
+    def test_axi2native_random_bready(self):
+        self._test_axi2native(b_ready_rand_level=90)
+
+    def test_axi2native_random_rready(self):
+        self._test_axi2native(r_ready_rand_level=90)
+
+    def test_axi2native_random_aw_valid(self):
+        self._test_axi2native(simultaneous_writes_reads=False, aw_valid_rand_level=90)
+
+    def test_axi2native_random_w_valid(self):
+        self._test_axi2native(simultaneous_writes_reads=False, w_valid_rand_level=90)
+
+    def test_axi2native_random_ar_valid(self):
+        self._test_axi2native(simultaneous_writes_reads=False, ar_valid_rand_level=90)
+
+    # now let's stress things a bit... :)
+    def test_axi2native_random_all(self):
+        self._test_axi2native(
+            simultaneous_writes_reads=True,
+            id_rand_enable=True,
+            len_rand_enable=True,
+            aw_valid_rand_level=50, # be sure writes
+            b_ready_rand_level=50,  # are faster than
+            w_valid_rand_level=50,  # reads
+            ar_valid_rand_level=90,
+            r_ready_rand_level=90
+        )
