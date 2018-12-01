@@ -180,9 +180,22 @@ class LiteDRAMAXI2NativeW(Module):
         ]
 
         # Command
+        cmd_in_flight = Signal(max=buffer_depth)
+        cmd_in_flight_inc = Signal()
+        cmd_in_flight_dec = Signal()
+        self.sync += [
+            cmd_in_flight_inc.eq(aw.valid & aw.ready),
+            cmd_in_flight_dec.eq(port.wdata.valid & port.wdata.ready),
+            If(cmd_in_flight_inc & ~cmd_in_flight_dec,
+                cmd_in_flight.eq(cmd_in_flight + 1)
+            ).Elif(~cmd_in_flight_inc & cmd_in_flight_dec,
+                cmd_in_flight.eq(cmd_in_flight - 1)
+            )
+        ]
         self.comb += [
-            # Emits the command only if we have the data
-            If(w_buffer.source.valid,
+            # Emits the command if we have the data for it since
+            # the controller can request it a any time.
+            If(w_buffer.level > cmd_in_flight,
                 self.cmd_request.eq(aw.valid),
                 If(self.cmd_grant,
                     port.cmd.valid.eq(aw.valid),
