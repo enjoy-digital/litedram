@@ -109,11 +109,11 @@ class TestAXI(unittest.TestCase):
             bursts_generator(ax_burst, bursts),
             beats_checker(ax_beat, beats)
         ]
-        run_simulation(dut, generators, vcd_name="burst2beat.vcd")
+        run_simulation(dut, generators)
         self.assertEqual(self.errors, 0)
 
     def _test_axi2native(self,
-        naccesses=16, simultaneous_writes_reads=True,
+        naccesses=16, simultaneous_writes_reads=False,
         # rand_level: 0: min (no random), 100: max.
         # burst randomness
         id_rand_enable   = False,
@@ -229,14 +229,16 @@ class TestAXI(unittest.TestCase):
         # generate writes/reads
         prng = random.Random(42)
         writes = []
-        offset = 0
+        offset = 1
         for i in range(naccesses):
             _id = prng.randrange(2**8) if id_rand_enable else i
             _len = prng.randrange(32) if len_rand_enable else i
-            _data = [prng.randrange(2**32) if data_rand_enable else i for _ in range(_len + 1)]
-            writes.append(Write(offset, _data, _id, type=0b00, len=_len, size=log2_int(32//8)))
+            _data = [prng.randrange(2**32) if data_rand_enable else j for j in range(_len + 1)]
+            writes.append(Write(offset, _data, _id, type=burst_types["incr"], len=_len, size=log2_int(32//8)))
             offset += _len + 1
-        reads = writes
+        # dummy reads to ensure datas have been written before the effective reads start.
+        dummy_reads = [Read(1023, [0], 0, type=burst_types["fixed"], len=0, size=log2_int(32//8)) for _ in range(32)]
+        reads = dummy_reads + writes
 
         # simulation
         if simultaneous_writes_reads:
@@ -252,7 +254,7 @@ class TestAXI(unittest.TestCase):
             mem.read_handler(dram_port, rdata_valid_rand_level=r_valid_rand_level),
             mem.write_handler(dram_port, wdata_ready_rand_level=w_ready_rand_level)
         ]
-        run_simulation(dut, generators, vcd_name="axi2native.vcd")
+        run_simulation(dut, generators)
         #mem.show_content()
         self.assertEqual(self.writes_id_errors, 0)
         self.assertEqual(self.reads_data_errors, 0)
@@ -264,35 +266,43 @@ class TestAXI(unittest.TestCase):
         self._test_axi2native(simultaneous_writes_reads=False)
 
     def test_axi2native_writes_and_reads_no_random(self):
-        self._test_axi2native()
+        self._test_axi2native(simultaneous_writes_reads=True)
 
     # test randomness one parameter at a time
-    def test_axi2native_random_bursts(self):
+    def test_axi2native_writes_then_reads_random_bursts(self):
         self._test_axi2native(
+            simultaneous_writes_reads=False,
+            id_rand_enable=True,
+            len_rand_enable=True,
+            data_rand_enable=True)
+
+    def test_axi2native_writes_and_reads_random_bursts(self):
+        self._test_axi2native(
+            simultaneous_writes_reads=True,
             id_rand_enable=True,
             len_rand_enable=True,
             data_rand_enable=True)
 
     def test_axi2native_random_w_ready(self):
-        self._test_axi2native(simultaneous_writes_reads=False, w_ready_rand_level=90)
+        self._test_axi2native(w_ready_rand_level=90)
 
     def test_axi2native_random_b_ready(self):
-        self._test_axi2native(simultaneous_writes_reads=False, b_ready_rand_level=90)
+        self._test_axi2native(b_ready_rand_level=90)
 
     def test_axi2native_random_r_ready(self):
         self._test_axi2native(r_ready_rand_level=90)
 
     def test_axi2native_random_aw_valid(self):
-        self._test_axi2native(simultaneous_writes_reads=False, aw_valid_rand_level=90)
+        self._test_axi2native(aw_valid_rand_level=90)
 
     def test_axi2native_random_w_valid(self):
-        self._test_axi2native(simultaneous_writes_reads=False, w_valid_rand_level=90)
+        self._test_axi2native(w_valid_rand_level=90)
 
     def test_axi2native_random_ar_valid(self):
-        self._test_axi2native(simultaneous_writes_reads=False, ar_valid_rand_level=90)
+        self._test_axi2native(ar_valid_rand_level=90)
 
     def test_axi2native_random_r_valid(self):
-        self._test_axi2native(simultaneous_writes_reads=False, r_valid_rand_level=90)
+        self._test_axi2native(r_valid_rand_level=90)
 
     # now let's stress things a bit... :)
     def test_axi2native_random_all(self):
@@ -300,10 +310,10 @@ class TestAXI(unittest.TestCase):
             simultaneous_writes_reads=True,
             id_rand_enable=True,
             len_rand_enable=True,
-            aw_valid_rand_level=50, # 50 vs 90 to make sure
-            w_ready_rand_level=50,  # writes are faster than
-            b_ready_rand_level=50,  # reads
-            w_valid_rand_level=50,
+            aw_valid_rand_level=90,
+            w_ready_rand_level=90,
+            b_ready_rand_level=90,
+            w_valid_rand_level=90,
             ar_valid_rand_level=90,
             r_valid_rand_level=90,
             r_ready_rand_level=90
