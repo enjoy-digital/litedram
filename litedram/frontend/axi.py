@@ -180,39 +180,28 @@ class LiteDRAMAXI2NativeW(Module):
         ]
 
         # Command
-        cmd_in_flight = Signal(max=buffer_depth)
-        cmd_in_flight_inc = Signal()
-        cmd_in_flight_dec = Signal()
-        self.sync += [
-            cmd_in_flight_inc.eq(aw.valid & aw.ready),
-            cmd_in_flight_dec.eq(port.wdata.valid & port.wdata.ready),
-            If(cmd_in_flight_inc & ~cmd_in_flight_dec,
-                cmd_in_flight.eq(cmd_in_flight + 1)
-            ).Elif(~cmd_in_flight_inc & cmd_in_flight_dec,
-                cmd_in_flight.eq(cmd_in_flight - 1)
-            )
-        ]
+        # Accept and send command to the controller only if:
+        # - Address & Data request are *both* valid.
+        # - Data buffer is not full.
         self.comb += [
-            # Emits the command if we have the data for it since
-            # the controller can request it a any time.
-            If(w_buffer.level > cmd_in_flight,
-                self.cmd_request.eq(aw.valid),
-                If(self.cmd_grant,
-                    port.cmd.valid.eq(aw.valid),
-                    aw.ready.eq(port.cmd.ready),
-                    port.cmd.we.eq(1),
-                    port.cmd.addr.eq(aw.addr >> ashift)
+            self.cmd_request.eq(aw.valid & axi.w.valid & w_buffer.sink.ready),
+            If(self.cmd_request & self.cmd_grant,
+                port.cmd.valid.eq(1),
+                port.cmd.we.eq(1),
+                port.cmd.addr.eq(aw.addr >> ashift),
+                aw.ready.eq(port.cmd.ready),
+                axi.w.connect(w_buffer.sink, omit={"valid", "ready"}),
+                If(port.cmd.ready,
+                    w_buffer.sink.valid.eq(1),
+                    axi.w.ready.eq(1)
                 )
             )
         ]
 
         # Write Data
         self.comb += [
-            axi.w.connect(w_buffer.sink),
-            If(id_buffer.source.valid,
-                w_buffer.source.connect(port.wdata, omit={"strb"}),
-                port.wdata.we.eq(w_buffer.source.strb)
-            )
+            w_buffer.source.connect(port.wdata, omit={"strb"}),
+            port.wdata.we.eq(w_buffer.source.strb)
         ]
 
 
