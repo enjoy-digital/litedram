@@ -343,9 +343,11 @@ class AS4C256M16D3A(SDRAMModule):
 class EDY4016A(SDRAMModule):
     memtype = "DDR4"
     # geometry
-    nbanks = 2*4 # 2 groups of 4 banks
-    nrows  = 32768
-    ncols  = 1024
+    ngroupbanks = 4
+    ngroups     = 2
+    nbanks      = ngroups * ngroupbanks
+    nrows       = 32768
+    ncols       = 1024
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9))
     speedgrade_timings = {
@@ -357,9 +359,11 @@ class EDY4016A(SDRAMModule):
 class MT40A1G8(SDRAMModule):
     memtype = "DDR4"
     # geometry
-    nbanks = 4*4 # 4 groups of 4 banks
-    nrows  = 65536
-    ncols  = 1024
+    ngroupbanks = 4
+    ngroups     = 4
+    nbanks      = ngroups * ngroupbanks
+    nrows       = 65536
+    ncols       = 1024
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9))
     speedgrade_timings = {
