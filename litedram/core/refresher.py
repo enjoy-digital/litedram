@@ -35,7 +35,7 @@ class RefreshGenerator(Module):
                 ])
             ])
         ]
-        self.comb += [
+        self.sync += [
             cmd.a.eq(2**10),
             cmd.ba.eq(0),
             cmd.cas.eq(0),
