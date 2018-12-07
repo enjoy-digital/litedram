@@ -41,8 +41,7 @@ class LiteDRAMController(Module):
         # # #
 
         # refresher
-        refresher = Refresher(settings)
-        self.submodules += refresher
+        self.submodules.refresher = Refresher(settings)
 
         # bank machines
         bank_machines = []
@@ -58,7 +57,7 @@ class LiteDRAMController(Module):
 
         # multiplexer
         self.submodules.multiplexer = Multiplexer(
-            settings, bank_machines, refresher, self.dfi, interface)
+            settings, bank_machines, self.refresher, self.dfi, interface)
 
     def get_csrs(self):
         return self.multiplexer.get_csrs()

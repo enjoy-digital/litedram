@@ -1,67 +1,111 @@
 """LiteDRAM Refresher."""
 
 from migen import *
-from migen.genlib.misc import timeline, WaitTimer
+from migen.genlib.misc import timeline
 
 from litex.soc.interconnect import stream
 
 from litedram.core.multiplexer import *
 
 
-class Refresher(Module):
-    def __init__(self, settings):
-        # 1st command 1 cycle after assertion of ready
-        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(
-            settings.geom.addressbits, settings.geom.bankbits + log2_int(settings.phy.nranks)))
+class RefreshGenerator(Module):
+    def __init__(self, cmd, trp, trfc):
+        self.start = Signal()
+        self.done = Signal()
 
         # # #
 
-        # Refresh sequence generator:
-        # PRECHARGE ALL --(tRP)--> AUTO REFRESH --(tRFC)--> done
-        seq_start = Signal()
-        seq_done = Signal()
         self.sync += [
+            self.done.eq(0),
+            # Wait start
+            timeline(self.start, [
+                # Precharge all
+                (1, [
+                    cmd.ras.eq(1),
+                    cmd.we.eq(1)
+                ]),
+                # Wait tRP then Auto Refresh
+                (1 + trp, [
+                    cmd.cas.eq(1),
+                    cmd.ras.eq(1)
+                ]),
+                # Wait tRFC then done
+                (1 + trp + trfc, [
+                    self.done.eq(1)
+                ])
+            ])
+        ]
+        self.comb += [
             cmd.a.eq(2**10),
             cmd.ba.eq(0),
             cmd.cas.eq(0),
             cmd.ras.eq(0),
             cmd.we.eq(0),
-            seq_done.eq(0)
         ]
-        self.sync += timeline(seq_start, [
-            (1, [
-                cmd.ras.eq(1),
-                cmd.we.eq(1)
-            ]),
-            (1+settings.timing.tRP, [
-                cmd.cas.eq(1),
-                cmd.ras.eq(1)
-            ]),
-            (1+settings.timing.tRP+settings.timing.tRFC, [
-                seq_done.eq(1)
-            ])
-        ])
 
-        # Periodic refresh counter
-        self.submodules.timer = WaitTimer(settings.timing.tREFI)
-        self.comb += self.timer.wait.eq(settings.with_refresh & ~self.timer.done)
 
-        # Control FSM
+class RefreshTimer(Module):
+    def __init__(self, trefi):
+        self.wait = wait = Signal()
+        self.done = done = Signal()
+        self.count = count = Signal(bits_for(trefi), reset=trefi)
+
+        self.load = load = Signal()
+        self.load_count = load_count = Signal(bits_for(trefi))
+
+        # # #
+
+        self.comb += done.eq(count == 0)
+        self.sync += [
+            If(wait,
+                If(~done,
+                    If(load & (load_count < count),
+                        count.eq(load_count)
+                    ).Else(
+                        count.eq(count - 1)
+                    )
+                )
+            ).Else(
+                count.eq(count.reset)
+            )
+        ]
+
+
+class Refresher(Module):
+    def __init__(self, settings):
+        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(
+            a=settings.geom.addressbits,
+            ba=settings.geom.bankbits + log2_int(settings.phy.nranks)))
+
+        # # #
+
+        # Periodic refresh timer
+        timer = RefreshTimer(settings.timing.tREFI)
+        timer = ResetInserter()(timer)
+        self.submodules.timer = timer
+        self.comb += self.timer.reset.eq(~settings.with_refresh)
+        self.comb += self.timer.wait.eq(~self.timer.done)
+
+        # Refresh sequence generator
+        generator = RefreshGenerator(cmd, settings.timing.tRP, settings.timing.tRFC)
+        self.submodules.generator = generator
+
+        # Refresh control FSM
         self.submodules.fsm = fsm = FSM()
         fsm.act("IDLE",
-            If(self.timer.done,
+            If(timer.done,
                 NextState("WAIT_GRANT")
             )
         )
         fsm.act("WAIT_GRANT",
             cmd.valid.eq(1),
             If(cmd.ready,
-                seq_start.eq(1),
+                generator.start.eq(1),
                 NextState("WAIT_SEQ")
             )
         )
         fsm.act("WAIT_SEQ",
-            If(seq_done,
+            If(generator.done,
                 cmd.last.eq(1),
                 NextState("IDLE")
             ).Else(
