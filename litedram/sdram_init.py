@@ -242,8 +242,9 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
             mr0 |= (wr_to_mr0[wr] >> 3) << 13
             return mr0
 
-        def format_mr1(ron, rtt_nom):
-            mr1 = ((ron >> 0) & 0b1) << 1
+        def format_mr1(dll_enable, ron, rtt_nom):
+            mr1 = dll_enable
+            mr1 |= ((ron >> 0) & 0b1) << 1
             mr1 |= ((ron >> 1) & 0b1) << 2
             mr1 |= ((rtt_nom >> 0) & 0b1) << 8
             mr1 |= ((rtt_nom >> 1) & 0b1) << 9
@@ -315,7 +316,7 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
 
         wr = max(timing_settings.tWTR*phy_settings.nphases, 10) # >= ceiling(tWR/tCK)
         mr0 = format_mr0(bl, cl, wr, 1)
-        mr1 = format_mr1(z_to_ron[ron], z_to_rtt_nom[rtt_nom])
+        mr1 = format_mr1(1, z_to_ron[ron], z_to_rtt_nom[rtt_nom])
         mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
         mr3 = 0
         mr4 = 0
