@@ -107,7 +107,7 @@ class KUSDDRPHY(Module, AutoCSR):
             wrcmdphase=wrcmdphase,
             cl=cl,
             cwl=cwl,
-            read_latency=2 + cl_sys_latency + 2 + 3,
+            read_latency=2 + cl_sys_latency + 1 + 3,
             write_latency=cwl_sys_latency
         )
 
@@ -274,7 +274,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
-                    i_RST=ResetSignal() | (self._dly_sel.storage[i] & self._wdly_dq_rst.re),
+                    i_RST=self._dly_sel.storage[i] & self._wdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dq_inc.re,
 
                     i_ODATAIN=dm_o_nodelay, o_DATAOUT=pads.dm[i]
@@ -317,7 +317,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
-                    i_RST=ResetSignal() | (self._dly_sel.storage[i] & self._wdly_dqs_rst.re),
+                    i_RST=self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
                     i_CE=self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
                     o_CNTVALUEOUT=Signal(9) if i != 0 else dqs_taps,
 
@@ -381,7 +381,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
-                    i_RST=ResetSignal() | (self._dly_sel.storage[i//8] & self._wdly_dq_rst.re),
+                    i_RST=self._dly_sel.storage[i//8] & self._wdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
 
                     i_ODATAIN=dq_o_nodelay, o_DATAOUT=dq_o_delayed
@@ -394,7 +394,7 @@ class KUSDDRPHY(Module, AutoCSR):
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
-                    i_RST=ResetSignal() | (self._dly_sel.storage[i//8] & self._rdly_dq_rst.re),
+                    i_RST=self._dly_sel.storage[i//8] & self._rdly_dq_rst.re,
                     i_CE=self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
 
                     i_IDATAIN=dq_i_nodelay, o_DATAOUT=dq_i_delayed
