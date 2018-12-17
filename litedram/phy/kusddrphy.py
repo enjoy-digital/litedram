@@ -340,7 +340,7 @@ class KUSDDRPHY(Module, AutoCSR):
             dq_bitslip = BitSlip(8)
             self.sync += \
                 If(self._dly_sel.storage[i//8],
-                    If(self._wdly_dq_rst.re,
+                    If(self._rdly_dq_bitslip_rst.re,
                         dq_bitslip.value.eq(0)
                     ).Elif(self._rdly_dq_bitslip.re,
                         dq_bitslip.value.eq(dq_bitslip.value + 1)
