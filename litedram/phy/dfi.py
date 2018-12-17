@@ -50,6 +50,7 @@ class Interface(Record):
             p.cs_n.reset = (2**nranks-1)
             p.ras_n.reset = 1
             p.we_n.reset = 1
+            p.act_n.reset = 1
 
     # Returns pairs (DFI-mandated signal name, Migen signal object)
     def get_standard_names(self, m2s=True, s2m=True):
