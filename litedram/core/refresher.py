@@ -16,6 +16,13 @@ class RefreshGenerator(Module):
         # # #
 
         self.sync += [
+            cmd.a.eq(2**10),
+            cmd.ba.eq(0),
+            cmd.cas.eq(0),
+            cmd.ras.eq(0),
+            cmd.we.eq(0),
+        ]
+        self.sync += [
             self.done.eq(0),
             # Wait start
             timeline(self.start, [
@@ -35,13 +42,7 @@ class RefreshGenerator(Module):
                 ])
             ])
         ]
-        self.sync += [
-            cmd.a.eq(2**10),
-            cmd.ba.eq(0),
-            cmd.cas.eq(0),
-            cmd.ras.eq(0),
-            cmd.we.eq(0),
-        ]
+
 
 
 class RefreshTimer(Module):
