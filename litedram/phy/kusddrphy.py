@@ -73,6 +73,8 @@ class KUSDDRPHY(Module, AutoCSR):
 
         self._en_vtc = CSRStorage(reset=1)
 
+        self._half_sys8x_taps = CSRStatus(9)
+
         self._wlevel_en = CSRStorage()
         self._wlevel_strobe = CSR()
 
@@ -87,7 +89,6 @@ class KUSDDRPHY(Module, AutoCSR):
         self._wdly_dq_inc = CSR()
         self._wdly_dqs_rst = CSR()
         self._wdly_dqs_inc = CSR()
-        self._wdly_dqs_taps = CSRStatus(9)
 
         # compute phy settings
         cl, cwl = get_cl_cw(memtype, tck)
@@ -294,7 +295,7 @@ class KUSDDRPHY(Module, AutoCSR):
                 self.sync += \
                     If(dqs_taps_timer.done,
                         dqs_taps_done.eq(1),
-                        self._wdly_dqs_taps.status.eq(dqs_taps)
+                        self._half_sys8x_taps.status.eq(dqs_taps)
                     )
             self.specials += [
                 Instance("OSERDESE3",
@@ -313,7 +314,7 @@ class KUSDDRPHY(Module, AutoCSR):
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
-                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=500,
+                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=int(tck*1e12/4),
 
                     i_CLK=ClockSignal(),
                     i_INC=1, i_EN_VTC=self._en_vtc.storage,
