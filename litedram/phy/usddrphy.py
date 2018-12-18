@@ -1,4 +1,4 @@
-# 1:4 frequency-ratio DDR3/DDR4 PHY for Kintex Ultrascale
+# 1:4 frequency-ratio DDR3/DDR4 PHY for Kintex/Virtex Ultrascale
 # DDR3: 800, 1066, 1333 and 1600 MT/s
 # DDR4: 1600 MT/s
 
@@ -57,7 +57,7 @@ class DDR4DFIMux(Module):
             ]
 
 
-class KUSDDRPHY(Module, AutoCSR):
+class USDDRPHY(Module, AutoCSR):
     def __init__(self, pads, memtype="DDR3", sys_clk_freq=100e6):
         tck = 2/(2*4*sys_clk_freq)
         addressbits = len(pads.a)
