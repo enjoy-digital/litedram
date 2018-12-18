@@ -158,7 +158,7 @@ class LiteDRAMAXI2NativeW(Module):
         self.submodules.aw_burst2beat = aw_burst2beat
 
         # Write Buffer
-        w_buffer = stream.SyncFIFO(w_description(axi.data_width), buffer_depth)
+        w_buffer = stream.SyncFIFO(w_description(axi.data_width), buffer_depth, buffered=True)
         self.submodules.w_buffer = w_buffer
 
         # Write ID Buffer & Response
@@ -225,7 +225,7 @@ class LiteDRAMAXI2NativeR(Module):
         self.submodules.ar_burst2beat = ar_burst2beat
 
         # Read buffer
-        r_buffer = stream.SyncFIFO(r_description(axi.data_width, axi.id_width), buffer_depth)
+        r_buffer = stream.SyncFIFO(r_description(axi.data_width, axi.id_width), buffer_depth, buffered=True)
         self.submodules.r_buffer = r_buffer
 
         # Read Buffer reservation
