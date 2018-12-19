@@ -58,7 +58,7 @@ class DDR4DFIMux(Module):
 
 
 class USDDRPHY(Module, AutoCSR):
-    def __init__(self, pads, memtype="DDR3", sys_clk_freq=100e6):
+    def __init__(self, pads, memtype="DDR3", sys_clk_freq=100e6, iodelay_clk_freq=200e6):
         tck = 2/(2*4*sys_clk_freq)
         addressbits = len(pads.a)
         if memtype == "DDR4":
@@ -136,7 +136,7 @@ class USDDRPHY(Module, AutoCSR):
                 i_D=0b10101010
             ),
             Instance("ODELAYE3",
-                p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                 p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
                 i_CLK=ClockSignal(),
                 i_RST=ResetSignal(),
@@ -167,7 +167,7 @@ class USDDRPHY(Module, AutoCSR):
                             _dfi.phases[3].address[i], _dfi.phases[3].address[i])
                 ),
                 Instance("ODELAYE3",
-                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
                     i_CLK=ClockSignal(),
                     i_RST=ResetSignal(),
@@ -198,7 +198,7 @@ class USDDRPHY(Module, AutoCSR):
                             _dfi.phases[3].bank[i], _dfi.phases[3].bank[i])
                 ),
                 Instance("ODELAYE3",
-                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
                     i_CLK=ClockSignal(),
                     i_RST=ResetSignal(),
@@ -230,7 +230,7 @@ class USDDRPHY(Module, AutoCSR):
                             getattr(_dfi.phases[3], name), getattr(_dfi.phases[3], name))
                 ),
                 Instance("ODELAYE3",
-                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
                     i_CLK=ClockSignal(),
                     i_RST=ResetSignal(),
@@ -269,7 +269,7 @@ class USDDRPHY(Module, AutoCSR):
                 )
             self.specials += \
                 Instance("ODELAYE3",
-                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
@@ -312,7 +312,7 @@ class USDDRPHY(Module, AutoCSR):
                     i_T=~oe_dqs,
                 ),
                 Instance("ODELAYE3",
-                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=int(tck*1e12/4),
 
@@ -376,7 +376,7 @@ class USDDRPHY(Module, AutoCSR):
                     o_Q=dq_bitslip.i
                 ),
                 Instance("ODELAYE3",
-                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=200.0,
+                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
 
@@ -388,7 +388,7 @@ class USDDRPHY(Module, AutoCSR):
                     i_ODATAIN=dq_o_nodelay, o_DATAOUT=dq_o_delayed
                 ),
                 Instance("IDELAYE3",
-                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC",p_REFCLK_FREQUENCY=200.0,
+                    p_CASCADE="NONE", p_UPDATE_MODE="ASYNC",p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_IS_CLK_INVERTED=0, p_IS_RST_INVERTED=0,
                     p_DELAY_FORMAT="TIME", p_DELAY_SRC="IDATAIN",
                     p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
