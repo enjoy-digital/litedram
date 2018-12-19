@@ -139,7 +139,7 @@ class USDDRPHY(Module, AutoCSR):
                 p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                 p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
                 i_CLK=ClockSignal(),
-                i_RST=ResetSignal(),
+                i_RST=0,
                 i_EN_VTC=1,
                 i_ODATAIN=clk_o_nodelay, o_DATAOUT=clk_o_delayed
             ),
@@ -170,7 +170,7 @@ class USDDRPHY(Module, AutoCSR):
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
                     i_CLK=ClockSignal(),
-                    i_RST=ResetSignal(),
+                    i_RST=0,
                     i_EN_VTC=1,
                     i_ODATAIN=a_o_nodelay, o_DATAOUT=pads.a[i]
                 )
@@ -201,7 +201,7 @@ class USDDRPHY(Module, AutoCSR):
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
                     i_CLK=ClockSignal(),
-                    i_RST=ResetSignal(),
+                    i_RST=0,
                     i_EN_VTC=1,
                     i_ODATAIN=ba_o_nodelay, o_DATAOUT=pads_ba[i]
                 )
@@ -233,7 +233,7 @@ class USDDRPHY(Module, AutoCSR):
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
                     p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
                     i_CLK=ClockSignal(),
-                    i_RST=ResetSignal(),
+                    i_RST=0,
                     i_EN_VTC=1,
                     i_ODATAIN=x_o_nodelay, o_DATAOUT=getattr(pads, name)
                 )
