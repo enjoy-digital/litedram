@@ -50,11 +50,12 @@ class GENSDRPHY(Module):
         self.sync += [
             pads.a.eq(dfi.p0.address),
             pads.ba.eq(dfi.p0.bank),
-            pads.cke.eq(dfi.p0.cke),
             pads.cas_n.eq(dfi.p0.cas_n),
             pads.ras_n.eq(dfi.p0.ras_n),
             pads.we_n.eq(dfi.p0.we_n)
         ]
+        if hasattr(pads, "cke"):
+            self.sync += pads.cke.eq(dfi.p0.cke)
         if hasattr(pads, "cs_n"):
             self.sync += pads.cs_n.eq(dfi.p0.cs_n)
 
@@ -64,12 +65,13 @@ class GENSDRPHY(Module):
         dq_i = Signal(databits)
         self.sync += dq_o.eq(dfi.p0.wrdata)
         self.specials += Tristate(pads.dq, dq_o, dq_oe, dq_i)
-        self.sync += \
-            If(dfi.p0.wrdata_en,
-                pads.dm.eq(dfi.p0.wrdata_mask)
-            ).Else(
-                pads.dm.eq(0)
-            )
+        if hasattr(pads, "dm"):
+            self.sync += \
+                If(dfi.p0.wrdata_en,
+                    pads.dm.eq(dfi.p0.wrdata_mask)
+                ).Else(
+                    pads.dm.eq(0)
+                )
         dq_in = Signal(databits)
         self.sync.sys_ps += dq_in.eq(dq_i)
         self.sync += dfi.p0.rddata.eq(dq_in)
