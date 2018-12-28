@@ -90,10 +90,7 @@ class LiteDRAMCrossbar(Module):
         # address mapping
         cba_shifts = {
             "ROW_BANK_COL": controller.settings.geom.colbits -
-                            controller.address_align,
-            "ROW_COL_BANK": controller.settings.geom.rowbits +
-                            controller.settings.geom.colbits -
-                             controller.address_align
+                            controller.address_align
         }
         cba_shift = cba_shifts[controller.settings.address_mapping]
         m_ba = [m.get_bank_address(self.bank_bits, cba_shift)for m in self.masters]
