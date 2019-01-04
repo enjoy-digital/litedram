@@ -6,6 +6,7 @@ Adds ECC support to Native ports.
 Features:
 - Single Error Correction.
 - Double Error Detection.
+- Errors injection.
 - Errors reporting.
 
 Limitations:
@@ -191,30 +192,35 @@ class LiteDRAMNativePortECCR(Module):
 
         # # #
 
+        self.comb +=  sink.connect(source, omit={"data"})
+
         for i in range(8):
             decoder = ECCDecoder(data_width_from//8)
             self.submodules += decoder
             self.comb += [
                 decoder.enable.eq(self.enable),
-                sink.connect(source, omit={"data"}),
                 decoder.i.eq(sink.data[i*data_width_to//8:(i+1)*data_width_to//8]),
                 source.data[i*data_width_from//8:(i+1)*data_width_from//8].eq(decoder.o),
-                self.sec[i].eq(decoder.sec),
-                self.ded[i].eq(decoder.ded)
+                If(source.valid,
+                    self.sec[i].eq(decoder.sec),
+                    self.ded[i].eq(decoder.ded)
+                )
             ]
 
 
 class LiteDRAMNativePortECC(Module, AutoCSR):
-    def __init__(self, port_from, port_to):
+    def __init__(self, port_from, port_to, with_error_injection=False):
         _ , n = compute_m_n(port_from.data_width//8)
         assert port_to.data_width >= (n + 1)*8
 
-        self.enable = CSRStorage()
+        self.enable = CSRStorage(reset=1)
         self.clear = CSR()
         self.sec_errors = CSRStatus(32)
         self.ded_errors = CSRStatus(32)
         self.sec_detected = sec_detected = Signal()
         self.ded_detected = ded_detected = Signal()
+        if with_error_injection:
+            self.flip = CSRStorage(8)
 
         # # #
 
@@ -229,6 +235,8 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
             port_from.wdata.connect(ecc_wdata.sink),
             ecc_wdata.source.connect(port_to.wdata)
         ]
+        if with_error_injection:
+            self.comb += port_to.wdata.data[:8].eq(self.flip.storage ^ ecc_wdata.source.data[:8])
 
         # rdata (ecc decoding)
         sec = Signal()
