@@ -1,3 +1,17 @@
+"""
+ECC frontend for LiteDRAM
+
+Adds ECC support to Native ports.
+
+Features:
+- Single Error Correction.
+- Double Error Detection.
+- Errors reporting.
+
+Limitations:
+- Byte enable not supported for writes.
+"""
+
 from functools import reduce
 from operator import xor
 
@@ -113,7 +127,7 @@ class ECCDecoder(SECDED, Module):
         self.o = o = Signal(k)
 
         self.sec = sec = Signal()
-        self.dec = dec = Signal()
+        self.ded = ded = Signal()
 
         # # #
 
@@ -140,7 +154,7 @@ class ECCDecoder(SECDED, Module):
             If(syndrome != 0,
                  # double error detected
                 If(~parity,
-                    dec.eq(1)
+                    ded.eq(1)
                 # single error corrected
                 ).Else(
                     sec.eq(1)
@@ -164,7 +178,7 @@ class LiteDRAMNativePortECCW(Module):
                 encoder.i.eq(sink.data[i*data_width_from//8:(i+1)*data_width_from//8]),
                 source.data[i*data_width_to//8:(i+1)*data_width_to//8].eq(encoder.o)
             ]
-        self.comb += source.we.eq(2**len(source.we)-1) # FIXME: how to handle we?
+        self.comb += source.we.eq(2**len(source.we)-1)
 
 
 class LiteDRAMNativePortECCR(Module):
@@ -173,7 +187,7 @@ class LiteDRAMNativePortECCR(Module):
         self.source = source = Endpoint(rdata_description(data_width_from))
         self.enable = Signal()
         self.sec = Signal(8)
-        self.dec = Signal(8)
+        self.ded = Signal(8)
 
         # # #
 
@@ -186,7 +200,7 @@ class LiteDRAMNativePortECCR(Module):
                 decoder.i.eq(sink.data[i*data_width_to//8:(i+1)*data_width_to//8]),
                 source.data[i*data_width_from//8:(i+1)*data_width_from//8].eq(decoder.o),
                 self.sec[i].eq(decoder.sec),
-                self.dec[i].eq(decoder.dec)
+                self.ded[i].eq(decoder.ded)
             ]
 
 
@@ -198,9 +212,9 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         self.enable = CSRStorage()
         self.clear = CSR()
         self.sec_errors = CSRStatus(32)
-        self.dec_errors = CSRStatus(32)
+        self.ded_errors = CSRStatus(32)
         self.sec_detected = sec_detected = Signal()
-        self.dec_detected = dec_detected = Signal()
+        self.ded_detected = ded_detected = Signal()
 
         # # #
 
@@ -218,7 +232,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
 
         # rdata (ecc decoding)
         sec = Signal()
-        dec = Signal()
+        ded = Signal()
         ecc_rdata = LiteDRAMNativePortECCR(port_from.data_width, port_to.data_width)
         ecc_rdata = BufferizeEndpoints({"source": DIR_SOURCE})(ecc_rdata)
         self.submodules += ecc_rdata
@@ -230,13 +244,13 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
 
         # errors count
         sec_errors = self.sec_errors.status
-        dec_errors = self.dec_errors.status
+        ded_errors = self.ded_errors.status
         self.sync += [
             If(self.clear.re,
                 sec_errors.eq(0),
-                dec_errors.eq(0),
+                ded_errors.eq(0),
                 sec_detected.eq(0),
-                sec_detected.eq(0),
+                ded_detected.eq(0),
             ).Else(
                 If(sec_errors != (2**len(sec_errors) - 1),
                     If(ecc_rdata.sec != 0,
@@ -244,10 +258,10 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
                         sec_errors.eq(sec_errors + 1)
                     )
                 ),
-                If(dec_errors != (2**len(dec_errors) - 1),
-                    If(ecc_rdata.dec != 0,
-                        dec_detected.eq(1),
-                        dec_errors.eq(dec_errors + 1)
+                If(ded_errors != (2**len(ded_errors) - 1),
+                    If(ecc_rdata.ded != 0,
+                        ded_detected.eq(1),
+                        ded_errors.eq(ded_errors + 1)
                     )
                 )
             )
