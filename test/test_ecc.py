@@ -72,23 +72,23 @@ class TestECC(unittest.TestCase):
                 if nerrors < 2:
                     if (yield dut.decoder.o) != data:
                         dut.errors += 1
-                # if 0 error, verify sec == 0 / dec == 0
+                # if 0 error, verify sec == 0 / ded == 0
                 if nerrors == 0:
                     if (yield dut.decoder.sec) != 0:
                         dut.errors += 1
-                    if (yield dut.decoder.dec) != 0:
+                    if (yield dut.decoder.ded) != 0:
                         dut.errors += 1
                 # if 1 error, verify sec == 1 / dec == 0
                 elif nerrors == 1:
                     if (yield dut.decoder.sec) != 1:
                         dut.errors += 1
-                    if (yield dut.decoder.dec) != 0:
+                    if (yield dut.decoder.ded) != 0:
                         dut.errors += 1
-                # if 2 errors, verify sec == 0 / dec == 1
+                # if 2 errors, verify sec == 0 / ded == 1
                 elif nerrors == 2:
                     if (yield dut.decoder.sec) != 0:
                         dut.errors += 1
-                    if (yield dut.decoder.dec) != 1:
+                    if (yield dut.decoder.ded) != 1:
                         dut.errors += 1
 
         for i in range(3):
