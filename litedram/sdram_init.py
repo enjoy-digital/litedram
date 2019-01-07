@@ -436,8 +436,9 @@ def get_sdram_phy_py_header(phy_settings, timing_settings):
 
     init_sequence, mr1 = get_sdram_phy_init_sequence(phy_settings, timing_settings)
 
-    r += "ddrx_mr1 = 0x{:x}\n".format(mr1)
-    r += "\n"
+    if mr1 is not None:
+        r += "ddrx_mr1 = 0x{:x}\n".format(mr1)
+        r += "\n"
 
     r += "init_sequence = [\n"
     for comment, a, ba, cmd, delay in init_sequence:
