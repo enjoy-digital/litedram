@@ -10,8 +10,6 @@
 # Assert dfi_rddata_en in the same cycle as the read command. The data will come
 # back on dfi_rddata 4 cycles later, along with the assertion of dfi_rddata_valid.
 #
-# This SDR PHY only supports CAS Latency 2.
-#
 
 from migen import *
 from migen.genlib.record import *
@@ -22,7 +20,7 @@ from litedram.phy.dfi import *
 
 
 class GENSDRPHY(Module):
-    def __init__(self, pads):
+    def __init__(self, pads, cl=2):
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
         nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
@@ -37,8 +35,8 @@ class GENSDRPHY(Module):
             wrphase=0,
             rdcmdphase=0,
             wrcmdphase=0,
-            cl=2,
-            read_latency=4,
+            cl=cl,
+            read_latency=cl + 2,
             write_latency=0
         )
 
@@ -81,6 +79,6 @@ class GENSDRPHY(Module):
         self.sync += wrdata_en.eq(dfi.p0.wrdata_en)
         self.comb += dq_oe.eq(wrdata_en)
 
-        rddata_en = Signal(4)
-        self.sync += rddata_en.eq(Cat(dfi.p0.rddata_en, rddata_en[:3]))
-        self.comb += dfi.p0.rddata_valid.eq(rddata_en[3])
+        rddata_en = Signal(cl + 2)
+        self.sync += rddata_en.eq(Cat(dfi.p0.rddata_en, rddata_en[:cl + 1]))
+        self.comb += dfi.p0.rddata_valid.eq(rddata_en[cl + 1])
