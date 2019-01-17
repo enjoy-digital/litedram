@@ -176,12 +176,10 @@ class Multiplexer(Module, AutoCSR):
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
         self.submodules.choose_req = choose_req = _CommandChooser(requests)
         if settings.phy.nphases == 1:
-            self.comb += [
-                choose_cmd.want_cmds.eq(1),
-                choose_cmd.want_activates.eq(ras_allowed),
-                choose_req.want_cmds.eq(1),
-                choose_req.want_activates.eq(ras_allowed),
-            ]
+            # When only 1 phase, use choose_req for all requests
+            choose_cmd = choose_req
+            self.comb += choose_req.want_cmds.eq(1)
+            self.comb += choose_req.want_activates.eq(ras_allowed)
 
         # Command steering
         nop = Record(cmd_request_layout(settings.geom.addressbits,
@@ -286,9 +284,13 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("READ",
             read_time_en.eq(1),
             choose_req.want_reads.eq(1),
-            choose_cmd.want_activates.eq(ras_allowed),
-            choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
-            choose_req.cmd.ready.eq(cas_allowed),
+            If(settings.phy.nphases == 1,
+                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+            ).Else(
+                choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_req.cmd.ready.eq(cas_allowed)
+            ),
             steerer_sel(steerer, "read"),
             If(write_available,
                 # TODO: switch only after several cycles of ~read_available?
@@ -303,9 +305,13 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("WRITE",
             write_time_en.eq(1),
             choose_req.want_writes.eq(1),
-            choose_cmd.want_activates.eq(ras_allowed),
-            choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
-            choose_req.cmd.ready.eq(cas_allowed),
+            If(settings.phy.nphases == 1,
+                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+            ).Else(
+                choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_req.cmd.ready.eq(cas_allowed),
+            ),
             steerer_sel(steerer, "write"),
             If(read_available,
                 If(~write_available | max_write_time,
