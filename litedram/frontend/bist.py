@@ -337,12 +337,13 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             ),
             NextValue(self.ticks, 0)
         )
+
         data_fsm.act("RUN",
             dma.source.ready.eq(1),
             If(dma.source.valid,
                 data_gen.ce.eq(1),
                 NextValue(data_counter, data_counter + 1),
-                If(dma.source.data != data_gen.o,
+                If(dma.source.data != data_gen.o[:min(len(data_gen.o), dram_port.data_width)],
                     NextValue(self.errors, self.errors + 1)
                 ),
                 If(data_counter == (self.length[ashift:] - 1),
