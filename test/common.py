@@ -39,7 +39,7 @@ class DRAMMemory:
             print("0x{:08x}: 0x{:08x}".format(addr, self.mem[addr]))
 
     @passive
-    def read_handler(self, dram_port, rdata_valid_rand_level):
+    def read_handler(self, dram_port, rdata_valid_rand_level=0):
         address = 0
         pending = 0
         prng = random.Random(42)
