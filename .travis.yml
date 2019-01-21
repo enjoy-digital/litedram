@@ -1,0 +1,29 @@
+language: python
+dist: Xenial
+python: "3.7"
+
+env:
+ - TEST: 'test.test_axi'
+ - TEST: 'test.test_bist'
+ - TEST: 'test.test_downconverter'
+ - TEST: 'test.test_ecc'
+ - TEST: 'test.test_examples'
+ - TEST: 'test.test_upconverter'
+
+install:
+ - var1="$(pwd)"
+## Get migen
+ - git clone https://github.com/m-labs/migen
+ - cd migen
+ - python3 setup.py develop
+ - cd $var1
+## Get litex
+ - git clone https://github.com/enjoy-digital/litex
+ - cd litex
+ - python3 setup.py develop
+ - cd $var1
+ ## Run common tests
+ - python -m unittest test.__init__
+ - python -m unittest test.common
+    
+script: python -m unittest $TEST
