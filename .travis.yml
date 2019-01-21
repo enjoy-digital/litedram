@@ -1,6 +1,6 @@
 language: python
 dist: Xenial
-python: "3.7"
+python: "3.6"
 
 env:
  - TEST: 'test.test_axi'
@@ -25,5 +25,5 @@ install:
  ## Run common tests
  - python -m unittest test.__init__
  - python -m unittest test.common
-    
+
 script: python -m unittest $TEST
