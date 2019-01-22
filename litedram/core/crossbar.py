@@ -14,7 +14,7 @@ from litedram.frontend.adaptation import *
 
 
 class LiteDRAMCrossbar(Module):
-    def __init__(self, controller, ):
+    def __init__(self, controller):
         self.controller = controller
 
         self.rca_bits = controller.address_width
