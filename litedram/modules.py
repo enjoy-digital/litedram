@@ -339,6 +339,22 @@ class AS4C256M16D3A(SDRAMModule):
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 
+class MT16KTF1G64HZ(SDRAMModule):
+    memtype = "DDR3"
+    # geometry
+    nbanks = 8
+    nrows  = 65536
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10))
+    speedgrade_timings = {
+        "800" : _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=140, tFAW=(None, 40), tRAS=None),
+        "1066": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=187, tFAW=(None, 40), tRAS=None),
+        "1333": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=234, tFAW=(None, 30), tRAS=None),
+        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=13.125, tRFC=280, tFAW=(None, 30), tRAS=None),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
 # DDR4 (Chips)
 class EDY4016A(SDRAMModule):
     memtype = "DDR4"
@@ -361,6 +377,23 @@ class MT40A1G8(SDRAMModule):
     # geometry
     ngroupbanks = 4
     ngroups     = 4
+    nbanks      = ngroups * ngroupbanks
+    nrows       = 65536
+    ncols       = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9))
+    speedgrade_timings = {
+        "1333": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=219, tFAW=(20, 25), tRAS=32),
+        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=350, tFAW=(20, 25), tRAS=32),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1333"]
+
+
+class MT40A512M16(SDRAMModule):
+    memtype = "DDR4"
+    # geometry
+    ngroupbanks = 4
+    ngroups     = 2
     nbanks      = ngroups * ngroupbanks
     nrows       = 65536
     ncols       = 1024
