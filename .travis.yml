@@ -3,12 +3,13 @@ dist: Xenial
 python: "3.6"
 
 env:
- - TEST: 'test.test_axi'
- - TEST: 'test.test_bist'
  - TEST: 'test.test_downconverter'
- - TEST: 'test.test_ecc'
- - TEST: 'test.test_examples'
  - TEST: 'test.test_upconverter'
+ - TEST: 'test.test_bist'
+ - TEST: 'test.test_axi'
+ - TEST: 'test.test_ecc'
+# - TEST: 'test.test_examples'
+
 
 install:
  - var1="$(pwd)"
