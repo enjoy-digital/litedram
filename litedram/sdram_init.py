@@ -320,7 +320,7 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
         mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
         mr3 = 0
         mr4 = 0
-        mr5 = 0
+        mr5 = 1 << 10 # data mask enable
         mr6 = format_mr6(4) # FIXME: tCCD
 
         init_sequence = [
