@@ -373,6 +373,15 @@ class EDY4016A(SDRAMModule):
 
 
 class MT40A1G8(SDRAMModule):
+    # param | prodesign | this
+    # tFAW  | 30n       | 20, 21, 25
+    # tRAS  | 32n       | 32
+    # tRCD  | 13.32n    | 13.32, 13.5
+    # tREFI | 7.8u      | 7.825u
+    # tRFC  | 350       | 350
+    # tRP   | 13.32n    | 13.32, 13.5
+    # tRRD  | 3.3, 6.4  | 4, 4.9
+    # tWTR  | 2.5, 7.5  | 4, 7.5
     memtype = "DDR4"
     # geometry
     ngroupbanks = 4
@@ -381,12 +390,12 @@ class MT40A1G8(SDRAMModule):
     nrows       = 65536
     ncols       = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9))
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2.5, 7.5), tCCD=(4, None), tRRD=(3.3, 6.4))
     speedgrade_timings = {
-        "1333": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=219, tFAW=(20, 25), tRAS=32),
         "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=350, tFAW=(20, 25), tRAS=32),
+        "2666": _SpeedgradeTimings(tRP=13.50, tRCD=13.50, tWR=15, tRFC=350, tFAW=(20, 21), tRAS=32),
     }
-    speedgrade_timings["default"] = speedgrade_timings["1333"]
+    speedgrade_timings["default"] = speedgrade_timings["2400"]
 
 
 class MT40A512M16(SDRAMModule):
