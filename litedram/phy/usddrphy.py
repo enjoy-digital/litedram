@@ -78,6 +78,9 @@ class USDDRPHY(Module, AutoCSR):
         self._wlevel_en = CSRStorage()
         self._wlevel_strobe = CSR()
 
+        self._cdly_rst = CSR()
+        self._cdly_inc = CSR()
+
         self._dly_sel = CSRStorage(databits//8)
 
         self._rdly_dq_rst = CSR()
@@ -137,10 +140,13 @@ class USDDRPHY(Module, AutoCSR):
             ),
             Instance("ODELAYE3",
                 p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
-                p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
+
                 i_CLK=ClockSignal(),
-                i_RST=0,
-                i_EN_VTC=1,
+                i_INC=1, i_EN_VTC=self._en_vtc.storage,
+                i_RST=self._cdly_rst.re,
+                i_CE=self._cdly_inc.re,
+
                 i_ODATAIN=clk_o_nodelay, o_DATAOUT=clk_o_delayed
             ),
             Instance("OBUFDS",
@@ -168,10 +174,13 @@ class USDDRPHY(Module, AutoCSR):
                 ),
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
-                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
+
                     i_CLK=ClockSignal(),
-                    i_RST=0,
-                    i_EN_VTC=1,
+                    i_INC=1, i_EN_VTC=self._en_vtc.storage,
+                    i_RST=self._cdly_rst.re,
+                    i_CE=self._cdly_inc.re,
+
                     i_ODATAIN=a_o_nodelay, o_DATAOUT=pads.a[i]
                 )
             ]
@@ -199,10 +208,13 @@ class USDDRPHY(Module, AutoCSR):
                 ),
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
-                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
+
                     i_CLK=ClockSignal(),
-                    i_RST=0,
-                    i_EN_VTC=1,
+                    i_INC=1, i_EN_VTC=self._en_vtc.storage,
+                    i_RST=self._cdly_rst.re,
+                    i_CE=self._cdly_inc.re,
+
                     i_ODATAIN=ba_o_nodelay, o_DATAOUT=pads_ba[i]
                 )
             ]
@@ -231,10 +243,13 @@ class USDDRPHY(Module, AutoCSR):
                 ),
                 Instance("ODELAYE3",
                     p_CASCADE="NONE", p_UPDATE_MODE="ASYNC", p_REFCLK_FREQUENCY=iodelay_clk_freq/1e6,
-                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="FIXED", p_DELAY_VALUE=0,
+                    p_DELAY_FORMAT="TIME", p_DELAY_TYPE="VARIABLE", p_DELAY_VALUE=0,
+
                     i_CLK=ClockSignal(),
-                    i_RST=0,
-                    i_EN_VTC=1,
+                    i_INC=1, i_EN_VTC=self._en_vtc.storage,
+                    i_RST=self._cdly_rst.re,
+                    i_CE=self._cdly_inc.re,
+
                     i_ODATAIN=x_o_nodelay, o_DATAOUT=getattr(pads, name)
                 )
             ]
