@@ -245,7 +245,7 @@ class S7DDRPHY(Module, AutoCSR):
                             i_CE=self._cdly_inc.re,
                             i_LDPIPEEN=0, i_INC=1,
 
-                            o_ODATAIN=bank, o_DATAOUT=getattr(pads, name)[i]
+                            o_ODATAIN=cmd, o_DATAOUT=getattr(pads, name)[i]
                         )
 
         # DQS and DM
