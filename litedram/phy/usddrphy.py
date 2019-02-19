@@ -58,7 +58,7 @@ class DDR4DFIMux(Module):
 
 
 class USDDRPHY(Module, AutoCSR):
-    def __init__(self, pads, memtype="DDR3", sys_clk_freq=100e6, iodelay_clk_freq=200e6):
+    def __init__(self, pads, memtype="DDR3", sys_clk_freq=100e6, iodelay_clk_freq=200e6, cmd_latency=0):
         tck = 2/(2*4*sys_clk_freq)
         addressbits = len(pads.a)
         if memtype == "DDR4":
@@ -95,6 +95,7 @@ class USDDRPHY(Module, AutoCSR):
 
         # compute phy settings
         cl, cwl = get_cl_cw(memtype, tck)
+        cwl = cwl + cmd_latency
         cl_sys_latency = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
 
@@ -110,7 +111,7 @@ class USDDRPHY(Module, AutoCSR):
             rdcmdphase=rdcmdphase,
             wrcmdphase=wrcmdphase,
             cl=cl,
-            cwl=cwl,
+            cwl=cwl - cmd_latency,
             read_latency=2 + cl_sys_latency + 1 + 3,
             write_latency=cwl_sys_latency
         )

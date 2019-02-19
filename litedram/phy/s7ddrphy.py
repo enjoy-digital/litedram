@@ -42,9 +42,8 @@ def get_sys_phases(nphases, sys_latency, cas_latency):
     cmd_phase = (dat_phase - 1)%nphases
     return cmd_phase, dat_phase
 
-
 class S7DDRPHY(Module, AutoCSR):
-    def __init__(self, pads, with_odelay, memtype="DDR3", nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6):
+    def __init__(self, pads, with_odelay, memtype="DDR3", nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6, cmd_latency=0):
         assert not (memtype == "DDR3" and nphases == 2) # FIXME: Needs BL8 support for nphases=2
         tck = 2/(2*nphases*sys_clk_freq)
         addressbits = len(pads.a)
@@ -85,6 +84,7 @@ class S7DDRPHY(Module, AutoCSR):
         # compute phy settings
         cl, cwl = get_cl_cw(memtype, tck)
         cl_sys_latency = get_sys_latency(nphases, cl)
+        cwl = cwl + cmd_latency
         cwl_sys_latency = get_sys_latency(nphases, cwl)
 
         rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
@@ -99,7 +99,7 @@ class S7DDRPHY(Module, AutoCSR):
             rdcmdphase=rdcmdphase,
             wrcmdphase=wrcmdphase,
             cl=cl,
-            cwl=cwl,
+            cwl=cwl - cmd_latency,
             read_latency=2 + cl_sys_latency + 2 + 3,
             write_latency=cwl_sys_latency
         )
