@@ -217,6 +217,23 @@ class P3R1GE4JGF(SDRAMModule):
 
 
 # DDR3 (Chips)
+class MT41K64M16(SDRAMModule):
+    memtype = "DDR3"
+    # geometry
+    nbanks = 8
+    nrows  = 8192
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10))
+    speedgrade_timings = {
+        "800": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=64, tFAW=(None, 50), tRAS=37.5),
+        "1066": _SpeedgradeTimings(tRP=13.1, tRCD=13.1, tWR=13.1, tRFC=86, tFAW=(None, 50), tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=13.5, tRFC=107, tFAW=(None, 45), tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=13.75, tRFC=128, tFAW=(None, 40), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
+
 class MT41J128M16(SDRAMModule):
     memtype = "DDR3"
     # geometry
