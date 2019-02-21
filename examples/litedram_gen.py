@@ -147,8 +147,12 @@ class Platform(XilinxPlatform):
 class LiteDRAMCRG(Module):
     def __init__(self, platform, core_config):
         self.clock_domains.cd_sys = ClockDomain()
-        self.clock_domains.cd_sys4x = ClockDomain(reset_less=True)
-        self.clock_domains.cd_sys4x_dqs = ClockDomain(reset_less=True)
+        if core_config["memtype"] == "DDR3":
+            self.clock_domains.cd_sys4x = ClockDomain(reset_less=True)
+            self.clock_domains.cd_sys4x_dqs = ClockDomain(reset_less=True)
+        else:
+            self.clock_domains.cd_sys2x = ClockDomain(reset_less=True)
+            self.clock_domains.cd_sys2x_dqs = ClockDomain(reset_less=True)
         self.clock_domains.cd_iodelay = ClockDomain()
 
         # # #
@@ -160,8 +164,12 @@ class LiteDRAMCRG(Module):
         self.comb += sys_pll.reset.eq(rst)
         sys_pll.register_clkin(clk, core_config["input_clk_freq"])
         sys_pll.create_clkout(self.cd_sys, core_config["sys_clk_freq"])
-        sys_pll.create_clkout(self.cd_sys4x, 4*core_config["sys_clk_freq"])
-        sys_pll.create_clkout(self.cd_sys4x_dqs, 4*core_config["sys_clk_freq"], phase=90)
+        if core_config["memtype"] == "DDR3":
+            sys_pll.create_clkout(self.cd_sys4x, 4*core_config["sys_clk_freq"])
+            sys_pll.create_clkout(self.cd_sys4x_dqs, 4*core_config["sys_clk_freq"], phase=90)
+        else:
+            sys_pll.create_clkout(self.cd_sys2x, 2*core_config["sys_clk_freq"])
+            sys_pll.create_clkout(self.cd_sys2x_dqs, 2*core_config["sys_clk_freq"], phase=90)
         self.comb += platform.request("pll_locked").eq(sys_pll.locked)
 
         self.submodules.iodelay_pll = iodelay_pll = S7PLL()
@@ -197,17 +205,22 @@ class LiteDRAMCore(SoCSDRAM):
 
         # sdram
         platform.add_extension(get_dram_ios(core_config))
+        assert core_config["memtype"] in ["DDR2", "DDR3"]
         self.submodules.ddrphy = core_config["sdram_phy"](
             platform.request("ddram"),
+            memtype=core_config["memtype"],
+            nphases=4 if core_config["memtype"] == "DDR3" else 2,
             sys_clk_freq=sys_clk_freq,
             iodelay_clk_freq=core_config["iodelay_clk_freq"],
             cmd_latency=core_config["cmd_latency"])
         self.add_constant("CMD_DELAY", core_config["cmd_delay"])
-        self.ddrphy.settings.add_electrical_settings(
-             rtt_nom=core_config["rtt_nom"],
-             rtt_wr=core_config["rtt_wr"],
-             ron=core_config["ron"])
-        sdram_module = core_config["sdram_module"](sys_clk_freq, "1:4")
+        if core_config["memtype"] == "DDR3":
+            self.ddrphy.settings.add_electrical_settings(
+                rtt_nom=core_config["rtt_nom"],
+                rtt_wr=core_config["rtt_wr"],
+                ron=core_config["ron"])
+        sdram_module = core_config["sdram_module"](sys_clk_freq,
+            "1:4" if core_config["memtype"] == "DDR3" else "1:2")
         controller_settings = controller_settings=ControllerSettings(
             cmd_buffer_depth=core_config["cmd_buffer_depth"])
         self.register_sdram(self.ddrphy,

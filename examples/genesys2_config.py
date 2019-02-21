@@ -5,6 +5,7 @@ core_config = {
     # General ------------------------------------------------------------------
     "cpu":        "vexriscv", # Type of CPU used for init/calib (vexriscv, lm32)
     "speedgrade": -2,         # FPGA speedgrade
+    "memtype":    "DDR3",      # DRAM type
 
     # PHY ----------------------------------------------------------------------
     "cmd_delay":       0,           # Command additional delay (in taps)
