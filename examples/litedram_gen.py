@@ -59,10 +59,10 @@ def get_dram_ios(core_config):
             Subsignal("cas_n", Pins(1)),
             Subsignal("we_n", Pins(1)),
             Subsignal("cs_n", Pins(core_config["sdram_rank_nb"])),
-            Subsignal("dm", Pins(2*core_config["sdram_module_nb"])),
-            Subsignal("dq", Pins(16*core_config["sdram_module_nb"])),
-            Subsignal("dqs_p", Pins(2*core_config["sdram_module_nb"])),
-            Subsignal("dqs_n", Pins(2*core_config["sdram_module_nb"])),
+            Subsignal("dm", Pins(core_config["sdram_module_nb"])),
+            Subsignal("dq", Pins(8*core_config["sdram_module_nb"])),
+            Subsignal("dqs_p", Pins(core_config["sdram_module_nb"])),
+            Subsignal("dqs_n", Pins(core_config["sdram_module_nb"])),
             Subsignal("clk_p", Pins(core_config["sdram_rank_nb"])),
             Subsignal("clk_n", Pins(core_config["sdram_rank_nb"])),
             Subsignal("cke", Pins(core_config["sdram_rank_nb"])),
@@ -92,6 +92,7 @@ def get_native_user_port_ios(_id, aw, dw):
             Subsignal("rdata_data", Pins(dw))
         ),
     ]
+
 
 def get_axi_user_port_ios(_id, aw, dw, iw):
     return [
@@ -152,15 +153,22 @@ class LiteDRAMCRG(Module):
 
         # # #
 
-        self.submodules.pll = pll = S7PLL()
-        self.comb += pll.reset.eq(platform.request("rst"))
-        pll.register_clkin(platform.request("clk"), core_config["input_clk_freq"])
-        pll.create_clkout(self.cd_sys, core_config["sys_clk_freq"])
-        pll.create_clkout(self.cd_sys4x, 4*core_config["sys_clk_freq"])
-        pll.create_clkout(self.cd_sys4x_dqs, 4*core_config["sys_clk_freq"], phase=90)
-        pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
+        clk = platform.request("clk")
+        rst = platform.request("rst")
+
+        self.submodules.sys_pll = sys_pll = S7PLL(speedgrade=core_config["speedgrade"])
+        self.comb += sys_pll.reset.eq(rst)
+        sys_pll.register_clkin(clk, core_config["input_clk_freq"])
+        sys_pll.create_clkout(self.cd_sys, core_config["sys_clk_freq"])
+        sys_pll.create_clkout(self.cd_sys4x, 4*core_config["sys_clk_freq"])
+        sys_pll.create_clkout(self.cd_sys4x_dqs, 4*core_config["sys_clk_freq"], phase=90)
+        self.comb += platform.request("pll_locked").eq(sys_pll.locked)
+
+        self.submodules.iodelay_pll = iodelay_pll = S7PLL()
+        self.comb += iodelay_pll.reset.eq(rst)
+        iodelay_pll.register_clkin(clk, core_config["input_clk_freq"])
+        iodelay_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_iodelay)
-        self.comb += platform.request("pll_locked").eq(pll.locked)
 
 
 class LiteDRAMCoreControl(Module, AutoCSR):
@@ -180,12 +188,8 @@ class LiteDRAMCore(SoCSDRAM):
         sys_clk_freq = core_config["sys_clk_freq"]
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
             cpu_type=core_config["cpu"],
-            l2_size=32*core_config["sdram_module_nb"],
+            l2_size=16*core_config["sdram_module_nb"],
             reserve_nmi_interrupt=False,
-            csr_data_width=8 if core_config["cpu"] is not None else 32,
-            with_uart=core_config["cpu"] is not None,
-            with_timer=core_config["cpu"] is not None,
-            csr_expose=True,
             **kwargs)
 
         # crg
@@ -193,17 +197,19 @@ class LiteDRAMCore(SoCSDRAM):
 
         # sdram
         platform.add_extension(get_dram_ios(core_config))
-        self.submodules.ddrphy = core_config["sdram_phy"](platform.request("ddram"), sys_clk_freq=sys_clk_freq,
-            iodelay_clk_freq=core_config["iodelay_clk_freq"])
+        self.submodules.ddrphy = core_config["sdram_phy"](
+            platform.request("ddram"),
+            sys_clk_freq=sys_clk_freq,
+            iodelay_clk_freq=core_config["iodelay_clk_freq"],
+            cmd_latency=core_config["cmd_latency"])
+        self.add_constant("CMD_DELAY", core_config["cmd_delay"])
         self.ddrphy.settings.add_electrical_settings(
              rtt_nom=core_config["rtt_nom"],
              rtt_wr=core_config["rtt_wr"],
              ron=core_config["ron"])
-        sdram_module = core_config["sdram_module"](sys_clk_freq, "1:4", speedgrade=core_config["sdram_module_speedgrade"])
+        sdram_module = core_config["sdram_module"](sys_clk_freq, "1:4")
         controller_settings = controller_settings=ControllerSettings(
-            cmd_buffer_depth=core_config["cmd_buffer_depth"],
-            read_time=core_config["read_time"],
-            write_time=core_config["write_time"])
+            cmd_buffer_depth=core_config["cmd_buffer_depth"])
         self.register_sdram(self.ddrphy,
                             sdram_module.geom_settings,
                             sdram_module.timing_settings,
@@ -211,7 +217,6 @@ class LiteDRAMCore(SoCSDRAM):
 
         # sdram init
         self.submodules.ddrctrl = LiteDRAMCoreControl()
-        self.add_constant("DDRPHY_HIGH_SKEW_DISABLE", None)
         self.comb += [
             platform.request("init_done").eq(self.ddrctrl.init_done.storage),
             platform.request("init_error").eq(self.ddrctrl.init_error.storage)
