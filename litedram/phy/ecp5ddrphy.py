@@ -275,6 +275,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         dqs_read = Signal()
         for i in range(databits//8):
             # DQSBUFM
+            dqs_i = Signal()
             dqsr90 = Signal()
             dqsw270 = Signal()
             dqsw = Signal()
@@ -318,7 +319,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                 i_READCLKSEL0=rdly[0],
                 i_READCLKSEL1=rdly[1],
                 i_READCLKSEL2=rdly[2],
-                i_DQSI=pads.dqs_p[i],
+                i_DQSI=dqs_i,
                 o_DQSR90=dqsr90,
                 o_RDPNTR0=rdpntr[0],
                 o_RDPNTR1=rdpntr[1],
@@ -389,7 +390,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                     i_RST=ResetSignal("sys2x"),
                     o_Q=dqs_oe_n,
                 )
-            self.specials += Tristate(pads.dqs_p[i], dqs, ~dqs_oe_n)
+            self.specials += Tristate(pads.dqs_p[i], dqs, ~dqs_oe_n, dqs_i)
 
             for j in range(8*i, 8*(i+1)):
                 dq_o = Signal()
@@ -427,7 +428,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                     )
                 self.specials += \
                     Instance("DELAYF",
-                        i_A=pads.dq[j],
+                        i_A=dq_i,
                         i_LOADN=1,
                         i_MOVE=0,
                         i_DIRECTION=0,
@@ -481,7 +482,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                         i_RST=ResetSignal("sys2x"),
                         o_Q=dq_oe_n,
                     )
-                self.specials += Tristate(pads.dq[j], dq_o, ~dq_oe_n)
+                self.specials += Tristate(pads.dq[j], dq_o, ~dq_oe_n, dq_i)
 
         # Flow control -----------------------------------------------------------------------------
         #
