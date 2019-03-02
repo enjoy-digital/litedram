@@ -499,7 +499,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             rddata_en = n_rddata_en
         self.sync += [phase.rddata_valid.eq(rddata_en)
             for phase in self.dfi.phases]
-        self.comb += dqs_read.eq(rddata_ens[cl_sys_latency] | rddata_ens[cl_sys_latency+1])
+        self.comb += dqs_read.eq(rddata_ens[cl_sys_latency+1] | rddata_ens[cl_sys_latency+2])
         oe = Signal()
         last_wrdata_en = Signal(cwl_sys_latency+3)
         wrphase = self.dfi.phases[self.settings.wrphase]
