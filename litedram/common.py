@@ -165,11 +165,12 @@ def cmd_request_rw_layout(a, ba):
 class tXXDController(Module):
     def __init__(self, txxd):
         self.valid = valid = Signal()
-        self.ready = ready = Signal(reset=1)
+        self.ready = ready = Signal()
         ready.attr.add("no_retiming")
 
         # # #
 
+        self.comb += self.ready.eq(1)
         if txxd is not None:
             count = Signal(max=max(txxd, 2))
             self.sync += \
