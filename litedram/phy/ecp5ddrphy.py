@@ -5,7 +5,7 @@ import math
 from collections import OrderedDict
 
 from migen import *
-from migen.genlib.misc import BitSlip
+from migen.genlib.misc import timeline, BitSlip
 from migen.fhdl.specials import Tristate
 from migen.genlib.cdc import MultiReg
 from migen.genlib.misc import WaitTimer
@@ -36,118 +36,78 @@ def get_sys_phases(nphases, sys_latency, cas_latency):
     cmd_phase = (dat_phase - 1)%nphases
     return cmd_phase, dat_phase
 
-# Lattice ECP5 DDR PHY -----------------------------------------------------------------------------
+# Lattice ECP5 DDR PHY Initialization --------------------------------------------------------------
 
 class ECP5DDRPHYInit(Module):
-    def __init__(self, crg, phy):
-        dll_lock = Signal()
-        dll_lock_sync = Signal()
-        uddcntl = Signal(reset=0b0)
-        stop = Signal()
+    def __init__(self, eclk_cd):
+        self.pause = Signal()
+        self.stop = Signal()
+        self.delay = Signal()
 
-        freeze = Signal()
-        pause = Signal()
-        ddr_rst = Signal()
+        # # #
 
-        # Synchronise DDRDLL lock
-        self.specials += MultiReg(dll_lock, dll_lock_sync, "init")
+        new_lock = Signal()
+        update   = Signal()
+        stop     = Signal()
+        freeze   = Signal()
+        pause    = Signal()
+        reset    = Signal()
 
-        # Reset & startup FSM
-        init_timer = ClockDomainsRenamer("init")(WaitTimer(5))
-        self.submodules += init_timer
-        reset_ddr_done = Signal()
-        uddcntl_done = Signal()
-
-        fsm = ClockDomainsRenamer("init")(FSM(reset_state="WAIT_LOCK"))
-        self.submodules += fsm
-        fsm.act("WAIT_LOCK",
-            If(dll_lock_sync,
-                init_timer.wait.eq(1),
-                If(init_timer.done,
-                    init_timer.wait.eq(0),
-                    If(uddcntl_done,
-                        NextState("READY")
-                    ).Elif(reset_ddr_done,
-                        NextState("PAUSE")
-                    ).Else(
-                        NextState("FREEZE")
-                    )
-                )
-            )
-        )
-        fsm.act("FREEZE",
-            freeze.eq(1),
-            init_timer.wait.eq(1),
-            If(init_timer.done,
-                init_timer.wait.eq(0),
-                If(reset_ddr_done,
-                    NextState("WAIT_LOCK")
-                ).Else(
-                    NextState("STOP")
-                )
-            )
-        )
-        fsm.act("STOP",
-            stop.eq(1),
-            freeze.eq(1),
-            init_timer.wait.eq(1),
-            If(init_timer.done,
-                init_timer.wait.eq(0),
-                If(reset_ddr_done,
-                    NextState("FREEZE")
-                ).Else(
-                    NextState("RESET_DDR")
-                )
-            )
-        )
-        fsm.act("RESET_DDR",
-            stop.eq(1),
-            freeze.eq(1),
-            ddr_rst.eq(1),
-            init_timer.wait.eq(1),
-            If(init_timer.done,
-                init_timer.wait.eq(0),
-                NextValue(reset_ddr_done, 1),
-                NextState("STOP")
-            )
-        )
-        fsm.act("PAUSE",
-            pause.eq(1),
-            init_timer.wait.eq(1),
-            If(init_timer.done,
-                init_timer.wait.eq(0),
-                If(uddcntl_done,
-                    NextState("WAIT_LOCK")
-                ).Else(
-                    NextState("UDDCNTL")
-                )
-            )
-        )
-        fsm.act("UDDCNTL",
-            uddcntl.eq(1),
-            pause.eq(1),
-            init_timer.wait.eq(1),
-            If(init_timer.done,
-                init_timer.wait.eq(0),
-                NextValue(uddcntl_done, 1),
-                NextState("PAUSE")
-            )
-        )
-        fsm.act("READY")
-
-        self.comb += phy.pause.eq(pause)
-        self.comb += crg.stop.eq(stop)
-
+        # DDRDLLA instance -------------------------------------------------------------------------
+        _lock = Signal()
+        delay = Signal()
         self.specials += Instance("DDRDLLA",
-            i_CLK=ClockSignal("sys2x"), # CHECKME
-            i_RST=ResetSignal("init"),  # CHECKME
-            i_UDDCNTLN=~uddcntl,
+            i_CLK=ClockSignal("sys2x"),
+            i_RST=ResetSignal(),
+            i_UDDCNTLN=~update,
             i_FREEZE=freeze,
-            o_DDRDEL=phy.ddrdel,
-            o_LOCK=dll_lock
+            o_DDRDEL=delay,
+            o_LOCK=_lock
         )
-        self.sync.init += ResetSignal("sys2x").eq(ddr_rst) # CHECKME
+        lock = Signal()
+        lock_d = Signal()
+        self.specials += MultiReg(_lock, lock)
+        self.sync += lock_d.eq(lock)
+        self.comb += new_lock.eq(lock & ~lock_d)
 
+        # DDRDLLA/DDQBUFM/ECLK initialization sequence ---------------------------------------------
+        t = 8 # in cycles
+        self.sync.init += [
+            # Wait DDRDLLA Lock
+            timeline(new_lock, [
+                # Freeze DDRDLLA
+                (1*t, [freeze.eq(1)]),
+                # Stop ECLK domain
+                (2*t, [stop.eq(1)]),
+                # Reset ECLK domain
+                (3*t, [reset.eq(1)]),
+                # Release ECLK domain reset
+                (4*t, [reset.eq(0)]),
+                # Release ECLK domain stop
+                (5*t, [stop.eq(0)]),
+                # Release DDRDLLA freeze
+                (6*t, [freeze.eq(0)]),
+                # Pause DQSBUFM
+                (7*t, [pause.eq(1)]),
+                # Update DDRDLLA
+                (8*t, [update.eq(1)]),
+                # Release DDRDMMA update
+                (9*t, [update.eq(0)]),
+                # Release DQSBUFM pause
+                (10*t, [pause.eq(0)]),
+                # Ready
+            ])
+        ]
+
+        # ------------------------------------------------------------------------------------------
+        self.comb += [
+            self.pause.eq(pause),
+            self.stop.eq(stop),
+            self.delay.eq(delay),
+            ResetSignal(eclk_cd).eq(reset)
+        ]
+
+# Lattice ECP5 DDR PHY -----------------------------------------------------------------------------
 
 class ECP5DDRPHY(Module, AutoCSR):
     def __init__(self, pads, sys_clk_freq=100e6):
@@ -160,8 +120,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         nphases = 2
 
         # Init -------------------------------------------------------------------------------------
-        self.pause = Signal()
-        self.ddrdel = Signal()
+        self.submodules.init = ClockDomainsRenamer("init")(ECP5DDRPHYInit("sys2x"))
 
         # Registers --------------------------------------------------------------------------------
         self._dly_sel = CSRStorage(databits//8)
@@ -171,9 +130,11 @@ class ECP5DDRPHY(Module, AutoCSR):
         self._rdly_dq_bitslip_rst = CSR()
         self._rdly_dq_bitslip = CSR()
 
+        self._burstdet_clr = CSR()
+        self._burstdet_seen = CSRStatus(databits//8)
+
         # Observation
         self.datavalid = Signal(databits//8)
-        self.burstdet = Signal(databits//8)
 
         # PHY settings -----------------------------------------------------------------------------
         cl, cwl = get_cl_cw(memtype, tck)
@@ -199,9 +160,6 @@ class ECP5DDRPHY(Module, AutoCSR):
 
         # DFI Interface ----------------------------------------------------------------------------
         self.dfi = Interface(addressbits, bankbits, nranks, 4*databits, 4)
-
-        # Debugging
-        self.dq_i_data = []
 
         # # #
 
@@ -301,8 +259,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                 i_SCLK=ClockSignal("sys"),
                 i_ECLK=ClockSignal("sys2x"),
                 i_RST=ResetSignal("sys2x"),
-                i_DDRDEL=self.ddrdel,
-                i_PAUSE=self.pause | self._dly_sel.storage[i],
+                i_DDRDEL=self.init.delay,
+                i_PAUSE=self.init.pause | self._dly_sel.storage[i],
 
                 # Control
                 # Assert LOADNs to use DDRDEL control
@@ -328,12 +286,21 @@ class ECP5DDRPHY(Module, AutoCSR):
                 o_WRPNTR1=wrpntr[1],
                 o_WRPNTR2=wrpntr[2],
                 o_DATAVALID=self.datavalid[i],
-                o_BURSTDET=self.burstdet[i],
+                o_BURSTDET=burstdet,
 
                 # Writes (generate shifted ECLK clock for writes)
                 o_DQSW270=dqsw270,
                 o_DQSW=dqsw
             )
+            burstdet_d = Signal()
+            self.sync += [
+                burstdet_d.eq(burstdet),
+                If(self._burstdet_clr.re,
+                    self._burstdet_seen.status[i].eq(0)
+                ).Elif(burstdet & ~burstdet_d,
+                    self._burstdet_seen.status[i].eq(1)
+                )
+            ]
 
             # DQS and DM ---------------------------------------------------------------------------
             dqs_serdes_pattern = Signal(8, reset=0b1010)
