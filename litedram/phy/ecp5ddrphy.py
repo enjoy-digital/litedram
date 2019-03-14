@@ -75,27 +75,16 @@ class ECP5DDRPHYInit(Module):
         self.sync.init += [
             # Wait DDRDLLA Lock
             timeline(new_lock, [
-                # Freeze DDRDLLA
-                (1*t, [freeze.eq(1)]),
-                # Stop ECLK domain
-                (2*t, [stop.eq(1)]),
-                # Reset ECLK domain
-                (3*t, [reset.eq(1)]),
-                # Release ECLK domain reset
-                (4*t, [reset.eq(0)]),
-                # Release ECLK domain stop
-                (5*t, [stop.eq(0)]),
-                # Release DDRDLLA freeze
-                (6*t, [freeze.eq(0)]),
-                # Pause DQSBUFM
-                (7*t, [pause.eq(1)]),
-                # Update DDRDLLA
-                (8*t, [update.eq(1)]),
-                # Release DDRDMMA update
-                (9*t, [update.eq(0)]),
-                # Release DQSBUFM pause
-                (10*t, [pause.eq(0)]),
-                # Ready
+                (1*t,  [freeze.eq(1)]), # Freeze DDRDLLA
+                (2*t,  [stop.eq(1)]),   # Stop ECLK domain
+                (3*t,  [reset.eq(1)]),  # Reset ECLK domain
+                (4*t,  [reset.eq(0)]),  # Release ECLK domain reset
+                (5*t,  [stop.eq(0)]),   # Release ECLK domain stop
+                (6*t,  [freeze.eq(0)]), # Release DDRDLLA freeze
+                (7*t,  [pause.eq(1)]),  # Pause DQSBUFM
+                (8*t,  [update.eq(1)]), # Update DDRDLLA
+                (9*t,  [update.eq(0)]), # Release DDRDMMA update
+                (10*t, [pause.eq(0)]),  # Release DQSBUFM pause
             ])
         ]
 
