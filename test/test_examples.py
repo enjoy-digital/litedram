@@ -16,6 +16,10 @@ class TestExamples(unittest.TestCase):
         errors = build_config("arty")
         self.assertEqual(errors, 0)
 
+    def test_nexys4ddr(self):
+        errors = build_config("nexys4ddr")
+        self.assertEqual(errors, 0)
+
     def test_genesys2(self):
         errors = build_config("genesys2")
         self.assertEqual(errors, 0)
