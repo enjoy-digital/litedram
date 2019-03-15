@@ -12,6 +12,7 @@ burst_lengths = {
     "DDR4":  8
 }
 
+# Settings ---------------------------------------------------------------------
 
 class Settings:
     def set_attributes(self, attributes):
@@ -47,6 +48,7 @@ class TimingSettings(Settings):
     def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD, tRC, tRAS):
         self.set_attributes(locals())
 
+# Layouts/Interface ------------------------------------------------------------
 
 def cmd_layout(address_width):
     return [
@@ -60,12 +62,42 @@ def cmd_layout(address_width):
         ("rdata_valid",      1, DIR_S_TO_M)
     ]
 
-
 def data_layout(data_width):
     return [
         ("wdata",       data_width, DIR_M_TO_S),
         ("wdata_we", data_width//8, DIR_M_TO_S),
         ("rdata",       data_width, DIR_S_TO_M)
+    ]
+
+def cmd_description(address_width):
+    return [
+        ("we",   1),
+        ("addr", address_width)
+    ]
+
+def wdata_description(data_width):
+    return [
+        ("data", data_width),
+        ("we",   data_width//8)
+    ]
+
+def rdata_description(data_width):
+    return [("data", data_width)]
+
+def cmd_request_layout(a, ba):
+    return [
+        ("a",     a),
+        ("ba",   ba),
+        ("cas",   1),
+        ("ras",   1),
+        ("we",    1)
+    ]
+
+def cmd_request_rw_layout(a, ba):
+    return cmd_request_layout(a, ba) + [
+        ("is_cmd", 1),
+        ("is_read", 1),
+        ("is_write", 1)
     ]
 
 
@@ -83,24 +115,7 @@ class LiteDRAMInterface(Record):
         layout += data_layout(self.data_width)
         Record.__init__(self, layout)
 
-def cmd_description(address_width):
-    return [
-        ("we",   1),
-        ("addr", address_width)
-    ]
-
-
-def wdata_description(data_width):
-    r = [
-        ("data", data_width),
-        ("we",   data_width//8)
-    ]
-    return r
-
-def rdata_description(data_width):
-    r = [("data", data_width)]
-    return r
-
+# Ports ------------------------------------------------------------------------
 
 class LiteDRAMNativePort(Settings):
     def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0):
@@ -144,23 +159,7 @@ class LiteDRAMNativeReadPort(LiteDRAMNativePort):
         LiteDRAMNativePort.__init__(self, "read", *args, **kwargs)
 
 
-def cmd_request_layout(a, ba):
-    return [
-        ("a",     a),
-        ("ba",   ba),
-        ("cas",   1),
-        ("ras",   1),
-        ("we",    1)
-    ]
-
-
-def cmd_request_rw_layout(a, ba):
-    return cmd_request_layout(a, ba) + [
-        ("is_cmd", 1),
-        ("is_read", 1),
-        ("is_write", 1)
-    ]
-
+# Timing Controller ------------------------------------------------------------
 
 class tXXDController(Module):
     def __init__(self, txxd):
