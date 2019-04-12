@@ -354,7 +354,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     # commands_px functions
     for n in range(nphases):
         r += """
-static void command_p{n}(int cmd)
+__attribute__((unused)) static void command_p{n}(int cmd)
 {{
     sdram_dfii_pi{n}_command_write(cmd);
     sdram_dfii_pi{n}_command_issue_write(1);
