@@ -26,69 +26,6 @@ class LiteDRAMAXIPort(AXIInterface):
     pass
 
 
-class LiteDRAMAXIBurst2Beat(Module):
-    def __init__(self, ax_burst, ax_beat):
-
-        # # #
-
-        self.count = count = Signal(8)
-        size = Signal(8 + 4)
-        offset = Signal(8 + 4)
-
-        # convert burst size to bytes
-        cases = {}
-        cases["default"] = size.eq(1024)
-        for i in range(10):
-            cases[i] = size.eq(2**i)
-        self.comb += Case(ax_burst.size, cases)
-
-        # fsm
-        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
-        fsm.act("IDLE",
-            ax_beat.valid.eq(ax_burst.valid),
-            ax_beat.first.eq(1),
-            ax_beat.last.eq(ax_burst.len == 0),
-            ax_beat.addr.eq(ax_burst.addr),
-            ax_beat.id.eq(ax_burst.id),
-            If(ax_beat.valid & ax_beat.ready,
-                If(ax_burst.len != 0,
-                    NextState("BURST2BEAT")
-                ).Else(
-                    ax_burst.ready.eq(1)
-                )
-            ),
-            NextValue(count, 1),
-            NextValue(offset, size),
-        )
-        wrap_offset = Signal(8 + 4)
-        self.sync += wrap_offset.eq((ax_burst.len - 1)*size)
-        fsm.act("BURST2BEAT",
-            ax_beat.valid.eq(1),
-            ax_beat.first.eq(0),
-            ax_beat.last.eq(count == ax_burst.len),
-            If((ax_burst.burst == BURST_INCR) |
-               (ax_burst.burst == BURST_WRAP),
-                ax_beat.addr.eq(ax_burst.addr + offset)
-            ).Else(
-                ax_beat.addr.eq(ax_burst.addr)
-            ),
-            ax_beat.id.eq(ax_burst.id),
-            If(ax_beat.valid & ax_beat.ready,
-                If(ax_beat.last,
-                    ax_burst.ready.eq(1),
-                    NextState("IDLE")
-                ),
-                NextValue(count, count + 1),
-                NextValue(offset, offset + size),
-                If(ax_burst.burst == BURST_WRAP,
-                    If(offset == wrap_offset,
-                        NextValue(offset, 0)
-                    )
-                )
-            )
-        )
-
-
 class LiteDRAMAXI2NativeW(Module):
     def __init__(self, axi, port, buffer_depth):
         self.cmd_request = Signal()
@@ -103,7 +40,7 @@ class LiteDRAMAXI2NativeW(Module):
         self.submodules += aw_buffer
         self.comb += axi.aw.connect(aw_buffer.sink)
         aw = stream.Endpoint(ax_description(axi.address_width, axi.id_width))
-        aw_burst2beat = LiteDRAMAXIBurst2Beat(aw_buffer.source, aw)
+        aw_burst2beat = AXIBurst2Beat(aw_buffer.source, aw)
         self.submodules.aw_burst2beat = aw_burst2beat
 
         # Write Buffer
@@ -171,7 +108,7 @@ class LiteDRAMAXI2NativeR(Module):
         self.submodules += ar_buffer
         self.comb += axi.ar.connect(ar_buffer.sink)
         ar = stream.Endpoint(ax_description(axi.address_width, axi.id_width))
-        ar_burst2beat = LiteDRAMAXIBurst2Beat(ar_buffer.source, ar)
+        ar_burst2beat = AXIBurst2Beat(ar_buffer.source, ar)
         self.submodules.ar_burst2beat = ar_burst2beat
 
         # Read buffer

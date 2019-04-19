@@ -53,65 +53,6 @@ class Read(Access):
 
 
 class TestAXI(unittest.TestCase):
-    def test_burst2beat(self):
-        def bursts_generator(ax, bursts, valid_rand=50):
-            prng = random.Random(42)
-            for burst in bursts:
-                yield ax.valid.eq(1)
-                yield ax.addr.eq(burst.addr)
-                yield ax.burst.eq(burst.type)
-                yield ax.len.eq(burst.len)
-                yield ax.size.eq(burst.size)
-                while (yield ax.ready) == 0:
-                    yield
-                yield ax.valid.eq(0)
-                while prng.randrange(100) < valid_rand:
-                    yield
-                yield
-
-        @passive
-        def beats_checker(ax, beats, ready_rand=50):
-            self.errors = 0
-            yield ax.ready.eq(0)
-            prng = random.Random(42)
-            for beat in beats:
-                while ((yield ax.valid) and (yield ax.ready)) == 0:
-                    if prng.randrange(100) > ready_rand:
-                        yield ax.ready.eq(1)
-                    else:
-                        yield ax.ready.eq(0)
-                    yield
-                ax_addr = (yield ax.addr)
-                if ax_addr != beat.addr:
-                    self.errors += 1
-                yield
-
-        # dut
-        ax_burst = stream.Endpoint(ax_description(32, 32))
-        ax_beat = stream.Endpoint(ax_description(32, 32))
-        dut =  LiteDRAMAXIBurst2Beat(ax_burst, ax_beat)
-
-        # generate dut input (bursts)
-        prng = random.Random(42)
-        bursts = []
-        for i in range(32):
-            bursts.append(Burst(prng.randrange(2**32), BURST_FIXED, prng.randrange(255), log2_int(32//8)))
-            bursts.append(Burst(prng.randrange(2**32), BURST_INCR, prng.randrange(255), log2_int(32//8)))
-        bursts.append(Burst(4, BURST_WRAP, 4-1, log2_int(2)))
-
-        # generate expexted dut output (beats for reference)
-        beats = []
-        for burst in bursts:
-            beats += burst.to_beats()
-
-        # simulation
-        generators = [
-            bursts_generator(ax_burst, bursts),
-            beats_checker(ax_beat, beats)
-        ]
-        run_simulation(dut, generators)
-        self.assertEqual(self.errors, 0)
-
     def _test_axi2native(self,
         naccesses=16, simultaneous_writes_reads=False,
         # rand_level: 0: min (no random), 100: max.
