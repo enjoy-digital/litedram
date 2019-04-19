@@ -12,7 +12,7 @@ from litex.gen.sim import *
 
 
 class Burst:
-    def __init__(self, addr, type=burst_types["fixed"], len=0, size=0):
+    def __init__(self, addr, type=BURST_FIXED, len=0, size=0):
         self.addr = addr
         self.type = type
         self.len = len
@@ -21,10 +21,10 @@ class Burst:
     def to_beats(self):
         r = []
         for i in range(self.len + 1):
-            if self.type == burst_types["incr"]:
+            if self.type == BURST_INCR:
                 offset = i*2**(self.size)
                 r += [Beat(self.addr + offset)]
-            elif self.type == burst_types["wrap"]:
+            elif self.type == BURST_WRAP:
                 offset = (i*2**(self.size))%((2**self.size)*(self.len))
                 r += [Beat(self.addr + offset)]
             else:
@@ -95,9 +95,9 @@ class TestAXI(unittest.TestCase):
         prng = random.Random(42)
         bursts = []
         for i in range(32):
-            bursts.append(Burst(prng.randrange(2**32), burst_types["fixed"], prng.randrange(255), log2_int(32//8)))
-            bursts.append(Burst(prng.randrange(2**32), burst_types["incr"], prng.randrange(255), log2_int(32//8)))
-        bursts.append(Burst(4, burst_types["wrap"], 4-1, log2_int(2)))
+            bursts.append(Burst(prng.randrange(2**32), BURST_FIXED, prng.randrange(255), log2_int(32//8)))
+            bursts.append(Burst(prng.randrange(2**32), BURST_INCR, prng.randrange(255), log2_int(32//8)))
+        bursts.append(Burst(4, BURST_WRAP, 4-1, log2_int(2)))
 
         # generate expexted dut output (beats for reference)
         beats = []
@@ -234,10 +234,10 @@ class TestAXI(unittest.TestCase):
             _id = prng.randrange(2**8) if id_rand_enable else i
             _len = prng.randrange(32) if len_rand_enable else i
             _data = [prng.randrange(2**32) if data_rand_enable else j for j in range(_len + 1)]
-            writes.append(Write(offset, _data, _id, type=burst_types["incr"], len=_len, size=log2_int(32//8)))
+            writes.append(Write(offset, _data, _id, type=BURST_INCR, len=_len, size=log2_int(32//8)))
             offset += _len + 1
         # dummy reads to ensure datas have been written before the effective reads start.
-        dummy_reads = [Read(1023, [0], 0, type=burst_types["fixed"], len=0, size=log2_int(32//8)) for _ in range(32)]
+        dummy_reads = [Read(1023, [0], 0, type=BURST_FIXED, len=0, size=log2_int(32//8)) for _ in range(32)]
         reads = dummy_reads + writes
 
         # simulation

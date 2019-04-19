@@ -19,62 +19,11 @@ from migen.genlib.record import *
 from migen.genlib.roundrobin import *
 
 from litex.soc.interconnect import stream
-
-burst_types = {
-    "fixed":    0b00,
-    "incr":     0b01,
-    "wrap":     0b10,
-    "reserved": 0b11
-}
-
-resp_types = {
-    "okay":   0b00,
-    "exokay": 0b01,
-    "slverr": 0b10,
-    "decerr": 0b11
-}
-
-def ax_description(address_width, id_width):
-    return [
-        ("addr",  address_width),
-        ("burst", 2), # Burst type
-        ("len",   8), # Number of data (-1) transfers (up to 256)
-        ("size",  4), # Number of bytes (-1) of each data transfer (up to 1024 bits)
-        ("id",    id_width)
-    ]
-
-def w_description(data_width):
-    return [
-        ("data", data_width),
-        ("strb", data_width//8)
-    ]
-
-def b_description(id_width):
-    return [
-        ("resp", 2),
-        ("id", id_width)
-    ]
-
-def r_description(data_width, id_width):
-    return [
-        ("resp", 2),
-        ("data", data_width),
-        ("id", id_width)
-    ]
+from litex.soc.interconnect.axi import *
 
 
-class LiteDRAMAXIPort(Record):
-    def __init__(self, data_width, address_width, id_width=1, clock_domain="sys"):
-        self.data_width = data_width
-        self.address_width = address_width
-        self.id_width = id_width
-        self.clock_domain = clock_domain
-
-        self.aw = stream.Endpoint(ax_description(address_width, id_width))
-        self.w = stream.Endpoint(w_description(data_width))
-        self.b = stream.Endpoint(b_description(id_width))
-        self.ar = stream.Endpoint(ax_description(address_width, id_width))
-        self.r = stream.Endpoint(r_description(data_width, id_width))
+class LiteDRAMAXIPort(AXIInterface):
+    pass
 
 
 class LiteDRAMAXIBurst2Beat(Module):
@@ -117,8 +66,8 @@ class LiteDRAMAXIBurst2Beat(Module):
             ax_beat.valid.eq(1),
             ax_beat.first.eq(0),
             ax_beat.last.eq(count == ax_burst.len),
-            If((ax_burst.burst == burst_types["incr"]) |
-               (ax_burst.burst == burst_types["wrap"]),
+            If((ax_burst.burst == BURST_INCR) |
+               (ax_burst.burst == BURST_WRAP),
                 ax_beat.addr.eq(ax_burst.addr + offset)
             ).Else(
                 ax_beat.addr.eq(ax_burst.addr)
@@ -131,7 +80,7 @@ class LiteDRAMAXIBurst2Beat(Module):
                 ),
                 NextValue(count, count + 1),
                 NextValue(offset, offset + size),
-                If(ax_burst.burst == burst_types["wrap"],
+                If(ax_burst.burst == BURST_WRAP,
                     If(offset == wrap_offset,
                         NextValue(offset, 0)
                     )
@@ -158,7 +107,8 @@ class LiteDRAMAXI2NativeW(Module):
         self.submodules.aw_burst2beat = aw_burst2beat
 
         # Write Buffer
-        w_buffer = stream.SyncFIFO(w_description(axi.data_width), buffer_depth, buffered=True)
+        w_buffer = stream.SyncFIFO(w_description(axi.data_width, axi.id_width),
+            buffer_depth, buffered=True)
         self.submodules.w_buffer = w_buffer
 
         # Write ID Buffer & Response
@@ -172,7 +122,7 @@ class LiteDRAMAXI2NativeW(Module):
                w_buffer.source.last &
                w_buffer.source.ready,
                 resp_buffer.sink.valid.eq(1),
-                resp_buffer.sink.resp.eq(resp_types["okay"]),
+                resp_buffer.sink.resp.eq(RESP_OKAY),
                 resp_buffer.sink.id.eq(id_buffer.source.id),
                 id_buffer.source.ready.eq(1)
             ),
@@ -200,7 +150,7 @@ class LiteDRAMAXI2NativeW(Module):
 
         # Write Data
         self.comb += [
-            w_buffer.source.connect(port.wdata, omit={"strb"}),
+            w_buffer.source.connect(port.wdata, omit={"strb", "id"}),
             port.wdata.we.eq(w_buffer.source.strb)
         ]
 
@@ -274,7 +224,7 @@ class LiteDRAMAXI2NativeR(Module):
         self.comb += [
             port.rdata.connect(r_buffer.sink, omit={"bank"}),
             r_buffer.source.connect(axi.r, omit={"id", "last"}),
-            axi.r.resp.eq(resp_types["okay"])
+            axi.r.resp.eq(RESP_OKAY)
         ]
 
 
