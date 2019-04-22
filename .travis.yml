@@ -2,29 +2,15 @@ language: python
 dist: Xenial
 python: "3.6"
 
-env:
- - TEST: 'test.test_downconverter'
- - TEST: 'test.test_upconverter'
- - TEST: 'test.test_bist'
- - TEST: 'test.test_axi'
- - TEST: 'test.test_ecc'
-# - TEST: 'test.test_examples'
-
-
 install:
- - var1="$(pwd)"
-## Get migen
- - git clone https://github.com/m-labs/migen
- - cd migen
- - python3 setup.py develop
- - cd $var1
-## Get litex
- - git clone https://github.com/enjoy-digital/litex
- - cd litex
- - python3 setup.py develop
- - cd $var1
- ## Run common tests
- - python -m unittest test.__init__
- - python -m unittest test.common
+  # Get Migen / LiteX / Cores
+  - wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
+  - python3 litex_setup.py init install
 
-script: python -m unittest $TEST
+before_script:
+  # Get RISC-V toolchain
+  - wget https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6.tar.gz
+  - tar -xvf riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6.tar.gz
+  - export PATH=$PATH:$PWD/riscv64-unknown-elf-gcc-20171231-x86_64-linux-centos6/bin/
+
+script: python setup.py test
