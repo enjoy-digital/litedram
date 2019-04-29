@@ -1,3 +1,6 @@
+# This file is Copyright (c) 2015-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# License: BSD
+
 # 1:4 frequency-ratio DDR3/DDR4 PHY for Kintex/Virtex Ultrascale
 # DDR3: 800, 1066, 1333 and 1600 MT/s
 # DDR4: 1600 MT/s

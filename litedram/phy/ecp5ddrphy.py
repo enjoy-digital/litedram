@@ -1,3 +1,7 @@
+# This file is Copyright (c) 2019 David Shah <dave@ds0.me>
+# This file is Copyright (c) 2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# License: BSD
+
 # 1:2 frequency-ratio DDR3 PHY for Lattice's ECP5
 # DDR3: 800 MT/s
 

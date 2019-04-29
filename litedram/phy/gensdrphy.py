@@ -1,3 +1,6 @@
+# This file is Copyright (c) 2012-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# License: BSD
+
 # 1:1 frequency-ratio Generic SDR PHY
 #
 # The SDR PHY needs 2 Clock domains:

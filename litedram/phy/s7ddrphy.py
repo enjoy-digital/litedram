@@ -1,3 +1,6 @@
+# This file is Copyright (c) 2015-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# License: BSD
+
 # 1:4, 1:2 frequency-ratio DDR2/DDR3 PHY for Xilinx's Series7
 # DDR2: 400, 533, 667, 800 and 1066 MT/s
 # DDR3: 800, 1066, 1333 and 1600 MT/s
