@@ -164,14 +164,12 @@ class LiteDRAMNativeReadPort(LiteDRAMNativePort):
 class tXXDController(Module):
     def __init__(self, txxd):
         self.valid = valid = Signal()
-        self.ready = Signal()
+        self.ready = ready = Signal(reset=1)
+        ready.attr.add("no_retiming")
 
         # # #
 
-        self.comb += self.ready.eq(1)
         if txxd is not None:
-            ready = Signal()
-            ready.attr.add("no_retiming")
             count = Signal(max=max(txxd, 2))
             self.sync += \
                 If(valid,
@@ -185,4 +183,3 @@ class tXXDController(Module):
                     count.eq(count - 1),
                     If(count == 1, ready.eq(1))
                 )
-            self.comb += self.ready.eq(ready)
