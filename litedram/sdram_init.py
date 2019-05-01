@@ -380,7 +380,7 @@ __attribute__((unused)) static void command_p{n}(int cmd)
     for n in range(nphases):
         sdram_dfii_pix_wrdata_addr.append("CSR_SDRAM_DFII_PI{n}_WRDATA_ADDR".format(n=n))
     r += """
-const unsigned int sdram_dfii_pix_wrdata_addr[{n}] = {{
+const unsigned long sdram_dfii_pix_wrdata_addr[{n}] = {{
     {sdram_dfii_pix_wrdata_addr}
 }};
 """.format(n=nphases, sdram_dfii_pix_wrdata_addr=",\n\t".join(sdram_dfii_pix_wrdata_addr))
@@ -389,7 +389,7 @@ const unsigned int sdram_dfii_pix_wrdata_addr[{n}] = {{
     for n in range(nphases):
         sdram_dfii_pix_rddata_addr.append("CSR_SDRAM_DFII_PI{n}_RDDATA_ADDR".format(n=n))
     r += """
-const unsigned int sdram_dfii_pix_rddata_addr[{n}] = {{
+const unsigned long sdram_dfii_pix_rddata_addr[{n}] = {{
     {sdram_dfii_pix_rddata_addr}
 }};
 """.format(n=nphases, sdram_dfii_pix_rddata_addr=",\n\t".join(sdram_dfii_pix_rddata_addr))
