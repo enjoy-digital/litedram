@@ -31,6 +31,7 @@ class GENSDRPHY(Module):
 
         self.settings = PhySettings(
             memtype="SDR",
+            databits=databits,
             dfi_databits=databits,
             nranks=nranks,
             nphases=1,

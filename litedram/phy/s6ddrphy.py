@@ -43,6 +43,7 @@ class S6HalfRateDDRPHY(Module):
         if memtype == "DDR3":
             self.settings = PhySettings(
                 memtype="DDR3",
+                databits=databits,
                 dfi_databits=2*databits,
                 nranks=nranks,
                 nphases=nphases,
@@ -58,6 +59,7 @@ class S6HalfRateDDRPHY(Module):
         else:
             self.settings = PhySettings(
                 memtype=memtype,
+                databits=databits,
                 dfi_databits=2*databits,
                 nranks=nranks,
                 nphases=nphases,

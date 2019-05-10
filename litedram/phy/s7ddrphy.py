@@ -94,6 +94,7 @@ class S7DDRPHY(Module, AutoCSR):
         wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
         self.settings = PhySettings(
             memtype=memtype,
+            databits=databits,
             dfi_databits=2*databits,
             nranks=nranks,
             nphases=nphases,
