@@ -197,7 +197,6 @@ class LiteDRAMCore(SoCSDRAM):
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
             cpu_type=core_config["cpu"],
             l2_size=16*core_config["sdram_module_nb"],
-            reserve_nmi_interrupt=False,
             **kwargs)
 
         # crg
