@@ -27,4 +27,7 @@ core_config = {
     "user_ports_nb":       2,     # Number of user ports
     "user_ports_type":     "axi", # Type of ports (axi, native)
     "user_ports_id_width": 32,    # AXI identifier width
+
+    # CSR Port -----------------------------------------------------------------
+    "expose_csr_port": "no", # expose access to CSR (I/O) ports
 }
