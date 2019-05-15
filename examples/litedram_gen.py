@@ -71,6 +71,16 @@ def get_dram_ios(core_config):
         ),
     ]
 
+def get_csr_ios(aw, dw):
+    return [
+        ("csr_port", 0,
+            Subsignal("adr", Pins(aw)),
+            Subsignal("we", Pins(1)),
+            Subsignal("dat_w", Pins(dw)),
+            Subsignal("dat_r", Pins(dw))
+        ),
+    ]
+
 def get_native_user_port_ios(_id, aw, dw):
     return [
         ("user_port", _id,
@@ -197,6 +207,7 @@ class LiteDRAMCore(SoCSDRAM):
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
             cpu_type=core_config["cpu"],
             l2_size=16*core_config["sdram_module_nb"],
+            csr_expose=(core_config["expose_csr_port"] == "yes"),
             **kwargs)
 
         # crg
@@ -233,6 +244,19 @@ class LiteDRAMCore(SoCSDRAM):
             platform.request("init_done").eq(self.ddrctrl.init_done.storage),
             platform.request("init_error").eq(self.ddrctrl.init_error.storage)
         ]
+
+        # CSR port
+        if core_config["expose_csr_port"] == "yes":
+            csr_port = self.csr # FIXME: this is probably incorrect -- GLS
+            platform.add_extension(get_csr_ios(self.csr_address_width,
+                                               self.csr_data_width))
+            _csr_port_io = platform.request("csr_port", 0)
+            self.comb += [
+                csr_port.adr.eq(_csr_port_io.adr),
+                csr_port.we.eq(_csr_port_io.we),
+                csr_port.dat_w.eq(_csr_port_io.dat_w),
+                _csr_port_io.dat_r.eq(csr_port.dat_w),
+            ]
 
         # user port
         self.comb += [

@@ -3,7 +3,7 @@ from litedram.phy import A7DDRPHY
 
 core_config = {
     # General ------------------------------------------------------------------
-    "cpu":        "vexriscv",  # Type of CPU used for init/calib (vexriscv, lm32)
+    "cpu":        "None",  # Type of CPU used for init/calib (vexriscv, lm32)
     "speedgrade": -1,          # FPGA speedgrade
     "memtype":    "DDR2",      # DRAM type
 
@@ -24,7 +24,10 @@ core_config = {
     "cmd_buffer_depth": 16,    # Depth of the command buffer
 
     # User Ports ---------------------------------------------------------------
-    "user_ports_nb":       2,     # Number of user ports
+    "user_ports_nb":       1,     # Number of user ports
     "user_ports_type":     "axi", # Type of ports (axi, native)
-    "user_ports_id_width": 32,    # AXI identifier width
+    "user_ports_id_width": 4,    # AXI identifier width
+
+    # CSR Port -----------------------------------------------------------------
+    "expose_csr_port": "yes", # expose access to CSR (I/O) ports
 }
