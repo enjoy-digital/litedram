@@ -14,6 +14,7 @@ from litex.soc.cores.clock import *
 from litedram.core.controller import ControllerSettings
 from litex.soc.integration.soc_sdram import *
 from litex.soc.integration.builder import *
+from litex.soc.interconnect import csr_bus
 from litex.soc.cores.uart import *
 
 from litedram.frontend.axi import *
@@ -68,6 +69,16 @@ def get_dram_ios(core_config):
             Subsignal("cke", Pins(core_config["sdram_rank_nb"])),
             Subsignal("odt", Pins(core_config["sdram_rank_nb"])),
             Subsignal("reset_n", Pins(1))
+        ),
+    ]
+
+def get_csr_ios(aw, dw):
+    return [
+        ("csr_port", 0,
+            Subsignal("adr", Pins(aw)),
+            Subsignal("we", Pins(1)),
+            Subsignal("dat_w", Pins(dw)),
+            Subsignal("dat_r", Pins(dw))
         ),
     ]
 
@@ -233,6 +244,20 @@ class LiteDRAMCore(SoCSDRAM):
             platform.request("init_done").eq(self.ddrctrl.init_done.storage),
             platform.request("init_error").eq(self.ddrctrl.init_error.storage)
         ]
+
+        # CSR port
+        if core_config.get("expose_csr_port", "no") == "yes":
+            csr_port = csr_bus.Interface(self.csr_address_width, self.csr_data_width)
+            self.add_csr_master(csr_port)
+            platform.add_extension(get_csr_ios(self.csr_address_width,
+                                               self.csr_data_width))
+            _csr_port_io = platform.request("csr_port", 0)
+            self.comb += [
+                csr_port.adr.eq(_csr_port_io.adr),
+                csr_port.we.eq(_csr_port_io.we),
+                csr_port.dat_w.eq(_csr_port_io.dat_w),
+                _csr_port_io.dat_r.eq(csr_port.dat_r),
+            ]
 
         # user port
         self.comb += [
