@@ -310,6 +310,19 @@ class K4B2G1646F(SDRAMModule):
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 
+class IS43TR16128B_125K(SDRAMModule):
+    memtype = "DDR3"
+    # geometry
+    nbanks = 8
+    nrows  = 16384
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6))
+    speedgrade_timings = {
+        "default": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=160, tFAW=(None, 40), tRAS=35),
+    }
+
+
 # DDR3 (SO-DIMM)
 class MT8JTF12864(SDRAMModule):
     memtype = "DDR3"
