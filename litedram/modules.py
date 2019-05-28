@@ -382,7 +382,7 @@ class MT16KTF1G64HZ(SDRAMModule):
         "800" : _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(140, None), tFAW=(None, 40), tRAS=None),
         "1066": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(187, None), tFAW=(None, 40), tRAS=None),
         "1333": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(234, None), tFAW=(None, 30), tRAS=None),
-        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=(13.125, None), tRFC=280, tFAW=(None, 30), tRAS=None),
+        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=13.125, tRFC=(280, None), tFAW=(None, 30), tRAS=None),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
