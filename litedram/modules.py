@@ -103,6 +103,17 @@ class IS42S16160(SDRAMModule):
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=20, tRCD=20, tWR=20, tRFC=(None, 70), tFAW=None, tRAS=None)}
 
 
+class IS42S16320(SDRAMModule):
+    memtype = "SDR"
+    # geometry
+    nbanks = 4
+    nrows  = 8192
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=20, tRCD=20, tWR=20, tRFC=(None, 70), tFAW=None, tRAS=None)}
+
+
 class MT48LC4M16(SDRAMModule):
     memtype = "SDR"
     # geometry
