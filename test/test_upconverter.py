@@ -83,14 +83,11 @@ def main_generator(write_port, read_port):
 class TestUpConverter(unittest.TestCase):
     def test(self):
         dut = DUT()
-        generators = {
-            "sys" :   [
-                main_generator(dut.write_user_port, dut.read_user_port),
-                read_handler(dut.read_user_port),
-                dut.memory.write_handler(dut.write_crossbar_port),
-                dut.memory.read_handler(dut.read_crossbar_port)
-            ]
-        }
-        clocks = {"sys": 10}
-        run_simulation(dut, generators, clocks, vcd_name="sim.vcd")
+        generators = [
+            main_generator(dut.write_user_port, dut.read_user_port),
+            read_handler(dut.read_user_port),
+            dut.memory.write_handler(dut.write_crossbar_port),
+            dut.memory.read_handler(dut.read_crossbar_port)
+        ]
+        run_simulation(dut, generators)
         self.assertEqual(write_data, read_data)
