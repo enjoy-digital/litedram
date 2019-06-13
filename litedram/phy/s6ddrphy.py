@@ -421,6 +421,7 @@ class S6QuarterRateDDRPHY(Module):
 
         self.settings = PhySettings(
             memtype="DDR3",
+            databits=databits,
             dfi_databits=2*databits,
             nranks=nranks,
             nphases=nphases,
