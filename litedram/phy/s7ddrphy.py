@@ -62,7 +62,7 @@ class S7DDRPHY(Module, AutoCSR):
         }
 
         half_sys8x_taps = math.floor(tck/(4*iodelay_tap_average[iodelay_clk_freq]))
-        self._half_sys8x_taps = CSRStorage(4, reset=half_sys8x_taps)
+        self._half_sys8x_taps = CSRStorage(5, reset=half_sys8x_taps)
 
         if with_odelay:
             self._wlevel_en = CSRStorage()
