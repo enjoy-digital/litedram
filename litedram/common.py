@@ -1,3 +1,8 @@
+# This file is Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2018 John Sully <john@csquare.ca>
+# This file is Copyright (c) 2018 bunnie <bunnie@kosagi.com>
+# License: BSD
+
 from migen import *
 
 from litex.soc.interconnect import stream

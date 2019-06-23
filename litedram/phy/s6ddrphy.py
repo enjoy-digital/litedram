@@ -1,3 +1,4 @@
+# This file is Copyright (c) 2012 Sebastien Bourdeauducq <sb@m-labs.hk>
 # This file is Copyright (c) 2012-2019 Florent Kermarrec <florent@enjoy-digital.fr>
 # License: BSD
 

@@ -1,3 +1,5 @@
+# This file is Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
+
 from migen import *
 from migen.genlib.record import *
 

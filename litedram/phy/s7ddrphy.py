@@ -1,4 +1,5 @@
 # This file is Copyright (c) 2015-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
 # License: BSD
 
 # 1:4, 1:2 frequency-ratio DDR2/DDR3 PHY for Xilinx's Series7

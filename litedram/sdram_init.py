@@ -1,3 +1,11 @@
+# This file is Copyright (c) 2013-2014 Sebastien Bourdeauducq <sb@m-labs.hk>
+# This file is Copyright (c) 2013-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2017 whitequark <whitequark@whitequark.org>
+# This file is Copyright (c) 2014 Yann Sionneau <ys@m-labs.hk>
+# This file is Copyright (c) 2018 bunnie <bunnie@kosagi.com>
+# This file is Copyright (c) 2019 Gabriel L. Somlo <gsomlo@gmail.com>
+# License: BSD
+
 from migen import log2_int
 
 

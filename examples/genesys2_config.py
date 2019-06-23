@@ -1,3 +1,6 @@
+# This file is Copyright (c) 2018-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# License: BSD
+
 from litedram.modules import MT41J256M16
 from litedram.phy import K7DDRPHY
 

@@ -1,3 +1,9 @@
+# This file is Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
+# This file is Copyright (c) 2016-2018 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2018 John Sully <john@csquare.ca>
+# This file is Copyright (c) 2016 Tim 'mithro' Ansell <mithro@mithis.com>
+# License: BSD
+
 """Direct Memory Access (DMA) reader and writer modules."""
 
 from migen import *

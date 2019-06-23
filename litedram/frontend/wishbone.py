@@ -1,3 +1,6 @@
+# This file is Copyright (c) 2016-2018 Florent Kermarrec <florent@enjoy-digital.fr>
+# License: BSD
+
 """Wishbone frontend for LiteDRAM"""
 
 from migen import *
