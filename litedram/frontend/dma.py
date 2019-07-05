@@ -77,15 +77,15 @@ class LiteDRAMDMAReader(Module):
         # incremented when data is planned to be queued
         # decremented when data is dequeued
         data_dequeued = Signal()
-        self.rsv_level = Signal(max=fifo_depth+1)
+        self.rsv_level = rsv_level = Signal(max=fifo_depth+1)
         self.sync += [
             If(request_issued,
-                If(~data_dequeued, self.rsv_level.eq(self.rsv_level + 1))
+                If(~data_dequeued, rsv_level.eq(self.rsv_level + 1))
             ).Elif(data_dequeued,
-                self.rsv_level.eq(self.rsv_level - 1)
+                rsv_level.eq(rsv_level - 1)
             )
         ]
-        self.comb += request_enable.eq(self.rsv_level != fifo_depth)
+        self.comb += request_enable.eq(rsv_level != fifo_depth)
 
         # FIFO
         fifo = stream.SyncFIFO([("data", port.data_width)], fifo_depth, fifo_buffered)
