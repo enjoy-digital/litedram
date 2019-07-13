@@ -15,27 +15,28 @@ from test.common import *
 from litex.gen.sim import *
 
 
+class ConverterDUT(Module):
+    def __init__(self, user_data_width, native_data_width):
+        # write port and converter
+        self.write_user_port = LiteDRAMNativeWritePort(address_width=32, data_width=user_data_width)
+        self.write_crossbar_port = LiteDRAMNativeWritePort(address_width=32, data_width=native_data_width)
+        write_converter = LiteDRAMNativePortConverter(
+            self.write_user_port, self.write_crossbar_port)
+        self.submodules += write_converter
+
+        # read port and converter
+        self.read_user_port = LiteDRAMNativeReadPort(address_width=32, data_width=user_data_width)
+        self.read_crossbar_port = LiteDRAMNativeReadPort(address_width=32, data_width=native_data_width)
+        read_converter = LiteDRAMNativePortConverter(
+            self.read_user_port, self.read_crossbar_port)
+        self.submodules += read_converter
+
+        # memory
+        self.memory = DRAMMemory(native_data_width, 128)
+
+
 class TestAdaptation(unittest.TestCase):
     def test_up_converter(self):
-        class DUT(Module):
-            def __init__(self):
-                # write port and converter
-                self.write_user_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
-                self.write_crossbar_port = LiteDRAMNativeWritePort(address_width=32, data_width=128)
-                write_converter = LiteDRAMNativePortConverter(
-                    self.write_user_port, self.write_crossbar_port)
-                self.submodules += write_converter
-
-                # read port and converter
-                self.read_user_port = LiteDRAMNativeReadPort(address_width=32, data_width=32)
-                self.read_crossbar_port = LiteDRAMNativeReadPort(address_width=32, data_width=128)
-                read_converter = LiteDRAMNativePortConverter(
-                    self.read_user_port, self.read_crossbar_port)
-                self.submodules += read_converter
-
-                # memory
-                self.memory = DRAMMemory(128, 128)
-
         write_data = [seed_to_data(i, nbits=32) for i in range(16)]
         read_data = []
 
@@ -82,7 +83,7 @@ class TestAdaptation(unittest.TestCase):
             for i in range(32):
                 yield
 
-        dut = DUT()
+        dut = ConverterDUT(user_data_width=32, native_data_width=128)
         generators = [
             main_generator(dut.write_user_port, dut.read_user_port),
             read_handler(dut.read_user_port),
@@ -93,25 +94,6 @@ class TestAdaptation(unittest.TestCase):
         self.assertEqual(write_data, read_data)
 
     def test_down_converter(self):
-        class DUT(Module):
-            def __init__(self):
-                # write port and converter
-                self.write_user_port = LiteDRAMNativeWritePort(address_width=32, data_width=64)
-                self.write_crossbar_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
-                write_converter = LiteDRAMNativePortConverter(
-                    self.write_user_port, self.write_crossbar_port)
-                self.submodules += write_converter
-
-                # read port and converter
-                self.read_user_port = LiteDRAMNativeReadPort(address_width=32, data_width=64)
-                self.read_crossbar_port = LiteDRAMNativeReadPort(address_width=32, data_width=32)
-                read_converter = LiteDRAMNativePortConverter(
-                    self.read_user_port, self.read_crossbar_port)
-                self.submodules += read_converter
-
-                # memory
-                self.memory = DRAMMemory(32, 128)
-
         write_data = [seed_to_data(i, nbits=64) for i in range(8)]
         read_data = []
 
@@ -154,7 +136,7 @@ class TestAdaptation(unittest.TestCase):
             for i in range(32):
                 yield
 
-        dut = DUT()
+        dut = ConverterDUT(user_data_width=64, native_data_width=32)
         generators = [
             main_generator(dut.write_user_port, dut.read_user_port),
             read_handler(dut.read_user_port),
