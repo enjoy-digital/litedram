@@ -13,7 +13,7 @@ def c2bool(c):
     return {"-": 1, "_": 0}[c]
 
 
-class TestTimingControllers(unittest.TestCase):
+class TestTiming(unittest.TestCase):
     def txxd_controller_test(self, txxd, valids, readys):
         def generator(dut):
             dut.errors = 0
