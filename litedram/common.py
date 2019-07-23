@@ -3,6 +3,9 @@
 # This file is Copyright (c) 2018 bunnie <bunnie@kosagi.com>
 # License: BSD
 
+from functools import reduce
+from operator import add
+
 from migen import *
 
 from litex.soc.interconnect import stream
@@ -164,7 +167,7 @@ class LiteDRAMNativeReadPort(LiteDRAMNativePort):
         LiteDRAMNativePort.__init__(self, "read", *args, **kwargs)
 
 
-# Timing Controller ------------------------------------------------------------
+# Timing Controllers -----------------------------------------------------------
 
 class tXXDController(Module):
     def __init__(self, txxd):
@@ -178,7 +181,7 @@ class tXXDController(Module):
             count = Signal(max=max(txxd, 2))
             self.sync += \
                 If(valid,
-                    count.eq(txxd-1),
+                    count.eq(txxd - 1),
                     If((txxd - 1) == 0,
                         ready.eq(1)
                     ).Else(
@@ -186,5 +189,29 @@ class tXXDController(Module):
                     )
                 ).Elif(~ready,
                     count.eq(count - 1),
-                    If(count == 1, ready.eq(1))
+                    If(count == 1,
+                        ready.eq(1))
+                )
+
+
+class tFAWController(Module):
+    def __init__(self, tfaw):
+        self.valid = valid = Signal()
+        self.ready = ready = Signal(reset=1)
+        ready.attr.add("no_retiming")
+
+        # # #
+
+        if tfaw is not None:
+            count = Signal(max=max(tfaw, 2))
+            window = Signal(tfaw)
+            self.sync += window.eq(Cat(valid, window))
+            self.comb += count.eq(reduce(add, [window[i] for i in range(tfaw)]))
+            self.sync += \
+                If(count < 4,
+                    If(count == 3,
+                        ready.eq(~valid)
+                    ).Else(
+                        ready.eq(1)
+                    )
                 )

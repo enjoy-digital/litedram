@@ -7,7 +7,7 @@
 
 import math
 from functools import reduce
-from operator import add, or_, and_
+from operator import or_, and_
 
 from migen import *
 from migen.genlib.roundrobin import *
@@ -139,29 +139,6 @@ class _Steerer(Module):
                 phase.rddata_en.eq(rddata_ens[sel]),
                 phase.wrdata_en.eq(wrdata_ens[sel])
             ]
-
-
-class tFAWController(Module):
-    def __init__(self, tfaw):
-        self.valid = valid = Signal()
-        self.ready = ready = Signal(reset=1)
-        ready.attr.add("no_retiming")
-
-        # # #
-
-        if tfaw is not None:
-            count = Signal(max=max(tfaw, 2))
-            window = Signal(tfaw)
-            self.sync += window.eq(Cat(valid, window))
-            self.comb += count.eq(reduce(add, [window[i] for i in range(tfaw)]))
-            self.sync += \
-                If(count < 4,
-                    If(count == 3,
-                        ready.eq(~valid)
-                    ).Else(
-                        ready.eq(1)
-                    )
-                )
 
 
 class Multiplexer(Module, AutoCSR):
