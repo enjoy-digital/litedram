@@ -6,7 +6,7 @@ import unittest
 from migen import *
 
 from litedram.core.multiplexer import cmd_request_rw_layout
-from litedram.core.refresher import RefreshGenerator
+from litedram.core.refresher import RefreshGenerator, RefreshTimer
 
 
 def c2bool(c):
@@ -40,3 +40,28 @@ class TestRefresh(unittest.TestCase):
         cmds.ras = "___--___________"
         dones    = "______-_________"
         self.refresh_generator_test(trp, trfc, starts, dones, cmds)
+
+    def refresh_timer_test(self, trefi):
+        def generator(dut):
+            dut.errors = 0
+            for i in range(16*(trefi + 1)):
+                yield
+                if i%(trefi + 1) == (trefi - 1):
+                    if (yield dut.refresh.done) != 1:
+                        dut.errors += 1
+                else:
+                    if (yield dut.refresh.done) != 0:
+                        dut.errors += 1
+
+        class DUT(Module):
+            def __init__(self, trefi):
+                self.submodules.refresh = RefreshTimer(trefi)
+                self.comb += self.refresh.wait.eq(~self.refresh.done)
+
+        dut = DUT(trefi)
+        run_simulation(dut, [generator(dut)])
+        self.assertEqual(dut.errors, 0)
+
+    def test_refresh_timer(self):
+        for i in range(1, 32):
+            self.refresh_timer_test(i)
