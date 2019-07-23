@@ -75,7 +75,7 @@ class TestBIST(unittest.TestCase):
 
          # simulation
         generators = [main_generator(dut)]
-        run_simulation(dut, main_generator(dut), vcd_name="generator.vcd")
+        run_simulation(dut, main_generator(dut))
         self.assertEqual(self.errors, 0)
 
     def test_bist(self):
@@ -123,4 +123,4 @@ class TestBIST(unittest.TestCase):
             mem.write_handler(dut.write_port),
             mem.read_handler(dut.read_port)
          ]
-        run_simulation(dut, generators, vcd_name="bist.vcd")
+        run_simulation(dut, generators)
