@@ -6,7 +6,7 @@ import random
 
 from migen import *
 
-from litedram.common import tXXDController
+from litedram.common import tXXDController, tFAWController
 
 
 def c2bool(c):
@@ -77,3 +77,38 @@ class TestTimingControllers(unittest.TestCase):
     def test_txxd_controller_random(self):
         for i in range(2, 32):
             self.txxd_controller_random_test(i, 512)
+
+
+    def tfaw_controller_test(self, txxd, valids, readys):
+        def generator(dut):
+            dut.errors = 0
+            for valid, ready in zip(valids, readys):
+                yield dut.valid.eq(c2bool(valid))
+                yield
+                if (yield dut.ready) != c2bool(ready):
+                    dut.errors += 1
+
+        dut = tFAWController(txxd)
+        run_simulation(dut, [generator(dut)])
+        self.assertEqual(dut.errors, 0)
+
+    def test_tfaw_controller(self):
+        tfaw = 8
+        valids = "_----___________"
+        readys = "-----______-----"
+        self.tfaw_controller_test(tfaw, valids, readys)
+
+        tfaw = 8
+        valids = "_-_-_-_-________"
+        readys = "--------___-----"
+        self.tfaw_controller_test(tfaw, valids, readys)
+
+        tfaw = 8
+        valids = "_-_-___-_-______"
+        readys = "----------_-----"
+        self.tfaw_controller_test(tfaw, valids, readys)
+
+        tfaw = 8
+        valids = "_-_-____-_-______"
+        readys = "-----------------"
+        self.tfaw_controller_test(tfaw, valids, readys)
