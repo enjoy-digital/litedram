@@ -6,13 +6,6 @@ import random
 
 from migen import *
 
-
-def rand_wait(level):
-    prng = random.Random(42)
-    while prng.randrange(100) < level:
-        yield
-
-
 def seed_to_data(seed, random=True, nbits=32):
     if nbits == 32:
         if random:
@@ -43,7 +36,7 @@ class DRAMMemory:
             print("0x{:08x}: 0x{:08x}".format(addr, self.mem[addr]))
 
     @passive
-    def read_handler(self, dram_port, rdata_valid_rand_level=0):
+    def read_handler(self, dram_port, rdata_valid_random=0):
         address = 0
         pending = 0
         prng = random.Random(42)
@@ -51,7 +44,8 @@ class DRAMMemory:
         while True:
             yield dram_port.rdata.valid.eq(0)
             if pending:
-                yield from rand_wait(rdata_valid_rand_level)
+                while prng.randrange(100) < rdata_valid_random:
+                    yield
                 yield dram_port.rdata.valid.eq(1)
                 yield dram_port.rdata.data.eq(self.mem[address%self.depth])
                 yield
@@ -68,7 +62,7 @@ class DRAMMemory:
             yield
 
     @passive
-    def write_handler(self, dram_port, wdata_ready_rand_level=0):
+    def write_handler(self, dram_port, wdata_ready_random=0):
         address = 0
         pending = 0
         prng = random.Random(42)
@@ -78,7 +72,8 @@ class DRAMMemory:
             if pending:
                 while (yield dram_port.wdata.valid) == 0:
                     yield
-                yield from rand_wait(wdata_ready_rand_level)
+                while prng.randrange(100) < wdata_ready_random:
+                    yield
                 yield dram_port.wdata.ready.eq(1)
                 yield
                 self.mem[address%self.depth] = (yield dram_port.wdata.data) # TODO manage we
