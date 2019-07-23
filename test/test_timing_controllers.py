@@ -8,8 +8,47 @@ from migen import *
 
 from litedram.common import tXXDController
 
+
+def c2bool(c):
+    return {"-": 1, "_": 0}[c]
+
+
 class TestTimingControllers(unittest.TestCase):
-    def txxd_controller_test(self, txxd, loops):
+    def txxd_controller_test(self, txxd, valids, readys):
+        def generator(dut):
+            dut.errors = 0
+            for valid, ready in zip(valids, readys):
+                yield dut.valid.eq(c2bool(valid))
+                yield
+                if (yield dut.ready) != c2bool(ready):
+                    dut.errors += 1
+
+        dut = tXXDController(txxd)
+        run_simulation(dut, [generator(dut)])
+        self.assertEqual(dut.errors, 0)
+
+    def test_txxd_controller(self):
+        txxd = 1
+        valids = "_-______"
+        readys = "--------"
+        self.txxd_controller_test(txxd, valids, readys)
+
+        txxd = 2
+        valids = "_-______"
+        readys = "--_-----"
+        self.txxd_controller_test(txxd, valids, readys)
+
+        txxd = 3
+        valids = "_-______"
+        readys = "--__----"
+        self.txxd_controller_test(txxd, valids, readys)
+
+        txxd = 4
+        valids = "_-______"
+        readys = "--___---"
+        self.txxd_controller_test(txxd, valids, readys)
+
+    def txxd_controller_random_test(self, txxd, loops):
         def generator(dut, valid_rand):
             prng = random.Random(42)
             for l in range(loops):
@@ -35,6 +74,6 @@ class TestTimingControllers(unittest.TestCase):
         run_simulation(dut, [generator(dut, valid_rand=90), checker(dut)])
         self.assertEqual(min(dut.ready_gaps), txxd)
 
-    def test_txxd_controller(self):
+    def test_txxd_controller_random(self):
         for i in range(2, 32):
-            self.txxd_controller_test(i, 512)
+            self.txxd_controller_random_test(i, 512)
