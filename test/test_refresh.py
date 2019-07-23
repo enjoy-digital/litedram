@@ -1,0 +1,42 @@
+# This file is Copyright (c) 2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# License: BSD
+
+import unittest
+
+from migen import *
+
+from litedram.core.multiplexer import cmd_request_rw_layout
+from litedram.core.refresher import RefreshGenerator
+
+
+def c2bool(c):
+    return {"-": 1, "_": 0}[c]
+
+class TestRefresh(unittest.TestCase):
+    def refresh_generator_test(self, trp, trfc, starts, dones, cmds):
+        cmd = Record(cmd_request_rw_layout(a=16, ba=3))
+        def generator(dut):
+            dut.errors = 0
+            for start, done, cas, ras in zip(starts, dones, cmds.cas, cmds.ras):
+                yield dut.start.eq(c2bool(start))
+                yield
+                if (yield dut.done) != c2bool(done):
+                    dut.errors += 1
+                if (yield cmd.cas) != c2bool(cas):
+                    dut.errors += 1
+                if (yield cmd.ras) != c2bool(ras):
+                    dut.errors += 1
+        dut = RefreshGenerator(cmd, trp, trfc)
+        run_simulation(dut, [generator(dut)])
+        self.assertEqual(dut.errors, 0)
+
+    def test_refresh_generator(self):
+        trp  = 1
+        trfc = 2
+        class CMDS: pass
+        cmds = CMDS()
+        starts   = "_-______________"
+        cmds.cas = "____-___________"
+        cmds.ras = "___--___________"
+        dones    = "______-_________"
+        self.refresh_generator_test(trp, trfc, starts, dones, cmds)
