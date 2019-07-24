@@ -36,9 +36,9 @@ class TestRefresh(unittest.TestCase):
         class Obj: pass
         cmds = Obj()
         starts   = "_-______________"
-        cmds.cas = "____-___________"
-        cmds.ras = "___--___________"
-        dones    = "______-_________"
+        cmds.cas = "___-____________"
+        cmds.ras = "__--____________"
+        dones    = "_____-__________"
         self.refresh_generator_test(trp, trfc, starts, dones, cmds)
 
     def refresh_timer_test(self, trefi):

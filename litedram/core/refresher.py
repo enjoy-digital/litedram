@@ -31,17 +31,17 @@ class RefreshGenerator(Module):
             # Wait start
             timeline(self.start, [
                 # Precharge all
-                (1, [
+                (0, [
                     cmd.ras.eq(1),
                     cmd.we.eq(1)
                 ]),
                 # Wait tRP then Auto Refresh
-                (1 + trp, [
+                (trp, [
                     cmd.cas.eq(1),
                     cmd.ras.eq(1)
                 ]),
                 # Wait tRFC then done
-                (1 + trp + trfc, [
+                (trp + trfc, [
                     self.done.eq(1)
                 ])
             ])
