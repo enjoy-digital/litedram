@@ -53,7 +53,7 @@ class RefreshTimer(Module):
     def __init__(self, trefi):
         self.wait = wait = Signal()
         self.done = done = Signal()
-        self.count = count = Signal(bits_for(trefi), reset=trefi)
+        self.count = count = Signal(bits_for(trefi), reset=trefi-1)
 
         self.load = load = Signal()
         self.load_count = load_count = Signal(bits_for(trefi))

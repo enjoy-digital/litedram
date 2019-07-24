@@ -44,14 +44,14 @@ class TestRefresh(unittest.TestCase):
     def refresh_timer_test(self, trefi):
         def generator(dut):
             dut.errors = 0
-            for i in range(16*(trefi + 1)):
-                yield
-                if i%(trefi + 1) == (trefi - 1):
+            for i in range(16*trefi):
+                if i%trefi == (trefi - 1):
                     if (yield dut.refresh.done) != 1:
                         dut.errors += 1
                 else:
                     if (yield dut.refresh.done) != 0:
                         dut.errors += 1
+                yield
 
         class DUT(Module):
             def __init__(self, trefi):
@@ -93,7 +93,7 @@ class TestRefresh(unittest.TestCase):
                 while (yield dut.cmd.valid) == 0:
                     cmd_valid_gap += 1
                     yield
-                if cmd_valid_gap != (settings.timing.tREFI + 1):
+                if cmd_valid_gap != settings.timing.tREFI:
                     dut.errors += 1
 
         dut = Refresher(settings)
