@@ -28,6 +28,7 @@ class GENSDRPHY(Module):
         bankbits = len(pads.ba)
         nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits = len(pads.dq)
+        assert databits%8 == 0
 
         self.settings = PhySettings(
             memtype="SDR",
@@ -68,6 +69,7 @@ class GENSDRPHY(Module):
         self.sync += dq_o.eq(dfi.p0.wrdata)
         self.specials += Tristate(pads.dq, dq_o, dq_oe, dq_i)
         if hasattr(pads, "dm"):
+            assert len(pads.dm)*8 == databits
             self.sync += \
                 If(dfi.p0.wrdata_en,
                     pads.dm.eq(dfi.p0.wrdata_mask)
