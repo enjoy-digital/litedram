@@ -11,10 +11,10 @@ from litex.soc.interconnect import stream
 
 from litedram.core.multiplexer import *
 
-# RefreshSequencer ---------------------------------------------------------------------------------
+# RefreshExecuter ----------------------------------------------------------------------------------
 
-class RefreshSequencer(Module):
-    """Refresh Sequencer
+class RefreshExecuter(Module):
+    """Refresh Executer
 
     Execute the refresh sequence to the DRAM:
     - Send a "Precharge All" command
@@ -47,6 +47,35 @@ class RefreshSequencer(Module):
                 (trp + trfc, [self.done.eq(1)])
             ])
         ]
+
+# RefreshSequencer ---------------------------------------------------------------------------------
+
+class RefreshSequencer(Module):
+    """Refresh Sequencer
+
+    Sequence N refreshs to the DRAM.
+    """
+    def __init__(self, cmd, trp, trfc, n=1):
+        self.start = Signal()
+        self.done  = Signal()
+
+        # # #
+
+        executer = RefreshExecuter(cmd, trp, trfc)
+        self.submodules += executer
+
+        count = Signal(bits_for(n), reset=n-1)
+        self.sync += [
+            If(self.start,
+                count.eq(count.reset)
+            ).Elif(executer.done,
+                If(count != 0,
+                    count.eq(count - 1)
+                )
+            )
+        ]
+        self.comb += executer.start.eq(self.start | (count != 0))
+        self.comb += self.done.eq(executer.done & (count == 0))
 
 # RefreshTimer -------------------------------------------------------------------------------------
 
@@ -87,6 +116,31 @@ class RefreshTimer(Module):
             self.count.eq(count)
         ]
 
+# RefreshAccumulator -------------------------------------------------------------------------------
+
+class RefreshAccumulator(Module):
+    """Refresh Accumulator
+
+    Accumulate N Refresh requests and generate a request when N is reached.
+    """
+    def __init__(self, n=1):
+        self.req_i = Signal()
+        self.req_o = Signal()
+
+        # # #
+
+        count = Signal(bits_for(n), reset=n-1)
+        self.sync += [
+            self.req_o.eq(0),
+            If(self.req_i,
+                count.eq(count - 1),
+                If(count == 0,
+                    count.eq(count.reset),
+                    self.req_o.eq(1)
+                )
+            )
+        ]
+
 # Refresher ----------------------------------------------------------------------------------------
 
 class Refresher(Module):
@@ -103,7 +157,7 @@ class Refresher(Module):
     transactions are done, the Refresher can execute the refresh Sequence and release the Controller.
 
     """
-    def __init__(self, settings):
+    def __init__(self, settings, n=1):
         abits  = settings.geom.addressbits
         babits = settings.geom.bankbits + log2_int(settings.phy.nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a=abits, ba=babits))
@@ -115,16 +169,21 @@ class Refresher(Module):
         self.submodules.timer = timer
         self.comb += self.timer.wait.eq(~self.timer.done)
 
+        # Refresh Accumulator ----------------------------------------------------------------------
+        accum = RefreshAccumulator(n=n)
+        self.submodules.accum = accum
+        self.comb += accum.req_i.eq(self.timer.done)
+
         # Refresh Sequencer ------------------------------------------------------------------------
-        sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC)
+        sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, n=n)
         self.submodules.sequencer = sequencer
 
         # Refresh FSM ------------------------------------------------------------------------------
         self.submodules.fsm = fsm = FSM()
         fsm.act("IDLE",
             If(settings.with_refresh,
-                # Wait periodic Timer pulse
-                If(timer.done,
+                # Wait refresh accumulator
+                If(accum.req_o,
                     NextState("WAIT-GRANT")
                 )
             )
