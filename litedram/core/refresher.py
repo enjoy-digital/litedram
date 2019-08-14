@@ -99,7 +99,7 @@ class Refresher(Module):
     send a "Auto Refresh" command.
 
     Before executing the refresh, the Refresher advertises the Controller that a refresh should occur,
-    this allows the Controller to finis the current transaction and block next transactions. Once all
+    this allows the Controller to finish the current transaction and block next transactions. Once all
     transactions are done, the Refresher can execute the refresh Sequence and release the Controller.
 
     """
@@ -112,9 +112,7 @@ class Refresher(Module):
 
         # Refresh Timer ----------------------------------------------------------------------------
         timer = RefreshTimer(settings.timing.tREFI)
-        timer = ResetInserter()(timer)
         self.submodules.timer = timer
-        self.comb += self.timer.reset.eq(~settings.with_refresh)
         self.comb += self.timer.wait.eq(~self.timer.done)
 
         # Refresh Sequencer ------------------------------------------------------------------------
@@ -124,12 +122,14 @@ class Refresher(Module):
         # Refresh FSM ------------------------------------------------------------------------------
         self.submodules.fsm = fsm = FSM()
         fsm.act("IDLE",
-            # Wait periodic Timer pulse
-            If(timer.done,
-                NextState("WAIT-CONTROLLER-GRANT")
+            If(settings.with_refresh,
+                # Wait periodic Timer pulse
+                If(timer.done,
+                    NextState("WAIT-GRANT")
+                )
             )
         )
-        fsm.act("WAIT-CONTROLLER-GRANT",
+        fsm.act("WAIT-GRANT",
             # Advertise Controller, wait grant and start Sequencer
             cmd.valid.eq(1),
             If(cmd.ready,
@@ -139,10 +139,9 @@ class Refresher(Module):
         )
         fsm.act("WAIT-SEQUENCER",
             # Wait Sequencer and advertise Controller when done
+            cmd.valid.eq(1),
             If(sequencer.done,
                 cmd.last.eq(1),
                 NextState("IDLE")
-            ).Else(
-                cmd.valid.eq(1)
             )
         )
