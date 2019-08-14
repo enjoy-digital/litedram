@@ -12,7 +12,7 @@ from litex.soc.interconnect import stream
 from litedram.core.multiplexer import *
 
 
-class RefreshGenerator(Module):
+class RefreshSequencer(Module):
     def __init__(self, cmd, trp, trfc):
         self.start = Signal()
         self.done = Signal()
@@ -31,22 +31,13 @@ class RefreshGenerator(Module):
             # Wait start
             timeline(self.start, [
                 # Precharge all
-                (0, [
-                    cmd.ras.eq(1),
-                    cmd.we.eq(1)
-                ]),
-                # Wait tRP then Auto Refresh
-                (trp, [
-                    cmd.cas.eq(1),
-                    cmd.ras.eq(1)
-                ]),
-                # Wait tRFC then done
-                (trp + trfc, [
-                    self.done.eq(1)
-                ])
+                (0,          [cmd.ras.eq(1), cmd.we.eq(1)]),
+                # Auto Refresh after tRP
+                (trp,        [cmd.cas.eq(1), cmd.ras.eq(1)]),
+                # Done after tRP + tRFC
+                (trp + trfc, [self.done.eq(1)])
             ])
         ]
-
 
 
 class RefreshTimer(Module):
@@ -91,9 +82,9 @@ class Refresher(Module):
         self.comb += self.timer.reset.eq(~settings.with_refresh)
         self.comb += self.timer.wait.eq(~self.timer.done)
 
-        # Refresh sequence generator
-        generator = RefreshGenerator(cmd, settings.timing.tRP, settings.timing.tRFC)
-        self.submodules.generator = generator
+        # Refresh sequencer
+        sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC)
+        self.submodules.sequencer = sequencer
 
         # Refresh control FSM
         self.submodules.fsm = fsm = FSM()
@@ -105,12 +96,12 @@ class Refresher(Module):
         fsm.act("WAIT_GRANT",
             cmd.valid.eq(1),
             If(cmd.ready,
-                generator.start.eq(1),
+                sequencer.start.eq(1),
                 NextState("WAIT_SEQ")
             )
         )
         fsm.act("WAIT_SEQ",
-            If(generator.done,
+            If(sequencer.done,
                 cmd.last.eq(1),
                 NextState("IDLE")
             ).Else(

@@ -6,14 +6,14 @@ import unittest
 from migen import *
 
 from litedram.core.multiplexer import cmd_request_rw_layout
-from litedram.core.refresher import RefreshGenerator, RefreshTimer, Refresher
+from litedram.core.refresher import RefreshSequencer, RefreshTimer, Refresher
 
 
 def c2bool(c):
     return {"-": 1, "_": 0}[c]
 
 class TestRefresh(unittest.TestCase):
-    def refresh_generator_test(self, trp, trfc, starts, dones, cmds):
+    def refresh_sequencer_test(self, trp, trfc, starts, dones, cmds):
         cmd = Record(cmd_request_rw_layout(a=16, ba=3))
         def generator(dut):
             dut.errors = 0
@@ -26,11 +26,11 @@ class TestRefresh(unittest.TestCase):
                     dut.errors += 1
                 if (yield cmd.ras) != c2bool(ras):
                     dut.errors += 1
-        dut = RefreshGenerator(cmd, trp, trfc)
+        dut = RefreshSequencer(cmd, trp, trfc)
         run_simulation(dut, [generator(dut)])
         self.assertEqual(dut.errors, 0)
 
-    def test_refresh_generator(self):
+    def test_refresh_sequencer(self):
         trp  = 1
         trfc = 2
         class Obj: pass
@@ -39,7 +39,7 @@ class TestRefresh(unittest.TestCase):
         cmds.cas = "___-____________"
         cmds.ras = "__--____________"
         dones    = "_____-__________"
-        self.refresh_generator_test(trp, trfc, starts, dones, cmds)
+        self.refresh_sequencer_test(trp, trfc, starts, dones, cmds)
 
     def refresh_timer_test(self, trefi):
         def generator(dut):
@@ -70,7 +70,7 @@ class TestRefresh(unittest.TestCase):
         class Obj: pass
         settings = Obj()
         settings.with_refresh = True
-        settings.timing =Obj()
+        settings.timing = Obj()
         settings.timing.tREFI = 64
         settings.timing.tRP   = 1
         settings.timing.tRFC  = 2
