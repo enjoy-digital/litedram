@@ -13,6 +13,14 @@ from litedram.core.multiplexer import *
 
 
 class RefreshSequencer(Module):
+    """Refresh Sequencer
+
+    Execute the refresh sequence to the DRAM:
+    - Send a "Precharge All" command
+    - Wait tRP
+    - Send an "Auto Refresh" command
+    - Wait rRFC
+    """
     def __init__(self, cmd, trp, trfc):
         self.start = Signal()
         self.done = Signal()
@@ -30,7 +38,7 @@ class RefreshSequencer(Module):
             self.done.eq(0),
             # Wait start
             timeline(self.start, [
-                # Precharge all
+                # Precharge All
                 (0,          [cmd.ras.eq(1), cmd.we.eq(1)]),
                 # Auto Refresh after tRP
                 (trp,        [cmd.cas.eq(1), cmd.ras.eq(1)]),
@@ -41,6 +49,10 @@ class RefreshSequencer(Module):
 
 
 class RefreshTimer(Module):
+    """Refresh Timer
+
+    Generate periodic pulses (tREFI period) to trigger DRAM refresh.
+    """
     def __init__(self, trefi):
         self.wait = wait = Signal()
         self.done = done = Signal()
@@ -68,6 +80,19 @@ class RefreshTimer(Module):
 
 
 class Refresher(Module):
+    """Refresher
+
+    Manage DRAM refresh.
+
+    The DRAM needs to be periodically refreshed with a tREFI period to avoid data corruption. During
+    a refresh, the controller send a "Precharge All" command to close and precharge all rows and then
+    send a "Auto Refresh" command.
+
+    Before executing the refresh, the Refresher advertises the Controller that a refresh should occur,
+    this allows the Controller to finis the current transaction and block next transactions. Once all
+    transactions are done, the Refresher can execute the refresh Sequence and release the Controller.
+
+    """
     def __init__(self, settings):
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(
             a=settings.geom.addressbits,
