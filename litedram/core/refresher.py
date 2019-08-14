@@ -11,6 +11,7 @@ from litex.soc.interconnect import stream
 
 from litedram.core.multiplexer import *
 
+# RefreshSequencer ---------------------------------------------------------------------------------
 
 class RefreshSequencer(Module):
     """Refresh Sequencer
@@ -23,7 +24,7 @@ class RefreshSequencer(Module):
     """
     def __init__(self, cmd, trp, trfc):
         self.start = Signal()
-        self.done = Signal()
+        self.done  = Signal()
 
         # # #
 
@@ -47,6 +48,7 @@ class RefreshSequencer(Module):
             ])
         ]
 
+# RefreshTimer -------------------------------------------------------------------------------------
 
 class RefreshTimer(Module):
     """Refresh Timer
@@ -54,21 +56,23 @@ class RefreshTimer(Module):
     Generate periodic pulses (tREFI period) to trigger DRAM refresh.
     """
     def __init__(self, trefi):
-        self.wait = wait = Signal()
-        self.done = done = Signal()
-        self.count = count = Signal(bits_for(trefi), reset=trefi-1)
+        self.wait  = Signal()
+        self.done  = Signal()
+        self.count = Signal(bits_for(trefi))
 
-        self.load = load = Signal()
-        self.load_count = load_count = Signal(bits_for(trefi))
+        self.load       = Signal()
+        self.load_count = Signal(bits_for(trefi))
 
         # # #
 
-        self.comb += done.eq(count == 0)
+        done  = Signal()
+        count = Signal(bits_for(trefi), reset=trefi-1)
+
         self.sync += [
-            If(wait,
-                If(~done,
-                    If(load & (load_count < count),
-                        count.eq(load_count)
+            If(self.wait,
+                If(~self.done,
+                    If(self.load & (self.load_count < count),
+                        count.eq(self.load_count)
                     ).Else(
                         count.eq(count - 1)
                     )
@@ -77,7 +81,13 @@ class RefreshTimer(Module):
                 count.eq(count.reset)
             )
         ]
+        self.comb += [
+            done.eq(count == 0),
+            self.done.eq(done),
+            self.count.eq(count)
+        ]
 
+# Refresher ----------------------------------------------------------------------------------------
 
 class Refresher(Module):
     """Refresher
@@ -94,38 +104,41 @@ class Refresher(Module):
 
     """
     def __init__(self, settings):
-        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(
-            a=settings.geom.addressbits,
-            ba=settings.geom.bankbits + log2_int(settings.phy.nranks)))
+        abits  = settings.geom.addressbits
+        babits = settings.geom.bankbits + log2_int(settings.phy.nranks)
+        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a=abits, ba=babits))
 
         # # #
 
-        # Periodic refresh timer
+        # Refresh Timer ----------------------------------------------------------------------------
         timer = RefreshTimer(settings.timing.tREFI)
         timer = ResetInserter()(timer)
         self.submodules.timer = timer
         self.comb += self.timer.reset.eq(~settings.with_refresh)
         self.comb += self.timer.wait.eq(~self.timer.done)
 
-        # Refresh sequencer
+        # Refresh Sequencer ------------------------------------------------------------------------
         sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC)
         self.submodules.sequencer = sequencer
 
-        # Refresh control FSM
+        # Refresh FSM ------------------------------------------------------------------------------
         self.submodules.fsm = fsm = FSM()
         fsm.act("IDLE",
+            # Wait periodic Timer pulse
             If(timer.done,
-                NextState("WAIT_GRANT")
+                NextState("WAIT-CONTROLLER-GRANT")
             )
         )
-        fsm.act("WAIT_GRANT",
+        fsm.act("WAIT-CONTROLLER-GRANT",
+            # Advertise Controller, wait grant and start Sequencer
             cmd.valid.eq(1),
             If(cmd.ready,
                 sequencer.start.eq(1),
-                NextState("WAIT_SEQ")
+                NextState("WAIT-SEQUENCER")
             )
         )
-        fsm.act("WAIT_SEQ",
+        fsm.act("WAIT-SEQUENCER",
+            # Wait Sequencer and advertise Controller when done
             If(sequencer.done,
                 cmd.last.eq(1),
                 NextState("IDLE")
