@@ -71,8 +71,8 @@ class _CommandChooser(Module):
                 If(cmd.valid & cmd.ready & (arbiter.grant == i),
                     request.ready.eq(1)
                 )
-	# Arbitrate if we're accepting commands, *or* if we are not but the current selection is not valid
-	#	This is to ensure that a valid command is selected when cmd.ready goes high
+        # Arbitrate if a command is being accepted or if the command is not valid to ensure a valid
+        # command is selected when cmd.ready goes high.
         self.comb += arbiter.ce.eq(cmd.ready | ~cmd.valid)
 
     # helpers
