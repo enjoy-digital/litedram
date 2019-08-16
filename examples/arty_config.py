@@ -1,7 +1,7 @@
 # This file is Copyright (c) 2018-2019 Florent Kermarrec <florent@enjoy-digital.fr>
 # License: BSD
 
-core_config = {
+core_config : {
     # General ------------------------------------------------------------------
     "cpu":        "vexriscv",  # Type of CPU used for init/calib (vexriscv, lm32)
     "speedgrade": -1,          # FPGA speedgrade
@@ -21,9 +21,9 @@ core_config = {
     "ron":     "34ohm",  # Output driver impedance
 
     # Frequency ----------------------------------------------------------------
-    "input_clk_freq":   100e6, # Input clock frequency
-    "sys_clk_freq":     100e6, # System clock frequency (DDR_clk = 4 x sys_clk)
-    "iodelay_clk_freq": 200e6, # IODELAYs reference clock frequency
+    "input_clk_freq":   100000000, # Input clock frequency
+    "sys_clk_freq":     100000000, # System clock frequency (DDR_clk = 4 x sys_clk)
+    "iodelay_clk_freq": 200000000, # IODELAYs reference clock frequency
 
     # Core ---------------------------------------------------------------------
     "cmd_buffer_depth": 16,    # Depth of the command buffer
