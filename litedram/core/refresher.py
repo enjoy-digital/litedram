@@ -89,23 +89,14 @@ class RefreshTimer(Module):
         self.done  = Signal()
         self.count = Signal(bits_for(trefi))
 
-        self.load       = Signal()
-        self.load_count = Signal(bits_for(trefi))
-
         # # #
 
         done  = Signal()
         count = Signal(bits_for(trefi), reset=trefi-1)
 
         self.sync += [
-            If(self.wait,
-                If(~self.done,
-                    If(self.load & (self.load_count < count),
-                        count.eq(self.load_count)
-                    ).Else(
-                        count.eq(count - 1)
-                    )
-                )
+            If(self.wait & ~self.done,
+                count.eq(count - 1)
             ).Else(
                 count.eq(count.reset)
             )
