@@ -18,7 +18,7 @@ class ControllerSettings(Settings):
                  cmd_buffer_depth=8, cmd_buffer_buffered=False,
                  read_time=32, write_time=16,
                  with_bandwidth=False,
-                 with_refresh=True,
+                 with_refresh=True, refresher_cls=Refresher,
                  with_auto_precharge=True,
                  address_mapping="ROW_BANK_COL"):
         self.set_attributes(locals())
@@ -53,7 +53,7 @@ class LiteDRAMController(Module):
         # # #
 
         # Refresher --------------------------------------------------------------------------------
-        self.submodules.refresher = Refresher(self.settings)
+        self.submodules.refresher = self.settings.refresher_cls(self.settings)
 
         # Bank Machines ----------------------------------------------------------------------------
         bank_machines = []
