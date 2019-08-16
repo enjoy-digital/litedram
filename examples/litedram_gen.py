@@ -24,6 +24,8 @@ from litedram.frontend.axi import *
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
 
+import litedram.modules
+import litedram.phy
 
 def get_common_ios():
     return [
@@ -53,12 +55,11 @@ def get_common_ios():
         ("user_rst", 0, Pins(1))
     ]
 
-def get_dram_ios(core_config):
-    sdram_module = core_config["sdram_module"]
+def get_dram_ios(core_config, sdram_module):
     return [
         ("ddram", 0,
-            Subsignal("a", Pins(log2_int(core_config["sdram_module"].nrows))),
-            Subsignal("ba", Pins(log2_int(core_config["sdram_module"].nbanks))),
+            Subsignal("a", Pins(log2_int(sdram_module.nrows))),
+            Subsignal("ba", Pins(log2_int(sdram_module.nbanks))),
             Subsignal("ras_n", Pins(1)),
             Subsignal("cas_n", Pins(1)),
             Subsignal("we_n", Pins(1)),
@@ -216,10 +217,12 @@ class LiteDRAMCore(SoCSDRAM):
         # crg
         self.submodules.crg = LiteDRAMCRG(platform, core_config)
 
+        SdramModule = getattr(litedram.modules, core_config["sdram_module"])
         # sdram
-        platform.add_extension(get_dram_ios(core_config))
+        platform.add_extension(get_dram_ios(core_config, SdramModule))
         assert core_config["memtype"] in ["DDR2", "DDR3"]
-        self.submodules.ddrphy = core_config["sdram_phy"](
+        sdram_phy = getattr(litedram.phy, core_config["sdram_phy"])
+        self.submodules.ddrphy = sdram_phy(
             platform.request("ddram"),
             memtype=core_config["memtype"],
             nphases=4 if core_config["memtype"] == "DDR3" else 2,
@@ -232,7 +235,7 @@ class LiteDRAMCore(SoCSDRAM):
                 rtt_nom=core_config["rtt_nom"],
                 rtt_wr=core_config["rtt_wr"],
                 ron=core_config["ron"])
-        sdram_module = core_config["sdram_module"](sys_clk_freq,
+        sdram_module = SdramModule(sys_clk_freq,
             "1:4" if core_config["memtype"] == "DDR3" else "1:2")
         controller_settings = controller_settings=ControllerSettings(
             cmd_buffer_depth=core_config["cmd_buffer_depth"])
@@ -356,7 +359,9 @@ def main():
         print("missing config file")
         exit(1)
     exec(open(sys.argv[1]).read(), globals())
+    generate(core_config)
 
+def generate(core_config):
     # generate core
     platform = Platform()
     soc = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000)

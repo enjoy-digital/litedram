@@ -1,9 +1,6 @@
 # This file is Copyright (c) 2018-2019 Florent Kermarrec <florent@enjoy-digital.fr>
 # License: BSD
 
-from litedram.modules import MT41K128M16
-from litedram.phy import A7DDRPHY
-
 core_config = {
     # General ------------------------------------------------------------------
     "cpu":        "vexriscv",  # Type of CPU used for init/calib (vexriscv, lm32)
@@ -13,10 +10,10 @@ core_config = {
     # PHY ----------------------------------------------------------------------
     "cmd_delay":       0,           # Command additional delay (in taps)
     "cmd_latency":     0,           # Command additional latency
-    "sdram_module":    MT41K128M16, # SDRAM modules of the board or SO-DIMM
+    "sdram_module":   "MT41K128M16",# SDRAM modules of the board or SO-DIMM
     "sdram_module_nb": 2,           # Number of byte groups
     "sdram_rank_nb":   1,           # Number of ranks
-    "sdram_phy":       A7DDRPHY,    # Type of FPGA PHY
+    "sdram_phy":      "A7DDRPHY",   # Type of FPGA PHY
 
     # Electrical ---------------------------------------------------------------
     "rtt_nom": "60ohm",  # Nominal termination
