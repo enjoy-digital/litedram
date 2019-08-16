@@ -25,8 +25,8 @@ class _AddressSlicer:
 
 
 class BankMachine(Module):
-    def __init__(self, n, aw, address_align, nranks, settings):
-        self.req = req = Record(cmd_layout(aw))
+    def __init__(self, n, address_width, address_align, nranks, settings):
+        self.req = req = Record(cmd_layout(address_width))
         self.refresh_req = refresh_req = Signal()
         self.refresh_gnt = refresh_gnt = Signal()
 

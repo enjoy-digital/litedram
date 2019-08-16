@@ -7,10 +7,11 @@ from migen import *
 
 from litedram.common import *
 from litedram.phy import dfi
-from litedram.core.refresher import *
-from litedram.core.bankmachine import *
-from litedram.core.multiplexer import *
+from litedram.core.refresher import Refresher
+from litedram.core.bankmachine import BankMachine
+from litedram.core.multiplexer import Multiplexer
 
+# Settings -----------------------------------------------------------------------------------------
 
 class ControllerSettings(Settings):
     def __init__(self,
@@ -22,45 +23,57 @@ class ControllerSettings(Settings):
                  address_mapping="ROW_BANK_COL"):
         self.set_attributes(locals())
 
+# Controller ---------------------------------------------------------------------------------------
 
 class LiteDRAMController(Module):
     def __init__(self, phy_settings, geom_settings, timing_settings,
-                 controller_settings=ControllerSettings()):
+        controller_settings=ControllerSettings()):
         address_align = log2_int(burst_lengths[phy_settings.memtype])
-        self.settings = settings = controller_settings
-        self.settings.phy = phy_settings
-        self.settings.geom = geom_settings
+
+        # Settings ---------------------------------------------------------------------------------
+        self.settings        = controller_settings
+        self.settings.phy    = phy_settings
+        self.settings.geom   = geom_settings
         self.settings.timing = timing_settings
 
-        self.dfi = dfi.Interface(
-            geom_settings.addressbits,
-            geom_settings.bankbits,
-            phy_settings.nranks,
-            phy_settings.dfi_databits,
-            phy_settings.nphases)
+        nranks = phy_settings.nranks
+        nbanks = 2**geom_settings.bankbits
 
-        self.interface = interface = LiteDRAMInterface(address_align, settings)
+        # LiteDRAM Interface (User) ----------------------------------------------------------------
+        self.interface = interface = LiteDRAMInterface(address_align, self.settings)
+
+        # DFI Interface (Memory) -------------------------------------------------------------------
+        self.dfi = dfi.Interface(
+            addressbits = geom_settings.addressbits,
+            bankbits    = geom_settings.bankbits,
+            nranks      = phy_settings.nranks,
+            databits    = phy_settings.dfi_databits,
+            nphases     = phy_settings.nphases)
 
         # # #
 
-        # refresher
-        self.submodules.refresher = Refresher(settings)
+        # Refresher --------------------------------------------------------------------------------
+        self.submodules.refresher = Refresher(self.settings)
 
-        # bank machines
+        # Bank Machines ----------------------------------------------------------------------------
         bank_machines = []
-        for i in range(phy_settings.nranks*(2**geom_settings.bankbits)):
-            bank_machine = BankMachine(i,
-                interface.address_width,
-                address_align,
-                phy_settings.nranks,
-                settings)
+        for n in range(nranks*nbanks):
+            bank_machine = BankMachine(n,
+                address_width = interface.address_width,
+                address_align = address_align,
+                nranks        = nranks,
+                settings      = self.settings)
             bank_machines.append(bank_machine)
             self.submodules += bank_machine
-            self.comb += getattr(interface, "bank"+str(i)).connect(bank_machine.req)
+            self.comb += getattr(interface, "bank"+str(n)).connect(bank_machine.req)
 
-        # multiplexer
+        # Multiplexer ------------------------------------------------------------------------------
         self.submodules.multiplexer = Multiplexer(
-            settings, bank_machines, self.refresher, self.dfi, interface)
+            settings      = self.settings,
+            bank_machines = bank_machines,
+            refresher     = self.refresher,
+            dfi           = self.dfi,
+            interface     = interface)
 
     def get_csrs(self):
         return self.multiplexer.get_csrs()
