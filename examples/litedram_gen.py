@@ -6,6 +6,7 @@ import os
 import sys
 import math
 import struct
+import yaml
 
 from migen import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
@@ -14,12 +15,14 @@ from litex.build.generic_platform import *
 from litex.build.xilinx import XilinxPlatform
 
 from litex.soc.cores.clock import *
-from litedram.core.controller import ControllerSettings
 from litex.soc.integration.soc_sdram import *
 from litex.soc.integration.builder import *
 from litex.soc.interconnect import csr_bus
 from litex.soc.cores.uart import *
 
+from litedram import modules as litedram_modules
+from litedram import phy as litedram_phys
+from litedram.core.controller import ControllerSettings
 from litedram.frontend.axi import *
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
@@ -351,19 +354,28 @@ class LiteDRAMCore(SoCSDRAM):
 
 
 def main():
-    # get config
+    # Import YAML config file
     if len(sys.argv) < 2:
-        print("missing config file")
+        print("missing YAML config file")
         exit(1)
-    exec(open(sys.argv[1]).read(), globals())
+    core_config = yaml.load(open(sys.argv[1]).read(), Loader=yaml.Loader)
 
-    # generate core
+    # Convert YAML elements to Python/LiteX
+    for k, v in core_config.items():
+        if "clk_freq" in k:
+            core_config[k] = float(core_config[k])
+        if k == "sdram_module":
+            core_config[k] = getattr(litedram_modules, core_config[k])
+        if k == "sdram_phy":
+            core_config[k] = getattr(litedram_phys, core_config[k])
+
+    # Generate core
     platform = Platform()
     soc = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000)
     builder = Builder(soc, output_dir="build", compile_gateware=False)
     vns = builder.build(build_name="litedram_core", regular_comb=False)
 
-    # prepare core (could be improved)
+    # Prepare core (could be improved)
     def replace_in_file(filename, _from, _to):
         # Read in the file
         with open(filename, "r") as file :
