@@ -33,4 +33,9 @@ setup(
     ],
     packages=find_packages(exclude=("test*", "sim*", "doc*", "examples*")),
     include_package_data=True,
+    entry_points={
+        "console_scripts": [
+            "litedram_gen=litedram.gen:main",
+        ],
+    },
 )
