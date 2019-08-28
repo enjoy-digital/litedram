@@ -3,11 +3,28 @@
 # This file is Copyright (c) 2018-2019 Florent Kermarrec <florent@enjoy-digital.fr>
 # License: BSD
 
+"""
+LiteDRAM standalone core generator
+
+LiteDRAM aims to be directly used as a python package when the SoC is created using LiteX. However,
+for some use cases it could be interesting to generate a standalone verilog file of the core:
+- integration of the core in a SoC using a more traditional flow.
+- need to version/package the core.
+- avoid Migen/LiteX dependencies.
+- etc...
+
+The standalone core is generated from a YAML configuration file that allows the user to generate
+easily a custom configuration of the core.
+
+Current version of the generator is limited to Xilinx 7-Series FPGA for DDR2/DDR3 memories.
+"""
+
 import os
 import sys
 import math
 import struct
 import yaml
+import argparse
 
 from migen import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
@@ -355,11 +372,10 @@ class LiteDRAMCore(SoCSDRAM):
 
 
 def main():
-    # Import YAML config file
-    if len(sys.argv) < 2:
-        print("missing YAML config file")
-        exit(1)
-    core_config = yaml.load(open(sys.argv[1]).read(), Loader=yaml.Loader)
+    parser = argparse.ArgumentParser(description="LiteDRAM standalone core generator")
+    parser.add_argument("config", help="YAML config file")
+    args = parser.parse_args()
+    core_config = yaml.load(open(args.config).read(), Loader=yaml.Loader)
 
     # Convert YAML elements to Python/LiteX
     for k, v in core_config.items():
