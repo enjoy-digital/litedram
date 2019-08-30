@@ -191,6 +191,7 @@ class Refresher(Module):
             # Wait Sequencer and advertise Controller when done
             cmd.valid.eq(1),
             If(sequencer.done,
+                cmd.valid.eq(0),
                 cmd.last.eq(1),
                 NextState("IDLE")
             )
