@@ -8,7 +8,7 @@ import os
 def build_config(name):
     errors = 0
     os.system("rm -rf examples/build")
-    os.system("cd examples && litedram_gen {}.yml".format(name))
+    os.system("cd examples && python3 ../litedram/gen.py {}.yml".format(name))
     errors += not os.path.isfile("examples/build/gateware/litedram_core.v")
     os.system("rm -rf examples/build")
     return errors
