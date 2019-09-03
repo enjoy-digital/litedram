@@ -45,6 +45,7 @@ from litedram.frontend.axi import *
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
 
+# IOs/Interfaces -----------------------------------------------------------------------------------
 
 def get_common_ios():
     return [
@@ -178,6 +179,7 @@ class Platform(XilinxPlatform):
     def __init__(self):
         XilinxPlatform.__init__(self, "", io=[], toolchain="vivado")
 
+# CRG ----------------------------------------------------------------------------------------------
 
 class LiteDRAMCRG(Module):
     def __init__(self, platform, core_config):
@@ -213,6 +215,7 @@ class LiteDRAMCRG(Module):
         iodelay_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_iodelay)
 
+# Core ---------------------------------------------------------------------------------------------
 
 class LiteDRAMCoreControl(Module, AutoCSR):
     def __init__(self):
@@ -370,6 +373,7 @@ class LiteDRAMCore(SoCSDRAM):
         else:
             raise ValueError("Unsupported port type: {}".format(core_config["user_ports_type"]))
 
+# Build --------------------------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="LiteDRAM standalone core generator")
