@@ -36,12 +36,14 @@ from litex.soc.cores.clock import *
 from litex.soc.integration.soc_sdram import *
 from litex.soc.integration.builder import *
 from litex.soc.interconnect import csr_bus
+from litex.soc.interconnect import wishbone
 from litex.soc.cores.uart import *
 
 from litedram import modules as litedram_modules
 from litedram import phy as litedram_phys
 from litedram.core.controller import ControllerSettings
 from litedram.frontend.axi import *
+from litedram.frontend.wishbone import *
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
 
@@ -129,6 +131,20 @@ def get_native_user_port_ios(_id, aw, dw):
         ),
     ]
 
+def get_wishbone_user_port_ios(_id, aw, dw):
+    return [
+        ("user_port", _id,
+            Subsignal("adr",   Pins(aw)),
+            Subsignal("dat_w", Pins(dw)),
+            Subsignal("dat_r", Pins(dw)),
+            Subsignal("sel",   Pins(dw//8)),
+            Subsignal("cyc",   Pins(1)),
+            Subsignal("stb",   Pins(1)),
+            Subsignal("ack",   Pins(1)),
+            Subsignal("we",    Pins(1)),
+            Subsignal("err",   Pins(1)),
+        ),
+    ]
 
 def get_axi_user_port_ios(_id, aw, dw, iw):
     return [
@@ -315,6 +331,29 @@ class LiteDRAMCore(SoCSDRAM):
                     _user_port_io.rdata_valid.eq(user_port.rdata.valid),
                     user_port.rdata.ready.eq(_user_port_io.rdata_ready),
                     _user_port_io.rdata_data.eq(user_port.rdata.data),
+                ]
+        elif core_config["user_ports_type"] == "wishbone":
+            for i in range(core_config["user_ports_nb"]):
+                user_port = self.sdram.crossbar.get_port()
+                wb_port = wishbone.Interface(
+                    user_port.data_width,
+                    user_port.address_width)
+                wishbone2native = LiteDRAMWishbone2Native(wb_port, user_port)
+                self.submodules += wishbone2native
+                platform.add_extension(get_wishbone_user_port_ios(i,
+                        len(wb_port.adr),
+                        len(wb_port.dat_w)))
+                _wb_port_io = platform.request("user_port", i)
+                self.comb += [
+                    wb_port.adr.eq(_wb_port_io.adr),
+                    wb_port.dat_w.eq(_wb_port_io.dat_w),
+                    _wb_port_io.dat_r.eq(wb_port.dat_r),
+                    wb_port.sel.eq(_wb_port_io.sel),
+                    wb_port.cyc.eq(_wb_port_io.cyc),
+                    wb_port.stb.eq(_wb_port_io.stb),
+                    _wb_port_io.ack.eq(wb_port.ack),
+                    wb_port.we.eq(_wb_port_io.we),
+                    _wb_port_io.err.eq(wb_port.err),
                 ]
         elif core_config["user_ports_type"] == "axi":
             for i in range(core_config["user_ports_nb"]):
