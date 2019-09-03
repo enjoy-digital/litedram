@@ -11,10 +11,10 @@ class LiteDRAMWishbone2Native(Module):
 
         # # #
 
+        # Control
         self.submodules.fsm = fsm = FSM(reset_state="CMD")
         fsm.act("CMD",
             port.cmd.valid.eq(wishbone.cyc & wishbone.stb),
-            port.cmd.addr.eq(wishbone.adr),
             port.cmd.we.eq(wishbone.we),
             If(port.cmd.valid & port.cmd.ready,
                 If(wishbone.we,
@@ -26,8 +26,6 @@ class LiteDRAMWishbone2Native(Module):
         )
         fsm.act("WRITE",
             port.wdata.valid.eq(1),
-            port.wdata.we.eq(wishbone.sel),
-            port.wdata.data.eq(wishbone.dat_w),
             If(port.wdata.ready,
                 wishbone.ack.eq(1),
                 NextState("CMD")
@@ -36,11 +34,21 @@ class LiteDRAMWishbone2Native(Module):
         fsm.act("READ",
             port.rdata.ready.eq(1),
             If(port.rdata.valid,
-                wishbone.dat_r.eq(port.rdata.data),
                 wishbone.ack.eq(1),
                 NextState("CMD")
             )
         )
+
+        # Datapath
+        self.comb += [
+            # cmd
+            port.cmd.addr.eq(wishbone.adr),
+            # write
+            port.wdata.we.eq(wishbone.sel),
+            port.wdata.data.eq(wishbone.dat_w),
+            # read
+            wishbone.dat_r.eq(port.rdata.data),
+        ]
 
 
 class LiteDRAMWishbone2AXI(Module):
