@@ -11,39 +11,34 @@ class LiteDRAMWishbone2Native(Module):
 
         # # #
 
-        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
-        fsm.act("IDLE",
-            If(wishbone.cyc & wishbone.stb,
-                NextState("ISSUE-CMD")
-            )
-        )
-        fsm.act("ISSUE-CMD",
-            port.cmd.valid.eq(1),
+        self.submodules.fsm = fsm = FSM(reset_state="CMD")
+        fsm.act("CMD",
+            port.cmd.valid.eq(wishbone.cyc & wishbone.stb),
             port.cmd.addr.eq(wishbone.adr),
             port.cmd.we.eq(wishbone.we),
-            If(port.cmd.ready,
+            If(port.cmd.valid & port.cmd.ready,
                 If(wishbone.we,
-                    NextState("WRITE-DATA")
+                    NextState("WRITE")
                 ).Else(
-                    NextState("READ-DATA")
+                    NextState("READ")
                 )
             )
         )
-        fsm.act("WRITE-DATA",
+        fsm.act("WRITE",
             port.wdata.valid.eq(1),
             port.wdata.we.eq(wishbone.sel),
             port.wdata.data.eq(wishbone.dat_w),
             If(port.wdata.ready,
                 wishbone.ack.eq(1),
-                NextState("IDLE")
+                NextState("CMD")
             )
         )
-        fsm.act("READ-DATA",
+        fsm.act("READ",
             port.rdata.ready.eq(1),
             If(port.rdata.valid,
                 wishbone.dat_r.eq(port.rdata.data),
                 wishbone.ack.eq(1),
-                NextState("IDLE")
+                NextState("CMD")
             )
         )
 
