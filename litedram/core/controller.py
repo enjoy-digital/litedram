@@ -18,7 +18,7 @@ class ControllerSettings(Settings):
                  cmd_buffer_depth=8, cmd_buffer_buffered=False,
                  read_time=32, write_time=16,
                  with_bandwidth=False,
-                 with_refresh=True, refresher_cls=Refresher,
+                 with_refresh=True, refresher_cls=Refresher, refresher_zqcs_freq=1e0,
                  with_auto_precharge=True,
                  address_mapping="ROW_BANK_COL"):
         self.set_attributes(locals())
@@ -26,7 +26,7 @@ class ControllerSettings(Settings):
 # Controller ---------------------------------------------------------------------------------------
 
 class LiteDRAMController(Module):
-    def __init__(self, phy_settings, geom_settings, timing_settings,
+    def __init__(self, phy_settings, geom_settings, timing_settings, clk_freq,
         controller_settings=ControllerSettings()):
         address_align = log2_int(burst_lengths[phy_settings.memtype])
 
@@ -53,7 +53,7 @@ class LiteDRAMController(Module):
         # # #
 
         # Refresher --------------------------------------------------------------------------------
-        self.submodules.refresher = self.settings.refresher_cls(self.settings)
+        self.submodules.refresher = self.settings.refresher_cls(self.settings, clk_freq)
 
         # Bank Machines ----------------------------------------------------------------------------
         bank_machines = []

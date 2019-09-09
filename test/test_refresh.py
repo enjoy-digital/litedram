@@ -70,10 +70,12 @@ class TestRefresh(unittest.TestCase):
         class Obj: pass
         settings = Obj()
         settings.with_refresh = True
+        settings.refresher_zqcs_freq = 1e0
         settings.timing = Obj()
         settings.timing.tREFI = 64
         settings.timing.tRP   = 1
         settings.timing.tRFC  = 2
+        settings.timing.tZQCS = 64
         settings.geom = Obj()
         settings.geom.addressbits = 16
         settings.geom.bankbits    = 3
@@ -97,7 +99,7 @@ class TestRefresh(unittest.TestCase):
                     print(cmd_valid_gap)
                     dut.errors += 1
 
-        dut = Refresher(settings, n=n)
+        dut = Refresher(settings, n=n, clk_freq=100e6)
         run_simulation(dut, [generator(dut)])
         self.assertEqual(dut.errors, 0)
 
