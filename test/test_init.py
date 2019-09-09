@@ -12,7 +12,9 @@ from litedram.init import get_sdram_phy_c_header, get_sdram_phy_py_header
 
 def compare_with_reference(content, filename):
     write_to_file(filename, content)
-    return filecmp.cmp(filename, os.path.join("test", "reference", filename))
+    r = filecmp.cmp(filename, os.path.join("test", "reference", filename))
+    os.remove(filename)
+    return r
 
 
 class TestInit(unittest.TestCase):
