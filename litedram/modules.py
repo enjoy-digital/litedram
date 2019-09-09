@@ -375,6 +375,22 @@ class MT8JTF12864(SDRAMModule):
     speedgrade_timings["default"] = speedgrade_timings["1333"]
 
 
+class MT8KTF51264(SDRAMModule):
+    memtype = "DDR3"
+    # geometry
+    nbanks = 8
+    nrows  = 16384
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10))
+    speedgrade_timings = {
+        "800":  _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=13.91, tRFC=260, tFAW=(None, 50), tRAS=None),
+        "1066": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=86, tFAW=(None, 50), tRAS=None),
+        "1333": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=107, tFAW=(None, 45), tRAS=None),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1333"]
+
+
 class MT18KSF1G72HZ(SDRAMModule):
     memtype = "DDR3"
     # geometry
@@ -420,6 +436,7 @@ class MT16KTF1G64HZ(SDRAMModule):
         "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=13.125, tRFC=(280, None), tFAW=(None, 30), tRAS=None),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
+
 
 # DDR4 (Chips)
 class EDY4016A(SDRAMModule):
