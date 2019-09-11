@@ -66,11 +66,11 @@ class TestRefresh(unittest.TestCase):
         for i in range(1, 32):
             self.refresh_timer_test(i)
 
-    def refresher_test(self, n):
+    def refresher_test(self, postponing):
         class Obj: pass
         settings = Obj()
         settings.with_refresh = True
-        settings.refresher_zqcs_freq = 1e0
+        settings.refresh_zqcs_freq = 1e0
         settings.timing = Obj()
         settings.timing.tREFI = 64
         settings.timing.tRP   = 1
@@ -95,14 +95,14 @@ class TestRefresh(unittest.TestCase):
                 while (yield dut.cmd.valid) == 0:
                     cmd_valid_gap += 1
                     yield
-                if cmd_valid_gap != n*settings.timing.tREFI:
+                if cmd_valid_gap != postponing*settings.timing.tREFI:
                     print(cmd_valid_gap)
                     dut.errors += 1
 
-        dut = Refresher(settings, n=n, clk_freq=100e6)
+        dut = Refresher(settings, clk_freq=100e6, postponing=postponing)
         run_simulation(dut, [generator(dut)])
         self.assertEqual(dut.errors, 0)
 
     def test_refresher(self):
         for i in [1, 2, 4, 8]:
-            self.refresher_test(n=i)
+            self.refresher_test(postponing=i)

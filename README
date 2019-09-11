@@ -33,7 +33,7 @@ Core:
   - Fully pipelined, high performance.
   - Configurable commands depth on bankmachines.
   - Auto-Precharge.
-  - Periodic refresh/ZQ short calibration.
+  - Periodic refresh/ZQ short calibration (up to 8 postponed refreshes).
 Frontend:
   - Configurable crossbar (simply use crossbar.get_port() to add a new port!)
   - Ports arbitration transparent to the user.

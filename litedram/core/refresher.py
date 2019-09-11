@@ -72,7 +72,7 @@ class RefreshSequencer(Module):
 
     Sequence N refreshs to the DRAM.
     """
-    def __init__(self, cmd, trp, trfc, n=1):
+    def __init__(self, cmd, trp, trfc, postponing=1):
         self.start = Signal()
         self.done  = Signal()
 
@@ -81,7 +81,7 @@ class RefreshSequencer(Module):
         executer = RefreshExecuter(cmd, trp, trfc)
         self.submodules += executer
 
-        count = Signal(bits_for(n), reset=n-1)
+        count = Signal(bits_for(postponing), reset=postponing-1)
         self.sync += [
             If(self.start,
                 count.eq(count.reset)
@@ -124,20 +124,20 @@ class RefreshTimer(Module):
             self.count.eq(count)
         ]
 
-# RefreshAccumulator -------------------------------------------------------------------------------
+# RefreshPostponer -------------------------------------------------------------------------------
 
-class RefreshAccumulator(Module):
-    """Refresh Accumulator
+class RefreshPostponer(Module):
+    """Refresh Postponer
 
-    Accumulate N Refresh requests and generate a request when N is reached.
+    Postpone N Refresh requests and generate a request when N is reached.
     """
-    def __init__(self, n=1):
+    def __init__(self, postponing=1):
         self.req_i = Signal()
         self.req_o = Signal()
 
         # # #
 
-        count = Signal(bits_for(n), reset=n-1)
+        count = Signal(bits_for(postponing), reset=postponing-1)
         self.sync += [
             self.req_o.eq(0),
             If(self.req_i,
@@ -215,7 +215,8 @@ class Refresher(Module):
     transactions are done, the Refresher can execute the refresh Sequence and release the Controller.
 
     """
-    def __init__(self, settings, clk_freq, n=1):
+    def __init__(self, settings, clk_freq, zqcs_freq=1e0, postponing=1):
+        assert postponing <= 8
         abits  = settings.geom.addressbits
         babits = settings.geom.bankbits + log2_int(settings.phy.nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a=abits, ba=babits))
@@ -230,19 +231,19 @@ class Refresher(Module):
         self.submodules.timer = timer
         self.comb += timer.wait.eq(~timer.done)
 
-        # Refresh Accumulator ----------------------------------------------------------------------
-        accum = RefreshAccumulator(n=n)
-        self.submodules.accum = accum
-        self.comb += accum.req_i.eq(self.timer.done)
-        self.comb += wants_refresh.eq(accum.req_o)
+        # Refresh Postponer ------------------------------------------------------------------------
+        postponer = RefreshPostponer(postponing)
+        self.submodules.postponer = postponer
+        self.comb += postponer.req_i.eq(self.timer.done)
+        self.comb += wants_refresh.eq(postponer.req_o)
 
         # Refresh Sequencer ------------------------------------------------------------------------
-        sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, n=n)
+        sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
         self.submodules.sequencer = sequencer
 
         if settings.timing.tZQCS is not None:
             # ZQCS Timer ---------------------------------------------------------------------------
-            zqcs_timer = RefreshTimer(int(clk_freq/settings.refresher_zqcs_freq))
+            zqcs_timer = RefreshTimer(int(clk_freq/zqcs_freq))
             self.submodules.zqcs_timer = zqcs_timer
             self.comb += wants_zqcs.eq(zqcs_timer.done)
 
