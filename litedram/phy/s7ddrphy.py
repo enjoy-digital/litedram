@@ -80,7 +80,7 @@ class S7DDRPHY(Module, AutoCSR):
             write_latency=cwl_sys_latency
         )
 
-        self.dfi = Interface(addressbits, bankbits, nranks, 2*databits, 4)
+        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, 4)
 
         # # #
 
@@ -136,10 +136,10 @@ class S7DDRPHY(Module, AutoCSR):
                     i_OCE=1,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
-                    i_D1=self.dfi.phases[0].address[i], i_D2=self.dfi.phases[0].address[i],
-                    i_D3=self.dfi.phases[1].address[i], i_D4=self.dfi.phases[1].address[i],
-                    i_D5=self.dfi.phases[2].address[i], i_D6=self.dfi.phases[2].address[i],
-                    i_D7=self.dfi.phases[3].address[i], i_D8=self.dfi.phases[3].address[i]
+                    i_D1=dfi.phases[0].address[i], i_D2=dfi.phases[0].address[i],
+                    i_D3=dfi.phases[1].address[i], i_D4=dfi.phases[1].address[i],
+                    i_D5=dfi.phases[2].address[i], i_D6=dfi.phases[2].address[i],
+                    i_D7=dfi.phases[3].address[i], i_D8=dfi.phases[3].address[i]
                 )
             if with_odelay:
                 self.specials += \
@@ -167,10 +167,10 @@ class S7DDRPHY(Module, AutoCSR):
                     i_OCE=1,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
-                    i_D1=self.dfi.phases[0].bank[i], i_D2=self.dfi.phases[0].bank[i],
-                    i_D3=self.dfi.phases[1].bank[i], i_D4=self.dfi.phases[1].bank[i],
-                    i_D5=self.dfi.phases[2].bank[i], i_D6=self.dfi.phases[2].bank[i],
-                    i_D7=self.dfi.phases[3].bank[i], i_D8=self.dfi.phases[3].bank[i]
+                    i_D1=dfi.phases[0].bank[i], i_D2=dfi.phases[0].bank[i],
+                    i_D3=dfi.phases[1].bank[i], i_D4=dfi.phases[1].bank[i],
+                    i_D5=dfi.phases[2].bank[i], i_D6=dfi.phases[2].bank[i],
+                    i_D7=dfi.phases[3].bank[i], i_D8=dfi.phases[3].bank[i]
                 )
             if with_odelay:
                 self.specials += \
@@ -204,10 +204,10 @@ class S7DDRPHY(Module, AutoCSR):
                         i_OCE=1,
                         i_RST=ResetSignal(),
                         i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
-                        i_D1=getattr(self.dfi.phases[0], name)[i], i_D2=getattr(self.dfi.phases[0], name)[i],
-                        i_D3=getattr(self.dfi.phases[1], name)[i], i_D4=getattr(self.dfi.phases[1], name)[i],
-                        i_D5=getattr(self.dfi.phases[2], name)[i], i_D6=getattr(self.dfi.phases[2], name)[i],
-                        i_D7=getattr(self.dfi.phases[3], name)[i], i_D8=getattr(self.dfi.phases[3], name)[i]
+                        i_D1=getattr(dfi.phases[0], name)[i], i_D2=getattr(dfi.phases[0], name)[i],
+                        i_D3=getattr(dfi.phases[1], name)[i], i_D4=getattr(dfi.phases[1], name)[i],
+                        i_D5=getattr(dfi.phases[2], name)[i], i_D6=getattr(dfi.phases[2], name)[i],
+                        i_D7=getattr(dfi.phases[3], name)[i], i_D8=getattr(dfi.phases[3], name)[i]
                     )
                 if with_odelay:
                     self.specials += \
@@ -263,10 +263,10 @@ class S7DDRPHY(Module, AutoCSR):
                     i_OCE=1,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
-                    i_D1=self.dfi.phases[0].wrdata_mask[i], i_D2=self.dfi.phases[0].wrdata_mask[databits//8+i],
-                    i_D3=self.dfi.phases[1].wrdata_mask[i], i_D4=self.dfi.phases[1].wrdata_mask[databits//8+i],
-                    i_D5=self.dfi.phases[2].wrdata_mask[i], i_D6=self.dfi.phases[2].wrdata_mask[databits//8+i],
-                    i_D7=self.dfi.phases[3].wrdata_mask[i], i_D8=self.dfi.phases[3].wrdata_mask[databits//8+i]
+                    i_D1=dfi.phases[0].wrdata_mask[i], i_D2=dfi.phases[0].wrdata_mask[databits//8+i],
+                    i_D3=dfi.phases[1].wrdata_mask[i], i_D4=dfi.phases[1].wrdata_mask[databits//8+i],
+                    i_D5=dfi.phases[2].wrdata_mask[i], i_D6=dfi.phases[2].wrdata_mask[databits//8+i],
+                    i_D7=dfi.phases[3].wrdata_mask[i], i_D8=dfi.phases[3].wrdata_mask[databits//8+i]
                 )
             if with_odelay:
                 self.specials += \
@@ -342,10 +342,10 @@ class S7DDRPHY(Module, AutoCSR):
                     i_OCE=1, i_TCE=1,
                     i_RST=ResetSignal(),
                     i_CLK=ClockSignal(ddr_clk), i_CLKDIV=ClockSignal(),
-                    i_D1=self.dfi.phases[0].wrdata[i], i_D2=self.dfi.phases[0].wrdata[databits+i],
-                    i_D3=self.dfi.phases[1].wrdata[i], i_D4=self.dfi.phases[1].wrdata[databits+i],
-                    i_D5=self.dfi.phases[2].wrdata[i], i_D6=self.dfi.phases[2].wrdata[databits+i],
-                    i_D7=self.dfi.phases[3].wrdata[i], i_D8=self.dfi.phases[3].wrdata[databits+i],
+                    i_D1=dfi.phases[0].wrdata[i], i_D2=dfi.phases[0].wrdata[databits+i],
+                    i_D3=dfi.phases[1].wrdata[i], i_D4=dfi.phases[1].wrdata[databits+i],
+                    i_D5=dfi.phases[2].wrdata[i], i_D6=dfi.phases[2].wrdata[databits+i],
+                    i_D7=dfi.phases[3].wrdata[i], i_D8=dfi.phases[3].wrdata[databits+i],
                     i_T1=~oe_dq
                 )
             dq_i_data = Signal(8)
@@ -377,10 +377,10 @@ class S7DDRPHY(Module, AutoCSR):
                 )
             self.submodules += dq_bitslip
             self.comb += [
-                self.dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]), self.dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
-                self.dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]), self.dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
-                self.dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]), self.dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
-                self.dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]), self.dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7])
+                dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]), dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
+                dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]), dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
+                dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]), dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
+                dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]), dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7])
             ]
 
             if with_odelay:
@@ -423,21 +423,21 @@ class S7DDRPHY(Module, AutoCSR):
         #  cl_sys_latency cycles CAS
         #  2 cycles through ISERDESE2
         #  3 cycles through Bitslip
-        rddata_en = self.dfi.phases[self.settings.rdphase].rddata_en
+        rddata_en = dfi.phases[self.settings.rdphase].rddata_en
         for i in range(self.settings.read_latency-1):
             n_rddata_en = Signal()
             self.sync += n_rddata_en.eq(rddata_en)
             rddata_en = n_rddata_en
         if with_odelay:
             self.sync += [phase.rddata_valid.eq(rddata_en | self._wlevel_en.storage)
-                for phase in self.dfi.phases]
+                for phase in dfi.phases]
         else:
             self.sync += [phase.rddata_valid.eq(rddata_en)
-                for phase in self.dfi.phases]
+                for phase in dfi.phases]
 
         oe = Signal()
         last_wrdata_en = Signal(cwl_sys_latency+2)
-        wrphase = self.dfi.phases[self.settings.wrphase]
+        wrphase = dfi.phases[self.settings.wrphase]
         self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en[:-1]))
         self.comb += oe.eq(
             last_wrdata_en[cwl_sys_latency-1] |
