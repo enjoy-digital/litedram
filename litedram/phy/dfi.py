@@ -75,3 +75,21 @@ class Interface(Record):
 class Interconnect(Module):
     def __init__(self, master, slave):
         self.comb += master.connect(slave)
+
+
+class DDR4DFIMux(Module):
+    def __init__(self, dfi_i, dfi_o):
+        for i in range(len(dfi_i.phases)):
+            p_i = dfi_i.phases[i]
+            p_o = dfi_o.phases[i]
+            self.comb += [
+                p_i.connect(p_o),
+                If(~p_i.ras_n & p_i.cas_n & p_i.we_n,
+                   p_o.act_n.eq(0),
+                   p_o.we_n.eq(p_i.address[14]),
+                   p_o.cas_n.eq(p_i.address[15]),
+                   p_o.ras_n.eq(p_i.address[16])
+                ).Else(
+                    p_o.act_n.eq(1),
+                )
+            ]
