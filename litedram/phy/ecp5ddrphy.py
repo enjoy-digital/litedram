@@ -89,6 +89,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits = len(pads.dq)
         nphases = 2
+        assert databits%8 == 0
 
         # Init -------------------------------------------------------------------------------------
         self.submodules.init = ClockDomainsRenamer("init")(ECP5DDRPHYInit("sys2x"))
@@ -115,19 +116,19 @@ class ECP5DDRPHY(Module, AutoCSR):
         rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
         wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
         self.settings = PhySettings(
-            memtype=memtype,
-            databits=databits,
-            dfi_databits=4*databits,
-            nranks=nranks,
-            nphases=nphases,
-            rdphase=rdphase,
-            wrphase=wrphase,
-            rdcmdphase=rdcmdphase,
-            wrcmdphase=wrcmdphase,
-            cl=cl,
-            cwl=cwl,
-            read_latency=2 + cl_sys_latency + 2 + log2_int(4//nphases) + 6,
-            write_latency=cwl_sys_latency
+            memtype       = memtype,
+            databits      = databits,
+            dfi_databits  = 4*databits,
+            nranks        = nranks,
+            nphases       = nphases,
+            rdphase       = rdphase,
+            wrphase       = wrphase,
+            rdcmdphase    = rdcmdphase,
+            wrcmdphase    = wrcmdphase,
+            cl            = cl,
+            cwl           = cwl,
+            read_latency  = 2 + cl_sys_latency + 2 + log2_int(4//nphases) + 6,
+            write_latency = cwl_sys_latency
         )
 
         # DFI Interface ----------------------------------------------------------------------------

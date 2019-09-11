@@ -16,16 +16,18 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
+# Xilinx Series7 DDR2/DDR3 PHY ---------------------------------------------------------------------
 
 class S7DDRPHY(Module, AutoCSR):
     def __init__(self, pads, with_odelay, memtype="DDR3", nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6, cmd_latency=0):
         assert not (memtype == "DDR3" and nphases == 2) # FIXME: Needs BL8 support for nphases=2
-        tck = 2/(2*nphases*sys_clk_freq)
+        tck         = 2/(2*nphases*sys_clk_freq)
         addressbits = len(pads.a)
-        bankbits = len(pads.ba)
-        nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
-        databits = len(pads.dq)
-        nphases = nphases
+        bankbits    = len(pads.ba)
+        nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
+        databits    = len(pads.dq)
+        nphases     = nphases
+        assert databits%8 == 0
 
         iodelay_tap_average = {
             200e6: 78e-12,
@@ -33,6 +35,8 @@ class S7DDRPHY(Module, AutoCSR):
             400e6: 39e-12, # Only valid for -3 and -2/2E speed grades
         }
 
+        # Registers --------------------------------------------------------------------------------
+        self._dly_sel = CSRStorage(databits//8)
         half_sys8x_taps = math.floor(tck/(4*iodelay_tap_average[iodelay_clk_freq]))
         self._half_sys8x_taps = CSRStorage(5, reset=half_sys8x_taps)
 
@@ -45,46 +49,47 @@ class S7DDRPHY(Module, AutoCSR):
 
         self._dly_sel = CSRStorage(databits//8)
 
-        self._rdly_dq_rst = CSR()
-        self._rdly_dq_inc = CSR()
+        self._rdly_dq_rst         = CSR()
+        self._rdly_dq_inc         = CSR()
         self._rdly_dq_bitslip_rst = CSR()
-        self._rdly_dq_bitslip = CSR()
+        self._rdly_dq_bitslip     = CSR()
 
         if with_odelay:
-            self._wdly_dq_rst = CSR()
-            self._wdly_dq_inc = CSR()
+            self._wdly_dq_rst  = CSR()
+            self._wdly_dq_inc  = CSR()
             self._wdly_dqs_rst = CSR()
             self._wdly_dqs_inc = CSR()
 
-        # compute phy settings
-        cl, cwl = get_cl_cw(memtype, tck)
-        cl_sys_latency = get_sys_latency(nphases, cl)
-        cwl = cwl + cmd_latency
+        # PHY settings -----------------------------------------------------------------------------
+        cl, cwl         = get_cl_cw(memtype, tck)
+        cl_sys_latency  = get_sys_latency(nphases, cl)
+        cwl             = cwl + cmd_latency
         cwl_sys_latency = get_sys_latency(nphases, cwl)
 
         rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
         wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
         self.settings = PhySettings(
-            memtype=memtype,
-            databits=databits,
-            dfi_databits=2*databits,
-            nranks=nranks,
-            nphases=nphases,
-            rdphase=rdphase,
-            wrphase=wrphase,
-            rdcmdphase=rdcmdphase,
-            wrcmdphase=wrcmdphase,
-            cl=cl,
-            cwl=cwl - cmd_latency,
-            read_latency=2 + cl_sys_latency + 2 + 3,
-            write_latency=cwl_sys_latency
+            memtype       = memtype,
+            databits      = databits,
+            dfi_databits  = 2*databits,
+            nranks        = nranks,
+            nphases       = nphases,
+            rdphase       = rdphase,
+            wrphase       = wrphase,
+            rdcmdphase    = rdcmdphase,
+            wrcmdphase    = wrcmdphase,
+            cl            = cl,
+            cwl           = cwl - cmd_latency,
+            read_latency  = 2 + cl_sys_latency + 2 + 3,
+            write_latency = cwl_sys_latency
         )
 
+        # DFI Interface ----------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, 4)
 
         # # #
 
-        # Clock
+        # Clock ------------------------------------------------------------------------------------
         ddr_clk = "sys2x" if nphases == 2 else "sys4x"
         for i in range(len(pads.clk_p)):
             sd_clk_se_nodelay = Signal()
@@ -123,7 +128,7 @@ class S7DDRPHY(Module, AutoCSR):
                     o_OB=pads.clk_n[i]
                 )
 
-        # Addresses and commands
+        # Addresses and Commands -------------------------------------------------------------------
         for i in range(addressbits):
             address = Signal()
             self.specials += \
@@ -224,7 +229,7 @@ class S7DDRPHY(Module, AutoCSR):
                             o_ODATAIN=cmd, o_DATAOUT=getattr(pads, name)[i]
                         )
 
-        # DQS and DM
+        # DQS and DM -------------------------------------------------------------------------------
         oe_dqs = Signal()
         dqs_preamble = Signal()
         dqs_postamble = Signal()
@@ -324,7 +329,7 @@ class S7DDRPHY(Module, AutoCSR):
                     o_O=pads.dqs_p[i], o_OB=pads.dqs_n[i]
                 )
 
-        # DQ
+        # DQ ---------------------------------------------------------------------------------------
         oe_dq = Signal()
         for i in range(databits):
             dq_o_nodelay = Signal()
@@ -416,7 +421,7 @@ class S7DDRPHY(Module, AutoCSR):
                     io_IO=pads.dq[i]
                 )
 
-        # Flow control
+        # Flow control -----------------------------------------------------------------------------
         #
         # total read latency:
         #  2 cycles through OSERDESE2
@@ -468,15 +473,19 @@ class S7DDRPHY(Module, AutoCSR):
                             ~last_wrdata_en[dqs_sys_latency]),
         ]
 
+# Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 
 class V7DDRPHY(S7DDRPHY):
     def __init__(self, pads, **kwargs):
         S7DDRPHY.__init__(self, pads, with_odelay=True, **kwargs)
 
+# Xilinx Kintex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 
 class K7DDRPHY(S7DDRPHY):
     def __init__(self, pads, **kwargs):
         S7DDRPHY.__init__(self, pads, with_odelay=True, **kwargs)
+
+# Xilinx Artix7 (S7DDRPHY without odelay, sys2/4x_dqs generated in CRG with 90° phase vs sys2/4x) --
 
 class A7DDRPHY(S7DDRPHY):
     def __init__(self, pads, **kwargs):

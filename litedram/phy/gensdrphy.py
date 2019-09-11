@@ -21,35 +21,38 @@ from migen.fhdl.specials import Tristate
 from litedram.common import PhySettings
 from litedram.phy.dfi import *
 
+# Generic SDR PHY ----------------------------------------------------------------------------------
 
 class GENSDRPHY(Module):
     def __init__(self, pads, cl=2):
         addressbits = len(pads.a)
-        bankbits = len(pads.ba)
-        nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
-        databits = len(pads.dq)
+        bankbits    = len(pads.ba)
+        nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
+        databits    = len(pads.dq)
         assert databits%8 == 0
 
+        # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
-            memtype="SDR",
-            databits=databits,
-            dfi_databits=databits,
-            nranks=nranks,
-            nphases=1,
-            rdphase=0,
-            wrphase=0,
-            rdcmdphase=0,
-            wrcmdphase=0,
-            cl=cl,
-            read_latency=cl + 2,
-            write_latency=0
+            memtype       = "SDR",
+            databits      = databits,
+            dfi_databits  = databits,
+            nranks        = nranks,
+            nphases       = 1,
+            rdphase       = 0,
+            wrphase       = 0,
+            rdcmdphase    = 0,
+            wrcmdphase    = 0,
+            cl            = cl,
+            read_latency  = cl + 2,
+            write_latency = 0
         )
 
+        # DFI Interface ----------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, databits)
 
         # # #
 
-        # Command/address
+        # Addresses and Commands -------------------------------------------------------------------
         self.sync += [
             pads.a.eq(dfi.p0.address),
             pads.ba.eq(dfi.p0.bank),
@@ -62,7 +65,7 @@ class GENSDRPHY(Module):
         if hasattr(pads, "cs_n"):
             self.sync += pads.cs_n.eq(dfi.p0.cs_n)
 
-        # DQ/DQS/DM data
+        # DQ/DQS/DM Data ---------------------------------------------------------------------------
         dq_o = Signal(databits)
         dq_oe = Signal()
         dq_i = Signal(databits)
@@ -80,7 +83,7 @@ class GENSDRPHY(Module):
         self.sync.sys_ps += dq_in.eq(dq_i)
         self.sync += dfi.p0.rddata.eq(dq_in)
 
-        # DQ/DM control
+        # DQ/DM Control ----------------------------------------------------------------------------
         wrdata_en = Signal()
         self.sync += wrdata_en.eq(dfi.p0.wrdata_en)
         self.comb += dq_oe.eq(wrdata_en)

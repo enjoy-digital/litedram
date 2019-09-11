@@ -36,49 +36,53 @@ class S6HalfRateDDRPHY(Module):
         if memtype not in ["DDR", "LPDDR", "DDR2", "DDR3"]:
             raise NotImplementedError("S6HalfRateDDRPHY only supports DDR, LPDDR, DDR2 and DDR3")
         addressbits = len(pads.a)
-        bankbits = len(pads.ba)
-        nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
-        databits = len(pads.dq)
-        nphases = 2
+        bankbits    = len(pads.ba)
+        nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
+        databits    = len(pads.dq)
+        nphases     = 2
+        assert databits%8 == 0
 
+        # PHY settings -----------------------------------------------------------------------------
         if memtype == "DDR3":
             self.settings = PhySettings(
-                memtype="DDR3",
-                databits=databits,
-                dfi_databits=2*databits,
-                nranks=nranks,
-                nphases=nphases,
-                rdphase=0,
-                wrphase=1,
-                rdcmdphase=1,
-                wrcmdphase=0,
-                cl=5,
-                cwl=6,
-                read_latency=6,
-                write_latency=2
+                memtype       = "DDR3",
+                databits      = databits,
+                dfi_databits  = 2*databits,
+                nranks        = nranks,
+                nphases       = nphases,
+                rdphase       = 0,
+                wrphase       = 1,
+                rdcmdphase    = 1,
+                wrcmdphase    = 0,
+                cl            = 5,
+                cwl           = 6,
+                read_latency  = 6,
+                write_latency = 2
             )
         else:
             self.settings = PhySettings(
-                memtype=memtype,
-                databits=databits,
-                dfi_databits=2*databits,
-                nranks=nranks,
-                nphases=nphases,
-                rdphase=0,
-                wrphase=1,
-                rdcmdphase=1,
-                wrcmdphase=0,
-                cl=3,
-                read_latency=5,
-                write_latency=0
+                memtype       = memtype,
+                databits      = databits,
+                dfi_databits  = 2*databits,
+                nranks        = nranks,
+                nphases       = nphases,
+                rdphase       = 0,
+                wrphase       = 1,
+                rdcmdphase    = 1,
+                wrcmdphase    = 0,
+                cl            = 3,
+                read_latency  = 5,
+                write_latency = 0
             )
 
+        # DFI Interface ----------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
         self.clk4x_wr_strb = Signal()
         self.clk4x_rd_strb = Signal()
 
         # # #
 
+        # Clock ------------------------------------------------------------------------------------
         # sys_clk           : system clk, used for dfi interface
         # sdram_half_clk    : half rate sdram clk
         # sdram_full_wr_clk : full rate sdram write clk
@@ -91,9 +95,7 @@ class S6HalfRateDDRPHY(Module):
         sdram_full_wr_clk = ClockSignal("sdram_full_wr")
         sdram_full_rd_clk = ClockSignal("sdram_full_rd")
 
-        #
-        # Command/address
-        #
+        # Addresses and Commands -------------------------------------------------------------------
 
         # select active phase
         #             sys_clk   ----____----____
@@ -142,9 +144,7 @@ class S6HalfRateDDRPHY(Module):
           if hasattr(pads, name):
               sd_sdram_half += getattr(pads, name).eq(getattr(r_dfi[phase_sel], name))
 
-        #
-        # Bitslip
-        #
+        # Bitslip ----------------------------------------------------------------------------------
         bitslip_cnt = Signal(4)
         bitslip_inc = Signal()
 
@@ -157,9 +157,7 @@ class S6HalfRateDDRPHY(Module):
             )
         ]
 
-        #
-        # DQ/DQS/DM data
-        #
+        # DQ/DQS/DM data ---------------------------------------------------------------------------
         sdram_half_clk_n = Signal()
         self.comb += sdram_half_clk_n.eq(~sdram_half_clk)
 
@@ -365,10 +363,7 @@ class S6HalfRateDDRPHY(Module):
                 i_SHIFTIN4=0,
             )
 
-
-        #
-        # DQ/DQS/DM control
-        #
+        # DQ/DQS/DM control ------------------------------------------------------------------------
 
         # write
         wrdata_en = Signal()
@@ -411,35 +406,39 @@ class S6HalfRateDDRPHY(Module):
 
 class S6QuarterRateDDRPHY(Module):
     def __init__(self, pads, rd_bitslip, wr_bitslip, dqs_ddr_alignment):
-        half_rate_phy = S6HalfRateDDRPHY(pads, "DDR3", rd_bitslip, wr_bitslip, dqs_ddr_alignment)
-        self.submodules += ClockDomainsRenamer("sys2x")(half_rate_phy)
-
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
         nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits = len(pads.dq)
         nphases = 4
 
-        self.settings = PhySettings(
-            memtype="DDR3",
-            databits=databits,
-            dfi_databits=2*databits,
-            nranks=nranks,
-            nphases=nphases,
-            rdphase=0,
-            wrphase=1,
-            rdcmdphase=1,
-            wrcmdphase=0,
-            cl=5,
-            cwl=6,
-            read_latency=6//2+1,
-            write_latency=2//2
-        )
-
-        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
+        # HalfRate PHY -----------------------------------------------------------------------------
+        half_rate_phy = S6HalfRateDDRPHY(pads, "DDR3", rd_bitslip, wr_bitslip, dqs_ddr_alignment)
+        self.submodules += ClockDomainsRenamer("sys2x")(half_rate_phy)
         self.clk8x_wr_strb = half_rate_phy.clk4x_wr_strb
         self.clk8x_rd_strb = half_rate_phy.clk4x_rd_strb
 
+        # PHY settings -----------------------------------------------------------------------------
+        self.settings = PhySettings(
+            memtype       = "DDR3",
+            databits      = databits,
+            dfi_databits  = 2*databits,
+            nranks        = nranks,
+            nphases       = nphases,
+            rdphase       = 0,
+            wrphase       = 1,
+            rdcmdphase    = 1,
+            wrcmdphase    = 0,
+            cl            = 5,
+            cwl           = 6,
+            read_latency  = 6//2+1,
+            write_latency = 2//2
+        )
+
+        # DFI Interface ----------------------------------------------------------------------------
+        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
+
+        # Clock ------------------------------------------------------------------------------------
         # sys_clk      : system clk, used for dfi interface
         # sys2x_clk    : 2x system clk
         sd_sys = getattr(self.sync, "sys")
@@ -463,7 +462,7 @@ class S6QuarterRateDDRPHY(Module):
             phase_sys2x.eq(~phase_sel)
         ]
 
-        # DFI adaptation
+        # DFI adaptation ---------------------------------------------------------------------------
 
         # Commands and writes
         dfi_omit = set(["rddata", "rddata_valid", "wrdata_en"])
