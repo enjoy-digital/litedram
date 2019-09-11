@@ -6,40 +6,14 @@
 # DDR4: 1600 MT/s
 
 import math
-from collections import OrderedDict
 
 from migen import *
 from migen.genlib.misc import BitSlip, WaitTimer
 
 from litex.soc.interconnect.csr import *
 
-from litedram.common import PhySettings
+from litedram.common import *
 from litedram.phy.dfi import *
-
-
-def get_cl_cw(memtype, tck):
-    f_to_cl_cwl = OrderedDict()
-    if memtype == "DDR3":
-        f_to_cl_cwl[800e6]  = ( 6, 5)
-        f_to_cl_cwl[1066e6] = ( 7, 6)
-        f_to_cl_cwl[1333e6] = (10, 7)
-        f_to_cl_cwl[1600e6] = (11, 8)
-    elif memtype == "DDR4":
-        f_to_cl_cwl[1600e6] = (11,  9)
-    else:
-        raise ValueError
-    for f, (cl, cwl) in f_to_cl_cwl.items():
-        if tck >= 2/f:
-            return cl, cwl
-    raise ValueError
-
-def get_sys_latency(nphases, cas_latency):
-    return math.ceil(cas_latency/nphases)
-
-def get_sys_phases(nphases, sys_latency, cas_latency):
-    dat_phase = sys_latency*nphases - cas_latency
-    cmd_phase = (dat_phase - 1)%nphases
-    return cmd_phase, dat_phase
 
 
 class DDR4DFIMux(Module):

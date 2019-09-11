@@ -3,13 +3,16 @@
 # This file is Copyright (c) 2018 bunnie <bunnie@kosagi.com>
 # License: BSD
 
+import math
 from functools import reduce
 from operator import add
+from collections import OrderedDict
 
 from migen import *
 
 from litex.soc.interconnect import stream
 
+# Helpers ------------------------------------------------------------------------------------------
 
 burst_lengths = {
     "SDR":   1,
@@ -20,7 +23,37 @@ burst_lengths = {
     "DDR4":  8
 }
 
-# Settings ---------------------------------------------------------------------
+def get_cl_cw(memtype, tck):
+    f_to_cl_cwl = OrderedDict()
+    if memtype == "DDR2":
+        f_to_cl_cwl[400e6]  = (3, 2)
+        f_to_cl_cwl[533e6]  = (4, 3)
+        f_to_cl_cwl[677e6]  = (5, 4)
+        f_to_cl_cwl[800e6]  = (6, 5)
+        f_to_cl_cwl[1066e6] = (7, 5)
+    elif memtype == "DDR3":
+        f_to_cl_cwl[800e6]  = ( 6, 5)
+        f_to_cl_cwl[1066e6] = ( 7, 6)
+        f_to_cl_cwl[1333e6] = (10, 7)
+        f_to_cl_cwl[1600e6] = (11, 8)
+    elif memtype == "DDR4":
+        f_to_cl_cwl[1600e6] = (11,  9)
+    else:
+        raise ValueError
+    for f, (cl, cwl) in f_to_cl_cwl.items():
+        if tck >= 2/f:
+            return cl, cwl
+    raise ValueError
+
+def get_sys_latency(nphases, cas_latency):
+    return math.ceil(cas_latency/nphases)
+
+def get_sys_phases(nphases, sys_latency, cas_latency):
+    dat_phase = sys_latency*nphases - cas_latency
+    cmd_phase = (dat_phase - 1)%nphases
+    return cmd_phase, dat_phase
+
+# Settings -----------------------------------------------------------------------------------------
 
 class Settings:
     def set_attributes(self, attributes):
@@ -56,7 +89,7 @@ class TimingSettings(Settings):
     def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD, tRC, tRAS, tZQCS):
         self.set_attributes(locals())
 
-# Layouts/Interface ------------------------------------------------------------
+# Layouts/Interface --------------------------------------------------------------------------------
 
 def cmd_layout(address_width):
     return [
@@ -123,7 +156,7 @@ class LiteDRAMInterface(Record):
         layout += data_layout(self.data_width)
         Record.__init__(self, layout)
 
-# Ports ------------------------------------------------------------------------
+# Ports --------------------------------------------------------------------------------------------
 
 class LiteDRAMNativePort(Settings):
     def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0):
@@ -167,7 +200,7 @@ class LiteDRAMNativeReadPort(LiteDRAMNativePort):
         LiteDRAMNativePort.__init__(self, "read", *args, **kwargs)
 
 
-# Timing Controllers -----------------------------------------------------------
+# Timing Controllers -------------------------------------------------------------------------------
 
 class tXXDController(Module):
     def __init__(self, txxd):

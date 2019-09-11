@@ -7,44 +7,15 @@
 # DDR3: 800, 1066, 1333 and 1600 MT/s
 
 import math
-from collections import OrderedDict
 
 from migen import *
 from migen.genlib.misc import BitSlip
 
 from litex.soc.interconnect.csr import *
 
-from litedram.common import PhySettings
+from litedram.common import *
 from litedram.phy.dfi import *
 
-
-def get_cl_cw(memtype, tck):
-    f_to_cl_cwl = OrderedDict()
-    if memtype == "DDR2":
-        f_to_cl_cwl[400e6]  = (3, 2)
-        f_to_cl_cwl[533e6]  = (4, 3)
-        f_to_cl_cwl[677e6]  = (5, 4)
-        f_to_cl_cwl[800e6]  = (6, 5)
-        f_to_cl_cwl[1066e6] = (7, 5)
-    elif memtype == "DDR3":
-        f_to_cl_cwl[800e6]  = ( 6, 5)
-        f_to_cl_cwl[1066e6] = ( 7, 6)
-        f_to_cl_cwl[1333e6] = (10, 7)
-        f_to_cl_cwl[1600e6] = (11, 8)
-    else:
-        raise ValueError
-    for f, (cl, cwl) in f_to_cl_cwl.items():
-        if tck >= 2/f:
-            return cl, cwl
-    raise ValueError
-
-def get_sys_latency(nphases, cas_latency):
-    return math.ceil(cas_latency/nphases)
-
-def get_sys_phases(nphases, sys_latency, cas_latency):
-    dat_phase = sys_latency*nphases - cas_latency
-    cmd_phase = (dat_phase - 1)%nphases
-    return cmd_phase, dat_phase
 
 class S7DDRPHY(Module, AutoCSR):
     def __init__(self, pads, with_odelay, memtype="DDR3", nphases=4, sys_clk_freq=100e6, iodelay_clk_freq=200e6, cmd_latency=0):

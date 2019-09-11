@@ -6,7 +6,6 @@
 # DDR3: 800 MT/s
 
 import math
-from collections import OrderedDict
 
 from migen import *
 from migen.genlib.misc import timeline, BitSlip
@@ -16,29 +15,8 @@ from migen.genlib.misc import WaitTimer
 
 from litex.soc.interconnect.csr import *
 
-from litedram.common import PhySettings
+from litedram.common import *
 from litedram.phy.dfi import *
-
-# Helpers ------------------------------------------------------------------------------------------
-
-def get_cl_cw(memtype, tck):
-    f_to_cl_cwl = OrderedDict()
-    if memtype == "DDR3":
-        f_to_cl_cwl[800e6]  = (6, 5)
-    else:
-        raise ValueError
-    for f, (cl, cwl) in f_to_cl_cwl.items():
-        if tck >= 2/f:
-            return cl, cwl
-    raise ValueError
-
-def get_sys_latency(nphases, cas_latency):
-    return math.ceil(cas_latency/nphases)
-
-def get_sys_phases(nphases, sys_latency, cas_latency):
-    dat_phase = sys_latency*nphases - cas_latency
-    cmd_phase = (dat_phase - 1)%nphases
-    return cmd_phase, dat_phase
 
 # Lattice ECP5 DDR PHY Initialization --------------------------------------------------------------
 
