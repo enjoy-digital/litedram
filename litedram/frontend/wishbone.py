@@ -8,6 +8,7 @@ from migen import *
 
 class LiteDRAMWishbone2Native(Module):
     def __init__(self, wishbone, port):
+        assert len(wishbone.dat_w) == len(port.wdata.data)
 
         # # #
 
@@ -53,6 +54,7 @@ class LiteDRAMWishbone2Native(Module):
 
 class LiteDRAMWishbone2AXI(Module):
     def __init__(self, wishbone, port):
+        assert len(wishbone.dat_w) == len(port.w.data)
 
         # # #
 
