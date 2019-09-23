@@ -248,10 +248,19 @@ class LiteDRAMCore(SoCSDRAM):
     def __init__(self, platform, core_config, **kwargs):
         platform.add_extension(get_common_ios())
         sys_clk_freq = core_config["sys_clk_freq"]
-        csr_align = core_config.get("csr_align", 32)
+        cpu_type     = core_config["cpu"]
+        csr_align    = core_config.get("csr_align", 32)
+        if cpu_type == "None":
+            kwargs["integrated_rom_size"]  = 0
+            kwargs["integrated_sram_size"] = 0
+            kwargs["l2_size"]              = 0
+            kwargs["with_uart"]            = False
+            kwargs["with_timer"]           = False
+            kwargs["with_ctrl"]            = False
+        else:
+           kwargs["l2_size"] = 0
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
-            cpu_type=core_config["cpu"],
-            l2_size=16*core_config["sdram_module_nb"],
+            cpu_type=cpu_type,
             csr_alignment=csr_align,
             **kwargs)
 
