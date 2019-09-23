@@ -258,7 +258,7 @@ class LiteDRAMCore(SoCSDRAM):
             kwargs["with_uart"]            = False
             kwargs["with_timer"]           = False
             kwargs["with_ctrl"]            = False
-            kwargs["with_wishbone"]        = (cpu_type is None)
+            kwargs["with_wishbone"]        = (cpu_type != None)
         else:
            kwargs["l2_size"] = 0
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
