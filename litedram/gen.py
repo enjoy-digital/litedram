@@ -248,9 +248,11 @@ class LiteDRAMCore(SoCSDRAM):
     def __init__(self, platform, core_config, **kwargs):
         platform.add_extension(get_common_ios())
         sys_clk_freq = core_config["sys_clk_freq"]
+        csr_align = core_config.get("csr_port_align", "32")
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
             cpu_type=core_config["cpu"],
             l2_size=16*core_config["sdram_module_nb"],
+            csr_alignment=csr_align,
             **kwargs)
 
         # crg
@@ -303,6 +305,9 @@ class LiteDRAMCore(SoCSDRAM):
                 csr_port.dat_w.eq(_csr_port_io.dat_w),
                 _csr_port_io.dat_r.eq(csr_port.dat_r),
             ]
+            if self.cpu_type == None:
+                csr_base = core_config.get("csr_base", 0)
+                self.shadow_base = csr_base;
 
         # user port
         self.comb += [
@@ -450,9 +455,10 @@ def main():
         with open(filename, 'w') as file:
             file.write(filedata)
 
-    init_filename = "mem.init"
-    os.system("mv build/gateware/{} build/gateware/litedram_core.init".format(init_filename))
-    replace_in_file("build/gateware/litedram_core.v", init_filename, "litedram_core.init")
+    if soc.cpu_type is not None:
+        init_filename = "mem.init"
+        os.system("mv build/gateware/{} build/gateware/litedram_core.init".format(init_filename))
+        replace_in_file("build/gateware/litedram_core.v", init_filename, "litedram_core.init")
 
 if __name__ == "__main__":
     main()
