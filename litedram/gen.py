@@ -249,14 +249,16 @@ class LiteDRAMCore(SoCSDRAM):
         platform.add_extension(get_common_ios())
         sys_clk_freq = core_config["sys_clk_freq"]
         cpu_type     = core_config["cpu"]
+        csr_expose   = core_config.get("csr_expose", False)
         csr_align    = core_config.get("csr_align", 32)
-        if cpu_type == "None":
+        if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
             kwargs["l2_size"]              = 0
             kwargs["with_uart"]            = False
             kwargs["with_timer"]           = False
             kwargs["with_ctrl"]            = False
+            kwargs["with_wishbone"]        = (cpu_type is None)
         else:
            kwargs["l2_size"] = 0
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
@@ -300,7 +302,7 @@ class LiteDRAMCore(SoCSDRAM):
         ]
 
         # CSR port
-        if core_config.get("csr_expose", "no") == "yes":
+        if csr_expose:
             csr_port = csr_bus.Interface(
                 address_width=self.csr_address_width,
                 data_width=self.csr_data_width)
@@ -438,6 +440,10 @@ def main():
 
     # Convert YAML elements to Python/LiteX
     for k, v in core_config.items():
+        replaces = {"False": False, "True": True, "None": None}
+        for r in replaces.keys():
+            if v == r:
+                core_config[k] = replaces[r]
         if "clk_freq" in k:
             core_config[k] = float(core_config[k])
         if k == "sdram_module":
