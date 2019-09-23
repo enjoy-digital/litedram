@@ -248,7 +248,7 @@ class LiteDRAMCore(SoCSDRAM):
     def __init__(self, platform, core_config, **kwargs):
         platform.add_extension(get_common_ios())
         sys_clk_freq = core_config["sys_clk_freq"]
-        csr_align = core_config.get("csr_port_align", "32")
+        csr_align = core_config.get("csr_port_align", 32)
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
             cpu_type=core_config["cpu"],
             l2_size=16*core_config["sdram_module_nb"],
