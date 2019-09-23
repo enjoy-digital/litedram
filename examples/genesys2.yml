@@ -34,5 +34,6 @@
     "user_ports_id_width": 32,    # AXI identifier width
 
     # CSR Port -----------------------------------------------------------------
-    "expose_csr_port": "no", # expose access to CSR (I/O) ports
+    "csr_expose": "no", # Expose CSR bus as I/Os
+    "csr_align" : 32,   # CSR alignment
 }
