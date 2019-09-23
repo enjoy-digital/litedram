@@ -290,7 +290,9 @@ class LiteDRAMCore(SoCSDRAM):
 
         # CSR port
         if core_config.get("expose_csr_port", "no") == "yes":
-            csr_port = csr_bus.Interface(self.csr_address_width, self.csr_data_width)
+            csr_port = csr_bus.Interface(
+                address_width=self.csr_address_width,
+                data_width=self.csr_data_width)
             self.add_csr_master(csr_port)
             platform.add_extension(get_csr_ios(self.csr_address_width,
                                                self.csr_data_width))
