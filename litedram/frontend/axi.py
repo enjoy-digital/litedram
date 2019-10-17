@@ -30,7 +30,7 @@ class LiteDRAMAXIPort(AXIInterface):
 
 
 class LiteDRAMAXI2NativeW(Module):
-    def __init__(self, axi, port, buffer_depth):
+    def __init__(self, axi, port, buffer_depth, base_address):
         self.cmd_request = Signal()
         self.cmd_grant = Signal()
 
@@ -78,7 +78,7 @@ class LiteDRAMAXI2NativeW(Module):
             If(self.cmd_request & self.cmd_grant,
                 port.cmd.valid.eq(1),
                 port.cmd.we.eq(1),
-                port.cmd.addr.eq(aw.addr >> ashift),
+                port.cmd.addr.eq((aw.addr - base_address) >> ashift),
                 aw.ready.eq(port.cmd.ready),
                 axi.w.connect(w_buffer.sink, omit={"valid", "ready"}),
                 If(port.cmd.ready,
@@ -96,7 +96,7 @@ class LiteDRAMAXI2NativeW(Module):
 
 
 class LiteDRAMAXI2NativeR(Module):
-    def __init__(self, axi, port, buffer_depth):
+    def __init__(self, axi, port, buffer_depth, base_address):
         self.cmd_request = Signal()
         self.cmd_grant = Signal()
 
@@ -156,7 +156,7 @@ class LiteDRAMAXI2NativeR(Module):
                 port.cmd.valid.eq(ar.valid & can_read),
                 ar.ready.eq(port.cmd.ready & can_read),
                 port.cmd.we.eq(0),
-                port.cmd.addr.eq(ar.addr >> ashift)
+                port.cmd.addr.eq((ar.addr - base_address) >> ashift)
             )
         ]
 
@@ -169,15 +169,15 @@ class LiteDRAMAXI2NativeR(Module):
 
 
 class LiteDRAMAXI2Native(Module):
-    def __init__(self, axi, port, w_buffer_depth=16, r_buffer_depth=16):
+    def __init__(self, axi, port, w_buffer_depth=16, r_buffer_depth=16, base_address=0x00000000):
 
         # # #
 
         # Write path
-        self.submodules.write = LiteDRAMAXI2NativeW(axi, port, w_buffer_depth)
+        self.submodules.write = LiteDRAMAXI2NativeW(axi, port, w_buffer_depth, base_address)
 
         # Read path
-        self.submodules.read = LiteDRAMAXI2NativeR(axi, port, r_buffer_depth)
+        self.submodules.read = LiteDRAMAXI2NativeR(axi, port, r_buffer_depth, base_address)
 
         # Write / Read arbitration
         arbiter = RoundRobin(2, SP_CE)
