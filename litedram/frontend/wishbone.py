@@ -7,10 +7,12 @@ from migen import *
 
 
 class LiteDRAMWishbone2Native(Module):
-    def __init__(self, wishbone, port):
+    def __init__(self, wishbone, port, base_address=0x00000000):
         assert len(wishbone.dat_w) == len(port.wdata.data)
 
         # # #
+
+        adr_offset = base_address >> log2_int(port.data_width//8)
 
         # Control
         self.submodules.fsm = fsm = FSM(reset_state="CMD")
@@ -43,7 +45,7 @@ class LiteDRAMWishbone2Native(Module):
         # Datapath
         self.comb += [
             # cmd
-            port.cmd.addr.eq(wishbone.adr),
+            port.cmd.addr.eq(wishbone.adr - adr_offset),
             # write
             port.wdata.we.eq(wishbone.sel),
             port.wdata.data.eq(wishbone.dat_w),
