@@ -32,6 +32,7 @@ class LiteDRAMAXIPort(AXIInterface):
 class LiteDRAMAXI2NativeW(Module):
     def __init__(self, axi, port, buffer_depth, base_address):
         assert axi.address_width >= log2_int(base_address)
+        assert axi.data_width == port.data_width
         self.cmd_request = Signal()
         self.cmd_grant = Signal()
 
@@ -99,6 +100,7 @@ class LiteDRAMAXI2NativeW(Module):
 class LiteDRAMAXI2NativeR(Module):
     def __init__(self, axi, port, buffer_depth, base_address):
         assert axi.address_width >= log2_int(base_address)
+        assert axi.data_width == port.data_width
         self.cmd_request = Signal()
         self.cmd_grant = Signal()
 
