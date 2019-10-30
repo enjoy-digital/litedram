@@ -75,7 +75,7 @@ def get_lpddr_phy_init_sequence(phy_settings, timing_settings):
         ("Load Mode Register / CL={0:d}, BL={1:d}".format(cl, bl), mr, 0, cmds["MODE_REGISTER"], 200)
     ]
 
-    return init_sequence, mr1
+    return init_sequence, None
 
 # DDR2 ---------------------------------------------------------------------------------------------
 def get_ddr2_phy_init_sequence(phy_settings, timing_settings):
