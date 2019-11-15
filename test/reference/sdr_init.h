@@ -24,12 +24,12 @@ __attribute__((unused)) static void command_p0(int cmd)
 
 #define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE
 
-const unsigned long sdram_dfii_pix_wrdata_addr[1] = {
-    CSR_SDRAM_DFII_PI0_WRDATA_ADDR
+const unsigned long sdram_dfii_pix_wrdata_addr[DFII_NPHASES] = {
+	CSR_SDRAM_DFII_PI0_WRDATA_ADDR
 };
 
-const unsigned long sdram_dfii_pix_rddata_addr[1] = {
-    CSR_SDRAM_DFII_PI0_RDDATA_ADDR
+const unsigned long sdram_dfii_pix_rddata_addr[DFII_NPHASES] = {
+	CSR_SDRAM_DFII_PI0_RDDATA_ADDR
 };
 
 static void init_sequence(void)
