@@ -416,19 +416,19 @@ __attribute__((unused)) static void command_p{n}(int cmd)
     for n in range(nphases):
         sdram_dfii_pix_wrdata_addr.append("CSR_SDRAM_DFII_PI{n}_WRDATA_ADDR".format(n=n))
     r += """
-const unsigned long sdram_dfii_pix_wrdata_addr[{n}] = {{
-    {sdram_dfii_pix_wrdata_addr}
+const unsigned long sdram_dfii_pix_wrdata_addr[DFII_NPHASES] = {{
+\t{sdram_dfii_pix_wrdata_addr}
 }};
-""".format(n=nphases, sdram_dfii_pix_wrdata_addr=",\n\t".join(sdram_dfii_pix_wrdata_addr))
+""".format(sdram_dfii_pix_wrdata_addr=",\n\t".join(sdram_dfii_pix_wrdata_addr))
 
     sdram_dfii_pix_rddata_addr = []
     for n in range(nphases):
         sdram_dfii_pix_rddata_addr.append("CSR_SDRAM_DFII_PI{n}_RDDATA_ADDR".format(n=n))
     r += """
-const unsigned long sdram_dfii_pix_rddata_addr[{n}] = {{
-    {sdram_dfii_pix_rddata_addr}
+const unsigned long sdram_dfii_pix_rddata_addr[DFII_NPHASES] = {{
+\t{sdram_dfii_pix_rddata_addr}
 }};
-""".format(n=nphases, sdram_dfii_pix_rddata_addr=",\n\t".join(sdram_dfii_pix_rddata_addr))
+""".format(sdram_dfii_pix_rddata_addr=",\n\t".join(sdram_dfii_pix_rddata_addr))
     r += "\n"
 
     init_sequence, mr1 = get_sdram_phy_init_sequence(phy_settings, timing_settings)
