@@ -18,6 +18,7 @@ from litedram.common import LiteDRAMNativePort
 from litedram.frontend.axi import LiteDRAMAXIPort
 from litedram.frontend.dma import LiteDRAMDMAWriter, LiteDRAMDMAReader
 
+# LFSR ---------------------------------------------------------------------------------------------
 
 class LFSR(Module):
     """Linear-Feedback Shift Register to generate a pseudo-random sequence.
@@ -41,7 +42,7 @@ class LFSR(Module):
 
         # # #
 
-        state = Signal(n_state)
+        state  = Signal(n_state)
         curval = [state[i] for i in range(n_state)]
         curval += [0]*(n_out - n_state)
         for i in range(n_out):
@@ -54,6 +55,7 @@ class LFSR(Module):
             self.o.eq(Cat(*curval))
         ]
 
+# Counter ------------------------------------------------------------------------------------------
 
 class Counter(Module):
     """Simple incremental counter.
@@ -75,6 +77,7 @@ class Counter(Module):
 
         self.sync += self.o.eq(self.o + 1)
 
+# Generator ----------------------------------------------------------------------------------------
 
 @CEInserter()
 class Generator(Module):
@@ -99,7 +102,7 @@ class Generator(Module):
 
         # # #
 
-        lfsr = LFSR(n_out, n_state, taps)
+        lfsr  = LFSR(n_out, n_state, taps)
         count = Counter(n_out)
         self.submodules += lfsr, count
 
@@ -122,32 +125,34 @@ def get_ashift_awidth(dram_port):
         raise NotImplementedError
     return ashift, awidth
 
+# _LiteDRAMBISTGenerator ---------------------------------------------------------------------------
 
 @ResetInserter()
 class _LiteDRAMBISTGenerator(Module):
     def __init__(self, dram_port):
         ashift, awidth = get_ashift_awidth(dram_port)
-        self.start = Signal()
-        self.done = Signal()
-        self.base = Signal(awidth)
+        self.start  = Signal()
+        self.done   = Signal()
+        self.base   = Signal(awidth)
         self.length = Signal(awidth)
         self.random = Signal()
-        self.ticks = Signal(32)
+        self.ticks  = Signal(32)
 
         # # #
 
-        # data / address generators
+        # Data / Address generators ----------------------------------------------------------------
         data_gen = Generator(31, n_state=31, taps=[27, 30]) # PRBS31
         addr_gen = CEInserter()(Counter(awidth))
         self.submodules += data_gen, addr_gen
         self.comb += data_gen.random_enable.eq(self.random)
 
-        # dma
+        # DMA --------------------------------------------------------------------------------------
         dma = LiteDRAMDMAWriter(dram_port)
         self.submodules += dma
 
         cmd_counter = Signal(dram_port.address_width, reset_less=True)
 
+        # Data / Address FSM -----------------------------------------------------------------------
         fsm = FSM(reset_state="IDLE")
         self.submodules += fsm
         fsm.act("IDLE",
@@ -180,6 +185,7 @@ class _LiteDRAMBISTGenerator(Module):
             raise NotImplementedError
         self.comb += dma.sink.data.eq(data_gen.o)
 
+# LiteDRAMBISTGenerator ----------------------------------------------------------------------------
 
 class LiteDRAMBISTGenerator(Module, AutoCSR):
     """DRAM memory pattern generator.
@@ -209,13 +215,13 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
     """
     def __init__(self, dram_port):
         ashift, awidth = get_ashift_awidth(dram_port)
-        self.reset = CSR()
-        self.start = CSR()
-        self.done = CSRStatus()
-        self.base = CSRStorage(awidth)
+        self.reset  = CSR()
+        self.start  = CSR()
+        self.done   = CSRStatus()
+        self.base   = CSRStorage(awidth)
         self.length = CSRStorage(awidth)
         self.random = CSRStorage()
-        self.ticks = CSRStatus(32)
+        self.ticks  = CSRStatus(32)
 
         # # #
 
@@ -244,7 +250,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
                 self.done.status.eq(done_sync.o)
             ]
 
-            base_sync = BusSynchronizer(awidth, "sys", clock_domain)
+            base_sync   = BusSynchronizer(awidth, "sys", clock_domain)
             length_sync = BusSynchronizer(awidth, "sys", clock_domain)
             self.submodules += base_sync, length_sync
             self.comb += [
@@ -274,32 +280,33 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
                 self.ticks.status.eq(core.ticks)
             ]
 
+# _LiteDRAMBISTChecker -----------------------------------------------------------------------------
 
 @ResetInserter()
 class _LiteDRAMBISTChecker(Module, AutoCSR):
     def __init__(self, dram_port):
         ashift, awidth = get_ashift_awidth(dram_port)
-        self.start = Signal()
-        self.done = Signal()
-        self.base = Signal(awidth)
+        self.start  = Signal()
+        self.done   = Signal()
+        self.base   = Signal(awidth)
         self.length = Signal(awidth)
         self.random = Signal()
-        self.ticks = Signal(32)
+        self.ticks  = Signal(32)
         self.errors = Signal(32)
 
         # # #
 
-        # data / address generators
+        # Data / Address generators ----------------------------------------------------------------
         data_gen = Generator(31, n_state=31, taps=[27, 30]) # PRBS31
         addr_gen = CEInserter()(Counter(awidth))
         self.submodules += data_gen, addr_gen
         self.comb += data_gen.random_enable.eq(self.random)
 
-        # dma
+        # DMA --------------------------------------------------------------------------------------
         dma = LiteDRAMDMAReader(dram_port)
         self.submodules += dma
 
-        # address
+        # Address FSM ------------------------------------------------------------------------------
         cmd_counter = Signal(dram_port.address_width, reset_less=True)
 
         cmd_fsm = FSM(reset_state="IDLE")
@@ -328,7 +335,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         else:
             raise NotImplementedError
 
-        # data
+        # Data FSM ---------------------------------------------------------------------------------
         data_counter = Signal(dram_port.address_width, reset_less=True)
 
         data_fsm = FSM(reset_state="IDLE")
@@ -360,6 +367,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             self.done.eq(1)
         )
 
+# LiteDRAMBISTChecker ------------------------------------------------------------------------------
 
 class LiteDRAMBISTChecker(Module, AutoCSR):
     """DRAM memory pattern checker.
@@ -390,13 +398,13 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
     """
     def __init__(self, dram_port):
         ashift, awidth = get_ashift_awidth(dram_port)
-        self.reset = CSR()
-        self.start = CSR()
-        self.done = CSRStatus()
-        self.base = CSRStorage(awidth)
+        self.reset  = CSR()
+        self.start  = CSR()
+        self.done   = CSRStatus()
+        self.base   = CSRStorage(awidth)
         self.length = CSRStorage(awidth)
         self.random = CSRStorage()
-        self.ticks = CSRStatus(32)
+        self.ticks  = CSRStatus(32)
         self.errors = CSRStatus(32)
 
         # # #

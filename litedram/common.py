@@ -147,9 +147,9 @@ class LiteDRAMInterface(Record):
         rankbits = log2_int(settings.phy.nranks)
         self.address_align = address_align
         self.address_width = settings.geom.rowbits + settings.geom.colbits + rankbits - address_align
-        self.data_width = settings.phy.dfi_databits*settings.phy.nphases
-        self.nbanks = settings.phy.nranks*(2**settings.geom.bankbits)
-        self.nranks = settings.phy.nranks
+        self.data_width    = settings.phy.dfi_databits*settings.phy.nphases
+        self.nbanks   = settings.phy.nranks*(2**settings.geom.bankbits)
+        self.nranks   = settings.phy.nranks
         self.settings = settings
 
         layout = [("bank"+str(i), cmd_layout(self.address_width)) for i in range(self.nbanks)]
@@ -164,7 +164,7 @@ class LiteDRAMNativePort(Settings):
 
         self.lock = Signal()
 
-        self.cmd = stream.Endpoint(cmd_description(address_width))
+        self.cmd   = stream.Endpoint(cmd_description(address_width))
         self.wdata = stream.Endpoint(wdata_description(data_width))
         self.rdata = stream.Endpoint(rdata_description(data_width))
 
@@ -236,7 +236,7 @@ class tFAWController(Module):
         # # #
 
         if tfaw is not None:
-            count = Signal(max=max(tfaw, 2))
+            count  = Signal(max=max(tfaw, 2))
             window = Signal(tfaw)
             self.sync += window.eq(Cat(valid, window))
             self.comb += count.eq(reduce(add, [window[i] for i in range(tfaw)]))

@@ -19,15 +19,16 @@ from litex.soc.interconnect.csr import AutoCSR
 from litedram.common import *
 from litedram.core.bandwidth import Bandwidth
 
+# _CommandChooser ----------------------------------------------------------------------------------
 
 class _CommandChooser(Module):
     def __init__(self, requests):
-        self.want_reads = Signal()
-        self.want_writes = Signal()
-        self.want_cmds = Signal()
+        self.want_reads     = Signal()
+        self.want_writes    = Signal()
+        self.want_cmds      = Signal()
         self.want_activates = Signal()
 
-        a = len(requests[0].a)
+        a  = len(requests[0].a)
         ba = len(requests[0].ba)
 
         # cas/ras/we are 0 when valid is inactive
@@ -88,12 +89,14 @@ class _CommandChooser(Module):
     def read(self):
         return self.cmd.is_read
 
+# _Steerer -----------------------------------------------------------------------------------------
+
 (STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH) = range(4)
 
 class _Steerer(Module):
     def __init__(self, commands, dfi):
         ncmd = len(commands)
-        nph = len(dfi.phases)
+        nph  = len(dfi.phases)
         self.sel = [Signal(max=ncmd) for i in range(nph)]
 
         # # #
@@ -105,7 +108,7 @@ class _Steerer(Module):
                 return cmd.valid & cmd.ready & getattr(cmd, attr)
 
         for i, (phase, sel) in enumerate(zip(dfi.phases, self.sel)):
-            nranks = len(phase.cs_n)
+            nranks   = len(phase.cs_n)
             rankbits = log2_int(nranks)
             if hasattr(phase, "reset_n"):
                 self.comb += phase.reset_n.eq(1)
@@ -140,6 +143,7 @@ class _Steerer(Module):
                 phase.wrdata_en.eq(wrdata_ens[sel])
             ]
 
+# Multiplexe ---------------------------------------------------------------------------------------
 
 class Multiplexer(Module, AutoCSR):
     def __init__(self,
@@ -153,7 +157,7 @@ class Multiplexer(Module, AutoCSR):
         ras_allowed = Signal(reset=1)
         cas_allowed = Signal(reset=1)
 
-        # Command choosing
+        # Command choosing -------------------------------------------------------------------------
         requests = [bm.cmd for bm in bank_machines]
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
         self.submodules.choose_req = choose_req = _CommandChooser(requests)
@@ -163,7 +167,7 @@ class Multiplexer(Module, AutoCSR):
             self.comb += choose_req.want_cmds.eq(1)
             self.comb += choose_req.want_activates.eq(ras_allowed)
 
-        # Command steering
+        # Command steering -------------------------------------------------------------------------
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
@@ -171,25 +175,25 @@ class Multiplexer(Module, AutoCSR):
         steerer = _Steerer(commands, dfi)
         self.submodules += steerer
 
-        # tRRD timing (Row to Row delay)
+        # tRRD timing (Row to Row delay) -----------------------------------------------------------
         self.submodules.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
         self.comb += trrdcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
 
-        # tFAW timing (Four Activate Window)
+        # tFAW timing (Four Activate Window) -------------------------------------------------------
         self.submodules.tfawcon = tfawcon = tFAWController(settings.timing.tFAW)
         self.comb += tfawcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
 
-        # RAS control
+        # RAS control ------------------------------------------------------------------------------
         self.comb += ras_allowed.eq(trrdcon.ready & tfawcon.ready)
 
-        # tCCD timing (Column to Column delay)
+        # tCCD timing (Column to Column delay) -----------------------------------------------------
         self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
         self.comb += tccdcon.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
 
-        # CAS control
+        # CAS control ------------------------------------------------------------------------------
         self.comb += cas_allowed.eq(tccdcon.ready)
 
-        # tWTR timing (Write to Read delay)
+        # tWTR timing (Write to Read delay) --------------------------------------------------------
         write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
         self.submodules.twtrcon = twtrcon = tXXDController(
             settings.timing.tWTR + write_latency +
@@ -197,7 +201,7 @@ class Multiplexer(Module, AutoCSR):
             settings.timing.tCCD if settings.timing.tCCD is not None else 0)
         self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
 
-        # Read/write turnaround
+        # Read/write turnaround --------------------------------------------------------------------
         read_available = Signal()
         write_available = Signal()
         reads = [req.valid & req.is_read for req in requests]
@@ -206,6 +210,8 @@ class Multiplexer(Module, AutoCSR):
             read_available.eq(reduce(or_, reads)),
             write_available.eq(reduce(or_, writes))
         ]
+
+        # Anti Starvation --------------------------------------------------------------------------
 
         def anti_starvation(timeout):
             en = Signal()
@@ -223,16 +229,16 @@ class Multiplexer(Module, AutoCSR):
                 self.comb += max_time.eq(0)
             return en, max_time
 
-        read_time_en, max_read_time = anti_starvation(settings.read_time)
+        read_time_en,   max_read_time = anti_starvation(settings.read_time)
         write_time_en, max_write_time = anti_starvation(settings.write_time)
 
-        # Refresh
+        # Refresh ----------------------------------------------------------------------------------
         self.comb += [bm.refresh_req.eq(refresher.cmd.valid) for bm in bank_machines]
         go_to_refresh = Signal()
         bm_refresh_gnts = [bm.refresh_gnt for bm in bank_machines]
         self.comb += go_to_refresh.eq(reduce(and_, bm_refresh_gnts))
 
-        # Datapath
+        # Datapath ---------------------------------------------------------------------------------
         all_rddata = [p.rddata for p in dfi.phases]
         all_wrdata = [p.wrdata for p in dfi.phases]
         all_wrdata_mask = [p.wrdata_mask for p in dfi.phases]
@@ -261,7 +267,7 @@ class Multiplexer(Module, AutoCSR):
                 r.append(s)
             return r
 
-        # Control FSM
+        # Control FSM ------------------------------------------------------------------------------
         self.submodules.fsm = fsm = FSM()
         fsm.act("READ",
             read_time_en.eq(1),

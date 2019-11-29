@@ -16,23 +16,23 @@ from operator import or_
 
 class Bank(Module):
     def __init__(self, data_width, nrows, ncols, burst_length, we_granularity):
-        self.activate = Signal()
+        self.activate     = Signal()
         self.activate_row = Signal(max=nrows)
-        self.precharge = Signal()
+        self.precharge    = Signal()
 
-        self.write = Signal()
-        self.write_col = Signal(max=ncols)
-        self.write_data = Signal(data_width)
-        self.write_mask = Signal(data_width//8)
+        self.write        = Signal()
+        self.write_col    = Signal(max=ncols)
+        self.write_data   = Signal(data_width)
+        self.write_mask   = Signal(data_width//8)
 
-        self.read = Signal()
-        self.read_col = Signal(max=ncols)
-        self.read_data = Signal(data_width)
+        self.read         = Signal()
+        self.read_col     = Signal(max=ncols)
+        self.read_data    = Signal(data_width)
 
         # # #
 
         active = Signal()
-        row = Signal(max=nrows)
+        row    = Signal(max=nrows)
 
         self.sync += \
             If(self.precharge,
@@ -67,19 +67,19 @@ class DFIPhase(Module):
     def __init__(self, dfi, n):
         phase = getattr(dfi, "p"+str(n))
 
-        self.bank = phase.bank
-        self.address = phase.address
+        self.bank         = phase.bank
+        self.address      = phase.address
 
-        self.wrdata = phase.wrdata
-        self.wrdata_mask = phase.wrdata_mask
+        self.wrdata       = phase.wrdata
+        self.wrdata_mask  = phase.wrdata_mask
 
-        self.rddata = phase.rddata
+        self.rddata       = phase.rddata
         self.rddata_valid = phase.rddata_valid
 
-        self.activate = Signal()
-        self.precharge = Signal()
-        self.write = Signal()
-        self.read = Signal()
+        self.activate     = Signal()
+        self.precharge    = Signal()
+        self.write        = Signal()
+        self.read         = Signal()
 
         # # #
 

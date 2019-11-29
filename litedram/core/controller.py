@@ -1,5 +1,6 @@
 # This file is Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
 # This file is Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# License: BSD
 
 """LiteDRAM Controller."""
 
@@ -15,12 +16,13 @@ from litedram.core.multiplexer import Multiplexer
 
 class ControllerSettings(Settings):
     def __init__(self,
-                 cmd_buffer_depth=8, cmd_buffer_buffered=False,
-                 read_time=32, write_time=16,
-                 with_bandwidth=False,
-                 with_refresh=True, refresh_cls=Refresher, refresh_zqcs_freq=1e0, refresh_postponing=1,
-                 with_auto_precharge=True,
-                 address_mapping="ROW_BANK_COL"):
+        cmd_buffer_depth    = 8, cmd_buffer_buffered=False,
+        read_time           = 32,
+        write_time          = 16,
+        with_bandwidth      = False,
+        with_refresh        = True, refresh_cls=Refresher, refresh_zqcs_freq=1e0, refresh_postponing=1,
+        with_auto_precharge = True,
+        address_mapping     = "ROW_BANK_COL"):
         self.set_attributes(locals())
 
 # Controller ---------------------------------------------------------------------------------------

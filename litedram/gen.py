@@ -102,8 +102,8 @@ def get_dram_ios(core_config):
 def get_csr_ios(aw, dw):
     return [
         ("csr_port", 0,
-            Subsignal("adr", Pins(aw)),
-            Subsignal("we", Pins(1)),
+            Subsignal("adr",   Pins(aw)),
+            Subsignal("we",    Pins(1)),
             Subsignal("dat_w", Pins(dw)),
             Subsignal("dat_r", Pins(dw))
         ),
@@ -121,13 +121,13 @@ def get_native_user_port_ios(_id, aw, dw):
             # wdata
             Subsignal("wdata_valid", Pins(1)),
             Subsignal("wdata_ready", Pins(1)),
-            Subsignal("wdata_we", Pins(dw//8)),
-            Subsignal("wdata_data", Pins(dw)),
+            Subsignal("wdata_we",    Pins(dw//8)),
+            Subsignal("wdata_data",  Pins(dw)),
 
             # rdata
             Subsignal("rdata_valid", Pins(1)),
             Subsignal("rdata_ready", Pins(1)),
-            Subsignal("rdata_data", Pins(dw))
+            Subsignal("rdata_data",  Pins(dw))
         ),
     ]
 
@@ -154,39 +154,39 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
             Subsignal("aw_ready", Pins(1)),
             Subsignal("aw_addr",  Pins(aw)),
             Subsignal("aw_burst", Pins(2)),
-            Subsignal("aw_len", Pins(8)),
-            Subsignal("aw_size", Pins(4)),
-            Subsignal("aw_id",  Pins(iw)),
+            Subsignal("aw_len",   Pins(8)),
+            Subsignal("aw_size",  Pins(4)),
+            Subsignal("aw_id",    Pins(iw)),
 
             # w
             Subsignal("w_valid", Pins(1)),
             Subsignal("w_ready", Pins(1)),
-            Subsignal("w_last", Pins(1)),
-            Subsignal("w_strb", Pins(dw//8)),
-            Subsignal("w_data", Pins(dw)),
+            Subsignal("w_last",  Pins(1)),
+            Subsignal("w_strb",  Pins(dw//8)),
+            Subsignal("w_data",  Pins(dw)),
 
             # b
             Subsignal("b_valid", Pins(1)),
             Subsignal("b_ready", Pins(1)),
-            Subsignal("b_resp", Pins(2)),
-            Subsignal("b_id",  Pins(iw)),
+            Subsignal("b_resp",  Pins(2)),
+            Subsignal("b_id",    Pins(iw)),
 
             # ar
             Subsignal("ar_valid", Pins(1)),
             Subsignal("ar_ready", Pins(1)),
             Subsignal("ar_addr",  Pins(aw)),
             Subsignal("ar_burst", Pins(2)),
-            Subsignal("ar_len", Pins(8)),
-            Subsignal("ar_size", Pins(4)),
-            Subsignal("ar_id",  Pins(iw)),
+            Subsignal("ar_len",   Pins(8)),
+            Subsignal("ar_size",  Pins(4)),
+            Subsignal("ar_id",    Pins(iw)),
 
             # r
             Subsignal("r_valid", Pins(1)),
             Subsignal("r_ready", Pins(1)),
-            Subsignal("r_last", Pins(1)),
-            Subsignal("r_resp", Pins(2)),
-            Subsignal("r_data", Pins(dw)),
-            Subsignal("r_id", Pins(iw))
+            Subsignal("r_last",  Pins(1)),
+            Subsignal("r_resp",  Pins(2)),
+            Subsignal("r_data",  Pins(dw)),
+            Subsignal("r_id",    Pins(iw))
         ),
     ]
 
@@ -201,10 +201,10 @@ class LiteDRAMCRG(Module):
     def __init__(self, platform, core_config):
         self.clock_domains.cd_sys = ClockDomain()
         if core_config["memtype"] == "DDR3":
-            self.clock_domains.cd_sys4x = ClockDomain(reset_less=True)
+            self.clock_domains.cd_sys4x     = ClockDomain(reset_less=True)
             self.clock_domains.cd_sys4x_dqs = ClockDomain(reset_less=True)
         else:
-            self.clock_domains.cd_sys2x = ClockDomain(reset_less=True)
+            self.clock_domains.cd_sys2x     = ClockDomain(reset_less=True)
             self.clock_domains.cd_sys2x_dqs = ClockDomain(reset_less=True)
         self.clock_domains.cd_iodelay = ClockDomain()
 
@@ -231,13 +231,14 @@ class LiteDRAMCRG(Module):
         iodelay_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_iodelay)
 
-# Core ---------------------------------------------------------------------------------------------
+# LiteDRAMCoreControl ------------------------------------------------------------------------------
 
 class LiteDRAMCoreControl(Module, AutoCSR):
     def __init__(self):
-        self.init_done = CSRStorage()
+        self.init_done  = CSRStorage()
         self.init_error = CSRStorage()
 
+# LiteDRAMCore -------------------------------------------------------------------------------------
 
 class LiteDRAMCore(SoCSDRAM):
     csr_map = {
@@ -247,6 +248,8 @@ class LiteDRAMCore(SoCSDRAM):
     csr_map.update(SoCSDRAM.csr_map)
     def __init__(self, platform, core_config, **kwargs):
         platform.add_extension(get_common_ios())
+
+        # Parameters -------------------------------------------------------------------------------
         sys_clk_freq = core_config["sys_clk_freq"]
         cpu_type     = core_config["cpu"]
         csr_expose   = core_config.get("csr_expose", False)
@@ -261,15 +264,17 @@ class LiteDRAMCore(SoCSDRAM):
             kwargs["with_wishbone"]        = (cpu_type != None)
         else:
            kwargs["l2_size"] = 0
+
+        # SoCSDRAM ---------------------------------------------------------------------------------
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
             cpu_type=cpu_type,
             csr_alignment=csr_align,
             **kwargs)
 
-        # crg
+        # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = LiteDRAMCRG(platform, core_config)
 
-        # sdram
+        # DRAM -------------------------------------------------------------------------------------
         platform.add_extension(get_dram_ios(core_config))
         assert core_config["memtype"] in ["DDR2", "DDR3"]
         self.submodules.ddrphy = core_config["sdram_phy"](
@@ -294,14 +299,14 @@ class LiteDRAMCore(SoCSDRAM):
                             sdram_module.timing_settings,
                             controller_settings=controller_settings)
 
-        # sdram init
+        # DRAM Initialization ----------------------------------------------------------------------
         self.submodules.ddrctrl = LiteDRAMCoreControl()
         self.comb += [
             platform.request("init_done").eq(self.ddrctrl.init_done.storage),
             platform.request("init_error").eq(self.ddrctrl.init_error.storage)
         ]
 
-        # CSR port
+        # CSR port ---------------------------------------------------------------------------------
         if csr_expose:
             csr_port = csr_bus.Interface(
                 address_width=self.csr_address_width,
@@ -320,7 +325,7 @@ class LiteDRAMCore(SoCSDRAM):
                 csr_base = core_config.get("csr_base", 0)
                 self.shadow_base = csr_base;
 
-        # user port
+        # User ports -------------------------------------------------------------------------------
         self.comb += [
             platform.request("user_clk").eq(ClockSignal()),
             platform.request("user_rst").eq(ResetSignal())
@@ -376,7 +381,7 @@ class LiteDRAMCore(SoCSDRAM):
         elif core_config["user_ports_type"] == "axi":
             for i in range(core_config["user_ports_nb"]):
                 user_port = self.sdram.crossbar.get_port()
-                axi_port = LiteDRAMAXIPort(
+                axi_port  = LiteDRAMAXIPort(
                     user_port.data_width,
                     user_port.address_width + log2_int(user_port.data_width//8),
                     core_config["user_ports_id_width"])
@@ -438,7 +443,7 @@ def main():
     args = parser.parse_args()
     core_config = yaml.load(open(args.config).read(), Loader=yaml.Loader)
 
-    # Convert YAML elements to Python/LiteX
+    # Convert YAML elements to Python/LiteX --------------------------------------------------------
     for k, v in core_config.items():
         replaces = {"False": False, "True": True, "None": None}
         for r in replaces.keys():
@@ -451,11 +456,11 @@ def main():
         if k == "sdram_phy":
             core_config[k] = getattr(litedram_phys, core_config[k])
 
-    # Generate core
+    # Generate core --------------------------------------------------------------------------------
     platform = Platform()
-    soc = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000)
-    builder = Builder(soc, output_dir="build", compile_gateware=False)
-    vns = builder.build(build_name="litedram_core", regular_comb=False)
+    soc      = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000)
+    builder  = Builder(soc, output_dir="build", compile_gateware=False)
+    vns      = builder.build(build_name="litedram_core", regular_comb=False)
 
     # Prepare core (could be improved)
     def replace_in_file(filename, _from, _to):

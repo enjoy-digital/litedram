@@ -1,4 +1,4 @@
-# This file is Copyright (c) 2016-2018 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
 # License: BSD
 
 from migen import *
@@ -7,21 +7,22 @@ from litex.soc.interconnect import stream
 
 from litedram.common import *
 
+# LiteDRAMNativePortCDC ----------------------------------------------------------------------------
 
 class LiteDRAMNativePortCDC(Module):
     def __init__(self, port_from, port_to,
-                 cmd_depth=4,
-                 wdata_depth=16,
-                 rdata_depth=16):
+                 cmd_depth   = 4,
+                 wdata_depth = 16,
+                 rdata_depth = 16):
         assert port_from.address_width == port_to.address_width
-        assert port_from.data_width == port_to.data_width
-        assert port_from.mode == port_to.mode
+        assert port_from.data_width    == port_to.data_width
+        assert port_from.mode          == port_to.mode
 
-        address_width = port_from.address_width
-        data_width = port_from.data_width
-        mode = port_from.mode
+        address_width     = port_from.address_width
+        data_width        = port_from.data_width
+        mode              = port_from.mode
         clock_domain_from = port_from.clock_domain
-        clock_domain_to = port_to.clock_domain
+        clock_domain_to   = port_to.clock_domain
 
         # # #
 
@@ -53,6 +54,7 @@ class LiteDRAMNativePortCDC(Module):
             self.submodules += stream.Pipeline(
                 port_to.rdata, rdata_fifo, port_from.rdata)
 
+# LiteDRAMNativePortDownConverter ------------------------------------------------------------------
 
 class LiteDRAMNativePortDownConverter(Module):
     """LiteDRAM port DownConverter
@@ -67,19 +69,19 @@ class LiteDRAMNativePortDownConverter(Module):
     """
     def __init__(self, port_from, port_to, reverse=False):
         assert port_from.clock_domain == port_to.clock_domain
-        assert port_from.data_width > port_to.data_width
-        assert port_from.mode == port_to.mode
+        assert port_from.data_width    > port_to.data_width
+        assert port_from.mode         == port_to.mode
         if port_from.data_width % port_to.data_width:
             raise ValueError("Ratio must be an int")
 
         # # #
 
         ratio = port_from.data_width//port_to.data_width
-        mode = port_from.mode
+        mode  = port_from.mode
 
-        counter = Signal(max=ratio)
+        counter       = Signal(max=ratio)
         counter_reset = Signal()
-        counter_ce = Signal()
+        counter_ce    = Signal()
         self.sync += \
             If(counter_reset,
                 counter.eq(0)
@@ -125,6 +127,7 @@ class LiteDRAMNativePortDownConverter(Module):
             self.submodules += stream.Pipeline(
                 port_to.rdata, rdata_converter, port_from.rdata)
 
+# LiteDRAMNativeWritePortUpConverter ---------------------------------------------------------------
 
 class LiteDRAMNativeWritePortUpConverter(Module):
     # TODO: finish and remove hack
@@ -138,9 +141,9 @@ class LiteDRAMNativeWritePortUpConverter(Module):
     """
     def __init__(self, port_from, port_to, reverse=False):
         assert port_from.clock_domain == port_to.clock_domain
-        assert port_from.data_width < port_to.data_width
-        assert port_from.mode == port_to.mode
-        assert port_from.mode == "write"
+        assert port_from.data_width    < port_to.data_width
+        assert port_from.mode         == port_to.mode
+        assert port_from.mode         == "write"
         if port_to.data_width % port_from.data_width:
             raise ValueError("Ratio must be an int")
 
@@ -148,12 +151,12 @@ class LiteDRAMNativeWritePortUpConverter(Module):
 
         ratio = port_to.data_width//port_from.data_width
 
-        we = Signal()
+        we      = Signal()
         address = Signal(port_to.address_width)
 
-        counter = Signal(max=ratio)
+        counter       = Signal(max=ratio)
         counter_reset = Signal()
-        counter_ce = Signal()
+        counter_ce    = Signal()
         self.sync += \
             If(counter_reset,
                 counter.eq(0)
@@ -199,6 +202,7 @@ class LiteDRAMNativeWritePortUpConverter(Module):
             wdata_converter,
             port_to.wdata)
 
+# LiteDRAMNativeReadPortUpConverter ----------------------------------------------------------------
 
 class LiteDRAMNativeReadPortUpConverter(Module):
     """LiteDRAM port UpConverter
@@ -211,9 +215,9 @@ class LiteDRAMNativeReadPortUpConverter(Module):
     """
     def __init__(self, port_from, port_to, reverse=False):
         assert port_from.clock_domain == port_to.clock_domain
-        assert port_from.data_width < port_to.data_width
-        assert port_from.mode == port_to.mode
-        assert port_from.mode == "read"
+        assert port_from.data_width    < port_to.data_width
+        assert port_from.mode         == port_to.mode
+        assert port_from.mode         == "read"
         if port_to.data_width % port_from.data_width:
             raise ValueError("Ratio must be an int")
 
@@ -222,7 +226,7 @@ class LiteDRAMNativeReadPortUpConverter(Module):
         ratio = port_to.data_width//port_from.data_width
 
 
-        # cmd
+        # Command ----------------------------------------------------------------------------------
 
         cmd_buffer = stream.SyncFIFO([("sel", ratio)], 4)
         self.submodules += cmd_buffer
@@ -254,16 +258,16 @@ class LiteDRAMNativeReadPortUpConverter(Module):
                 cmd_buffer.sink.sel.eq(2**ratio-1)
             )
 
-        # datapath
+        # Datapath ---------------------------------------------------------------------------------
 
-        rdata_buffer  = stream.Buffer(port_to.rdata.description)
+        rdata_buffer    = stream.Buffer(port_to.rdata.description)
         rdata_converter = stream.StrideConverter(
             port_to.rdata.description,
             port_from.rdata.description,
             reverse=reverse)
         self.submodules +=  rdata_buffer, rdata_converter
 
-        rdata_chunk = Signal(ratio, reset=1)
+        rdata_chunk       = Signal(ratio, reset=1)
         rdata_chunk_valid = Signal()
         self.sync += \
             If(rdata_converter.source.valid &
@@ -290,11 +294,12 @@ class LiteDRAMNativeReadPortUpConverter(Module):
                 rdata_converter.source.ready & rdata_chunk[ratio-1])
         ]
 
+# LiteDRAMNativePortConverter ----------------------------------------------------------------------
 
 class LiteDRAMNativePortConverter(Module):
     def __init__(self, port_from, port_to, reverse=False):
         assert port_from.clock_domain == port_to.clock_domain
-        assert port_from.mode == port_to.mode
+        assert port_from.mode         == port_to.mode
 
         # # #
 

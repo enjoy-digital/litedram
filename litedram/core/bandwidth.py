@@ -9,19 +9,20 @@ from migen import *
 
 from litex.soc.interconnect.csr import *
 
+# Bandwidth ----------------------------------------------------------------------------------------
 
 class Bandwidth(Module, AutoCSR):
     def __init__(self, cmd, data_width, period_bits=24):
-        self.update = CSR()
-        self.nreads = CSRStatus(period_bits)
-        self.nwrites = CSRStatus(period_bits)
+        self.update     = CSR()
+        self.nreads     = CSRStatus(period_bits)
+        self.nwrites    = CSRStatus(period_bits)
         self.data_width = CSRStatus(bits_for(data_width), reset=data_width)
 
         # # #
 
-        cmd_valid = Signal()
-        cmd_ready = Signal()
-        cmd_is_read = Signal()
+        cmd_valid    = Signal()
+        cmd_ready    = Signal()
+        cmd_is_read  = Signal()
         cmd_is_write = Signal()
         self.sync += [
             cmd_valid.eq(cmd.valid),
@@ -30,11 +31,11 @@ class Bandwidth(Module, AutoCSR):
             cmd_is_write.eq(cmd.is_write)
         ]
 
-        counter = Signal(period_bits)
-        period = Signal()
-        nreads = Signal(period_bits)
-        nwrites = Signal(period_bits)
-        nreads_r = Signal(period_bits)
+        counter   = Signal(period_bits)
+        period    = Signal()
+        nreads    = Signal(period_bits)
+        nwrites   = Signal(period_bits)
+        nreads_r  = Signal(period_bits)
         nwrites_r = Signal(period_bits)
         self.sync += [
             Cat(counter, period).eq(counter + 1),

@@ -17,6 +17,7 @@ cmds = {
 }
 
 # SDR ----------------------------------------------------------------------------------------------
+
 def get_sdr_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
     bl = 1
@@ -36,6 +37,7 @@ def get_sdr_phy_init_sequence(phy_settings, timing_settings):
     return init_sequence, None
 
 # DDR ----------------------------------------------------------------------------------------------
+
 def get_ddr_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
     bl = 4
@@ -57,6 +59,7 @@ def get_ddr_phy_init_sequence(phy_settings, timing_settings):
     return init_sequence, None
 
 # LPDDR --------------------------------------------------------------------------------------------
+
 def get_lpddr_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
     bl = 4
@@ -78,6 +81,7 @@ def get_lpddr_phy_init_sequence(phy_settings, timing_settings):
     return init_sequence, None
 
 # DDR2 ---------------------------------------------------------------------------------------------
+
 def get_ddr2_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
     bl = 4
@@ -107,6 +111,7 @@ def get_ddr2_phy_init_sequence(phy_settings, timing_settings):
     return init_sequence, None
 
 # DDR3 ---------------------------------------------------------------------------------------------
+
 def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
     bl = 8
@@ -211,6 +216,7 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
     return init_sequence, mr1
 
 # DDR4 ---------------------------------------------------------------------------------------------
+
 def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
     bl = 8

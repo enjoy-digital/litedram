@@ -1,19 +1,22 @@
 # This file is Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
+# This file is Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# License: BSD
 
 from migen import *
 
 from litedram.phy import dfi
 from litex.soc.interconnect.csr import *
 
+# PhaseInjector ------------------------------------------------------------------------------------
 
 class PhaseInjector(Module, AutoCSR):
     def __init__(self, phase):
-        self._command = CSRStorage(6)  # cs, we, cas, ras, wren, rden
+        self._command       = CSRStorage(6)  # cs, we, cas, ras, wren, rden
         self._command_issue = CSR()
-        self._address = CSRStorage(len(phase.address))
-        self._baddress = CSRStorage(len(phase.bank))
-        self._wrdata = CSRStorage(len(phase.wrdata))
-        self._rddata = CSRStatus(len(phase.rddata))
+        self._address       = CSRStorage(len(phase.address))
+        self._baddress      = CSRStorage(len(phase.bank))
+        self._wrdata        = CSRStorage(len(phase.wrdata))
+        self._rddata        = CSRStatus(len(phase.rddata))
 
         # # #
 
@@ -38,11 +41,12 @@ class PhaseInjector(Module, AutoCSR):
         ]
         self.sync += If(phase.rddata_valid, self._rddata.status.eq(phase.rddata))
 
+# DFIInjector --------------------------------------------------------------------------------------
 
 class DFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
-        inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
-        self.slave = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        inti        = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        self.slave  = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.master = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
 
         self._control = CSRStorage(4)  # sel, cke, odt, reset_n

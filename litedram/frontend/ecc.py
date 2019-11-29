@@ -25,9 +25,11 @@ from litex.soc.cores.ecc import *
 from litedram.common import wdata_description, rdata_description
 
 
+# LiteDRAMNativePortECCW ---------------------------------------------------------------------------
+
 class LiteDRAMNativePortECCW(Module):
     def __init__(self, data_width_from, data_width_to):
-        self.sink = sink = Endpoint(wdata_description(data_width_from))
+        self.sink   = sink   = Endpoint(wdata_description(data_width_from))
         self.source = source = Endpoint(wdata_description(data_width_to))
 
         # # #
@@ -42,14 +44,15 @@ class LiteDRAMNativePortECCW(Module):
             ]
         self.comb += source.we.eq(2**len(source.we)-1)
 
+# LiteDRAMNativePortECCR ---------------------------------------------------------------------------
 
 class LiteDRAMNativePortECCR(Module):
     def __init__(self, data_width_from, data_width_to):
-        self.sink = sink = Endpoint(rdata_description(data_width_to))
+        self.sink   = sink   = Endpoint(rdata_description(data_width_to))
         self.source = source = Endpoint(rdata_description(data_width_from))
         self.enable = Signal()
-        self.sec = Signal(8)
-        self.ded = Signal(8)
+        self.sec    = Signal(8)
+        self.ded    = Signal(8)
 
         # # #
 
@@ -68,14 +71,15 @@ class LiteDRAMNativePortECCR(Module):
                 )
             ]
 
+# LiteDRAMNativePortECC ----------------------------------------------------------------------------
 
 class LiteDRAMNativePortECC(Module, AutoCSR):
     def __init__(self, port_from, port_to, with_error_injection=False):
         _ , n = compute_m_n(port_from.data_width//8)
         assert port_to.data_width >= (n + 1)*8
 
-        self.enable = CSRStorage(reset=1)
-        self.clear = CSR()
+        self.enable     = CSRStorage(reset=1)
+        self.clear      = CSR()
         self.sec_errors = CSRStatus(32)
         self.ded_errors = CSRStatus(32)
         self.sec_detected = sec_detected = Signal()
@@ -85,10 +89,10 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
 
         # # #
 
-        # cmd
+        # Cmd --------------------------------------------------------------------------------------
         self.comb += port_from.cmd.connect(port_to.cmd)
 
-        # wdata (ecc encoding)
+        # Wdata (ecc encoding) ---------------------------------------------------------------------
         ecc_wdata = LiteDRAMNativePortECCW(port_from.data_width, port_to.data_width)
         ecc_wdata = BufferizeEndpoints({"source": DIR_SOURCE})(ecc_wdata)
         self.submodules += ecc_wdata
@@ -99,7 +103,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         if with_error_injection:
             self.comb += port_to.wdata.data[:8].eq(self.flip.storage ^ ecc_wdata.source.data[:8])
 
-        # rdata (ecc decoding)
+        # Rdata (ecc decoding) ---------------------------------------------------------------------
         sec = Signal()
         ded = Signal()
         ecc_rdata = LiteDRAMNativePortECCR(port_from.data_width, port_to.data_width)
@@ -111,7 +115,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
             ecc_rdata.source.connect(port_from.rdata)
         ]
 
-        # errors count
+        # Errors count -----------------------------------------------------------------------------
         sec_errors = self.sec_errors.status
         ded_errors = self.ded_errors.status
         self.sync += [

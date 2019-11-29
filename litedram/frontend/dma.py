@@ -1,5 +1,5 @@
 # This file is Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
-# This file is Copyright (c) 2016-2018 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
 # This file is Copyright (c) 2018 John Sully <john@csquare.ca>
 # This file is Copyright (c) 2016 Tim 'mithro' Ansell <mithro@mithis.com>
 # License: BSD
@@ -13,6 +13,7 @@ from litex.soc.interconnect import stream
 from litedram.common import LiteDRAMNativePort
 from litedram.frontend.axi import LiteDRAMAXIPort
 
+# LiteDRAMDMAReader --------------------------------------------------------------------------------
 
 class LiteDRAMDMAReader(Module):
     """Read data from DRAM memory.
@@ -45,14 +46,14 @@ class LiteDRAMDMAReader(Module):
     """
 
     def __init__(self, port, fifo_depth=16, fifo_buffered=False):
-        self.sink = sink = stream.Endpoint([("address", port.address_width)])
+        self.sink   = sink   = stream.Endpoint([("address", port.address_width)])
         self.source = source = stream.Endpoint([("data", port.data_width)])
 
         # # #
 
-        # native / axi selection
+        # Native / AXI selection
         is_native = isinstance(port, LiteDRAMNativePort)
-        is_axi = isinstance(port, LiteDRAMAXIPort)
+        is_axi    = isinstance(port, LiteDRAMAXIPort)
         if is_native:
             (cmd, rdata) = port.cmd, port.rdata
         elif is_axi:
@@ -60,7 +61,7 @@ class LiteDRAMDMAReader(Module):
         else:
             raise NotImplementedError
 
-        # request issuance
+        # Request issuance -------------------------------------------------------------------------
         request_enable = Signal()
         request_issued = Signal()
 
@@ -73,7 +74,7 @@ class LiteDRAMDMAReader(Module):
             request_issued.eq(cmd.valid & cmd.ready)
         ]
 
-        # FIFO reservation level counter
+        # FIFO reservation level counter -----------------------------------------------------------
         # incremented when data is planned to be queued
         # decremented when data is dequeued
         data_dequeued = Signal()
@@ -87,7 +88,7 @@ class LiteDRAMDMAReader(Module):
         ]
         self.comb += request_enable.eq(rsv_level != fifo_depth)
 
-        # FIFO
+        # FIFO -------------------------------------------------------------------------------------
         fifo = stream.SyncFIFO([("data", port.data_width)], fifo_depth, fifo_buffered)
         self.submodules += fifo
 
@@ -97,6 +98,7 @@ class LiteDRAMDMAReader(Module):
             data_dequeued.eq(source.valid & source.ready)
         ]
 
+# LiteDRAMDMAWriter --------------------------------------------------------------------------------
 
 class LiteDRAMDMAWriter(Module):
     """Write data to DRAM memory.
@@ -125,9 +127,9 @@ class LiteDRAMDMAWriter(Module):
 
         # # #
 
-        # native / axi selection
+        # Native / AXI selection -------------------------------------------------------------------
         is_native = isinstance(port, LiteDRAMNativePort)
-        is_axi = isinstance(port, LiteDRAMAXIPort)
+        is_axi    = isinstance(port, LiteDRAMAXIPort)
         if is_native:
             (cmd, wdata) = port.cmd, port.wdata
         elif is_axi:
@@ -135,6 +137,7 @@ class LiteDRAMDMAWriter(Module):
         else:
             raise NotImplementedError
 
+        # FIFO -------------------------------------------------------------------------------------
         fifo = stream.SyncFIFO([("data", port.data_width)], fifo_depth, fifo_buffered)
         self.submodules += fifo
 

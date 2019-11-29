@@ -5,6 +5,7 @@
 
 from migen import *
 
+# LiteDRAMWishbone2Native --------------------------------------------------------------------------
 
 class LiteDRAMWishbone2Native(Module):
     def __init__(self, wishbone, port, base_address=0x00000000):
@@ -14,7 +15,7 @@ class LiteDRAMWishbone2Native(Module):
 
         adr_offset = base_address >> log2_int(port.data_width//8)
 
-        # Control
+        # Control ----------------------------------------------------------------------------------
         self.submodules.fsm = fsm = FSM(reset_state="CMD")
         fsm.act("CMD",
             port.cmd.valid.eq(wishbone.cyc & wishbone.stb),
@@ -42,17 +43,19 @@ class LiteDRAMWishbone2Native(Module):
             )
         )
 
-        # Datapath
+        # Datapath ---------------------------------------------------------------------------------
         self.comb += [
-            # cmd
+            # Cmd
             port.cmd.addr.eq(wishbone.adr - adr_offset),
-            # write
+            # Write
             port.wdata.we.eq(wishbone.sel),
             port.wdata.data.eq(wishbone.dat_w),
-            # read
+            # Read
             wishbone.dat_r.eq(port.rdata.data),
         ]
 
+
+# LiteDRAMWishbone2AXI -----------------------------------------------------------------------------
 
 class LiteDRAMWishbone2AXI(Module):
     def __init__(self, wishbone, port):

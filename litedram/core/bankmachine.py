@@ -1,3 +1,7 @@
+# This file is Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
+# This file is Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# License: BSD
+
 """LiteDRAM BankMachine (Rows/Columns management)."""
 
 import math
@@ -9,10 +13,11 @@ from litex.soc.interconnect import stream
 from litedram.common import *
 from litedram.core.multiplexer import *
 
+# AddressSlicer ------------------------------------------------------------------------------------
 
 class _AddressSlicer:
     def __init__(self, colbits, address_align):
-        self.colbits = colbits
+        self.colbits       = colbits
         self.address_align = address_align
 
     def row(self, address):
@@ -23,6 +28,7 @@ class _AddressSlicer:
         split = self.colbits - self.address_align
         return Cat(Replicate(0, self.address_align), address[:split])
 
+# BankMachine --------------------------------------------------------------------------------------
 
 class BankMachine(Module):
     def __init__(self, n, address_width, address_align, nranks, settings):
@@ -30,7 +36,7 @@ class BankMachine(Module):
         self.refresh_req = refresh_req = Signal()
         self.refresh_gnt = refresh_gnt = Signal()
 
-        a = settings.geom.addressbits
+        a  = settings.geom.addressbits
         ba = settings.geom.bankbits + log2_int(nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
 
@@ -38,8 +44,8 @@ class BankMachine(Module):
 
         auto_precharge = Signal()
 
-        # Command buffer
-        cmd_buffer_layout = [("we", 1), ("addr", len(req.addr))]
+        # Command buffer ---------------------------------------------------------------------------
+        cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
         cmd_buffer_lookahead = stream.SyncFIFO(
             cmd_buffer_layout, settings.cmd_buffer_depth,
             buffered=settings.cmd_buffer_buffered)
@@ -54,12 +60,12 @@ class BankMachine(Module):
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
-        # Row tracking
-        row = Signal(settings.geom.rowbits)
+        # Row tracking -----------------------------------------------------------------------------
+        row        = Signal(settings.geom.rowbits)
         row_opened = Signal()
-        row_hit = Signal()
-        row_open = Signal()
-        row_close = Signal()
+        row_hit    = Signal()
+        row_open   = Signal()
+        row_close  = Signal()
         self.comb += row_hit.eq(row == slicer.row(cmd_buffer.source.addr))
         self.sync += \
             If(row_close,
@@ -69,7 +75,7 @@ class BankMachine(Module):
                 row.eq(slicer.row(cmd_buffer.source.addr))
             )
 
-        # Address generation
+        # Address generation -----------------------------------------------------------------------
         row_col_n_addr_sel = Signal()
         self.comb += [
             cmd.ba.eq(n),
@@ -80,21 +86,21 @@ class BankMachine(Module):
             )
         ]
 
-        # tWTP (write-to-precharge) controller
+        # tWTP (write-to-precharge) controller -----------------------------------------------------
         write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
         precharge_time = write_latency + settings.timing.tWR + settings.timing.tCCD # AL=0
         self.submodules.twtpcon = twtpcon = tXXDController(precharge_time)
         self.comb += twtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
 
-        # tRC (activate-activate) controller
+        # tRC (activate-activate) controller -------------------------------------------------------
         self.submodules.trccon = trccon = tXXDController(settings.timing.tRC)
         self.comb += trccon.valid.eq(cmd.valid & cmd.ready & row_open)
 
-        # tRAS (activate-precharge) controller
+        # tRAS (activate-precharge) controller -----------------------------------------------------
         self.submodules.trascon = trascon = tXXDController(settings.timing.tRAS)
         self.comb += trascon.valid.eq(cmd.valid & cmd.ready & row_open)
 
-        # Auto Precharge generation
+        # Auto Precharge generation ----------------------------------------------------------------
         if settings.with_auto_precharge:
             self.comb += \
                 If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
@@ -104,7 +110,7 @@ class BankMachine(Module):
                     )
                 )
 
-        # Control and command generation FSM
+        # Control and command generation FSM -------------------------------------------------------
         # Note: tRRD, tFAW, tCCD, tWTR timings are enforced by the multiplexer
         self.submodules.fsm = fsm = FSM()
         fsm.act("REGULAR",

@@ -33,27 +33,27 @@ class USDDRPHY(Module, AutoCSR):
             self.comb += pads.ten.eq(0)
 
         # Registers --------------------------------------------------------------------------------
-        self._en_vtc = CSRStorage(reset=1)
+        self._en_vtc              = CSRStorage(reset=1)
 
-        self._half_sys8x_taps = CSRStatus(9)
+        self._half_sys8x_taps     = CSRStatus(9)
 
-        self._wlevel_en     = CSRStorage()
-        self._wlevel_strobe = CSR()
+        self._wlevel_en           = CSRStorage()
+        self._wlevel_strobe       = CSR()
 
-        self._cdly_rst = CSR()
-        self._cdly_inc = CSR()
+        self._cdly_rst            = CSR()
+        self._cdly_inc            = CSR()
 
-        self._dly_sel = CSRStorage(databits//8)
+        self._dly_sel             = CSRStorage(databits//8)
 
         self._rdly_dq_rst         = CSR()
         self._rdly_dq_inc         = CSR()
         self._rdly_dq_bitslip_rst = CSR()
         self._rdly_dq_bitslip     = CSR()
 
-        self._wdly_dq_rst  = CSR()
-        self._wdly_dq_inc  = CSR()
-        self._wdly_dqs_rst = CSR()
-        self._wdly_dqs_inc = CSR()
+        self._wdly_dq_rst         = CSR()
+        self._wdly_dq_inc         = CSR()
+        self._wdly_dqs_rst        = CSR()
+        self._wdly_dqs_inc        = CSR()
 
         # PHY settings -----------------------------------------------------------------------------
         cl, cwl         = get_cl_cw(memtype, tck)

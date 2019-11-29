@@ -17,17 +17,18 @@ from litedram.common import *
 from litedram.core.controller import *
 from litedram.frontend.adaptation import *
 
+# LiteDRAMCrossbar ---------------------------------------------------------------------------------
 
 class LiteDRAMCrossbar(Module):
     def __init__(self, controller):
         self.controller = controller
 
-        self.rca_bits = controller.address_width
-        self.nbanks = controller.nbanks
-        self.nranks = controller.nranks
+        self.rca_bits         = controller.address_width
+        self.nbanks           = controller.nbanks
+        self.nranks           = controller.nranks
         self.cmd_buffer_depth = controller.settings.cmd_buffer_depth
-        self.read_latency = controller.settings.phy.read_latency + 1
-        self.write_latency = controller.settings.phy.write_latency + 1
+        self.read_latency     = controller.settings.phy.read_latency + 1
+        self.write_latency    = controller.settings.phy.write_latency + 1
 
         self.bank_bits = log2_int(self.nbanks, False)
         self.rank_bits = log2_int(self.nranks, False)
@@ -50,38 +51,38 @@ class LiteDRAMCrossbar(Module):
             # use internal data_width when no width adaptation is requested
             data_width = self.controller.data_width
 
-        # crossbar port
+        # Crossbar port ----------------------------------------------------------------------------
         port = LiteDRAMNativePort(
-            mode=mode,
-            address_width=self.rca_bits + self.bank_bits - self.rank_bits,
-            data_width=self.controller.data_width,
-            clock_domain="sys",
-            id=len(self.masters))
+            mode          = mode,
+            address_width = self.rca_bits + self.bank_bits - self.rank_bits,
+            data_width    = self.controller.data_width,
+            clock_domain  = "sys",
+            id            = len(self.masters))
         self.masters.append(port)
 
-        # clock domain crossing
+        # Clock domain crossing --------------------------------------------------------------------
         if clock_domain != "sys":
             new_port = LiteDRAMNativePort(
-                mode=mode,
-                address_width=port.address_width,
-                data_width=port.data_width,
-                clock_domain=clock_domain,
-                id=port.id)
+                mode          = mode,
+                address_width = port.address_width,
+                data_width    = port.data_width,
+                clock_domain  = clock_domain,
+                id            = port.id)
             self.submodules += LiteDRAMNativePortCDC(new_port, port)
             port = new_port
 
-        # data width convertion
+        # Data width convertion --------------------------------------------------------------------
         if data_width != self.controller.data_width:
             if data_width > self.controller.data_width:
                 addr_shift = -log2_int(data_width//self.controller.data_width)
             else:
                 addr_shift = log2_int(self.controller.data_width//data_width)
             new_port = LiteDRAMNativePort(
-                mode=mode,
-                address_width=port.address_width + addr_shift,
-                data_width=data_width,
-                clock_domain=clock_domain,
-                id=port.id)
+                mode          = mode,
+                address_width = port.address_width + addr_shift,
+                data_width    = data_width,
+                clock_domain  = clock_domain,
+                id            = port.id)
             self.submodules += ClockDomainsRenamer(clock_domain)(
                 LiteDRAMNativePortConverter(new_port, port, reverse))
             port = new_port
@@ -90,18 +91,15 @@ class LiteDRAMCrossbar(Module):
 
     def do_finalize(self):
         controller = self.controller
-        nmasters = len(self.masters)
+        nmasters   = len(self.masters)
 
-        # address mapping
-        cba_shifts = {
-            "ROW_BANK_COL": controller.settings.geom.colbits -
-                            controller.address_align
-        }
+        # Address mapping --------------------------------------------------------------------------
+        cba_shifts = {"ROW_BANK_COL": controller.settings.geom.colbits - controller.address_align}
         cba_shift = cba_shifts[controller.settings.address_mapping]
-        m_ba = [m.get_bank_address(self.bank_bits, cba_shift)for m in self.masters]
-        m_rca = [m.get_row_column_address(self.bank_bits, self.rca_bits, cba_shift) for m in self.masters]
+        m_ba      = [m.get_bank_address(self.bank_bits, cba_shift)for m in self.masters]
+        m_rca     = [m.get_row_column_address(self.bank_bits, self.rca_bits, cba_shift) for m in self.masters]
 
-        master_readys = [0]*nmasters
+        master_readys       = [0]*nmasters
         master_wdata_readys = [0]*nmasters
         master_rdata_valids = [0]*nmasters
 
@@ -113,7 +111,7 @@ class LiteDRAMCrossbar(Module):
         for nb, arbiter in enumerate(arbiters):
             bank = getattr(controller, "bank"+str(nb))
 
-            # for each master, determine if another bank locks it
+            # For each master, determine if another bank locks it ----------------------------------
             master_locked = []
             for nm, master in enumerate(self.masters):
                 locked = Signal()
@@ -123,24 +121,24 @@ class LiteDRAMCrossbar(Module):
                         locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
                 master_locked.append(locked)
 
-            # arbitrate
-            bank_selected = [(ba == nb) & ~locked for ba, locked in zip(m_ba, master_locked)]
+            # Arbitrate ----------------------------------------------------------------------------
+            bank_selected  = [(ba == nb) & ~locked for ba, locked in zip(m_ba, master_locked)]
             bank_requested = [bs & master.cmd.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 arbiter.request.eq(Cat(*bank_requested)),
                 arbiter.ce.eq(~bank.valid & ~bank.lock)
             ]
 
-            # Get rdata source bank
+            # Get rdata source bank ----------------------------------------------------------------
             self.sync += If((arbiter.grant == nm) & bank.rdata_valid, rbank.eq(nb))
 
-            # Get wdata source bank
+            # Get wdata source bank ----------------------------------------------------------------
             self.sync += \
                 If((arbiter.grant == nm) & bank.wdata_ready,
                     wbank.eq(nb)
                 )
 
-            # route requests
+            # Route requests -----------------------------------------------------------------------
             self.comb += [
                 bank.addr.eq(Array(m_rca)[arbiter.grant]),
                 bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
@@ -174,7 +172,7 @@ class LiteDRAMCrossbar(Module):
         for master, master_rdata_valid in zip(self.masters, master_rdata_valids):
             self.comb += master.rdata.valid.eq(master_rdata_valid)
 
-        # route data writes
+        # Route data writes ------------------------------------------------------------------------
         wdata_cases = {}
         for nm, master in enumerate(self.masters):
             wdata_cases[2**nm] = [
@@ -187,6 +185,6 @@ class LiteDRAMCrossbar(Module):
         ]
         self.comb += Case(Cat(*master_wdata_readys), wdata_cases)
 
-        # route data reads
+        # Route data reads -------------------------------------------------------------------------
         for master in self.masters:
             self.comb += master.rdata.data.eq(controller.rdata)
