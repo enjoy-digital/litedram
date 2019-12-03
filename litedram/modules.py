@@ -46,7 +46,7 @@ class SDRAMModule:
     SDRAM modules with the same geometry exist can have
     various speedgrades.
     """
-    def __init__(self, clk_freq, rate, speedgrade=None):
+    def __init__(self, clk_freq, rate, speedgrade=None, fine_refresh_mode=None):
         self.clk_freq      = clk_freq
         self.rate          = rate
         self.speedgrade    = speedgrade
@@ -55,12 +55,16 @@ class SDRAMModule:
             rowbits  = log2_int(self.nrows),
             colbits  = log2_int(self.ncols),
         )
+        assert not (self.memtype != "DDR4" and fine_refresh_mode != None)
+        assert fine_refresh_mode in [None, "1x", "2x", "4x"]
+        if (fine_refresh_mode is None) and (self.memtype == "DDR4"):
+            fine_refresh_mode = "1x"
         self.timing_settings = TimingSettings(
             tRP   = self.ns_to_cycles(self.get("tRP")),
             tRCD  = self.ns_to_cycles(self.get("tRCD")),
             tWR   = self.ns_to_cycles(self.get("tWR")),
-            tREFI = self.ns_to_cycles(self.get("tREFI"), False),
-            tRFC  = self.ck_ns_to_cycles(*self.get("tRFC")),
+            tREFI = self.ns_to_cycles(self.get("tREFI", fine_refresh_mode), False),
+            tRFC  = self.ck_ns_to_cycles(*self.get("tRFC", fine_refresh_mode)),
             tWTR  = self.ck_ns_to_cycles(*self.get("tWTR")),
             tFAW  = None if self.get("tFAW") is None else self.ck_ns_to_cycles(*self.get("tFAW")),
             tCCD  = None if self.get("tCCD") is None else self.ck_ns_to_cycles(*self.get("tCCD")),
@@ -69,26 +73,31 @@ class SDRAMModule:
             tRAS  = None if self.get("tRAS") is None else self.ns_to_cycles(self.get("tRAS")),
             tZQCS = None if self.get("tZQCS") is None else self.ck_ns_to_cycles(*self.get("tZQCS"))
         )
+        self.timing_settings.fine_refresh_mode = fine_refresh_mode
 
-    def get(self, name):
+    def get(self, name, key=None):
+        r = None
         if name in _speedgrade_timings:
             if hasattr(self, "speedgrade_timings"):
                 speedgrade = "default" if self.speedgrade is None else self.speedgrade
-                return getattr(self.speedgrade_timings[speedgrade], name)
+                r = getattr(self.speedgrade_timings[speedgrade], name)
             else:
                 name = name + "_" + self.speedgrade if self.speedgrade is not None else name
                 try:
-                    return getattr(self, name)
+                    r = getattr(self, name)
                 except:
-                    return None
+                    pass
         else:
             if hasattr(self, "technology_timings"):
-                return getattr(self.technology_timings, name)
+                r = getattr(self.technology_timings, name)
             else:
                 try:
-                    return getattr(self, name)
+                    r = getattr(self, name)
                 except:
-                    return None
+                    pass
+        if (r is not None) and (key is not None):
+            r = r[key]
+        return r
 
     def ns_to_cycles(self, t, margin=True):
         clk_period_ns = 1e9/self.clk_freq
@@ -462,9 +471,11 @@ class EDY4016A(SDRAMModule):
     nrows       = 32768
     ncols       = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
+    trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
+    trfc  = {"1x": (None, 260), "2x": (None, 160),   "4x": (None, 110)}
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=(None, 260), tFAW=(28, 30), tRAS=32),
+        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(28, 30), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
 
@@ -478,10 +489,12 @@ class MT40A1G8(SDRAMModule):
     nrows       = 65536
     ncols       = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6.4), tZQCS=(128, 80))
+    trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
+    trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6.4), tZQCS=(128, 80))
     speedgrade_timings = {
-        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=(None, 350), tFAW=(20, 25), tRAS=32),
-        "2666": _SpeedgradeTimings(tRP=13.50, tRCD=13.50, tWR=15, tRFC=(None, 350), tFAW=(20, 21), tRAS=32),
+        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
+        "2666": _SpeedgradeTimings(tRP=13.50, tRCD=13.50, tWR=15, tRFC=trfc, tFAW=(20, 21), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
 
@@ -495,8 +508,10 @@ class MT40A512M16(SDRAMModule):
     nrows       = 65536
     ncols       = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
+    trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
+    trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=(None, 350), tFAW=(20, 25), tRAS=32),
+        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]

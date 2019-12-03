@@ -298,6 +298,15 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
         mr2 |= rtt_wr << 9
         return mr2
 
+    def format_mr3(fine_refresh_mode):
+        fine_refresh_mode_to_mr3 = {
+            "1x": 0b000,
+            "2x": 0b001,
+            "4x": 0b010
+        }
+        mr3 = fine_refresh_mode_to_mr3[fine_refresh_mode] << 6
+        return mr3
+
     def format_mr6(tccd):
         tccd_to_mr6 = {
             4: 0b000,
@@ -350,7 +359,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     mr0 = format_mr0(bl, cl, wr, 1)
     mr1 = format_mr1(1, z_to_ron[ron], z_to_rtt_nom[rtt_nom])
     mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
-    mr3 = 0
+    mr3 = format_mr3(timing_settings.fine_refresh_mode)
     mr4 = 0
     mr5 = 0
     mr6 = format_mr6(4) # FIXME: tCCD
