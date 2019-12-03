@@ -16,12 +16,27 @@ from litedram.core.multiplexer import Multiplexer
 
 class ControllerSettings(Settings):
     def __init__(self,
-        cmd_buffer_depth    = 8, cmd_buffer_buffered=False,
+        # Command buffers
+        cmd_buffer_depth    = 8,
+        cmd_buffer_buffered = False,
+
+        # Read/Write times
         read_time           = 32,
         write_time          = 16,
+
+        # Bandwidth
         with_bandwidth      = False,
-        with_refresh        = True, refresh_cls=Refresher, refresh_zqcs_freq=1e0, refresh_postponing=1,
+
+        # Refresh
+        with_refresh        = True,
+        refresh_cls         = Refresher,
+        refresh_zqcs_freq   = 1e0,
+        refresh_postponing  = 1,
+
+        # Auto-Precharge
         with_auto_precharge = True,
+
+        # Address mapping
         address_mapping     = "ROW_BANK_COL"):
         self.set_attributes(locals())
 
