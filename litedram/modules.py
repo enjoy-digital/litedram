@@ -190,6 +190,15 @@ class AS4C32M16(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=18, tRCD=18, tWR=12, tRFC=(None, 60), tFAW=None, tRAS=None)}
 
+class AS4C32M8(SDRAMModule):
+    memtype = "SDR"
+    # geometry
+    nbanks = 4
+    nrows  = 8192
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 15))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=20, tRCD=20, tWR=15, tRFC=(None, 66), tFAW=None, tRAS=44)}
 
 # DDR ----------------------------------------------------------------------------------------------
 
