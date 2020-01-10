@@ -5,6 +5,9 @@
 
 from migen import *
 
+from litex.soc.interconnect import stream
+
+
 # LiteDRAMWishbone2Native --------------------------------------------------------------------------
 
 class LiteDRAMWishbone2Native(Module):
@@ -14,6 +17,10 @@ class LiteDRAMWishbone2Native(Module):
         # # #
 
         adr_offset = base_address >> log2_int(port.data_width//8)
+
+        # Write data buffer-------------------------------------------------------------------------
+        wdata_buffer = stream.Buffer([("data", port.data_width), ("we", port.data_width//8)])
+        self.submodules += wdata_buffer
 
         # Control ----------------------------------------------------------------------------------
         self.submodules.fsm = fsm = FSM(reset_state="CMD")
@@ -29,8 +36,8 @@ class LiteDRAMWishbone2Native(Module):
             )
         )
         fsm.act("WRITE",
-            port.wdata.valid.eq(1),
-            If(port.wdata.ready,
+            wdata_buffer.sink.valid.eq(1),
+            If(wdata_buffer.sink.ready,
                 wishbone.ack.eq(1),
                 NextState("CMD")
             )
@@ -48,8 +55,9 @@ class LiteDRAMWishbone2Native(Module):
             # Cmd
             port.cmd.addr.eq(wishbone.adr - adr_offset),
             # Write
-            port.wdata.we.eq(wishbone.sel),
-            port.wdata.data.eq(wishbone.dat_w),
+            wdata_buffer.sink.data.eq(wishbone.dat_w),
+            wdata_buffer.sink.we.eq(wishbone.sel),
+            wdata_buffer.source.connect(port.wdata),
             # Read
             wishbone.dat_r.eq(port.rdata.data),
         ]
