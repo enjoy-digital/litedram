@@ -56,11 +56,10 @@ class LiteDRAMWishbone2Native(Module):
             If(port.cmd.valid & port.cmd.ready,
                 NextValue(count, count + 1),
                 If(count == (ratio - 1),
+                    NextValue(count, 0),
                     If(wishbone.we,
-                        NextValue(count, 0),
                         NextState("WAIT-WRITE")
                     ).Else(
-                        NextValue(count, 0),
                         NextState("WAIT-READ")
                     )
                 )
