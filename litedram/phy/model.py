@@ -1,10 +1,13 @@
-# This file is Copyright (c) 2015 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2015-2020 Florent Kermarrec <florent@enjoy-digital.fr>
 # License: BSD
 
-# SDRAM simulation PHY at DFI level
-# tested with SDR/DDR/DDR2/LPDDR/DDR3
+# SDRAM simulation PHY at DFI level tested with SDR/DDR/DDR2/LPDDR/DDR3
 # TODO:
-# - add $display support to LiteX gen and manage timing violations?
+# - test/add DDR4 support.
+# - add init/dump capabilities.
+# - add multirank support.
+# - add bandwidth/efficiency measurements.
+# - add timings checks.
 
 from migen import *
 
@@ -13,8 +16,9 @@ from litedram.phy.dfi import *
 from functools import reduce
 from operator import or_
 
+# Bank Model ---------------------------------------------------------------------------------------
 
-class Bank(Module):
+class BankModel(Module):
     def __init__(self, data_width, nrows, ncols, burst_length, we_granularity):
         self.activate     = Signal()
         self.activate_row = Signal(max=nrows)
@@ -42,10 +46,11 @@ class Bank(Module):
                 row.eq(self.activate_row)
             )
 
-        self.specials.mem = mem = Memory(data_width, nrows*ncols//burst_length)
-        self.specials.write_port = write_port = mem.get_port(write_capable=True,
-                                                             we_granularity=we_granularity)
-        self.specials.read_port = read_port = mem.get_port(async_read=True)
+        mem        = Memory(data_width, nrows*ncols//burst_length)
+        write_port = mem.get_port(write_capable=True, we_granularity=we_granularity)
+        read_port  = mem.get_port(async_read=True)
+        self.specials += mem, read_port, write_port
+
         self.comb += [
             If(active,
                 write_port.adr.eq(row*ncols | self.write_col),
@@ -62,8 +67,9 @@ class Bank(Module):
             )
         ]
 
+# DFI Phase Model ----------------------------------------------------------------------------------
 
-class DFIPhase(Module):
+class DFIPhaseModel(Module):
     def __init__(self, dfi, n):
         phase = getattr(dfi, "p"+str(n))
 
@@ -94,44 +100,56 @@ class DFIPhase(Module):
             )
         ]
 
+# SDRAM PHY Model ----------------------------------------------------------------------------------
 
 class SDRAMPHYModel(Module):
     def __init__(self, module, settings, we_granularity=8):
-        if settings.memtype in ["SDR"]:
-            burst_length = settings.nphases*1  # command multiplication*SDR
-        elif settings.memtype in ["DDR", "LPDDR", "DDR2", "DDR3"]:
-            burst_length = settings.nphases*2  # command multiplication*DDR
+        # Parameters
+        burst_length = {
+            "SDR":   1,
+            "DDR":   2,
+            "LPDDR": 2,
+            "DDR2":  2,
+            "DDR3":  2,
+            }[settings.memtype]
 
-        addressbits = module.geom_settings.addressbits
-        bankbits = module.geom_settings.bankbits
-        rowbits = module.geom_settings.rowbits
-        colbits = module.geom_settings.colbits
+        addressbits   = module.geom_settings.addressbits
+        bankbits      = module.geom_settings.bankbits
+        rowbits       = module.geom_settings.rowbits
+        colbits       = module.geom_settings.colbits
 
         self.settings = settings
-        self.module = module
+        self.module   = module
 
-        self.dfi = Interface(addressbits, bankbits, self.settings.nranks, self.settings.dfi_databits, self.settings.nphases)
+        # DFI Interface
+        self.dfi = Interface(
+            addressbits = addressbits,
+            bankbits    = bankbits,
+            nranks      = self.settings.nranks,
+            databits    = self.settings.dfi_databits,
+            nphases     = self.settings.nphases
+        )
 
         # # #
 
-        nbanks = 2**bankbits
-        nrows = 2**rowbits
-        ncols = 2**colbits
+        nbanks     = 2**bankbits
+        nrows      = 2**rowbits
+        ncols      = 2**colbits
         data_width = self.settings.dfi_databits*self.settings.nphases
 
-        # DFI phases
-        phases = [DFIPhase(self.dfi, n) for n in range(self.settings.nphases)]
+        # DFI phases -------------------------------------------------------------------------------
+        phases = [DFIPhaseModel(self.dfi, n) for n in range(self.settings.nphases)]
         self.submodules += phases
 
-        # banks
-        banks = [Bank(data_width, nrows, ncols, burst_length, we_granularity) for i in range(nbanks)]
+        # Banks ------------------------------------------------------------------------------------
+        banks = [BankModel(data_width, nrows, ncols, burst_length, we_granularity) for i in range(nbanks)]
         self.submodules += banks
 
-        # connect DFI phases to banks (cmds, write datapath)
+        # Connect DFI phases to Banks (CMDs, Write datapath) ---------------------------------------
         for nb, bank in enumerate(banks):
-            # bank activate
+            # Bank activate
             activates = Signal(len(phases))
-            cases = {}
+            cases     = {}
             for np, phase in enumerate(phases):
                 self.comb += activates[np].eq(phase.activate)
                 cases[2**np] = [
@@ -140,9 +158,9 @@ class SDRAMPHYModel(Module):
                 ]
             self.comb += Case(activates, cases)
 
-            # bank precharge
+            # Bank precharge
             precharges = Signal(len(phases))
-            cases = {}
+            cases      = {}
             for np, phase in enumerate(phases):
                 self.comb += precharges[np].eq(phase.precharge)
                 cases[2**np] = [
@@ -150,9 +168,9 @@ class SDRAMPHYModel(Module):
                 ]
             self.comb += Case(precharges, cases)
 
-            # bank writes
+            # Bank writes
             writes = Signal(len(phases))
-            cases = {}
+            cases  = {}
             for np, phase in enumerate(phases):
                 self.comb += writes[np].eq(phase.write)
                 cases[2**np] = [
@@ -165,7 +183,7 @@ class SDRAMPHYModel(Module):
                 bank.write_mask.eq(Cat(*[phase.wrdata_mask for phase in phases]))
             ]
 
-            # bank reads
+            # Bank reads
             reads = Signal(len(phases))
             cases = {}
             for np, phase in enumerate(phases):
@@ -176,23 +194,23 @@ class SDRAMPHYModel(Module):
             ]
             self.comb += Case(reads, cases)
 
-        # connect banks to DFI phases (cmds, read datapath)
-        banks_read = Signal()
+        # Connect Banks to DFI phases (CMDs, Read datapath) ----------------------------------------
+        banks_read      = Signal()
         banks_read_data = Signal(data_width)
         self.comb += [
             banks_read.eq(reduce(or_, [bank.read for bank in banks])),
             banks_read_data.eq(reduce(or_, [bank.read_data for bank in banks]))
         ]
 
-        # simulate read latency
+        # Simulate read latency --------------------------------------------------------------------
         for i in range(self.settings.read_latency):
-            new_banks_read = Signal()
+            new_banks_read      = Signal()
             new_banks_read_data = Signal(data_width)
             self.sync += [
                 new_banks_read.eq(banks_read),
                 new_banks_read_data.eq(banks_read_data)
             ]
-            banks_read = new_banks_read
+            banks_read      = new_banks_read
             banks_read_data = new_banks_read_data
 
         self.comb += [
