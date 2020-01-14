@@ -46,6 +46,7 @@ from litedram.frontend.axi import *
 from litedram.frontend.wishbone import *
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
+from litedram.frontend.fifo import LiteDRAMFIFO
 
 # IOs/Interfaces -----------------------------------------------------------------------------------
 
@@ -187,6 +188,21 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
             Subsignal("r_resp",  Pins(2)),
             Subsignal("r_data",  Pins(dw)),
             Subsignal("r_id",    Pins(iw))
+        ),
+    ]
+
+def get_user_fifo_ios(_id, dw):
+    return [
+        ("user_fifo", _id,
+            # in
+            Subsignal("in_valid", Pins(1)),
+            Subsignal("in_ready", Pins(1)),
+            Subsignal("in_data",  Pins(dw)),
+
+            # out
+            Subsignal("out_valid", Pins(1)),
+            Subsignal("out_ready", Pins(1)),
+            Subsignal("out_data",  Pins(dw)),
         ),
     ]
 
@@ -437,6 +453,32 @@ class LiteDRAMCore(SoCSDRAM):
         else:
             raise ValueError("Unsupported port type: {}".format(core_config["user_ports_type"]))
 
+        # User FIFOs -------------------------------------------------------------------------------
+        for i in range(core_config.get("user_fifos_nb", 0)):
+            platform.add_extension(get_user_fifo_ios(i, user_port.data_width))
+            _user_fifo_io = platform.request("user_fifo", i)
+            fifo = LiteDRAMFIFO(
+                data_width      = user_port.data_width,
+                base            = 0x00000000, # FIXME
+                depth           = 0x01000000, # FIXME
+                write_port      = self.sdram.crossbar.get_port("write"),
+                write_threshold = 0x01000000 - 32, # FIXME
+                read_port       = self.sdram.crossbar.get_port("read"),
+                read_threshold  = 32 # FIXME
+            )
+            self.submodules += fifo
+            self.comb += [
+                # in
+                fifo.sink.valid.eq(_user_fifo_io.in_valid),
+                _user_fifo_io.in_ready.eq(fifo.sink.ready),
+                fifo.sink.data.eq(_user_fifo_io.in_data),
+
+                # out
+                _user_fifo_io.out_valid.eq(fifo.source.valid),
+                fifo.source.ready.eq(_user_fifo_io.out_ready),
+                _user_fifo_io.out_data.eq(fifo.source.data),
+            ]
+
 # Build --------------------------------------------------------------------------------------------
 
 def main():
@@ -460,7 +502,7 @@ def main():
 
     # Generate core --------------------------------------------------------------------------------
     platform = Platform()
-    soc      = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000)
+    soc      = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000, integrated_sram_size=0x1000)
     builder  = Builder(soc, output_dir="build", compile_gateware=False)
     vns      = builder.build(build_name="litedram_core", regular_comb=False)
 

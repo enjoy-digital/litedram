@@ -33,6 +33,9 @@
     "user_ports_type":     "axi", # Type of ports (axi, wishbone, native)
     "user_ports_id_width": 32,    # AXI identifier width
 
+    # User FIFOs ---------------------------------------------------------------
+    "user_fifos_nb":       1,     # Number of user fifos
+
     # CSR Port -----------------------------------------------------------------
     "csr_expose": "False", # Expose CSR bus as I/Os
     "csr_align" : 32,      # CSR alignment
