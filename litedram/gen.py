@@ -112,7 +112,7 @@ def get_csr_ios(aw, dw):
 
 def get_native_user_port_ios(_id, aw, dw):
     return [
-        ("user_port", _id,
+        ("user_port_{}".format(_id), 0,
             # cmd
             Subsignal("cmd_valid", Pins(1)),
             Subsignal("cmd_ready", Pins(1)),
@@ -134,7 +134,7 @@ def get_native_user_port_ios(_id, aw, dw):
 
 def get_wishbone_user_port_ios(_id, aw, dw):
     return [
-        ("user_port", _id,
+        ("user_port_{}".format(_id), 0,
             Subsignal("adr",   Pins(aw)),
             Subsignal("dat_w", Pins(dw)),
             Subsignal("dat_r", Pins(dw)),
@@ -149,7 +149,7 @@ def get_wishbone_user_port_ios(_id, aw, dw):
 
 def get_axi_user_port_ios(_id, aw, dw, iw):
     return [
-        ("user_port", _id,
+        ("user_port_{}".format(_id), 0,
             # aw
             Subsignal("aw_valid", Pins(1)),
             Subsignal("aw_ready", Pins(1)),
@@ -191,9 +191,9 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
         ),
     ]
 
-def get_user_fifo_ios(_id, dw):
+def get_fifo_user_port_ios(_id, dw):
     return [
-        ("user_fifo", _id,
+        ("user_fifo_{}".format(_id), 0,
             # in
             Subsignal("in_valid", Pins(1)),
             Subsignal("in_ready", Pins(1)),
@@ -348,13 +348,14 @@ class LiteDRAMCore(SoCSDRAM):
             platform.request("user_clk").eq(ClockSignal()),
             platform.request("user_rst").eq(ResetSignal())
         ]
-        if core_config["user_ports_type"] == "native":
-            for i in range(core_config["user_ports_nb"]):
+        for name, port in core_config["user_ports"].items():
+            # Native -------------------------------------------------------------------------------
+            if port["type"] == "native":
                 user_port = self.sdram.crossbar.get_port()
-                platform.add_extension(get_native_user_port_ios(i,
+                platform.add_extension(get_native_user_port_ios(name,
                     user_port.address_width,
                     user_port.data_width))
-                _user_port_io = platform.request("user_port", i)
+                _user_port_io = platform.request("user_port_{}".format(name))
                 self.comb += [
                     # cmd
                     user_port.cmd.valid.eq(_user_port_io.cmd_valid),
@@ -373,18 +374,18 @@ class LiteDRAMCore(SoCSDRAM):
                     user_port.rdata.ready.eq(_user_port_io.rdata_ready),
                     _user_port_io.rdata_data.eq(user_port.rdata.data),
                 ]
-        elif core_config["user_ports_type"] == "wishbone":
-            for i in range(core_config["user_ports_nb"]):
+            # Wishbone -----------------------------------------------------------------------------
+            elif port["type"] == "wishbone":
                 user_port = self.sdram.crossbar.get_port()
                 wb_port = wishbone.Interface(
                     user_port.data_width,
                     user_port.address_width)
                 wishbone2native = LiteDRAMWishbone2Native(wb_port, user_port)
                 self.submodules += wishbone2native
-                platform.add_extension(get_wishbone_user_port_ios(i,
+                platform.add_extension(get_wishbone_user_port_ios(name,
                         len(wb_port.adr),
                         len(wb_port.dat_w)))
-                _wb_port_io = platform.request("user_port", i)
+                _wb_port_io = platform.request("user_port_{}".format(name))
                 self.comb += [
                     wb_port.adr.eq(_wb_port_io.adr),
                     wb_port.dat_w.eq(_wb_port_io.dat_w),
@@ -396,20 +397,20 @@ class LiteDRAMCore(SoCSDRAM):
                     wb_port.we.eq(_wb_port_io.we),
                     _wb_port_io.err.eq(wb_port.err),
                 ]
-        elif core_config["user_ports_type"] == "axi":
-            for i in range(core_config["user_ports_nb"]):
+            # AXI ----------------------------------------------------------------------------------
+            elif port["type"] == "axi":
                 user_port = self.sdram.crossbar.get_port()
                 axi_port  = LiteDRAMAXIPort(
                     user_port.data_width,
                     user_port.address_width + log2_int(user_port.data_width//8),
-                    core_config["user_ports_id_width"])
+                    port["id_width"])
                 axi2native = LiteDRAMAXI2Native(axi_port, user_port)
                 self.submodules += axi2native
-                platform.add_extension(get_axi_user_port_ios(i,
+                platform.add_extension(get_axi_user_port_ios(name,
                         axi_port.address_width,
                         axi_port.data_width,
-                        core_config["user_ports_id_width"]))
-                _axi_port_io = platform.request("user_port", i)
+                        port["id_width"]))
+                _axi_port_io = platform.request("user_port_{}".format(name))
                 self.comb += [
                     # aw
                     axi_port.aw.valid.eq(_axi_port_io.aw_valid),
@@ -450,34 +451,33 @@ class LiteDRAMCore(SoCSDRAM):
                     _axi_port_io.r_data.eq(axi_port.r.data),
                     _axi_port_io.r_id.eq(axi_port.r.id),
                 ]
-        else:
-            raise ValueError("Unsupported port type: {}".format(core_config["user_ports_type"]))
+            # FIFO ---------------------------------------------------------------------------------
+            elif port["type"] == "fifo":
+                platform.add_extension(get_fifo_user_port_ios(name, user_port.data_width))
+                _user_fifo_io = platform.request("user_fifo_{}".format(name))
+                fifo = LiteDRAMFIFO(
+                    data_width      = user_port.data_width,
+                    base            = port["base"],
+                    depth           = port["depth"],
+                    write_port      = self.sdram.crossbar.get_port("write"),
+                    write_threshold = port["depth"] - 32, # FIXME
+                    read_port       = self.sdram.crossbar.get_port("read"),
+                    read_threshold  = 32 # FIXME
+                )
+                self.submodules += fifo
+                self.comb += [
+                    # in
+                    fifo.sink.valid.eq(_user_fifo_io.in_valid),
+                    _user_fifo_io.in_ready.eq(fifo.sink.ready),
+                    fifo.sink.data.eq(_user_fifo_io.in_data),
 
-        # User FIFOs -------------------------------------------------------------------------------
-        for i in range(core_config.get("user_fifos_nb", 0)):
-            platform.add_extension(get_user_fifo_ios(i, user_port.data_width))
-            _user_fifo_io = platform.request("user_fifo", i)
-            fifo = LiteDRAMFIFO(
-                data_width      = user_port.data_width,
-                base            = 0x00000000, # FIXME
-                depth           = 0x01000000, # FIXME
-                write_port      = self.sdram.crossbar.get_port("write"),
-                write_threshold = 0x01000000 - 32, # FIXME
-                read_port       = self.sdram.crossbar.get_port("read"),
-                read_threshold  = 32 # FIXME
-            )
-            self.submodules += fifo
-            self.comb += [
-                # in
-                fifo.sink.valid.eq(_user_fifo_io.in_valid),
-                _user_fifo_io.in_ready.eq(fifo.sink.ready),
-                fifo.sink.data.eq(_user_fifo_io.in_data),
-
-                # out
-                _user_fifo_io.out_valid.eq(fifo.source.valid),
-                fifo.source.ready.eq(_user_fifo_io.out_ready),
-                _user_fifo_io.out_data.eq(fifo.source.data),
-            ]
+                    # out
+                    _user_fifo_io.out_valid.eq(fifo.source.valid),
+                    fifo.source.ready.eq(_user_fifo_io.out_ready),
+                    _user_fifo_io.out_data.eq(fifo.source.data),
+                ]
+            else:
+                raise ValueError("Unsupported port type: {}".format(port["type"]))
 
 # Build --------------------------------------------------------------------------------------------
 
