@@ -151,43 +151,43 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
     return [
         ("user_port_{}".format(_id), 0,
             # aw
-            Subsignal("aw_valid", Pins(1)),
-            Subsignal("aw_ready", Pins(1)),
-            Subsignal("aw_addr",  Pins(aw)),
-            Subsignal("aw_burst", Pins(2)),
-            Subsignal("aw_len",   Pins(8)),
-            Subsignal("aw_size",  Pins(4)),
-            Subsignal("aw_id",    Pins(iw)),
+            Subsignal("awvalid", Pins(1)),
+            Subsignal("awready", Pins(1)),
+            Subsignal("awaddr",  Pins(aw)),
+            Subsignal("awburst", Pins(2)),
+            Subsignal("awlen",   Pins(8)),
+            Subsignal("awsize",  Pins(4)),
+            Subsignal("awid",    Pins(iw)),
 
             # w
-            Subsignal("w_valid", Pins(1)),
-            Subsignal("w_ready", Pins(1)),
-            Subsignal("w_last",  Pins(1)),
-            Subsignal("w_strb",  Pins(dw//8)),
-            Subsignal("w_data",  Pins(dw)),
+            Subsignal("wvalid", Pins(1)),
+            Subsignal("wready", Pins(1)),
+            Subsignal("wlast",  Pins(1)),
+            Subsignal("wstrb",  Pins(dw//8)),
+            Subsignal("wdata",  Pins(dw)),
 
             # b
-            Subsignal("b_valid", Pins(1)),
-            Subsignal("b_ready", Pins(1)),
-            Subsignal("b_resp",  Pins(2)),
-            Subsignal("b_id",    Pins(iw)),
+            Subsignal("bvalid", Pins(1)),
+            Subsignal("bready", Pins(1)),
+            Subsignal("bresp",  Pins(2)),
+            Subsignal("bid",    Pins(iw)),
 
             # ar
-            Subsignal("ar_valid", Pins(1)),
-            Subsignal("ar_ready", Pins(1)),
-            Subsignal("ar_addr",  Pins(aw)),
-            Subsignal("ar_burst", Pins(2)),
-            Subsignal("ar_len",   Pins(8)),
-            Subsignal("ar_size",  Pins(4)),
-            Subsignal("ar_id",    Pins(iw)),
+            Subsignal("arvalid", Pins(1)),
+            Subsignal("arready", Pins(1)),
+            Subsignal("araddr",  Pins(aw)),
+            Subsignal("arburst", Pins(2)),
+            Subsignal("arlen",   Pins(8)),
+            Subsignal("arsize",  Pins(4)),
+            Subsignal("arid",    Pins(iw)),
 
             # r
-            Subsignal("r_valid", Pins(1)),
-            Subsignal("r_ready", Pins(1)),
-            Subsignal("r_last",  Pins(1)),
-            Subsignal("r_resp",  Pins(2)),
-            Subsignal("r_data",  Pins(dw)),
-            Subsignal("r_id",    Pins(iw))
+            Subsignal("rvalid", Pins(1)),
+            Subsignal("rready", Pins(1)),
+            Subsignal("rlast",  Pins(1)),
+            Subsignal("rresp",  Pins(2)),
+            Subsignal("rdata",  Pins(dw)),
+            Subsignal("rid",    Pins(iw))
         ),
     ]
 
@@ -413,43 +413,43 @@ class LiteDRAMCore(SoCSDRAM):
                 _axi_port_io = platform.request("user_port_{}".format(name))
                 self.comb += [
                     # aw
-                    axi_port.aw.valid.eq(_axi_port_io.aw_valid),
-                    _axi_port_io.aw_ready.eq(axi_port.aw.ready),
-                    axi_port.aw.addr.eq(_axi_port_io.aw_addr),
-                    axi_port.aw.burst.eq(_axi_port_io.aw_burst),
-                    axi_port.aw.len.eq(_axi_port_io.aw_len),
-                    axi_port.aw.size.eq(_axi_port_io.aw_size),
-                    axi_port.aw.id.eq(_axi_port_io.aw_id),
+                    axi_port.aw.valid.eq(_axi_port_io.awvalid),
+                    _axi_port_io.awready.eq(axi_port.aw.ready),
+                    axi_port.aw.addr.eq(_axi_port_io.awaddr),
+                    axi_port.aw.burst.eq(_axi_port_io.awburst),
+                    axi_port.aw.len.eq(_axi_port_io.awlen),
+                    axi_port.aw.size.eq(_axi_port_io.awsize),
+                    axi_port.aw.id.eq(_axi_port_io.awid),
 
                     # w
-                    axi_port.w.valid.eq(_axi_port_io.w_valid),
-                    _axi_port_io.w_ready.eq(axi_port.w.ready),
-                    axi_port.w.last.eq(_axi_port_io.w_last),
-                    axi_port.w.strb.eq(_axi_port_io.w_strb),
-                    axi_port.w.data.eq(_axi_port_io.w_data),
+                    axi_port.w.valid.eq(_axi_port_io.wvalid),
+                    _axi_port_io.wready.eq(axi_port.w.ready),
+                    axi_port.w.last.eq(_axi_port_io.wlast),
+                    axi_port.w.strb.eq(_axi_port_io.wstrb),
+                    axi_port.w.data.eq(_axi_port_io.wdata),
 
                     # b
-                    _axi_port_io.b_valid.eq(axi_port.b.valid),
-                    axi_port.b.ready.eq(_axi_port_io.b_ready),
-                    _axi_port_io.b_resp.eq(axi_port.b.resp),
-                    _axi_port_io.b_id.eq(axi_port.b.id),
+                    _axi_port_io.bvalid.eq(axi_port.b.valid),
+                    axi_port.b.ready.eq(_axi_port_io.bready),
+                    _axi_port_io.bresp.eq(axi_port.b.resp),
+                    _axi_port_io.bid.eq(axi_port.b.id),
 
                     # ar
-                    axi_port.ar.valid.eq(_axi_port_io.ar_valid),
-                    _axi_port_io.ar_ready.eq(axi_port.ar.ready),
-                    axi_port.ar.addr.eq(_axi_port_io.ar_addr),
-                    axi_port.ar.burst.eq(_axi_port_io.ar_burst),
-                    axi_port.ar.len.eq(_axi_port_io.ar_len),
-                    axi_port.ar.size.eq(_axi_port_io.ar_size),
-                    axi_port.ar.id.eq(_axi_port_io.ar_id),
+                    axi_port.ar.valid.eq(_axi_port_io.arvalid),
+                    _axi_port_io.arready.eq(axi_port.ar.ready),
+                    axi_port.ar.addr.eq(_axi_port_io.araddr),
+                    axi_port.ar.burst.eq(_axi_port_io.arburst),
+                    axi_port.ar.len.eq(_axi_port_io.arlen),
+                    axi_port.ar.size.eq(_axi_port_io.arsize),
+                    axi_port.ar.id.eq(_axi_port_io.arid),
 
                     # r
-                    _axi_port_io.r_valid.eq(axi_port.r.valid),
-                    axi_port.r.ready.eq(_axi_port_io.r_ready),
-                    _axi_port_io.r_last.eq(axi_port.r.last),
-                    _axi_port_io.r_resp.eq(axi_port.r.resp),
-                    _axi_port_io.r_data.eq(axi_port.r.data),
-                    _axi_port_io.r_id.eq(axi_port.r.id),
+                    _axi_port_io.rvalid.eq(axi_port.r.valid),
+                    axi_port.r.ready.eq(_axi_port_io.rready),
+                    _axi_port_io.rlast.eq(axi_port.r.last),
+                    _axi_port_io.rresp.eq(axi_port.r.resp),
+                    _axi_port_io.rdata.eq(axi_port.r.data),
+                    _axi_port_io.rid.eq(axi_port.r.id),
                 ]
             # FIFO ---------------------------------------------------------------------------------
             elif port["type"] == "fifo":
