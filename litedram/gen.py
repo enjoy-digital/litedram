@@ -66,7 +66,7 @@ def get_common_ios():
         ("pll_locked", 0, Pins(1)),
 
         # init status
-        ("init_done", 0, Pins(1)),
+        ("init_done",  0, Pins(1)),
         ("init_error", 0, Pins(1)),
 
         # iodelay clk / rst
@@ -82,20 +82,20 @@ def get_dram_ios(core_config):
     sdram_module = core_config["sdram_module"]
     return [
         ("ddram", 0,
-            Subsignal("a", Pins(log2_int(core_config["sdram_module"].nrows))),
-            Subsignal("ba", Pins(log2_int(core_config["sdram_module"].nbanks))),
-            Subsignal("ras_n", Pins(1)),
-            Subsignal("cas_n", Pins(1)),
-            Subsignal("we_n", Pins(1)),
-            Subsignal("cs_n", Pins(core_config["sdram_rank_nb"])),
-            Subsignal("dm", Pins(core_config["sdram_module_nb"])),
-            Subsignal("dq", Pins(8*core_config["sdram_module_nb"])),
-            Subsignal("dqs_p", Pins(core_config["sdram_module_nb"])),
-            Subsignal("dqs_n", Pins(core_config["sdram_module_nb"])),
-            Subsignal("clk_p", Pins(core_config["sdram_rank_nb"])),
-            Subsignal("clk_n", Pins(core_config["sdram_rank_nb"])),
-            Subsignal("cke", Pins(core_config["sdram_rank_nb"])),
-            Subsignal("odt", Pins(core_config["sdram_rank_nb"])),
+            Subsignal("a",       Pins(log2_int(core_config["sdram_module"].nrows))),
+            Subsignal("ba",      Pins(log2_int(core_config["sdram_module"].nbanks))),
+            Subsignal("ras_n",   Pins(1)),
+            Subsignal("cas_n",   Pins(1)),
+            Subsignal("we_n",    Pins(1)),
+            Subsignal("cs_n",    Pins(core_config["sdram_rank_nb"])),
+            Subsignal("dm",      Pins(core_config["sdram_module_nb"])),
+            Subsignal("dq",      Pins(8*core_config["sdram_module_nb"])),
+            Subsignal("dqs_p",   Pins(core_config["sdram_module_nb"])),
+            Subsignal("dqs_n",   Pins(core_config["sdram_module_nb"])),
+            Subsignal("clk_p",   Pins(core_config["sdram_rank_nb"])),
+            Subsignal("clk_n",   Pins(core_config["sdram_rank_nb"])),
+            Subsignal("cke",     Pins(core_config["sdram_rank_nb"])),
+            Subsignal("odt",     Pins(core_config["sdram_rank_nb"])),
             Subsignal("reset_n", Pins(1))
         ),
     ]
