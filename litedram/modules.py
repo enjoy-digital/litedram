@@ -430,9 +430,9 @@ class MT8KTF51264(SDRAMModule):
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10), tZQCS=(64, 80))
     speedgrade_timings = {
-        "800":  _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=13.91, tRFC=260, tFAW=(None, 50), tRAS=None),
-        "1066": _SpeedgradeTimings(tRP=15,    tRCD=15,    tWR=15,    tRFC=86,  tFAW=(None, 50), tRAS=None),
-        "1333": _SpeedgradeTimings(tRP=15,    tRCD=15,    tWR=15,    tRFC=107, tFAW=(None, 45), tRAS=None),
+        "800":  _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=13.91, tRFC=(260, None), tFAW=(None, 50), tRAS=None),
+        "1066": _SpeedgradeTimings(tRP=15,    tRCD=15,    tWR=15,    tRFC=(86,  None), tFAW=(None, 50), tRAS=None),
+        "1333": _SpeedgradeTimings(tRP=15,    tRCD=15,    tWR=15,    tRFC=(107, None), tFAW=(None, 45), tRAS=None),
     }
     speedgrade_timings["default"] = speedgrade_timings["1333"]
 
@@ -448,7 +448,7 @@ class MT18KSF1G72HZ(SDRAMModule):
     speedgrade_timings = {
         "1066": _SpeedgradeTimings(tRP=15,     tRCD=15,     tWR=15,             tRFC=(86,  None), tFAW=(None, 50), tRAS=None),
         "1333": _SpeedgradeTimings(tRP=15,     tRCD=15,     tWR=15,             tRFC=(107, None), tFAW=(None, 45), tRAS=None),
-        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=(13.125, None), tRFC=128,         tFAW=(None, 40), tRAS=None),
+        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=(13.125, None), tRFC=(128, None), tFAW=(None, 40), tRAS=None),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
