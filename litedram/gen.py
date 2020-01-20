@@ -274,14 +274,14 @@ class LiteDRAMCore(SoCSDRAM):
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
             kwargs["l2_size"]              = 0
-            kwargs["l2_data_width"]        = 32
+            kwargs["min_l2_data_width"]    = 0
             kwargs["with_uart"]            = False
             kwargs["with_timer"]           = False
             kwargs["with_ctrl"]            = False
             kwargs["with_wishbone"]        = (cpu_type != None)
         else:
-           kwargs["l2_size"]       = 0
-           kwargs["l2_data_width"] = 32
+           kwargs["l2_size"]           = 0
+           kwargs["min_l2_data_width"] = 0
 
         # SoCSDRAM ---------------------------------------------------------------------------------
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
