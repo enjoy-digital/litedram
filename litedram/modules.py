@@ -210,6 +210,16 @@ class M12L64322A(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 10))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 55), tFAW=None, tRAS=40)}
 
+class M12L16161A(SDRAMModule):
+    memtype = "SDR"
+    # geometry
+    nbanks = 2
+    nrows  = 2048
+    ncols  = 256
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 10))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 55), tFAW=None, tRAS=40)}
+
 # DDR ----------------------------------------------------------------------------------------------
 
 class MT46V32M16(SDRAMModule):
@@ -289,7 +299,6 @@ class P3R1GE4JGF(SDRAMModule):
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(None, 7.5), tCCD=(2, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=12.5, tRCD=12.5, tWR=15, tRFC=(None, 127.5), tFAW=None, tRAS=None)}
-
 
 # DDR3 (Chips) -------------------------------------------------------------------------------------
 
