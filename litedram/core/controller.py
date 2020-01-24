@@ -25,7 +25,7 @@ class ControllerSettings(Settings):
         write_time          = 16,
 
         # Bandwidth
-        with_bandwidth      = False,
+        with_bandwidth      = True,
 
         # Refresh
         with_refresh        = True,

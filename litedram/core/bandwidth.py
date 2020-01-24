@@ -12,10 +12,11 @@ from litex.soc.interconnect.csr import *
 # Bandwidth ----------------------------------------------------------------------------------------
 
 class Bandwidth(Module, AutoCSR):
-    def __init__(self, cmd, data_width, period_bits=24):
-        self.update     = CSR()
-        self.nreads     = CSRStatus(period_bits)
-        self.nwrites    = CSRStatus(period_bits)
+    def __init__(self, cmd_read_write, cmd_act_precharge, data_width, period_bits=24):
+        self.update = CSR()
+        self.nreads = CSRStatus(period_bits)
+        self.nwrites = CSRStatus(period_bits)
+        self.nactivates = CSRStatus(period_bits)
         self.data_width = CSRStatus(bits_for(data_width), reset=data_width)
 
         # # #
@@ -24,32 +25,51 @@ class Bandwidth(Module, AutoCSR):
         cmd_ready    = Signal()
         cmd_is_read  = Signal()
         cmd_is_write = Signal()
+
+        cmd_act_valid = Signal()
+        cmd_act_ready = Signal()
+        cmd_act_is_act = Signal()
         self.sync += [
-            cmd_valid.eq(cmd.valid),
-            cmd_ready.eq(cmd.ready),
-            cmd_is_read.eq(cmd.is_read),
-            cmd_is_write.eq(cmd.is_write)
+            cmd_valid.eq(cmd_read_write.valid),
+            cmd_ready.eq(cmd_read_write.ready),
+            cmd_is_read.eq(cmd_read_write.is_read),
+            cmd_is_write.eq(cmd_read_write.is_write),
+
+            cmd_act_valid.eq(cmd_act_precharge.valid),
+            cmd_act_ready.eq(cmd_act_precharge.ready),
+            cmd_act_is_act.eq(cmd_act_precharge.ras & ~cmd_act_precharge.cas & ~cmd_act_precharge.we),
         ]
 
-        counter   = Signal(period_bits)
-        period    = Signal()
-        nreads    = Signal(period_bits)
-        nwrites   = Signal(period_bits)
-        nreads_r  = Signal(period_bits)
+        counter = Signal(period_bits)
+        period = Signal()
+        nreads = Signal(period_bits)
+        nwrites = Signal(period_bits)
+        nacts = Signal(period_bits)
+        nreads_r = Signal(period_bits)
         nwrites_r = Signal(period_bits)
+        nacts_r = Signal(period_bits)
+
         self.sync += [
             Cat(counter, period).eq(counter + 1),
             If(period,
                 nreads_r.eq(nreads),
                 nwrites_r.eq(nwrites),
+                nacts_r.eq(nacts),
                 nreads.eq(0),
-                nwrites.eq(0)
-            ).Elif(cmd_valid & cmd_ready,
-                If(cmd_is_read, nreads.eq(nreads + 1)),
-                If(cmd_is_write, nwrites.eq(nwrites + 1)),
+                nwrites.eq(0),
+                nacts.eq(0),
+            ).Else(
+                If(cmd_valid & cmd_ready,
+                    If(cmd_is_read, nreads.eq(nreads + 1)),
+                    If(cmd_is_write, nwrites.eq(nwrites + 1)),
+                ),
+                If(cmd_act_valid, & cmd_act_ready,
+                    If(cmd_act_is_act, nacts.eq(nacts + 1))
+                )
             ),
             If(self.update.re,
                 self.nreads.status.eq(nreads_r),
-                self.nwrites.status.eq(nwrites_r)
+                self.nwrites.status.eq(nwrites_r),
+                self.nactivates.status.eq(nacts_r),
             )
         ]

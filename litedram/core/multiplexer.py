@@ -327,4 +327,4 @@ class Multiplexer(Module, AutoCSR):
 
         if settings.with_bandwidth:
             data_width = settings.phy.dfi_databits*settings.phy.nphases
-            self.submodules.bandwidth = Bandwidth(self.choose_req.cmd, data_width)
+            self.submodules.bandwidth = Bandwidth(self.choose_req.cmd, self.choose_cmd.cmd, data_width)
