@@ -36,7 +36,7 @@ class TestInit(unittest.TestCase):
 
     def test_ddr4(self):
         from litex.boards.targets.kcu105 import BaseSoC
-        soc = BaseSoC()
+        soc = BaseSoC(max_sdram_size=0x4000000)
         c_header = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         self.assertEqual(compare_with_reference(c_header, "ddr4_init.h"), True)
