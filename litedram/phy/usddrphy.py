@@ -1,4 +1,4 @@
-# This file is Copyright (c) 2015-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2015-2020 Florent Kermarrec <florent@enjoy-digital.fr>
 # License: BSD
 
 # 1:4 frequency-ratio DDR3/DDR4 PHY for Kintex/Virtex Ultrascale
@@ -252,16 +252,15 @@ class USDDRPHY(Module, AutoCSR):
         # DQS and DM -------------------------------------------------------------------------------
         oe_dqs             = Signal()
         dqs_serdes_pattern = Signal(8)
-        self.comb += \
+        self.comb += [
+            dqs_serdes_pattern.eq(0b01010101),
             If(self._wlevel_en.storage,
+                dqs_serdes_pattern.eq(0b00000000),
                 If(self._wlevel_strobe.re,
                     dqs_serdes_pattern.eq(0b00000001)
-                ).Else(
-                    dqs_serdes_pattern.eq(0b00000000)
                 )
-            ).Else(
-                dqs_serdes_pattern.eq(0b01010101)
             )
+        ]
         for i in range(databits//8):
             dm_o_nodelay = Signal()
             self.specials += [
