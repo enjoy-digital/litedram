@@ -275,25 +275,19 @@ class S7DDRPHY(Module, AutoCSR):
         dqs_preamble       = Signal()
         dqs_postamble      = Signal()
         dqs_serdes_pattern = Signal(8, reset=0b01010101)
+        self.comb += [
+            dqs_serdes_pattern.eq(0b01010101),
+            If(dqs_preamble | dqs_postamble,
+                dqs_serdes_pattern.eq(0b0000000)
+            )
+        ]
         if with_odelay:
-            self.comb += \
+            self.comb += [
                 If(self._wlevel_en.storage,
+                    dqs_serdes_pattern.eq(0b00000000),
                     If(self._wlevel_strobe.re,
                         dqs_serdes_pattern.eq(0b00000001)
-                    ).Else(
-                        dqs_serdes_pattern.eq(0b00000000)
                     )
-                ).Elif(dqs_preamble | dqs_postamble,
-                    dqs_serdes_pattern.eq(0b0000000)
-                ).Else(
-                    dqs_serdes_pattern.eq(0b01010101)
-                )
-        else:
-            self.comb += [
-                If(dqs_preamble | dqs_postamble,
-                    dqs_serdes_pattern.eq(0b0000000)
-                ).Else(
-                    dqs_serdes_pattern.eq(0b01010101)
                 )
             ]
 
