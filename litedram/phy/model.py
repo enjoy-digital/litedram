@@ -19,7 +19,7 @@ from operator import or_
 # Bank Model ---------------------------------------------------------------------------------------
 
 class BankModel(Module):
-    def __init__(self, data_width, nrows, ncols, burst_length, we_granularity):
+    def __init__(self, data_width, nrows, ncols, burst_length, we_granularity, init):
         self.activate     = Signal()
         self.activate_row = Signal(max=nrows)
         self.precharge    = Signal()
@@ -35,6 +35,9 @@ class BankModel(Module):
 
         # # #
 
+        for i in range(0, len(init), 4):
+            init[i], init[i+1], init[i+2], init[i+3] = init[i+3], init[i+2], init[i+1], init[i]
+
         active = Signal()
         row    = Signal(max=nrows)
 
@@ -46,7 +49,7 @@ class BankModel(Module):
                 row.eq(self.activate_row)
             )
 
-        mem        = Memory(data_width, nrows*ncols//burst_length)
+        mem        = Memory(data_width, nrows*ncols//burst_length, init=init)
         write_port = mem.get_port(write_capable=True, we_granularity=we_granularity)
         read_port  = mem.get_port(async_read=True)
         self.specials += mem, read_port, write_port
@@ -103,7 +106,7 @@ class DFIPhaseModel(Module):
 # SDRAM PHY Model ----------------------------------------------------------------------------------
 
 class SDRAMPHYModel(Module):
-    def __init__(self, module, settings, we_granularity=8):
+    def __init__(self, module, settings, we_granularity=8, init=None, address_mapping="ROW_BANK_COL"):
         # Parameters
         burst_length = {
             "SDR":   1,
@@ -141,8 +144,35 @@ class SDRAMPHYModel(Module):
         phases = [DFIPhaseModel(self.dfi, n) for n in range(self.settings.nphases)]
         self.submodules += phases
 
+        # Bank init data ---------------------------------------------------------------------------
+        bank_size = (data_width//8)*(nrows*ncols//burst_length) // 4
+        column_size = bank_size // nrows
+
+        bank_init = [ [] for i in range(nbanks) ]
+
+        if init is not None:
+            if address_mapping == "ROW_BANK_COL":
+                for i in range(nrows):
+                    for j in range(nbanks):
+                        start = i*nbanks*column_size+j*column_size
+                        end = min(start+column_size, len(init))
+                        if start > len(init):
+                            break
+                        bank_init[j].extend(init[start:end])
+            elif address_mapping == "BANK_ROW_COL":
+                for i in range(nbanks):
+                    start = i*bank_size
+                    end = min(start+bank_size, len(init))
+                    if start > len(init):
+                        break
+                    bank_init[i] = init[start:end]
+
+        for i in range(nbanks):
+            if len(bank_init[i]) == 0:
+                bank_init[i] = None
+
         # Banks ------------------------------------------------------------------------------------
-        banks = [BankModel(data_width, nrows, ncols, burst_length, we_granularity) for i in range(nbanks)]
+        banks = [BankModel(data_width, nrows, ncols, burst_length, we_granularity, bank_init[i]) for i in range(nbanks)]
         self.submodules += banks
 
         # Connect DFI phases to Banks (CMDs, Write datapath) ---------------------------------------
