@@ -1,4 +1,5 @@
 # This file is Copyright (c) 2015-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2020 Piotr Binkowski <pbinkowski@antmicro.com>
 # License: BSD
 
 # SDRAM simulation PHY at DFI level tested with SDR/DDR/DDR2/LPDDR/DDR3
@@ -35,6 +36,8 @@ class BankModel(Module):
 
         # # #
 
+        # FIXME: understand and cleanup
+        init.extend([0]*(4-len(init)%4))
         for i in range(0, len(init), 4):
             init[i], init[i+1], init[i+2], init[i+3] = init[i+3], init[i+2], init[i+1], init[i]
 
@@ -106,7 +109,7 @@ class DFIPhaseModel(Module):
 # SDRAM PHY Model ----------------------------------------------------------------------------------
 
 class SDRAMPHYModel(Module):
-    def __init__(self, module, settings, we_granularity=8, init=None, address_mapping="ROW_BANK_COL"):
+    def __init__(self, module, settings, we_granularity=8, init=[], address_mapping="ROW_BANK_COL"):
         # Parameters
         burst_length = {
             "SDR":   1,
@@ -145,31 +148,25 @@ class SDRAMPHYModel(Module):
         self.submodules += phases
 
         # Bank init data ---------------------------------------------------------------------------
-        bank_size = (data_width//8)*(nrows*ncols//burst_length) // 4
+        bank_size   = (data_width//8)*(nrows*ncols//burst_length) // 4
         column_size = bank_size // nrows
+        bank_init   = [[] for i in range(nbanks)]
 
-        bank_init = [ [] for i in range(nbanks) ]
-
-        if init is not None:
-            if address_mapping == "ROW_BANK_COL":
-                for i in range(nrows):
-                    for j in range(nbanks):
-                        start = i*nbanks*column_size+j*column_size
-                        end = min(start+column_size, len(init))
-                        if start > len(init):
-                            break
-                        bank_init[j].extend(init[start:end])
-            elif address_mapping == "BANK_ROW_COL":
-                for i in range(nbanks):
-                    start = i*bank_size
-                    end = min(start+bank_size, len(init))
+        if address_mapping == "ROW_BANK_COL":
+            for row in range(nrows):
+                for bank in range(nbanks):
+                    start = row*nbanks*column_size + bank*column_size
+                    end   = min(start + column_size, len(init))
                     if start > len(init):
                         break
-                    bank_init[i] = init[start:end]
-
-        for i in range(nbanks):
-            if len(bank_init[i]) == 0:
-                bank_init[i] = None
+                    bank_init[bank].extend(init[start:end])
+        elif address_mapping == "BANK_ROW_COL":
+            for bank in range(nbanks):
+                start = bank*bank_size
+                end   = min(start + bank_size, len(init))
+                if start > len(init):
+                    break
+                bank_init[bank] = init[start:end]
 
         # Banks ------------------------------------------------------------------------------------
         banks = [BankModel(data_width, nrows, ncols, burst_length, we_granularity, bank_init[i]) for i in range(nbanks)]
