@@ -51,10 +51,10 @@ class Bandwidth(Module, AutoCSR):
 
         self.sync += [
             Cat(counter, period).eq(counter + 1),
-            If(period,
-                nreads_r.eq(nreads),
-                nwrites_r.eq(nwrites),
-                nacts_r.eq(nacts),
+            If(self.update.re,
+                self.nreads.status.eq(nreads),
+                self.nwrites.status.eq(nwrites),
+                self.nactivates.status.eq(nacts),
                 nreads.eq(0),
                 nwrites.eq(0),
                 nacts.eq(0),
@@ -63,13 +63,8 @@ class Bandwidth(Module, AutoCSR):
                     If(cmd_is_read, nreads.eq(nreads + 1)),
                     If(cmd_is_write, nwrites.eq(nwrites + 1)),
                 ),
-                If(cmd_act_valid, & cmd_act_ready,
+                If(cmd_act_valid,  # cmd_act_ready never gets activated
                     If(cmd_act_is_act, nacts.eq(nacts + 1))
                 )
             ),
-            If(self.update.re,
-                self.nreads.status.eq(nreads_r),
-                self.nwrites.status.eq(nwrites_r),
-                self.nactivates.status.eq(nacts_r),
-            )
         ]
