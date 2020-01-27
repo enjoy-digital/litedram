@@ -32,6 +32,7 @@ from migen.genlib.resetsync import AsyncResetSynchronizer
 
 from litex.build.generic_platform import *
 from litex.build.xilinx import XilinxPlatform
+from litex.build.lattice import LatticePlatform
 from litex.boards.platforms import versa_ecp5
 
 from litex.soc.cores.clock import *
@@ -43,6 +44,8 @@ from litex.soc.cores.uart import *
 
 from litedram import modules as litedram_modules
 from litedram import phy as litedram_phys
+from litedram.phy.ecp5ddrphy import ECP5DDRPHY
+from litedram.phy.s7ddrphy import S7DDRPHY
 from litedram.core.controller import ControllerSettings
 from litedram.frontend.axi import *
 from litedram.frontend.wishbone import *
@@ -336,28 +339,21 @@ class LiteDRAMCore(SoCSDRAM):
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
+        if core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
+            self.submodules.crg = crg = LatticeDRAMCRG(platform, core_config)
+        if core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
+            self.submodules.crg = LiteDRAMCRG(platform, core_config)
 
-        if core_config["platform"] == "ecp5":
-            crg = LatticeDRAMCRG(platform, core_config)
-            self.submodules.crg = crg
-
+        # DRAM -------------------------------------------------------------------------------------
+        platform.add_extension(get_dram_ios(core_config))
+        if core_config["sdram_phy"] in  [litedram_phys.ECP5DDRPHY]:
+            assert core_config["memtype"] in ["DDR3"]
             self.submodules.ddrphy = core_config["sdram_phy"](
                 platform.request("ddram"),
                 sys_clk_freq=sys_clk_freq)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
             sdram_module = core_config["sdram_module"](sys_clk_freq, "1:2")
-
-            controller_settings = controller_settings=ControllerSettings(
-                cmd_buffer_depth=core_config["cmd_buffer_depth"])
-            self.register_sdram(self.ddrphy,
-                sdram_module.geom_settings,
-                sdram_module.timing_settings,
-                controller_settings=controller_settings)
-        else:
-            self.submodules.crg = LiteDRAMCRG(platform, core_config)
-
-            # DRAM -------------------------------------------------------------------------------------
-            platform.add_extension(get_dram_ios(core_config))
+        if core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             assert core_config["memtype"] in ["DDR2", "DDR3"]
             self.submodules.ddrphy = core_config["sdram_phy"](
                 platform.request("ddram"),
@@ -372,14 +368,16 @@ class LiteDRAMCore(SoCSDRAM):
                     rtt_nom=core_config["rtt_nom"],
                     rtt_wr=core_config["rtt_wr"],
                     ron=core_config["ron"])
-            sdram_module = core_config["sdram_module"](sys_clk_freq,
-                "1:4" if core_config["memtype"] == "DDR3" else "1:2")
-            controller_settings = controller_settings=ControllerSettings(
-                cmd_buffer_depth=core_config["cmd_buffer_depth"])
-            self.register_sdram(self.ddrphy,
-                                sdram_module.geom_settings,
-                                sdram_module.timing_settings,
-                                controller_settings=controller_settings)
+
+
+        sdram_module = core_config["sdram_module"](sys_clk_freq,
+            "1:4" if core_config["memtype"] == "DDR3" else "1:2")
+        controller_settings = controller_settings=ControllerSettings(
+            cmd_buffer_depth=core_config["cmd_buffer_depth"])
+        self.register_sdram(self.ddrphy,
+                            sdram_module.geom_settings,
+                            sdram_module.timing_settings,
+                            controller_settings=controller_settings)
 
         # DRAM Initialization ----------------------------------------------------------------------
         self.submodules.ddrctrl = LiteDRAMCoreControl()
@@ -565,13 +563,12 @@ def main():
             core_config[k] = getattr(litedram_phys, core_config[k])
 
     # Generate core --------------------------------------------------------------------------------
-    platform = Platform()
-    if core_config["platform"] == "ecp5":
+    if core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
         platform = versa_ecp5.Platform(toolchain="trellis")
-    elif core_config["platform"] == "xilinx":
+    elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
         platform = XilinxPlatform("", io=[], toolchain="vivado")
     else:
-        raise ValueError("Unknown platform specified in {}".format(args.config));
+        raise ValueError("Unsupported SDRAM PHY: {}".format(core_config["sdram_phy"]))
 
     soc      = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000, integrated_sram_size=0x1000)
     builder  = Builder(soc, output_dir="build", compile_gateware=False)

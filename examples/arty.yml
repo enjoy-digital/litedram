@@ -3,7 +3,6 @@
 
 {
     # General ------------------------------------------------------------------
-    "platform":   "xilinx",    # Platform type
     "cpu":        "vexriscv",  # Type of CPU used for init/calib (vexriscv, lm32)
     "speedgrade": -1,          # FPGA speedgrade
     "memtype":    "DDR3",      # DRAM type
