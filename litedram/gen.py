@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-# This file is Copyright (c) 2018-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2018-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2020 Stefan Schrijvers <ximin@ximinity.net>
 # License: BSD
 
 """
@@ -16,8 +17,8 @@ for some use cases it could be interesting to generate a standalone verilog file
 The standalone core is generated from a YAML configuration file that allows the user to generate
 easily a custom configuration of the core.
 
-Current version of the generator is limited to Xilinx 7-Series FPGA for
-DDR2/DDR3 memories and the versa ECP5-5G.
+Current version of the generator is limited to DDR2/DDR3 Xilinx 7-Series FPGA and DDR3 on Lattice
+ECP5.
 """
 
 import os
@@ -218,7 +219,50 @@ class Platform(XilinxPlatform):
 
 # CRG ----------------------------------------------------------------------------------------------
 
-class LiteDRAMCRG(Module):
+class LiteDRAMECP5DDRPHYCRG(Module):
+    def __init__(self, platform, core_config):
+        self.clock_domains.cd_init    = ClockDomain()
+        self.clock_domains.cd_por     = ClockDomain(reset_less=True)
+        self.clock_domains.cd_sys     = ClockDomain()
+        self.clock_domains.cd_sys2x   = ClockDomain()
+        self.clock_domains.cd_sys2x_i = ClockDomain(reset_less=True)
+
+        # # #
+
+        self.stop = Signal()
+
+        # clk / rst
+        clk = platform.request("clk")
+        rst = platform.request("rst")
+
+        # power on reset
+        por_count = Signal(16, reset=2**16-1)
+        por_done = Signal()
+        self.comb += self.cd_por.clk.eq(ClockSignal())
+        self.comb += por_done.eq(por_count == 0)
+        self.sync.por += If(~por_done, por_count.eq(por_count - 1))
+
+        # pll
+        self.submodules.pll = pll = ECP5PLL()
+        pll.register_clkin(clk, core_config['sys_clk_freq'])
+        pll.create_clkout(self.cd_sys2x_i, 2*core_config["sys_clk_freq"])
+        pll.create_clkout(self.cd_init, core_config['init_clk_freq'])
+        self.specials += [
+            Instance("ECLKSYNCB",
+                i_ECLKI=self.cd_sys2x_i.clk,
+                i_STOP=self.stop,
+                o_ECLKO=self.cd_sys2x.clk),
+            Instance("CLKDIVF",
+                p_DIV="2.0",
+                i_ALIGNWD=0,
+                i_CLKI=self.cd_sys2x.clk,
+                i_RST=self.cd_sys2x.rst,
+                o_CDIVX=self.cd_sys.clk),
+            AsyncResetSynchronizer(self.cd_init, ~por_done | ~pll.locked | rst),
+            AsyncResetSynchronizer(self.cd_sys, ~por_done | ~pll.locked | rst)
+        ]
+
+class LiteDRAMS7DDRPHYCRG(Module):
     def __init__(self, platform, core_config):
         self.clock_domains.cd_sys = ClockDomain()
         if core_config["memtype"] == "DDR3":
@@ -251,50 +295,6 @@ class LiteDRAMCRG(Module):
         iodelay_pll.register_clkin(clk, core_config["input_clk_freq"])
         iodelay_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_iodelay)
-
-class LatticeDRAMCRG(Module):
-    def __init__(self, platform, core_config):
-        self.clock_domains.cd_init = ClockDomain()
-        self.clock_domains.cd_por = ClockDomain(reset_less=True)
-        self.clock_domains.cd_sys = ClockDomain()
-        self.clock_domains.cd_sys2x = ClockDomain()
-        self.clock_domains.cd_sys2x_i = ClockDomain(reset_less=True)
-
-        # # #
-
-        self.stop = Signal()
-
-        # clk / rst
-        clk100 = platform.request("clk100")
-        rst_n = platform.request("rst_n")
-        platform.add_period_constraint(clk100, 10.0)
-
-        # power on reset
-        por_count = Signal(16, reset=2**16-1)
-        por_done = Signal()
-        self.comb += self.cd_por.clk.eq(ClockSignal())
-        self.comb += por_done.eq(por_count == 0)
-        self.sync.por += If(~por_done, por_count.eq(por_count - 1))
-
-        # pll
-        self.submodules.pll = pll = ECP5PLL()
-        pll.register_clkin(clk100, core_config['sys_clk_freq'])
-        pll.create_clkout(self.cd_sys2x_i, 2*core_config["sys_clk_freq"])
-        pll.create_clkout(self.cd_init, core_config['init_clk_freq'])
-        self.specials += [
-            Instance("ECLKSYNCB",
-                i_ECLKI=self.cd_sys2x_i.clk,
-                i_STOP=self.stop,
-                o_ECLKO=self.cd_sys2x.clk),
-            Instance("CLKDIVF",
-                p_DIV="2.0",
-                i_ALIGNWD=0,
-                i_CLKI=self.cd_sys2x.clk,
-                i_RST=self.cd_sys2x.rst,
-                o_CDIVX=self.cd_sys.clk),
-            AsyncResetSynchronizer(self.cd_init, ~por_done | ~pll.locked | ~rst_n),
-            AsyncResetSynchronizer(self.cd_sys, ~por_done | ~pll.locked | ~rst_n)
-        ]
 
 # LiteDRAMCoreControl ------------------------------------------------------------------------------
 
@@ -340,9 +340,9 @@ class LiteDRAMCore(SoCSDRAM):
 
         # CRG --------------------------------------------------------------------------------------
         if core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
-            self.submodules.crg = crg = LatticeDRAMCRG(platform, core_config)
+            self.submodules.crg = crg = LiteDRAMECP5DDRPHYCRG(platform, core_config)
         if core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
-            self.submodules.crg = LiteDRAMCRG(platform, core_config)
+            self.submodules.crg = LiteDRAMS7DDRPHYCRG(platform, core_config)
 
         # DRAM -------------------------------------------------------------------------------------
         platform.add_extension(get_dram_ios(core_config))
@@ -564,7 +564,7 @@ def main():
 
     # Generate core --------------------------------------------------------------------------------
     if core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
-        platform = versa_ecp5.Platform(toolchain="trellis")
+        platform = LatticePlatform("", io=[], toolchain="diamond")
     elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
         platform = XilinxPlatform("", io=[], toolchain="vivado")
     else:
