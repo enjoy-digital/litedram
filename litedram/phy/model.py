@@ -196,18 +196,36 @@ class SDRAMPHYModel(Module):
             self.comb += Case(precharges, cases)
 
             # Bank writes
+            bank_write = Signal()
+            bank_write_col = Signal(max=ncols)
             writes = Signal(len(phases))
             cases  = {}
             for np, phase in enumerate(phases):
                 self.comb += writes[np].eq(phase.write)
                 cases[2**np] = [
-                    bank.write.eq(phase.bank == nb),
-                    bank.write_col.eq(phase.address)
+                    bank_write.eq(phase.bank == nb),
+                    bank_write_col.eq(phase.address)
                 ]
             self.comb += Case(writes, cases)
             self.comb += [
                 bank.write_data.eq(Cat(*[phase.wrdata for phase in phases])),
                 bank.write_mask.eq(Cat(*[phase.wrdata_mask for phase in phases]))
+            ]
+
+            # Simulate write latency
+            for i in range(self.settings.write_latency):
+                new_bank_write     = Signal()
+                new_bank_write_col = Signal(max=ncols)
+                self.sync += [
+                    new_bank_write.eq(bank_write),
+                    new_bank_write_col.eq(bank_write_col)
+                ]
+                bank_write = new_bank_write
+                bank_write_col = new_bank_write_col
+
+            self.comb += [
+                bank.write.eq(bank_write),
+                bank.write_col.eq(bank_write_col)
             ]
 
             # Bank reads
