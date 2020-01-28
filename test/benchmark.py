@@ -26,6 +26,9 @@ class LiteDRAMBenchmarkSoC(SimSoC):
     def __init__(self,
         sdram_module     = "MT48LC16M16",
         sdram_data_width = 32,
+        bist_base        = 0x00000000,
+        bist_length      = 1024,
+        bist_random      = False,
         **kwargs):
 
         # SimSoC -----------------------------------------------------------------------------------
@@ -62,18 +65,18 @@ class LiteDRAMBenchmarkSoC(SimSoC):
         )
         fsm.act("BIST-GENERATOR",
             bist_generator.start.eq(1),
-            bist_generator.base.eq(0x0000000), # FIXME: make it configurable from command line
-            bist_generator.length.eq(1024),    # FIXME: make it configurable from command line
-            bist_generator.random.eq(0),       # FIXME: make it configurable from command line
+            bist_generator.base.eq(bist_base),
+            bist_generator.length.eq(bist_length),
+            bist_generator.random.eq(bist_random),
             If(bist_generator.done,
                 NextState("BIST-CHECKER")
             )
         )
         fsm.act("BIST-CHECKER",
             bist_checker.start.eq(1),
-            bist_checker.base.eq(0x0000000), # FIXME: make it configurable from command line
-            bist_checker.length.eq(1024),    # FIXME: make it configurable from command line
-            bist_checker.random.eq(0),       # FIXME: make it configurable from command line
+            bist_checker.base.eq(bist_base),
+            bist_checker.length.eq(bist_length),
+            bist_checker.random.eq(bist_random),
             If(bist_checker.done,
                 NextState("DISPLAY")
             )
@@ -114,6 +117,9 @@ def main():
     parser.add_argument("--trace-start",        default=0,              help="Cycle to start VCD tracing")
     parser.add_argument("--trace-end",          default=-1,             help="Cycle to end VCD tracing")
     parser.add_argument("--opt-level",          default="O0",           help="Compilation optimization level")
+    parser.add_argument("--bist-base",          default="0x00000000",   help="Base address of the test (default=0)")
+    parser.add_argument("--bist-length",        default="1024",         help="Length of the test (default=1024)")
+    parser.add_argument("--bist-random",        action="store_true",    help="Use random data during the test")
     args = parser.parse_args()
 
     soc_kwargs     = soc_sdram_argdict(args)
@@ -125,6 +131,9 @@ def main():
     # Configuration --------------------------------------------------------------------------------
     soc_kwargs["sdram_module"]     = args.sdram_module
     soc_kwargs["sdram_data_width"] = int(args.sdram_data_width)
+    soc_kwargs["bist_base"]        = int(args.bist_base, 0)
+    soc_kwargs["bist_length"]      = int(args.bist_length, 0)
+    soc_kwargs["bist_random"]      = args.bist_random
 
     # SoC ------------------------------------------------------------------------------------------
     soc = LiteDRAMBenchmarkSoC(**soc_kwargs)
