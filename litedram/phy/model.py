@@ -20,7 +20,7 @@ from operator import or_
 # Bank Model ---------------------------------------------------------------------------------------
 
 class BankModel(Module):
-    def __init__(self, data_width, nrows, ncols, burst_length, we_granularity, init):
+    def __init__(self, data_width, nrows, ncols, burst_length, nphases, we_granularity, init):
         self.activate     = Signal()
         self.activate_row = Signal(max=nrows)
         self.precharge    = Signal()
@@ -36,11 +36,6 @@ class BankModel(Module):
 
         # # #
 
-        # FIXME: understand and cleanup
-        init.extend([0]*(4-len(init)%4))
-        for i in range(0, len(init), 4):
-            init[i], init[i+1], init[i+2], init[i+3] = init[i+3], init[i+2], init[i+1], init[i]
-
         active = Signal()
         row    = Signal(max=nrows)
 
@@ -52,14 +47,23 @@ class BankModel(Module):
                 row.eq(self.activate_row)
             )
 
-        mem        = Memory(data_width, nrows*ncols//burst_length, init=init)
-        write_port = mem.get_port(write_capable=True, we_granularity=we_granularity)
-        read_port  = mem.get_port(async_read=True)
+        bank_mem_len   = nrows*ncols//(burst_length*nphases)
+        mem            = Memory(data_width, bank_mem_len, init=init)
+        write_port     = mem.get_port(write_capable=True, we_granularity=we_granularity)
+        read_port      = mem.get_port(async_read=True)
         self.specials += mem, read_port, write_port
+
+        wraddr         = Signal(max=bank_mem_len)
+        rdaddr         = Signal(max=bank_mem_len)
+
+        self.comb += [
+            wraddr.eq(row*ncols | self.write_col),
+            rdaddr.eq(row*ncols | self.read_col),
+        ]
 
         self.comb += [
             If(active,
-                write_port.adr.eq(row*ncols | self.write_col),
+                write_port.adr.eq(wraddr[log2_int(burst_length*nphases):]),
                 write_port.dat_w.eq(self.write_data),
                 If(we_granularity,
                     write_port.we.eq(Replicate(self.write, data_width//8) & ~self.write_mask),
@@ -67,7 +71,7 @@ class BankModel(Module):
                     write_port.we.eq(self.write),
                 ),
                 If(self.read,
-                    read_port.adr.eq(row*ncols | self.read_col),
+                    read_port.adr.eq(rdaddr[log2_int(burst_length*nphases):]),
                     self.read_data.eq(read_port.dat_r)
                 )
             )
@@ -139,6 +143,7 @@ class SDRAMPHYModel(Module):
 
         # # #
 
+        nphases    = self.settings.nphases
         nbanks     = 2**bankbits
         nrows      = 2**rowbits
         ncols      = 2**colbits
@@ -149,28 +154,55 @@ class SDRAMPHYModel(Module):
         self.submodules += phases
 
         # Bank init data ---------------------------------------------------------------------------
-        bank_size   = (data_width//8)*(nrows*ncols//burst_length) // 4
-        column_size = bank_size // nrows
-        bank_init   = [[] for i in range(nbanks)]
+        mem_size          = (self.settings.databits//8)*(nrows*ncols*nbanks)
+        bank_size         = mem_size // nbanks
+        column_size       = bank_size // nrows
+        model_bank_size   = bank_size // (data_width//8)
+        model_column_size = model_bank_size // nrows
+        model_data_ratio  = data_width // 32
+        data_width_bytes  = data_width // 8
+        bank_init         = [[] for i in range(nbanks)]
+
+        # FIXME: understand and cleanup
+        # Pad init if too short
+        if len(init)%data_width_bytes != 0:
+            init.extend([0]*(data_width_bytes-len(init)%data_width_bytes))
+
+        new_init          = [0]*(len(init)//model_data_ratio)
+
+        # Reverse order of 32-bit words in 128-bit groups
+        for i in range(0, len(init), 4):
+            init[i:i+4] = reversed(init[i:i+4])
+
+        # Convert init data width from 32-bit to data_width
+        for i in range(0, len(init), model_data_ratio):
+            ints = init[i:i+model_data_ratio]
+            strs = ''.join('{:08x}'.format(x) for x in reversed(ints))
+            if data_width > 128:
+                # Reverse order of each 128-bit group
+                strs = ''.join(reversed([strs[i:i+32] for i in range(0, len(strs), 32)]))
+            new_init[i//model_data_ratio] = int(strs, 16)
+
+        init = new_init
 
         if address_mapping == "ROW_BANK_COL":
             for row in range(nrows):
                 for bank in range(nbanks):
-                    start = row*nbanks*column_size + bank*column_size
-                    end   = min(start + column_size, len(init))
+                    start = (row*nbanks*model_column_size + bank*model_column_size)
+                    end   = min(start + model_column_size, len(init))
                     if start > len(init):
                         break
                     bank_init[bank].extend(init[start:end])
         elif address_mapping == "BANK_ROW_COL":
             for bank in range(nbanks):
-                start = bank*bank_size
-                end   = min(start + bank_size, len(init))
+                start = bank*model_bank_size
+                end   = min(start + model_bank_size, len(init))
                 if start > len(init):
                     break
                 bank_init[bank] = init[start:end]
 
         # Banks ------------------------------------------------------------------------------------
-        banks = [BankModel(data_width, nrows, ncols, burst_length, we_granularity, bank_init[i]) for i in range(nbanks)]
+        banks = [BankModel(data_width, nrows, ncols, burst_length, nphases, we_granularity, bank_init[i]) for i in range(nbanks)]
         self.submodules += banks
 
         # Connect DFI phases to Banks (CMDs, Write datapath) ---------------------------------------
