@@ -117,6 +117,7 @@ class SDRAMPHYModel(Module):
             "LPDDR": 2,
             "DDR2":  2,
             "DDR3":  2,
+            "DDR4":  2,
             }[settings.memtype]
 
         addressbits   = module.geom_settings.addressbits
