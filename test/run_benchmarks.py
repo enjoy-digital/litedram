@@ -105,6 +105,45 @@ configurations = [
 ]
 
 
+class ResultsSummary:
+    def __init__(self, results):
+        self.results = results
+        self.write_bandwidth = self.collect('write_bandwidth')
+        self.read_bandwidth = self.collect('read_bandwidth')
+        self.write_efficiency = self.collect('write_efficiency')
+        self.read_efficiency = self.collect('read_efficiency')
+
+    def create_name(self, config):
+        return '{}:{}:{}:{}'.format(
+            config.sdram_module, config.sdram_data_width,
+            config.bist_length, config.bist_random)
+
+    def collect(self, attribute):
+        by_case = {}
+        for result in self.results:
+            value = getattr(result, attribute)()
+            by_case[self.create_name(result.config)] = value
+        return by_case
+
+    def value_string(self, metric, value):
+        if metric in ['write_bandwidth', 'read_bandwidth']:
+            return '{:6.3f} {}bps'.format(*human_readable(value))
+        elif ['write_efficiency', 'read_efficiency']:
+            return '{:5.1f} %'.format(100 * value)
+        else:
+            raise ValueError()
+
+    def print(self):
+        print('\n---====== Summary ======---')
+        for metric in ['write_bandwidth', 'read_bandwidth', 'write_efficiency', 'read_efficiency']:
+            print(metric)
+            for case, value in getattr(self, metric).items():
+                print('  {:30}  {}'.format(case, self.value_string(metric, value)))
+
+    def plot(self):
+        raise NotImplementedError()
+
+
 def main():
     results = []
     for config in configurations:
@@ -126,6 +165,8 @@ def main():
             result.read_efficiency() * 100,
         ))
 
+    summary = ResultsSummary(results)
+    summary.print()
 
 if __name__ == "__main__":
     main()
