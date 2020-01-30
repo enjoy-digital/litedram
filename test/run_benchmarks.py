@@ -8,14 +8,31 @@ import subprocess
 
 from litedram.common import Settings
 
+from benchmark import LiteDRAMBenchmarkSoC
+
 
 # constructs python regex named group
 def ng(name, regex):
     return r'(?P<{}>{})'.format(name, regex)
 
 
+def human_readable(value):
+    binary_prefixes = ['', 'k', 'M', 'G', 'T']
+    for prefix in binary_prefixes:
+        if value < 1024:
+            break
+        value /= 1024
+    return value, prefix
+
+
+def run_benchmark(args):
+    command = ['python3', 'benchmark.py', *args]
+    proc = subprocess.run(command, capture_output=True, text=True, check=True)
+    return proc.stdout
+
+
 class BenchmarkConfiguration(Settings):
-    def __init__(self, sdram_module, sdram_data_width, bist_base, bist_length, bist_random):
+    def __init__(self, sdram_module, sdram_data_width, bist_length, bist_random):
         self.set_attributes(locals())
         self._settings = {k: v for k, v in locals().items() if v != self}
 
@@ -35,6 +52,8 @@ class BenchmarkResult:
     def __init__(self, config, output):
         self.config = config
         self.parse_output(output)
+        # instantiate the benchmarked soc to check its configuration
+        self.benchmark_soc = LiteDRAMBenchmarkSoC(**self.config._settings)
 
     def parse_output(self, output):
         bist_pattern = r'{stage}\s+{var}:\s+{value}'
@@ -53,37 +72,60 @@ class BenchmarkResult:
         self.checker_errors = find('BIST-CHECKER', 'errors')
         self.checker_ticks = find('BIST-CHECKER', 'ticks')
 
+    def cmd_count(self):
+        data_width = self.benchmark_soc.sdram.controller.interface.data_width
+        return self.config.bist_length / (data_width // 8)
 
-def run_benchmark(args):
-    command = ['python3', 'benchmark.py', *args]
-    proc = subprocess.run(command, capture_output=True, text=True, check=True)
-    return proc.stdout
+    def clk_period(self):
+        clk_freq = self.benchmark_soc.sdrphy.module.clk_freq
+        return 1 / clk_freq
+
+    def write_bandwidth(self):
+        return (8 * self.config.bist_length) / (self.generator_ticks * self.clk_period())
+
+    def read_bandwidth(self):
+        return (8 * self.config.bist_length) / (self.checker_ticks * self.clk_period())
+
+    def write_efficiency(self):
+        return self.cmd_count() / self.generator_ticks
+
+    def read_efficiency(self):
+        return self.cmd_count() / self.checker_ticks
 
 
 configurations = [
-    BenchmarkConfiguration('MT48LC16M16', 32, 0, 4096,  True),
-    BenchmarkConfiguration('MT48LC16M16', 32, 0, 4096, False),
-    BenchmarkConfiguration('MT48LC16M16', 32, 0,  512, False),
-    BenchmarkConfiguration('MT41K128M16',  8, 0, 1024, False),
-    BenchmarkConfiguration('MT41K128M16', 16, 0, 1024, False),
-    BenchmarkConfiguration('MT41K128M16', 32, 0, 1024, False),
+    BenchmarkConfiguration('MT48LC16M16', 32, 4096,  True),
+    BenchmarkConfiguration('MT48LC16M16', 32,  512, False),
+    BenchmarkConfiguration('MT46V32M16',  32,  512, False),
+    BenchmarkConfiguration('MT46V32M16',  32, 2048, False),
+    BenchmarkConfiguration('MT47H64M16',  32, 1024, False),
+    BenchmarkConfiguration('MT47H64M16',  16, 1024, False),
+    BenchmarkConfiguration('MT41K128M16', 16, 1024, False),
+    BenchmarkConfiguration('MT41K128M16', 32, 1024, False),
 ]
 
 
-results = []
-for config in configurations:
-    args = config.as_args()
-    print('Benchmark: %s' % ' '.join(args))
+def main():
+    results = []
+    for config in configurations:
+        args = config.as_args()
+        print('Benchmark: %s' % ' '.join(args))
 
-    result = BenchmarkResult(config, run_benchmark(args))
-    results.append(result)
+        result = BenchmarkResult(config, run_benchmark(args))
+        results.append(result)
 
-    print("""\
-  generator_ticks  = {:d}
-  checker_ticks    = {:d}
-  checker_errors   = {:d}
-    """.rstrip().format(
-        result.generator_ticks,
-        result.checker_ticks,
-        result.checker_errors,
-    ))
+        print("""\
+  write_bandwidth  = {:6.3f} {}bps
+  read_bandwidth   = {:6.3f} {}bps
+  write_efficiency = {:6.2f} %
+  read_efficiency  = {:6.2f} %
+        """.rstrip().format(
+            *human_readable(result.write_bandwidth()),
+            *human_readable(result.read_bandwidth()),
+            result.write_efficiency() * 100,
+            result.read_efficiency() * 100,
+        ))
+
+
+if __name__ == "__main__":
+    main()
