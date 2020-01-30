@@ -3,12 +3,15 @@
 # This file is Copyright (c) 2020 Jędrzej Boczar <jboczar@antmicro.com>
 # License: BSD
 
+import os
 import re
+import yaml
+import argparse
 import subprocess
 
 from litedram.common import Settings
 
-from benchmark import LiteDRAMBenchmarkSoC
+from .benchmark import LiteDRAMBenchmarkSoC
 
 
 # constructs python regex named group
@@ -24,12 +27,7 @@ def human_readable(value):
         value /= 1024
     return value, prefix
 
-
-def run_benchmark(args):
-    command = ['python3', 'benchmark.py', *args]
-    proc = subprocess.run(command, capture_output=True, text=True, check=True)
-    return proc.stdout
-
+# Benchmark configuration --------------------------------------------------------------------------
 
 class BenchmarkConfiguration(Settings):
     def __init__(self, sdram_module, sdram_data_width, bist_length, bist_random):
@@ -47,6 +45,14 @@ class BenchmarkConfiguration(Settings):
                 args.extend([arg_string, str(value)])
         return args
 
+    @classmethod
+    def load_yaml(cls, yaml_file):
+        with open(yaml_file) as f:
+            description = yaml.safe_load(f)
+        configurations = {name: cls(**desc) for name, desc in description.items()}
+        return configurations
+
+# Benchmark results --------------------------------------------------------------------------------
 
 class BenchmarkResult:
     def __init__(self, config, output):
@@ -92,22 +98,12 @@ class BenchmarkResult:
     def read_efficiency(self):
         return self.cmd_count() / self.checker_ticks
 
-
-configurations = [
-    BenchmarkConfiguration('MT48LC16M16', 32, 4096,  True),
-    BenchmarkConfiguration('MT48LC16M16', 32,  512, False),
-    BenchmarkConfiguration('MT46V32M16',  32,  512, False),
-    BenchmarkConfiguration('MT46V32M16',  32, 2048, False),
-    BenchmarkConfiguration('MT47H64M16',  32, 1024, False),
-    BenchmarkConfiguration('MT47H64M16',  16, 1024, False),
-    BenchmarkConfiguration('MT41K128M16', 16, 1024, False),
-    BenchmarkConfiguration('MT41K128M16', 32, 1024, False),
-]
-
+# Results summary ----------------------------------------------------------------------------------
 
 class ResultsSummary:
     def __init__(self, results):
         self.results = results
+        # convert results, which map config->metrics to a mapping metric->(config->result)
         self.write_bandwidth = self.collect('write_bandwidth')
         self.read_bandwidth = self.collect('read_bandwidth')
         self.write_efficiency = self.collect('write_efficiency')
@@ -143,12 +139,41 @@ class ResultsSummary:
     def plot(self):
         raise NotImplementedError()
 
+# Run ----------------------------------------------------------------------------------------------
+
+def run_benchmark(args):
+    benchmark_script = os.path.join(os.path.dirname(__file__), 'benchmark.py')
+    command = ['python3', benchmark_script, *args]
+    proc = subprocess.run(command, capture_output=True, text=True, check=True)
+    return proc.stdout
+
 
 def main():
+    parser = argparse.ArgumentParser(
+        description='Run LiteDRAM benchmarks and collect the results')
+    parser.add_argument('--yaml', required=True, help='Load benchmark configurations from YAML file')
+    parser.add_argument('--names', nargs='*', help='Limit benchmarks to given names')
+    parser.add_argument('--regex', help='Limit benchmarks to names matching the regex')
+    parser.add_argument('--not-regex', help='Limit benchmarks to names not matching the regex')
+    args = parser.parse_args()
+
+    # load and filter configurations
+    configurations = BenchmarkConfiguration.load_yaml(args.yaml)
+    filters = []
+    if args.regex:
+        filters.append(lambda name_value: re.search(args.regex, name_value[0]))
+    if args.not_regex:
+        filters.append(lambda name_value: not re.search(args.not_regex, name_value[0]))
+    if args.names:
+        filters.append(lambda name_value: name_value[0] in args.names)
+    for f in filters:
+        configurations = dict(filter(f, configurations.items()))
+
+    # run the benchmarks
     results = []
-    for config in configurations:
+    for name, config in configurations.items():
         args = config.as_args()
-        print('Benchmark: %s' % ' '.join(args))
+        print('{}: {}'.format(name, ' '.join(args)))
 
         result = BenchmarkResult(config, run_benchmark(args))
         results.append(result)
