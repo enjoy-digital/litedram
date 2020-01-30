@@ -8,6 +8,7 @@
 
 from migen import *
 
+from litex.soc.interconnect.csr import *
 from litex.soc.interconnect import stream
 
 from litedram.common import LiteDRAMNativePort
@@ -15,7 +16,7 @@ from litedram.frontend.axi import LiteDRAMAXIPort
 
 # LiteDRAMDMAReader --------------------------------------------------------------------------------
 
-class LiteDRAMDMAReader(Module):
+class LiteDRAMDMAReader(Module, AutoCSR):
     """Read data from DRAM memory.
 
     For every address written to the sink, one DRAM word will be produced on
@@ -46,6 +47,7 @@ class LiteDRAMDMAReader(Module):
     """
 
     def __init__(self, port, fifo_depth=16, fifo_buffered=False):
+        self.port   = port
         self.sink   = sink   = stream.Endpoint([("address", port.address_width)])
         self.source = source = stream.Endpoint([("data", port.data_width)])
 
@@ -98,9 +100,49 @@ class LiteDRAMDMAReader(Module):
             data_dequeued.eq(source.valid & source.ready)
         ]
 
+    def add_csr(self):
+        self._base   = CSRStorage(32)
+        self._length = CSRStorage(32)
+        self._start  = CSR()
+        self._done   = CSRStatus()
+        self._loop   = CSRStorage()
+
+        # # #
+
+        shift   = log2_int(self.port.data_width//8)
+        base    = Signal(self.port.address_width)
+        offset  = Signal(self.port.address_width)
+        length  = Signal(self.port.address_width)
+        self.comb += [
+            base.eq(self._base.storage[shift:]),
+            length.eq(self._length.storage[shift:]),
+        ]
+
+        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
+        fsm.act("IDLE",
+            self._done.status.eq(1),
+            If(self._start.re,
+                NextValue(offset, 0),
+                NextState("RUN"),
+            )
+        )
+        fsm.act("RUN",
+            self.sink.valid.eq(1),
+            self.sink.address.eq(base + offset),
+            If(self.sink.ready,
+                If(offset == (length-1),
+                    If(self._loop.storage,
+                        NextValue(offset, 0)
+                    ).Else(
+                        NextState("IDLE")
+                    )
+                )
+            )
+        )
+
 # LiteDRAMDMAWriter --------------------------------------------------------------------------------
 
-class LiteDRAMDMAWriter(Module):
+class LiteDRAMDMAWriter(Module, AutoCSR):
     """Write data to DRAM memory.
 
     Parameters
@@ -160,3 +202,48 @@ class LiteDRAMDMAWriter(Module):
             fifo.source.ready.eq(wdata.ready),
             wdata.data.eq(fifo.source.data)
         ]
+
+    def add_csr(self):
+        self._sink = self.sink
+        self.sink  = stream.Endpoint(("data", port.data_width))
+
+        self._base   = CSRStorage(32)
+        self._length = CSRStorage(32)
+        self._start  = CSR()
+        self._done   = CSRStatus()
+        self._loop   = CSRStorage()
+
+        # # #
+
+        shift   = log2_int(self.port.data_width//8)
+        base    = Signal(self.port.address_width)
+        offset  = Signal(self.port.address_width)
+        length  = Signal(self.port.address_width)
+        self.comb += [
+            base.eq(self._base.storage[shift:]),
+            length.eq(self._length.storage[shift:]),
+        ]
+
+        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
+        fsm.act("IDLE",
+            self._done.status.eq(1),
+            If(self._start.re,
+                NextValue(offset, 0),
+                NextState("RUN"),
+            )
+        )
+        fsm.act("RUN",
+            self._sink.valid.eq(self.sink.valid),
+            self._sink.data.eq(self.sink.data),
+            self._sink.address.eq(base + offset),
+            self.sink.ready.eq(self._sink.ready),
+            If(self.sink.ready,
+                If(offset == (length-1),
+                    If(self._loop.storage,
+                        NextValue(offset, 0)
+                    ).Else(
+                        NextState("IDLE")
+                    )
+                )
+            )
+        )
