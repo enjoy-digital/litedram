@@ -3,12 +3,13 @@
 # This file is Copyright (c) 2020 Jędrzej Boczar <jboczar@antmicro.com>
 # License: BSD
 
+import os
 import re
 import subprocess
 
 from litedram.common import Settings
 
-from benchmark import LiteDRAMBenchmarkSoC
+from .benchmark import LiteDRAMBenchmarkSoC
 
 
 # constructs python regex named group
@@ -26,7 +27,8 @@ def human_readable(value):
 
 
 def run_benchmark(args):
-    command = ['python3', 'benchmark.py', *args]
+    benchmark_script = os.path.join(os.path.dirname(__file__), 'benchmark.py')
+    command = ['python3', benchmark_script, *args]
     proc = subprocess.run(command, capture_output=True, text=True, check=True)
     return proc.stdout
 
