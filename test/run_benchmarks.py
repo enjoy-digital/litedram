@@ -5,6 +5,7 @@
 
 import os
 import re
+import sys
 import argparse
 import subprocess
 from collections import defaultdict, namedtuple
@@ -247,7 +248,16 @@ def run_benchmarks(configurations):
         cmd_args = config.as_args()
         print('{}: {}'.format(name, ' '.join(cmd_args)))
         output = run_benchmark(cmd_args)
+
+        # return raw outputs, not BenchmarkResult so that we can store them in a file
         benchmarks.append((config, output))
+
+        # exit if checker had any read error
+        result = BenchmarkResult(config, output)
+        if result.checker_errors != 0:
+            print('Error during benchmark "{}": checker_errors = {}'.format(
+                name, result.checker_errors), file=sys.stderr)
+            sys.exit(1)
     return benchmarks
 
 
