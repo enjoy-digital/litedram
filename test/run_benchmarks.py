@@ -40,7 +40,7 @@ def human_readable(value):
 class BenchmarkConfiguration(Settings):
     def __init__(self, sdram_module, sdram_data_width, bist_length, bist_random):
         self.set_attributes(locals())
-        self._settings = {k: v for k, v in locals().items() if v != self}
+        self._settings = {k: v for k, v in locals().items() if k != 'self'}
 
     def as_args(self):
         args = []
@@ -52,6 +52,12 @@ class BenchmarkConfiguration(Settings):
             else:
                 args.extend([arg_string, str(value)])
         return args
+
+    def __eq__(self, other):
+        if not isinstance(other, BenchmarkConfiguration):
+            return NotImplemented
+        return all((getattr(self, setting) == getattr(other, setting)
+                    for setting in self._settings.keys()))
 
     @classmethod
     def load_yaml(cls, yaml_file):
@@ -235,6 +241,16 @@ def run_benchmark(cmd_args):
     return proc.stdout
 
 
+def run_benchmarks(configurations):
+    benchmarks = []
+    for name, config in configurations.items():
+        cmd_args = config.as_args()
+        print('{}: {}'.format(name, ' '.join(cmd_args)))
+        output = run_benchmark(cmd_args)
+        benchmarks.append((config, output))
+    return benchmarks
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description='Run LiteDRAM benchmarks and collect the results.')
@@ -248,6 +264,7 @@ def main(argv=None):
     parser.add_argument('--plot-transparent', action='store_true', help='Use transparent background when saving plots')
     parser.add_argument('--plot-output-dir',  default='plots',     help='Specify where to save the plots')
     parser.add_argument('--plot-theme',       default='default',   help='Use different matplotlib theme')
+    parser.add_argument('--output-cache',                          help='Cache benchmark outputs to given file if it exists, else load them from the file without running benchmarks. This allows to run the script multiple times to produce different outputs from the same run')
     args = parser.parse_args(argv)
 
     # load and filter configurations
@@ -262,14 +279,26 @@ def main(argv=None):
     for f in filters:
         configurations = dict(filter(f, configurations.items()))
 
-    # run the benchmarks
-    results = []
-    for name, config in configurations.items():
-        cmd_args = config.as_args()
-        print('{}: {}'.format(name, ' '.join(cmd_args)))
-        results.append(BenchmarkResult(config, run_benchmark(cmd_args)))
+    cache_exists = args.output_cache and os.path.isfile(args.output_cache)
+
+    # load outputs from cache if it exsits
+    if args.output_cache and cache_exists:
+        import pickle
+        with open(args.output_cache, 'rb') as f:
+            cached_benchmarks = pickle.load(f)
+        # take only those that match configurations
+        benchmarks = [(c, o) for c, o in cached_benchmarks if c in configurations.values()]
+    else:  # run all the benchmarks normally
+        benchmarks = run_benchmarks(configurations)
+
+    # store outputs in cache
+    if args.output_cache and not cache_exists:
+        import pickle
+        with open(args.output_cache, 'wb') as f:
+            pickle.dump(benchmarks, f, pickle.HIGHEST_PROTOCOL)
 
     # display the summary
+    results = [BenchmarkResult(config, output) for config, output in benchmarks]
     summary = ResultsSummary(results)
     summary.print()
     if args.plot:
