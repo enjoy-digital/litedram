@@ -127,16 +127,15 @@ class SDRAMPHYModel(Module):
         if len(init)%data_width_bytes != 0:
             init.extend([0]*(data_width_bytes-len(init)%data_width_bytes))
 
-        new_init          = [0]*(len(init)//model_data_ratio)
 
         # Convert init data width from 32-bit to data_width if needed
         if model_data_ratio > 1:
+            new_init = [0]*(len(init)//model_data_ratio)
             for i in range(0, len(init), model_data_ratio):
                 ints = init[i:i+model_data_ratio]
                 strs = ''.join('{:08x}'.format(x) for x in reversed(ints))
                 new_init[i//model_data_ratio] = int(strs, 16)
-
-        init = new_init
+            init = new_init
 
         if address_mapping == "ROW_BANK_COL":
             for row in range(nrows):
