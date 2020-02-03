@@ -47,6 +47,7 @@ class LiteDRAMDMAReader(Module, AutoCSR):
     """
 
     def __init__(self, port, fifo_depth=16, fifo_buffered=False):
+        assert isinstance(port, (LiteDRAMNativePort, LiteDRAMAXIPort))
         self.port   = port
         self.sink   = sink   = stream.Endpoint([("address", port.address_width)])
         self.source = source = stream.Endpoint([("data", port.data_width)])
@@ -130,7 +131,8 @@ class LiteDRAMDMAReader(Module, AutoCSR):
             self.sink.valid.eq(1),
             self.sink.address.eq(base + offset),
             If(self.sink.ready,
-                If(offset == (length-1),
+                NextValue(offset, offset + 1),
+                If(offset == (length - 1),
                     If(self._loop.storage,
                         NextValue(offset, 0)
                     ).Else(
@@ -164,6 +166,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
     """
     def __init__(self, port, fifo_depth=16, fifo_buffered=False):
         assert isinstance(port, (LiteDRAMNativePort, LiteDRAMAXIPort))
+        self.port = port
         self.sink = sink = stream.Endpoint([("address", port.address_width),
                                             ("data", port.data_width)])
 
@@ -205,7 +208,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
 
     def add_csr(self):
         self._sink = self.sink
-        self.sink  = stream.Endpoint(("data", port.data_width))
+        self.sink  = stream.Endpoint([("data", self.port.data_width)])
 
         self._base   = CSRStorage(32)
         self._length = CSRStorage(32)
@@ -238,7 +241,8 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             self._sink.address.eq(base + offset),
             self.sink.ready.eq(self._sink.ready),
             If(self.sink.ready,
-                If(offset == (length-1),
+                NextValue(offset, offset + 1),
+                If(offset == (length - 1),
                     If(self._loop.storage,
                         NextValue(offset, 0)
                     ).Else(
