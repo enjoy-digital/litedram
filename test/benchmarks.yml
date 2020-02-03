@@ -47,4 +47,30 @@
       "bist_length":      1024,
       "bist_random":      False,
     },
+
+    # latency
+    "test_8": {
+      "sdram_module":     'MT48LC16M16',
+      "sdram_data_width": 32,
+      "bist_length":      1,
+      "bist_random":      False,
+    },
+    "test_9": {
+      "sdram_module":     'MT46V32M16',
+      "sdram_data_width": 32,
+      "bist_length":      1,
+      "bist_random":      False,
+    },
+    "test_10": {
+      "sdram_module":     'MT47H64M16',
+      "sdram_data_width": 32,
+      "bist_length":      1,
+      "bist_random":      False,
+    },
+    "test_11": {
+      "sdram_module":     'MT41K128M16',
+      "sdram_data_width": 16,
+      "bist_length":      1,
+      "bist_random":      False,
+    },
 }

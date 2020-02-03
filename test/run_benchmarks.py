@@ -6,6 +6,7 @@
 import os
 import re
 import sys
+import json
 import argparse
 import subprocess
 from collections import defaultdict, namedtuple
@@ -72,26 +73,10 @@ class BenchmarkConfiguration(Settings):
 class BenchmarkResult:
     def __init__(self, config, output):
         self.config = config
+        self._output = output
         self.parse_output(output)
         # instantiate the benchmarked soc to check its configuration
         self.benchmark_soc = LiteDRAMBenchmarkSoC(**self.config._settings)
-
-    def parse_output(self, output):
-        bist_pattern = r'{stage}\s+{var}:\s+{value}'
-
-        def find(stage, var):
-            pattern = bist_pattern.format(
-                stage=stage,
-                var=var,
-                value=ng('value', '[0-9]+'),
-            )
-            result = re.search(pattern, output)
-            assert result is not None, 'Could not find pattern in output: %s, %s' % (pattern, output)
-            return int(result.group('value'))
-
-        self.generator_ticks = find('BIST-GENERATOR', 'ticks')
-        self.checker_errors = find('BIST-CHECKER', 'errors')
-        self.checker_ticks = find('BIST-CHECKER', 'ticks')
 
     def cmd_count(self):
         data_width = self.benchmark_soc.sdram.controller.interface.data_width
@@ -113,6 +98,49 @@ class BenchmarkResult:
     def read_efficiency(self):
         return self.cmd_count() / self.checker_ticks
 
+    def write_latency(self):
+        assert self.config.bist_length == 1, 'Not a latency benchmark'
+        return self.generator_ticks
+
+    def read_latency(self):
+        assert self.config.bist_length == 1, 'Not a latency benchmark'
+        return self.checker_ticks
+
+    def parse_output(self, output):
+        bist_pattern = r'{stage}\s+{var}:\s+{value}'
+
+        def find(stage, var):
+            pattern = bist_pattern.format(
+                stage=stage,
+                var=var,
+                value=ng('value', '[0-9]+'),
+            )
+            result = re.search(pattern, output)
+            assert result is not None, 'Could not find pattern in output: %s, %s' % (pattern, output)
+            return int(result.group('value'))
+
+        self.generator_ticks = find('BIST-GENERATOR', 'ticks')
+        self.checker_errors = find('BIST-CHECKER', 'errors')
+        self.checker_ticks = find('BIST-CHECKER', 'ticks')
+
+    @classmethod
+    def dump_results_json(cls, results, file):
+        """Save multiple results in a JSON file.
+
+        Only configurations and outpits are saved, as they can be used to reconstruct BenchmarkResult.
+        """
+        # simply use config._settings as it defines the BenchmarkConfiguration
+        results_raw = [(r.config._settings, r._output) for r in results]
+        with open(file, 'w') as f:
+            json.dump(results_raw, f)
+
+    @classmethod
+    def load_results_json(cls, file):
+        """Load results from a JSON file."""
+        with open(file, 'r') as f:
+            results_raw = json.load(f)
+        return [cls(BenchmarkConfiguration(**settings), output) for (settings, output) in results_raw]
+
 # Results summary ----------------------------------------------------------------------------------
 
 class ResultsSummary:
@@ -123,6 +151,8 @@ class ResultsSummary:
         'read_bandwidth':   Fmt('Read bandwidth',   'bps', lambda value: human_readable(value)),
         'write_efficiency': Fmt('Write efficiency', '',    lambda value: (100, '%')),
         'read_efficiency':  Fmt('Read efficiency',  '',    lambda value: (100, '%')),
+        'write_latency':    Fmt('Write latency',    'clk', lambda value: (1, '')),
+        'read_latency':     Fmt('Read latency',     'clk', lambda value: (1, '')),
     }
 
     def __init__(self, results):
@@ -131,6 +161,10 @@ class ResultsSummary:
     def by_metric(self, metric):
         """Returns pairs of value of the given metric and the configuration used for benchmark"""
         for result in self.results:
+            # omit the results that should not be used to calculate given metric
+            if result.config.bist_length == 1 and metric not in ['read_latency', 'write_latency'] \
+                    or result.config.bist_length != 1 and metric in ['read_latency', 'write_latency']:
+                continue
             value = getattr(result, metric)()
             yield value, result.config
 
@@ -143,7 +177,8 @@ class ResultsSummary:
         for metric, (_, unit, formatter) in self.metric_formats.items():
             for value, config in self.by_metric(metric):
                 mult, prefix = formatter(value)
-                result = '{:5.1f} {}{}'.format(value * mult, prefix, unit)
+                value_fmt = '{:5.1f} {}{}' if isinstance(value * mult, float) else '{:5d} {}{}'
+                result = value_fmt.format(value * mult, prefix, unit)
                 line = fmt.format(module=config.sdram_module,
                                   dwidth=config.sdram_data_width,
                                   length=config.bist_length,
@@ -181,7 +216,7 @@ class ResultsSummary:
 
         import matplotlib.pyplot as plt
         import numpy as np
-        from matplotlib.ticker import FuncFormatter, PercentFormatter
+        from matplotlib.ticker import FuncFormatter, PercentFormatter, ScalarFormatter
 
         plt.style.use(theme)
 
@@ -194,6 +229,8 @@ class ResultsSummary:
             'read_bandwidth':   FuncFormatter(bandwidth_formatter_func),
             'write_efficiency': PercentFormatter(1.0),
             'read_efficiency':  PercentFormatter(1.0),
+            'write_latency':    ScalarFormatter(),
+            'read_latency':     ScalarFormatter(),
         }
 
         def config_tick_name(config):
@@ -243,22 +280,19 @@ def run_benchmark(cmd_args):
 
 
 def run_benchmarks(configurations):
-    benchmarks = []
+    results = []
     for name, config in configurations.items():
         cmd_args = config.as_args()
         print('{}: {}'.format(name, ' '.join(cmd_args)))
         output = run_benchmark(cmd_args)
-
-        # return raw outputs, not BenchmarkResult so that we can store them in a file
-        benchmarks.append((config, output))
-
         # exit if checker had any read error
         result = BenchmarkResult(config, output)
         if result.checker_errors != 0:
             print('Error during benchmark "{}": checker_errors = {}'.format(
                 name, result.checker_errors), file=sys.stderr)
             sys.exit(1)
-    return benchmarks
+        results.append(result)
+    return results
 
 
 def main(argv=None):
@@ -274,7 +308,11 @@ def main(argv=None):
     parser.add_argument('--plot-transparent', action='store_true', help='Use transparent background when saving plots')
     parser.add_argument('--plot-output-dir',  default='plots',     help='Specify where to save the plots')
     parser.add_argument('--plot-theme',       default='default',   help='Use different matplotlib theme')
-    parser.add_argument('--output-cache',                          help='Cache benchmark outputs to given file if it exists, else load them from the file without running benchmarks. This allows to run the script multiple times to produce different outputs from the same run')
+    parser.add_argument('--results-cache',                         help="""Use given JSON file as results cache. If the file exists,
+                                                                           it will be loaded instead of running actual benchmarks,
+                                                                           else benchmarks will be run normally, and then saved
+                                                                           to the given file. This allows to easily rerun the script
+                                                                           to generate different summary without having to rerun benchmarks.""")
     args = parser.parse_args(argv)
 
     # load and filter configurations
@@ -289,26 +327,21 @@ def main(argv=None):
     for f in filters:
         configurations = dict(filter(f, configurations.items()))
 
-    cache_exists = args.output_cache and os.path.isfile(args.output_cache)
+    cache_exists = args.results_cache and os.path.isfile(args.results_cache)
 
     # load outputs from cache if it exsits
-    if args.output_cache and cache_exists:
-        import pickle
-        with open(args.output_cache, 'rb') as f:
-            cached_benchmarks = pickle.load(f)
+    if args.results_cache and cache_exists:
+        cached_results = BenchmarkResult.load_results_json(args.results_cache)
         # take only those that match configurations
-        benchmarks = [(c, o) for c, o in cached_benchmarks if c in configurations.values()]
+        results = [r for r in cached_results if r.config in configurations.values()]
     else:  # run all the benchmarks normally
-        benchmarks = run_benchmarks(configurations)
+        results = run_benchmarks(configurations)
 
     # store outputs in cache
-    if args.output_cache and not cache_exists:
-        import pickle
-        with open(args.output_cache, 'wb') as f:
-            pickle.dump(benchmarks, f, pickle.HIGHEST_PROTOCOL)
+    if args.results_cache and not cache_exists:
+        BenchmarkResult.dump_results_json(results, args.results_cache)
 
     # display the summary
-    results = [BenchmarkResult(config, output) for config, output in benchmarks]
     summary = ResultsSummary(results)
     summary.print()
     if args.plot:

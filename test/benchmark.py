@@ -39,6 +39,9 @@ class LiteDRAMBenchmarkSoC(SimSoC):
             **kwargs
         )
 
+        # make sure that we perform at least one access
+        bist_length = max(bist_length, self.sdram.controller.interface.data_width // 8)
+
         # BIST Generator ---------------------------------------------------------------------------
         bist_generator = _LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
         self.submodules.bist_generator = bist_generator
