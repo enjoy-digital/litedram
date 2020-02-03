@@ -264,7 +264,7 @@ def run_benchmarks(configurations):
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description='Run LiteDRAM benchmarks and collect the results.')
-    parser.add_argument('--yaml',             required=True,       help='Load benchmark configurations from YAML file')
+    parser.add_argument("config",                                  help="YAML config file")
     parser.add_argument('--names',            nargs='*',           help='Limit benchmarks to given names')
     parser.add_argument('--regex',                                 help='Limit benchmarks to names matching the regex')
     parser.add_argument('--not-regex',                             help='Limit benchmarks to names not matching the regex')
@@ -278,7 +278,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     # load and filter configurations
-    configurations = BenchmarkConfiguration.load_yaml(args.yaml)
+    configurations = BenchmarkConfiguration.load_yaml(args.config)
     filters = []
     if args.regex:
         filters.append(lambda name_value: re.search(args.regex, name_value[0]))
