@@ -98,6 +98,14 @@ class BenchmarkResult:
     def read_efficiency(self):
         return self.cmd_count() / self.checker_ticks
 
+    def write_latency(self):
+        assert self.config.bist_length == 1, 'Not a latency benchmark'
+        return self.generator_ticks
+
+    def read_latency(self):
+        assert self.config.bist_length == 1, 'Not a latency benchmark'
+        return self.checker_ticks
+
     def parse_output(self, output):
         bist_pattern = r'{stage}\s+{var}:\s+{value}'
 
@@ -143,6 +151,8 @@ class ResultsSummary:
         'read_bandwidth':   Fmt('Read bandwidth',   'bps', lambda value: human_readable(value)),
         'write_efficiency': Fmt('Write efficiency', '',    lambda value: (100, '%')),
         'read_efficiency':  Fmt('Read efficiency',  '',    lambda value: (100, '%')),
+        'write_latency':    Fmt('Write latency',    'clk', lambda value: (1, '')),
+        'read_latency':     Fmt('Read latency',     'clk', lambda value: (1, '')),
     }
 
     def __init__(self, results):
@@ -151,6 +161,10 @@ class ResultsSummary:
     def by_metric(self, metric):
         """Returns pairs of value of the given metric and the configuration used for benchmark"""
         for result in self.results:
+            # omit the results that should not be used to calculate given metric
+            if result.config.bist_length == 1 and metric not in ['read_latency', 'write_latency'] \
+                    or result.config.bist_length != 1 and metric in ['read_latency', 'write_latency']:
+                continue
             value = getattr(result, metric)()
             yield value, result.config
 
@@ -163,7 +177,8 @@ class ResultsSummary:
         for metric, (_, unit, formatter) in self.metric_formats.items():
             for value, config in self.by_metric(metric):
                 mult, prefix = formatter(value)
-                result = '{:5.1f} {}{}'.format(value * mult, prefix, unit)
+                value_fmt = '{:5.1f} {}{}' if isinstance(value * mult, float) else '{:5d} {}{}'
+                result = value_fmt.format(value * mult, prefix, unit)
                 line = fmt.format(module=config.sdram_module,
                                   dwidth=config.sdram_data_width,
                                   length=config.bist_length,
@@ -201,7 +216,7 @@ class ResultsSummary:
 
         import matplotlib.pyplot as plt
         import numpy as np
-        from matplotlib.ticker import FuncFormatter, PercentFormatter
+        from matplotlib.ticker import FuncFormatter, PercentFormatter, ScalarFormatter
 
         plt.style.use(theme)
 
@@ -214,6 +229,8 @@ class ResultsSummary:
             'read_bandwidth':   FuncFormatter(bandwidth_formatter_func),
             'write_efficiency': PercentFormatter(1.0),
             'read_efficiency':  PercentFormatter(1.0),
+            'write_latency':    ScalarFormatter(),
+            'read_latency':     ScalarFormatter(),
         }
 
         def config_tick_name(config):
