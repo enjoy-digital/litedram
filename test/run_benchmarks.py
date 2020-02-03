@@ -238,8 +238,8 @@ def run_benchmark(cmd_args):
     # run as separate process, because else we cannot capture all output from verilator
     benchmark_script = os.path.join(os.path.dirname(__file__), 'benchmark.py')
     command = ['python3', benchmark_script, *cmd_args]
-    proc = subprocess.run(command, capture_output=True, text=True, check=True)
-    return proc.stdout
+    proc = subprocess.run(command, stdout=subprocess.PIPE)
+    return str(proc.stdout)
 
 
 def run_benchmarks(configurations):
