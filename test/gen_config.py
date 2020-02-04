@@ -43,24 +43,28 @@ data_widths = [32]
 bist_lengths = [1, 1024, 8192]
 bist_randoms = [False]
 
-parser = argparse.ArgumentParser(description='Generate configuration for all possible argument combinations.',
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--sdram-modules',     nargs='+', default=modules,      help='--sdram-module options')
-parser.add_argument('--sdram-data-widths', nargs='+', default=data_widths,  help='--sdram-data-width options')
-parser.add_argument('--bist-lengths',      nargs='+', default=bist_lengths, help='--bist-length options')
-parser.add_argument('--bist-randoms',      nargs='+', default=bist_randoms, help='--bist-random options')
-parser.add_argument('--name-format',                  default='test_%d',    help='Name format for i-th test')
-args = parser.parse_args()
+def main():
+    parser = argparse.ArgumentParser(description='Generate configuration for all possible argument combinations.',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--sdram-modules',     nargs='+', default=modules,      help='--sdram-module options')
+    parser.add_argument('--sdram-data-widths', nargs='+', default=data_widths,  help='--sdram-data-width options')
+    parser.add_argument('--bist-lengths',      nargs='+', default=bist_lengths, help='--bist-length options')
+    parser.add_argument('--bist-randoms',      nargs='+', default=bist_randoms, help='--bist-random options')
+    parser.add_argument('--name-format',                  default='test_%d',    help='Name format for i-th test')
+    args = parser.parse_args()
 
-product = itertools.product(args.sdram_modules, args.sdram_data_widths, args.bist_lengths, args.bist_randoms)
-configurations = {}
-for i, (module, data_width, bist_length, bist_random) in enumerate(product):
-    configurations[args.name_format % i] = {
-        'sdram_module':     module,
-        'sdram_data_width': data_width,
-        'bist_length':      bist_length,
-        'bist_random':      bist_random,
-    }
+    product = itertools.product(args.sdram_modules, args.sdram_data_widths, args.bist_lengths, args.bist_randoms)
+    configurations = {}
+    for i, (module, data_width, bist_length, bist_random) in enumerate(product):
+        configurations[args.name_format % i] = {
+            'sdram_module':     module,
+            'sdram_data_width': data_width,
+            'bist_length':      bist_length,
+            'bist_random':      bist_random,
+        }
 
-json_str = json.dumps(configurations, indent=4)
-print(json_str)
+    json_str = json.dumps(configurations, indent=4)
+    print(json_str)
+
+if __name__ == "__main__":
+    main()
