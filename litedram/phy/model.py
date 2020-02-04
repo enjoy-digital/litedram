@@ -17,6 +17,8 @@ from litedram.phy.dfi import *
 from functools import reduce
 from operator import or_
 
+import struct
+
 # Bank Model ---------------------------------------------------------------------------------------
 
 class BankModel(Module):
@@ -136,6 +138,17 @@ class SDRAMPHYModel(Module):
                 strs = ''.join('{:08x}'.format(x) for x in reversed(ints))
                 new_init[i//model_data_ratio] = int(strs, 16)
             init = new_init
+        elif model_data_ratio == 0:
+            assert data_width_bytes in [1, 2]
+            model_data_ratio = 4 // data_width_bytes
+            struct_unpack_patterns = {1: "4B", 2: "2H"}
+            new_init = [0]*int(len(init)*model_data_ratio)
+            for i in range(len(init)):
+                new_init[model_data_ratio*i:model_data_ratio*(i+1)] = struct.unpack(
+                    struct_unpack_patterns[data_width_bytes],
+                    struct.pack("I", init[i])
+                )[0:model_data_ratio]
+            init = new_init
 
         if address_mapping == "ROW_BANK_COL":
             for row in range(nrows):
@@ -199,8 +212,6 @@ class SDRAMPHYModel(Module):
         bank_init  = [[] for i in range(nbanks)]
 
         if init:
-            # FIXME: Add support for 8/16-bit SDRAM
-            assert data_width >= 32
             bank_init = self.__prepare_bank_init_data(init, nbanks, nrows, ncols, data_width, address_mapping)
 
         # Banks ------------------------------------------------------------------------------------
