@@ -1,76 +1,193 @@
 {
+    # sequential access
     "test_0": {
       "sdram_module":     'MT48LC16M16',
       "sdram_data_width": 32,
-      "bist_length":      4096,
-      "bist_random":      True,
+      "access_pattern":   {
+        "bist_length":      4096,
+        "bist_random":      False,
+      }
     },
     "test_1": {
       "sdram_module":     'MT48LC16M16',
       "sdram_data_width": 32,
-      "bist_length":      512,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      512,
+        "bist_random":      False,
+      }
     },
     "test_2": {
       "sdram_module":     'MT46V32M16',
       "sdram_data_width": 32,
-      "bist_length":      512,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      512,
+        "bist_random":      False,
+      }
     },
     "test_3": {
       "sdram_module":     'MT46V32M16',
       "sdram_data_width": 32,
-      "bist_length":      2048,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      2048,
+        "bist_random":      False,
+      }
     },
     "test_4": {
       "sdram_module":     'MT47H64M16',
       "sdram_data_width": 32,
-      "bist_length":      1024,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      1024,
+        "bist_random":      False,
+      }
     },
     "test_5": {
       "sdram_module":     'MT47H64M16',
       "sdram_data_width": 16,
-      "bist_length":      1024,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      1024,
+        "bist_random":      False,
+      }
     },
     "test_6": {
       "sdram_module":     'MT41K128M16',
       "sdram_data_width": 16,
-      "bist_length":      1024,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      1024,
+        "bist_random":      False,
+      }
     },
     "test_7": {
       "sdram_module":     'MT41K128M16',
       "sdram_data_width": 32,
-      "bist_length":      1024,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      1024,
+        "bist_random":      False,
+      }
     },
 
     # latency
     "test_8": {
       "sdram_module":     'MT48LC16M16',
       "sdram_data_width": 32,
-      "bist_length":      1,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      1,
+        "bist_random":      False,
+      }
     },
     "test_9": {
       "sdram_module":     'MT46V32M16',
       "sdram_data_width": 32,
-      "bist_length":      1,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      1,
+        "bist_random":      False,
+      }
     },
     "test_10": {
       "sdram_module":     'MT47H64M16',
       "sdram_data_width": 32,
-      "bist_length":      1,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      1,
+        "bist_random":      False,
+      }
     },
     "test_11": {
       "sdram_module":     'MT41K128M16',
       "sdram_data_width": 16,
-      "bist_length":      1,
-      "bist_random":      False,
+      "access_pattern":   {
+        "bist_length":      1,
+        "bist_random":      False,
+      }
+    },
+
+    # random access
+    "test_12": {
+      "sdram_module":     'MT48LC16M16',
+      "sdram_data_width": 32,
+      "access_pattern":   {
+        "bist_length":      1024,
+        "bist_random":      True,
+      }
+    },
+    "test_13": {
+      "sdram_module":     'MT46V32M16',
+      "sdram_data_width": 32,
+      "access_pattern":   {
+        "bist_length":      1024,
+        "bist_random":      True,
+      }
+    },
+    "test_14": {
+      "sdram_module":     'MT47H64M16',
+      "sdram_data_width": 32,
+      "access_pattern":   {
+        "bist_length":      1024,
+        "bist_random":      True,
+      }
+    },
+    "test_15": {
+      "sdram_module":     'MT41K128M16',
+      "sdram_data_width": 16,
+      "access_pattern":   {
+        "bist_length":      1024,
+        "bist_random":      True,
+      }
+    },
+
+    # custom access pattern
+    "test_16": {
+      "sdram_module":     'MT48LC16M16',
+      "sdram_data_width": 32,
+      "access_pattern":   {
+        "pattern_file":   "access_pattern.csv"
+      }
+    },
+    "test_17": {
+      "sdram_module":     'MT48LC16M16',
+      "sdram_data_width": 32,
+      "access_pattern":   {
+        "pattern_file":   "access_pattern.csv",
+      }
+    },
+    "test_18": {
+      "sdram_module":     'MT46V32M16',
+      "sdram_data_width": 32,
+      "access_pattern":   {
+        "pattern_file":   "access_pattern.csv",
+      }
+    },
+    "test_19": {
+      "sdram_module":     'MT46V32M16',
+      "sdram_data_width": 32,
+      "access_pattern":   {
+        "pattern_file":   "access_pattern.csv",
+      }
+    },
+    "test_20": {
+      "sdram_module":     'MT47H64M16',
+      "sdram_data_width": 32,
+      "access_pattern":   {
+        "pattern_file":   "access_pattern.csv",
+      }
+    },
+    "test_21": {
+      "sdram_module":     'MT47H64M16',
+      "sdram_data_width": 16,
+      "access_pattern":   {
+        "pattern_file":   "access_pattern.csv",
+      }
+    },
+    "test_22": {
+      "sdram_module":     'MT41K128M16',
+      "sdram_data_width": 16,
+      "access_pattern":   {
+        "pattern_file":   "access_pattern.csv",
+      }
+    },
+    "test_23": {
+      "sdram_module":     'MT41K128M16',
+      "sdram_data_width": 32,
+      "access_pattern":   {
+        "pattern_file":   "access_pattern.csv",
+      }
     },
 }
