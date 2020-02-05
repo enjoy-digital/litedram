@@ -128,6 +128,13 @@ class LiteDRAMBenchmarkSoC(SimSoC):
 
 # Build --------------------------------------------------------------------------------------------
 
+def load_access_pattern(filename):
+    with open(filename, newline='') as f:
+        reader = csv.reader(f)
+        pattern_init = [(int(addr, 0), int(data, 0)) for addr, data in reader]
+    return pattern_init
+
+
 def main():
     parser = argparse.ArgumentParser(description="LiteDRAM Benchmark SoC Simulation")
     builder_args(parser)
@@ -159,10 +166,7 @@ def main():
     soc_kwargs["bist_random"]      = args.bist_random
 
     if args.access_pattern:
-        with open(args.access_pattern, newline='') as f:
-            reader = csv.reader(f)
-            pattern_init = [(int(addr, 0), int(data, 0)) for addr, data in reader]
-        soc_kwargs["pattern_init"] = pattern_init
+        soc_kwargs["pattern_init"] = load_access_pattern(args.access_pattern)
 
     # SoC ------------------------------------------------------------------------------------------
     soc = LiteDRAMBenchmarkSoC(**soc_kwargs)

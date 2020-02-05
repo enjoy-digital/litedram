@@ -13,9 +13,10 @@ from collections import defaultdict, namedtuple
 
 import yaml
 
-from litedram.common import Settings
+from litedram.common import Settings as _Settings
 
-from .benchmark import LiteDRAMBenchmarkSoC
+from . import benchmark
+from .benchmark import LiteDRAMBenchmarkSoC, load_access_pattern
 
 
 # constructs python regex named group
@@ -39,34 +40,88 @@ def human_readable(value):
 
 # Benchmark configuration --------------------------------------------------------------------------
 
-class BenchmarkConfiguration(Settings):
-    def __init__(self, sdram_module, sdram_data_width, bist_length, bist_random):
+class Settings(_Settings):
+    def as_dict(self):
+        d = dict()
+        for attr, value in vars(self).items():
+            if attr == 'self' or attr.startswith('_'):
+                continue
+            if isinstance(value, Settings):
+                value = value.as_dict()
+            d[attr] = value
+        return d
+
+
+class GeneratedAccess(Settings):
+    def __init__(self, bist_length, bist_random):
         self.set_attributes(locals())
-        self._settings = {k: v for k, v in locals().items() if k != 'self'}
+
+    @property
+    def length(self):
+        return self.bist_length
 
     def as_args(self):
-        args = []
-        for attr, value in self._settings.items():
-            arg_string = '--%s' % attr.replace('_', '-')
-            if isinstance(value, bool):
-                if value:
-                    args.append(arg_string)
-            else:
-                args.extend([arg_string, str(value)])
+        args = ['--bist-length=%d' % self.bist_length]
+        if self.bist_random:
+            args.append('--bist-random')
+        return args
+
+
+class CustomAccess(Settings):
+    def __init__(self, pattern_file):
+        self.set_attributes(locals())
+
+    @property
+    def length(self):
+        # we have to load the file to know pattern length, cache it when requested
+        if not hasattr(self, '_pattern'):
+            path = self.pattern_file
+            if not os.path.isabs(path):
+                benchmark_dir = os.path.dirname(benchmark.__file__)
+                path = os.path.join(benchmark_dir, path)
+            self._pattern = load_access_pattern(path)
+        return len(self._pattern)
+
+    def as_args(self):
+        return ['--access-pattern=%s' % self.pattern_file]
+
+
+class BenchmarkConfiguration(Settings):
+    def __init__(self, name, sdram_module, sdram_data_width, access_pattern):
+        self.set_attributes(locals())
+
+    def as_args(self):
+        args = [
+            '--sdram-module=%s' % self.sdram_module,
+            '--sdram-data-width=%d' % self.sdram_data_width,
+        ]
+        args += self.access_pattern.as_args()
         return args
 
     def __eq__(self, other):
         if not isinstance(other, BenchmarkConfiguration):
             return NotImplemented
-        return all((getattr(self, setting) == getattr(other, setting)
-                    for setting in self._settings.keys()))
+        return self.as_dict() == other.as_dict()
+
+    @property
+    def length(self):
+        return self.access_pattern.length
 
     @classmethod
     def load_yaml(cls, yaml_file):
         with open(yaml_file) as f:
             description = yaml.safe_load(f)
-        configurations = {name: cls(**desc) for name, desc in description.items()}
-        return configurations
+        configs = []
+        for name, desc in description.items():
+            if 'access_pattern' in desc:
+                access = CustomAccess(desc.pop('access_pattern'))
+            else:
+                access = GeneratedAccess(desc.pop('bist_length'), desc.pop('bist_random'))
+            configs.append(cls(name, **desc, access_pattern=access))
+        return configs
+
+    def __repr__(self):
+        return 'BenchmarkConfiguration(%s)' % self.as_dict()
 
 # Benchmark results --------------------------------------------------------------------------------
 
@@ -317,15 +372,15 @@ def main(argv=None):
 
     # load and filter configurations
     configurations = BenchmarkConfiguration.load_yaml(args.config)
-    filters = []
-    if args.regex:
-        filters.append(lambda name_value: re.search(args.regex, name_value[0]))
-    if args.not_regex:
-        filters.append(lambda name_value: not re.search(args.not_regex, name_value[0]))
-    if args.names:
-        filters.append(lambda name_value: name_value[0] in args.names)
-    for f in filters:
-        configurations = dict(filter(f, configurations.items()))
+    filters = {
+        'regex':     lambda config: re.search(args.regex, config.name),
+        'not_regex': lambda config: not re.search(args.not_regex, config.name),
+        'names':     lambda config: config.name in args.names,
+    }
+    for arg, f in filters.items():
+        if getattr(args, arg):
+            configurations = filter(f, configurations)
+    configurations = list(configurations)
 
     cache_exists = args.results_cache and os.path.isfile(args.results_cache)
 
