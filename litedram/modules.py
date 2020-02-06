@@ -467,7 +467,7 @@ class MT18KSF1G72HZ(SDRAMModule):
     speedgrade_timings = {
         "1066": _SpeedgradeTimings(tRP=15,     tRCD=15,     tWR=15,             tRFC=(86,  None), tFAW=(None, 50), tRAS=None),
         "1333": _SpeedgradeTimings(tRP=15,     tRCD=15,     tWR=15,             tRFC=(107, None), tFAW=(None, 45), tRAS=None),
-        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=(13.125, None), tRFC=(128, None), tFAW=(None, 40), tRAS=None),
+        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=13.125,         tRFC=(128, None), tFAW=(None, 40), tRAS=None),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
