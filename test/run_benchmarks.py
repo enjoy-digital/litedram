@@ -22,10 +22,12 @@ except ImportError as e:
     _summary = False
     print('[WARNING] Results summary not available:', e, file=sys.stderr)
 
+from litex.tools.litex_sim import get_sdram_phy_settings, sdram_module_nphases
+from litedram import modules as litedram_modules
 from litedram.common import Settings as _Settings
 
 from . import benchmark
-from .benchmark import LiteDRAMBenchmarkSoC, load_access_pattern
+from .benchmark import load_access_pattern
 
 
 # Benchmark configuration --------------------------------------------------------------------------
@@ -121,21 +123,17 @@ class BenchmarkConfiguration(Settings):
         return 'BenchmarkConfiguration(%s)' % self.as_dict()
 
     @property
-    def soc(self):
-        if not hasattr(self, '_soc'):
-            kwargs = dict(
-                sdram_module=self.sdram_module,
-                sdram_data_width=self.sdram_data_width,
-            )
-            if isinstance(self.access_pattern, GeneratedAccess):
-                kwargs['bist_length'] = self.access_pattern.bist_length
-                kwargs['bist_random'] = self.access_pattern.bist_random
-            elif isinstance(self.access_pattern, CustomAccess):
-                kwargs['pattern_init'] = self.access_pattern.pattern
-            else:
-                raise ValueError(self.access_pattern)
-            self._soc = LiteDRAMBenchmarkSoC(**kwargs)
-        return self._soc
+    def sdram_clk_freq(self):
+        return 100e6  # FIXME: value of 100MHz is hardcoded in litex_sim
+
+    @property
+    def sdram_controller_data_width(self):
+        # use values from module class (no need to instantiate it)
+        sdram_module_cls = getattr(litedram_modules, self.sdram_module)
+        memtype = sdram_module_cls.memtype
+        nphases = sdram_module_nphases[memtype]
+        dfi_databits = self.sdram_data_width * (1 if memtype == 'SDR' else 2)
+        return dfi_databits * nphases
 
 # Benchmark results --------------------------------------------------------------------------------
 
@@ -224,8 +222,8 @@ class ResultsSummary:
             'generator_ticks':  lambda d: d.result.generator_ticks,
             'checker_errors':   lambda d: d.result.checker_errors,
             'checker_ticks':    lambda d: d.result.checker_ticks,
-            'ctrl_data_width':  lambda d: d.config.soc.sdram.controller.interface.data_width,
-            'clk_freq':         lambda d: d.config.soc.sdrphy.module.clk_freq,
+            'ctrl_data_width':  lambda d: d.config.sdram_controller_data_width,
+            'clk_freq':         lambda d: d.config.sdram_clk_freq,
         }
         columns = {name: [mapping(data) for data in run_data] for name, mapping, in column_mappings.items()}
         self.df = df = pd.DataFrame(columns)
