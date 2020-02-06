@@ -28,13 +28,6 @@ from . import benchmark
 from .benchmark import LiteDRAMBenchmarkSoC, load_access_pattern
 
 
-def center(text, width, fillc=' '):
-    added = width - len(text)
-    left = added // 2
-    right = added - left
-    return fillc * left + text + fillc * right
-
-
 # Benchmark configuration --------------------------------------------------------------------------
 
 class Settings(_Settings):
@@ -174,7 +167,7 @@ class BenchmarkResult:
     def find(pattern, output):
         result = pattern.search(output)
         assert result is not None, \
-            'Could not find pattern "%s" in output:\n%s' % (pattern, benchmark_output)
+            'Could not find pattern "%s" in output' % (pattern)
         return int(result.group('value'))
 
     def __init__(self, output):
@@ -214,6 +207,10 @@ def efficiency_fmt(eff):
 class ResultsSummary:
     def __init__(self, run_data, plots_dir='plots'):
         self.plots_dir = plots_dir
+
+        # filter out failures
+        self.failed_configs = [data.config for data in run_data if data.result is None]
+        run_data = [data for data in run_data if data.result is not None]
 
         # gather results into tabular data
         column_mappings = {
@@ -274,10 +271,13 @@ class ResultsSummary:
             'read_latency':     ScalarFormatter(),
         }
 
+    def header(self, text):
+        return '===> {}'.format(text)
+
     def print_df(self, title, df):
         # make sure all data will be shown
         with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.width', None):
-            print('===> {}:'.format(title))
+            print(self.header(title + ':'))
             print(df)
 
     def get_summary(self, mask=None, columns=None, column_formatting=None, sort_kwargs=None):
@@ -382,13 +382,21 @@ class ResultsSummary:
 
         return axis
 
+    def failuers_summary(self):
+        if len(self.failed_configs) > 0:
+            print(self.header('Failures:'))
+            for config in self.failed_configs:
+                print('  {}: {}'.format(config.name, config.as_args()))
+        else:
+            print(self.header('All benchmarks ok.'))
+
 # Run ----------------------------------------------------------------------------------------------
 
 class RunCache(list):
     RunData = namedtuple('RunData', ['config', 'result'])
 
     def dump_json(self, filename):
-        json_data = [{'config': data.config.as_dict(), 'output': data.result._output} for data in self]
+        json_data = [{'config': data.config.as_dict(), 'output': getattr(data.result, '_output', None) } for data in self]
         with open(filename, 'w') as f:
             json.dump(json_data, f)
 
@@ -399,7 +407,7 @@ class RunCache(list):
         loaded = []
         for data in json_data:
             config = BenchmarkConfiguration.from_dict(data['config'])
-            result = BenchmarkResult(data['output'])
+            result = BenchmarkResult(data['output']) if data['output'] is not None else None
             loaded.append(cls.RunData(config=config, result=result))
         return loaded
 
@@ -410,17 +418,43 @@ def run_python(script, args):
     return str(proc.stdout)
 
 
-def run_benchmark(config):
-    benchmark_script = os.path.join(os.path.dirname(__file__), 'benchmark.py')
+def run_single_benchmark(func_args):
+    config, output_dir, ignore_failures = func_args
     # run as separate process, because else we cannot capture all output from verilator
-    output = run_python(benchmark_script, config.as_args())
-    result = BenchmarkResult(output)
-    # exit if checker had any read error
-    if result.checker_errors != 0:
-        raise RuntimeError('Error during benchmark: checker_errors = {}, args = {}'.format(
-            result.checker_errors, args
-        ))
+    print('  {}: {}'.format(config.name, ' '.join(config.as_args())))
+    try:
+        output = run_python(benchmark.__file__, config.as_args() + ['--output-dir', output_dir])
+        result = BenchmarkResult(output)
+        # exit if checker had any read error
+        if result.checker_errors != 0:
+            raise RuntimeError('Error during benchmark: checker_errors = {}, args = {}'.format(
+                result.checker_errors, args
+            ))
+    except Exception as e:
+        if ignore_failures:
+            print('  {}: ERROR: {}'.format(config.name, e))
+            return None
+        else:
+            raise
+    print('  {}: ok'.format(config.name))
     return result
+
+
+def run_benchmarks(configurations, output_base_dir, njobs, ignore_failures):
+    print('Running {:d} benchmarks ...'.format(len(configurations)))
+    if njobs == 1:
+        results = [run_single_benchmark((config, output_base_dir, ignore_failures)) for config in configurations]
+    else:
+        import multiprocessing
+        func_args = [(config, os.path.join(output_base_dir, config.name.replace(' ', '_')), ignore_failures)
+                     for config in configurations]
+        if njobs == 0:
+            njobs = os.cpu_count()
+        print('Using {:d} parallel jobs'.format(njobs))
+        with multiprocessing.Pool(processes=njobs) as pool:
+            results = pool.map(run_single_benchmark, func_args)
+    run_data = [RunCache.RunData(config, result) for config, result in zip(configurations, results)]
+    return run_data
 
 
 def main(argv=None):
@@ -436,7 +470,9 @@ def main(argv=None):
     parser.add_argument('--plot-transparent', action='store_true', help='Use transparent background when saving plots')
     parser.add_argument('--plot-output-dir',  default='plots',     help='Specify where to save the plots')
     parser.add_argument('--plot-theme',       default='default',   help='Use different matplotlib theme')
-    parser.add_argument('--ignore-failures',  action='store_true', help='Ignore failuers during benchmarking, continue using successful runs only')
+    parser.add_argument('--fail-fast',        action='store_true', help='Exit on any benchmark error, do not continue')
+    parser.add_argument('--output-dir',       default='build',     help='Directory to store benchmark build output')
+    parser.add_argument('--njobs',            default=0, type=int, help='Use N parallel jobs to run benchmarks (default=0, which uses CPU count)')
     parser.add_argument('--results-cache',                         help="""Use given JSON file as results cache. If the file exists,
                                                                            it will be loaded instead of running actual benchmarks,
                                                                            else benchmarks will be run normally, and then saved
@@ -470,14 +506,7 @@ def main(argv=None):
         names_to_load = [c.name for c in configurations]
         run_data = [data for  data in cache if data.config.name in names_to_load]
     else:  # run all the benchmarks normally
-        run_data = []
-        for config in configurations:
-            print('  {}: {}'.format(config.name, ' '.join(config.as_args())))
-            try:
-                run_data.append(RunCache.RunData(config, run_benchmark(config)))
-            except:
-                if not args.ignore_failures:
-                    raise
+        run_data = run_benchmarks(configurations, args.output_dir, args.njobs, not args.fail_fast)
 
     # store outputs in cache
     if args.results_cache and not cache_exists:
@@ -488,6 +517,7 @@ def main(argv=None):
     if _summary:
         summary = ResultsSummary(run_data)
         summary.text_summary()
+        summary.failuers_summary()
         if args.plot:
             summary.plot_summary(
                 plots_dir=args.plot_output_dir,
