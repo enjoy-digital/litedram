@@ -362,21 +362,29 @@ class ResultsSummary:
         if backend != 'Agg':
             plt.show()
 
-    def plot_df(self, title, df, column, save_format='png', save_filename=None):
+    def plot_df(self, title, df, column, fig_width=6.4, fig_min_height=2.2, save_format='png', save_filename=None):
         if save_filename is None:
             save_filename = os.path.join(self.plots_dir, title.lower().replace(' ', '_'))
 
         axis = df.plot(kind='barh', x='name', y=column, title=title, grid=True, legend=False)
+        fig = axis.get_figure()
+
         if column in self.plot_xticks_formatters:
             axis.xaxis.set_major_formatter(self.plot_xticks_formatters[column])
             axis.xaxis.set_tick_params(rotation=15)
         axis.spines['top'].set_visible(False)
         axis.spines['right'].set_visible(False)
         axis.set_axisbelow(True)
+        axis.set_ylabel('')  # no need for label as we have only one series
 
-        #  # force xmax to 100%
-        #  if column in ['write_efficiency', 'read_efficiency']:
-        #      axis.set_xlim(right=1.0)
+        # for large number of rows, the bar labels start overlapping
+        # use fixed ratio between number of rows and height of figure
+        n_ok = 16
+        new_height = (fig_width / n_ok) * len(df)
+        fig.set_size_inches(fig_width, max(fig_min_height, new_height))
+
+        # remove empty spaces
+        fig.tight_layout()
 
         return axis
 
