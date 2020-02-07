@@ -195,6 +195,14 @@ class _LiteDRAMPatternGenerator(Module):
 
         # # #
 
+        # Data / Address pattern -------------------------------------------------------------------
+        addr_init, data_init = zip(*init)
+        addr_mem = Memory(dram_port.address_width, len(addr_init), init=addr_init)
+        data_mem = Memory(dram_port.data_width,    len(data_init), init=data_init)
+        addr_port = addr_mem.get_port(async_read=True)
+        data_port = data_mem.get_port(async_read=True)
+        self.specials += addr_mem, data_mem, addr_port, data_port
+
         # DMA --------------------------------------------------------------------------------------
         dma = LiteDRAMDMAWriter(dram_port)
         self.submodules += dma
@@ -232,11 +240,11 @@ class _LiteDRAMPatternGenerator(Module):
         else:
             raise NotImplementedError
 
-        addr_cases = {i: dma_sink_addr.eq(addr) for i, (addr, data) in enumerate(init)}
-        data_cases = {i: dma.sink.data.eq(data) for i, (addr, data) in enumerate(init)}
         self.comb += [
-            Case(cmd_counter, addr_cases),
-            Case(cmd_counter, data_cases),
+            addr_port.adr.eq(cmd_counter),
+            dma_sink_addr.eq(addr_port.dat_r),
+            data_port.adr.eq(cmd_counter),
+            dma.sink.data.eq(data_port.dat_r),
         ]
 
 # LiteDRAMBISTGenerator ----------------------------------------------------------------------------
@@ -432,6 +440,14 @@ class _LiteDRAMPatternChecker(Module, AutoCSR):
 
         # # #
 
+        # Data / Address pattern -------------------------------------------------------------------
+        addr_init, data_init = zip(*init)
+        addr_mem = Memory(dram_port.address_width, len(addr_init), init=addr_init)
+        data_mem = Memory(dram_port.data_width,    len(data_init), init=data_init)
+        addr_port = addr_mem.get_port(async_read=True)
+        data_port = data_mem.get_port(async_read=True)
+        self.specials += addr_mem, data_mem, addr_port, data_port
+
         # DMA --------------------------------------------------------------------------------------
         dma = LiteDRAMDMAReader(dram_port)
         self.submodules += dma
@@ -459,21 +475,25 @@ class _LiteDRAMPatternChecker(Module, AutoCSR):
         cmd_fsm.act("DONE")
 
         if isinstance(dram_port, LiteDRAMNativePort): # addressing in dwords
-            dma_addr_sink = dma.sink.address
+            dma_sink_addr = dma.sink.address
         elif isinstance(dram_port, LiteDRAMAXIPort):  # addressing in bytes
-            dma_addr_sink = dma.sink.address[ashift:]
+            dma_sink_addr = dma.sink.address[ashift:]
         else:
             raise NotImplementedError
 
-        addr_cases = {i: dma_addr_sink.eq(addr) for i, (addr, data) in enumerate(init)}
-        self.comb += Case(cmd_counter, addr_cases)
+        self.comb += [
+            addr_port.adr.eq(cmd_counter),
+            dma_sink_addr.eq(addr_port.dat_r),
+        ]
 
         # Data FSM ---------------------------------------------------------------------------------
         data_counter = Signal(dram_port.address_width, reset_less=True)
 
         expected_data = Signal.like(dma.source.data)
-        data_cases = {i: expected_data.eq(data) for i, (addr, data) in enumerate(init)}
-        self.comb += Case(data_counter, data_cases)
+        self.comb += [
+            data_port.adr.eq(data_counter),
+            expected_data.eq(data_port.dat_r),
+        ]
 
         data_fsm = FSM(reset_state="IDLE")
         self.submodules += data_fsm
