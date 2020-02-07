@@ -3,6 +3,10 @@
 # This file is Copyright (c) 2020 Jędrzej Boczar <jboczar@antmicro.com>
 # License: BSD
 
+# Limitations/TODO
+# - add configurable sdram_clk_freq - using hardcoded value now
+# - sdram_controller_data_width - try to expose the value from litex_sim to avoid duplicated code
+
 import os
 import re
 import sys
@@ -22,17 +26,12 @@ except ImportError as e:
     _summary = False
     print('[WARNING] Results summary not available:', e, file=sys.stderr)
 
+from litex.tools.litex_sim import get_sdram_phy_settings, sdram_module_nphases
+from litedram import modules as litedram_modules
 from litedram.common import Settings as _Settings
 
 from . import benchmark
-from .benchmark import LiteDRAMBenchmarkSoC, load_access_pattern
-
-
-def center(text, width, fillc=' '):
-    added = width - len(text)
-    left = added // 2
-    right = added - left
-    return fillc * left + text + fillc * right
+from .benchmark import load_access_pattern
 
 
 # Benchmark configuration --------------------------------------------------------------------------
@@ -128,21 +127,17 @@ class BenchmarkConfiguration(Settings):
         return 'BenchmarkConfiguration(%s)' % self.as_dict()
 
     @property
-    def soc(self):
-        if not hasattr(self, '_soc'):
-            kwargs = dict(
-                sdram_module=self.sdram_module,
-                sdram_data_width=self.sdram_data_width,
-            )
-            if isinstance(self.access_pattern, GeneratedAccess):
-                kwargs['bist_length'] = self.access_pattern.bist_length
-                kwargs['bist_random'] = self.access_pattern.bist_random
-            elif isinstance(self.access_pattern, CustomAccess):
-                kwargs['pattern_init'] = self.access_pattern.pattern
-            else:
-                raise ValueError(self.access_pattern)
-            self._soc = LiteDRAMBenchmarkSoC(**kwargs)
-        return self._soc
+    def sdram_clk_freq(self):
+        return 100e6  # FIXME: value of 100MHz is hardcoded in litex_sim
+
+    @property
+    def sdram_controller_data_width(self):
+        # use values from module class (no need to instantiate it)
+        sdram_module_cls = getattr(litedram_modules, self.sdram_module)
+        memtype = sdram_module_cls.memtype
+        nphases = sdram_module_nphases[memtype]
+        dfi_databits = self.sdram_data_width * (1 if memtype == 'SDR' else 2)
+        return dfi_databits * nphases
 
 # Benchmark results --------------------------------------------------------------------------------
 
@@ -174,7 +169,7 @@ class BenchmarkResult:
     def find(pattern, output):
         result = pattern.search(output)
         assert result is not None, \
-            'Could not find pattern "%s" in output:\n%s' % (pattern, benchmark_output)
+            'Could not find pattern "%s" in output' % (pattern)
         return int(result.group('value'))
 
     def __init__(self, output):
@@ -215,6 +210,10 @@ class ResultsSummary:
     def __init__(self, run_data, plots_dir='plots'):
         self.plots_dir = plots_dir
 
+        # filter out failures
+        self.failed_configs = [data.config for data in run_data if data.result is None]
+        run_data = [data for data in run_data if data.result is not None]
+
         # gather results into tabular data
         column_mappings = {
             'name':             lambda d: d.config.name,
@@ -227,8 +226,8 @@ class ResultsSummary:
             'generator_ticks':  lambda d: d.result.generator_ticks,
             'checker_errors':   lambda d: d.result.checker_errors,
             'checker_ticks':    lambda d: d.result.checker_ticks,
-            'ctrl_data_width':  lambda d: d.config.soc.sdram.controller.interface.data_width,
-            'clk_freq':         lambda d: d.config.soc.sdrphy.module.clk_freq,
+            'ctrl_data_width':  lambda d: d.config.sdram_controller_data_width,
+            'clk_freq':         lambda d: d.config.sdram_clk_freq,
         }
         columns = {name: [mapping(data) for data in run_data] for name, mapping, in column_mappings.items()}
         self.df = df = pd.DataFrame(columns)
@@ -274,10 +273,13 @@ class ResultsSummary:
             'read_latency':     ScalarFormatter(),
         }
 
+    def header(self, text):
+        return '===> {}'.format(text)
+
     def print_df(self, title, df):
         # make sure all data will be shown
         with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.width', None):
-            print('===> {}:'.format(title))
+            print(self.header(title + ':'))
             print(df)
 
     def get_summary(self, mask=None, columns=None, column_formatting=None, sort_kwargs=None):
@@ -364,23 +366,39 @@ class ResultsSummary:
         if backend != 'Agg':
             plt.show()
 
-    def plot_df(self, title, df, column, save_format='png', save_filename=None):
+    def plot_df(self, title, df, column, fig_width=6.4, fig_min_height=2.2, save_format='png', save_filename=None):
         if save_filename is None:
             save_filename = os.path.join(self.plots_dir, title.lower().replace(' ', '_'))
 
         axis = df.plot(kind='barh', x='name', y=column, title=title, grid=True, legend=False)
+        fig = axis.get_figure()
+
         if column in self.plot_xticks_formatters:
             axis.xaxis.set_major_formatter(self.plot_xticks_formatters[column])
             axis.xaxis.set_tick_params(rotation=15)
         axis.spines['top'].set_visible(False)
         axis.spines['right'].set_visible(False)
         axis.set_axisbelow(True)
+        axis.set_ylabel('')  # no need for label as we have only one series
 
-        #  # force xmax to 100%
-        #  if column in ['write_efficiency', 'read_efficiency']:
-        #      axis.set_xlim(right=1.0)
+        # for large number of rows, the bar labels start overlapping
+        # use fixed ratio between number of rows and height of figure
+        n_ok = 16
+        new_height = (fig_width / n_ok) * len(df)
+        fig.set_size_inches(fig_width, max(fig_min_height, new_height))
+
+        # remove empty spaces
+        fig.tight_layout()
 
         return axis
+
+    def failures_summary(self):
+        if len(self.failed_configs) > 0:
+            print(self.header('Failures:'))
+            for config in self.failed_configs:
+                print('  {}: {}'.format(config.name, config.as_args()))
+        else:
+            print(self.header('All benchmarks ok.'))
 
 # Run ----------------------------------------------------------------------------------------------
 
@@ -388,7 +406,7 @@ class RunCache(list):
     RunData = namedtuple('RunData', ['config', 'result'])
 
     def dump_json(self, filename):
-        json_data = [{'config': data.config.as_dict(), 'output': data.result._output} for data in self]
+        json_data = [{'config': data.config.as_dict(), 'output': getattr(data.result, '_output', None) } for data in self]
         with open(filename, 'w') as f:
             json.dump(json_data, f)
 
@@ -399,7 +417,7 @@ class RunCache(list):
         loaded = []
         for data in json_data:
             config = BenchmarkConfiguration.from_dict(data['config'])
-            result = BenchmarkResult(data['output'])
+            result = BenchmarkResult(data['output']) if data['output'] is not None else None
             loaded.append(cls.RunData(config=config, result=result))
         return loaded
 
@@ -410,17 +428,43 @@ def run_python(script, args):
     return str(proc.stdout)
 
 
-def run_benchmark(config):
-    benchmark_script = os.path.join(os.path.dirname(__file__), 'benchmark.py')
+def run_single_benchmark(func_args):
+    config, output_dir, ignore_failures = func_args
     # run as separate process, because else we cannot capture all output from verilator
-    output = run_python(benchmark_script, config.as_args())
-    result = BenchmarkResult(output)
-    # exit if checker had any read error
-    if result.checker_errors != 0:
-        raise RuntimeError('Error during benchmark: checker_errors = {}, args = {}'.format(
-            result.checker_errors, args
-        ))
+    print('  {}: {}'.format(config.name, ' '.join(config.as_args())))
+    try:
+        output = run_python(benchmark.__file__, config.as_args() + ['--output-dir', output_dir])
+        result = BenchmarkResult(output)
+        # exit if checker had any read error
+        if result.checker_errors != 0:
+            raise RuntimeError('Error during benchmark: checker_errors = {}, args = {}'.format(
+                result.checker_errors, args
+            ))
+    except Exception as e:
+        if ignore_failures:
+            print('  {}: ERROR: {}'.format(config.name, e))
+            return None
+        else:
+            raise
+    print('  {}: ok'.format(config.name))
     return result
+
+
+def run_benchmarks(configurations, output_base_dir, njobs, ignore_failures):
+    print('Running {:d} benchmarks ...'.format(len(configurations)))
+    if njobs == 1:
+        results = [run_single_benchmark((config, output_base_dir, ignore_failures)) for config in configurations]
+    else:
+        import multiprocessing
+        func_args = [(config, os.path.join(output_base_dir, config.name.replace(' ', '_')), ignore_failures)
+                     for config in configurations]
+        if njobs == 0:
+            njobs = os.cpu_count()
+        print('Using {:d} parallel jobs'.format(njobs))
+        with multiprocessing.Pool(processes=njobs) as pool:
+            results = pool.map(run_single_benchmark, func_args)
+    run_data = [RunCache.RunData(config, result) for config, result in zip(configurations, results)]
+    return run_data
 
 
 def main(argv=None):
@@ -436,7 +480,9 @@ def main(argv=None):
     parser.add_argument('--plot-transparent', action='store_true', help='Use transparent background when saving plots')
     parser.add_argument('--plot-output-dir',  default='plots',     help='Specify where to save the plots')
     parser.add_argument('--plot-theme',       default='default',   help='Use different matplotlib theme')
-    parser.add_argument('--ignore-failures',  action='store_true', help='Ignore failuers during benchmarking, continue using successful runs only')
+    parser.add_argument('--fail-fast',        action='store_true', help='Exit on any benchmark error, do not continue')
+    parser.add_argument('--output-dir',       default='build',     help='Directory to store benchmark build output')
+    parser.add_argument('--njobs',            default=0, type=int, help='Use N parallel jobs to run benchmarks (default=0, which uses CPU count)')
     parser.add_argument('--results-cache',                         help="""Use given JSON file as results cache. If the file exists,
                                                                            it will be loaded instead of running actual benchmarks,
                                                                            else benchmarks will be run normally, and then saved
@@ -470,14 +516,7 @@ def main(argv=None):
         names_to_load = [c.name for c in configurations]
         run_data = [data for  data in cache if data.config.name in names_to_load]
     else:  # run all the benchmarks normally
-        run_data = []
-        for config in configurations:
-            print('  {}: {}'.format(config.name, ' '.join(config.as_args())))
-            try:
-                run_data.append(RunCache.RunData(config, run_benchmark(config)))
-            except:
-                if not args.ignore_failures:
-                    raise
+        run_data = run_benchmarks(configurations, args.output_dir, args.njobs, not args.fail_fast)
 
     # store outputs in cache
     if args.results_cache and not cache_exists:
@@ -488,6 +527,7 @@ def main(argv=None):
     if _summary:
         summary = ResultsSummary(run_data)
         summary.text_summary()
+        summary.failures_summary()
         if args.plot:
             summary.plot_summary(
                 plots_dir=args.plot_output_dir,
