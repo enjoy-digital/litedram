@@ -3,6 +3,10 @@
 # This file is Copyright (c) 2020 Jędrzej Boczar <jboczar@antmicro.com>
 # License: BSD
 
+# Limitations/TODO
+# - add configurable sdram_clk_freq - using hardcoded value now
+# - sdram_controller_data_width - try to expose the value from litex_sim to avoid duplicated code
+
 import os
 import re
 import sys
@@ -388,7 +392,7 @@ class ResultsSummary:
 
         return axis
 
-    def failuers_summary(self):
+    def failures_summary(self):
         if len(self.failed_configs) > 0:
             print(self.header('Failures:'))
             for config in self.failed_configs:
@@ -523,7 +527,7 @@ def main(argv=None):
     if _summary:
         summary = ResultsSummary(run_data)
         summary.text_summary()
-        summary.failuers_summary()
+        summary.failures_summary()
         if args.plot:
             summary.plot_summary(
                 plots_dir=args.plot_output_dir,
