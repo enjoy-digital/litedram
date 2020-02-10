@@ -3,6 +3,8 @@
 
 """Wishbone frontend for LiteDRAM"""
 
+from math import log2
+
 from migen import *
 
 from litex.soc.interconnect import stream
@@ -13,7 +15,7 @@ from litex.soc.interconnect import stream
 class LiteDRAMWishbone2Native(Module):
     def __init__(self, wishbone, port, base_address=0x00000000):
         wishbone_data_width = len(wishbone.dat_w)
-        port_data_width     = len(port.wdata.data)
+        port_data_width     = 2**int(log2(len(port.wdata.data))) # Round to lowest power 2
         assert wishbone_data_width >= port_data_width
 
         # # #
