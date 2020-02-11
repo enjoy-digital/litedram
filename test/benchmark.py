@@ -26,7 +26,8 @@ class LiteDRAMBenchmarkSoC(SimSoC):
     def __init__(self,
         sdram_module     = "MT48LC16M16",
         sdram_data_width = 32,
-        bist_base        = 0x00000000,
+        bist_base        = 0x0000000,
+        bist_end         = 0x0100000,
         bist_length      = 1024,
         bist_random      = False,
         bist_alternating = False,
@@ -41,27 +42,37 @@ class LiteDRAMBenchmarkSoC(SimSoC):
             **kwargs
         )
 
+        # BIST Generator / Checker -----------------------------------------------------------------
+
         # make sure that we perform at least one access
         bist_length = max(bist_length, self.sdram.controller.interface.data_width // 8)
 
-        # BIST Generator / Checker -----------------------------------------------------------------
         if pattern_init is None:
             bist_generator = _LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
             bist_checker = _LiteDRAMBISTChecker(self.sdram.crossbar.get_port())
 
             generator_config = [
                 bist_generator.base.eq(bist_base),
+                bist_generator.end.eq(bist_end),
                 bist_generator.length.eq(bist_length),
-                bist_generator.random.eq(bist_random),
+                bist_generator.random_addr.eq(bist_random),
             ]
             checker_config = [
                 bist_checker.base.eq(bist_base),
+                bist_checker.end.eq(bist_end),
                 bist_checker.length.eq(bist_length),
-                bist_checker.random.eq(bist_random),
+                bist_checker.random_addr.eq(bist_random),
             ]
 
             assert not (bist_random and not bist_alternating), \
                 'Write to random address may overwrite previously written data before reading!'
+
+            # check address correctness
+            assert bist_end > bist_base
+            assert bist_end <= 2**(len(bist_generator.end)) - 1, 'End address outside of range'
+            bist_addr_range = bist_end - bist_base
+            assert bist_addr_range > 0 and bist_addr_range & (bist_addr_range - 1) == 0, \
+                'Length of the address range must be a power of 2'
         else:
             if not bist_alternating:
                 address_set = set()

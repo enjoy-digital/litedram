@@ -42,7 +42,7 @@ default_modules = [
 default_bist_alternatings = [True, False]
 default_data_widths = [32]
 default_bist_lengths = [1, 1024, 8192]
-default_bist_randoms = [False]
+default_bist_randoms = [True, False]
 default_access_patterns = ['access_pattern.csv']
 
 
