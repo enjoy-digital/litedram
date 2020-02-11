@@ -298,14 +298,26 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
     done : out
         The module has completed writing the pattern.
 
+    run : in
+        Continue generation of new write commands.
+
+    ready : out
+        Enabled for one cycle after write command has been sent.
+
     base : in
         DRAM address to start from.
+
+    end : in
+        Max DRAM address.
 
     length : in
         Number of DRAM words to write.
 
-    random : in
+    random_data : in
         Enable random data (LFSR)
+
+    random_addr : in
+        Enable random address (LFSR). Wrapped to (end - base), so may not be unique.
 
     ticks : out
         Duration of the generation.
@@ -315,9 +327,13 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         self.reset  = CSR()
         self.start  = CSR()
         self.done   = CSRStatus()
+        self.run         = CSRStorage()
+        self.ready       = CSRStatus()
         self.base   = CSRStorage(awidth)
+        self.end         = CSRStorage(awidth)
         self.length = CSRStorage(awidth)
-        self.random = CSRStorage()
+        self.random_data = CSRStorage()
+        self.random_addr = CSRStorage()
         self.ticks  = CSRStatus(32)
 
         # # #
@@ -347,18 +363,36 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
                 self.done.status.eq(done_sync.o)
             ]
 
+            run_sync = BusSynchronizer(1, clock_domain, "sys")
+            ready_sync = BusSynchronizer(1, clock_domain, "sys")
+            self.submodules += run_sync, ready_sync
+            self.comb += [
+                run_sync.i.eq(self.run.storage),
+                core.run.eq(run_sync.o),
+
+                ready_sync.i.eq(core.ready),
+                self.ready.status.eq(ready_sync.o),
+            ]
+
             base_sync   = BusSynchronizer(awidth, "sys", clock_domain)
+            end_sync    = BusSynchronizer(awidth, "sys", clock_domain)
             length_sync = BusSynchronizer(awidth, "sys", clock_domain)
-            self.submodules += base_sync, length_sync
+            self.submodules += base_sync, end_sync, length_sync
             self.comb += [
                 base_sync.i.eq(self.base.storage),
                 core.base.eq(base_sync.o),
+
+                end_sync.i.eq(self.end.storage),
+                core.end.eq(end_sync.o),
 
                 length_sync.i.eq(self.length.storage),
                 core.length.eq(length_sync.o)
             ]
 
-            self.specials += MultiReg(self.random.storage, core.random, clock_domain)
+            self.specials += [
+                MultiReg(self.random_data.storage, core.random_data, clock_domain),
+                MultiReg(self.random_addr.storage, core.random_addr, clock_domain),
+            ]
 
             ticks_sync = BusSynchronizer(32, clock_domain, "sys")
             self.submodules += ticks_sync
@@ -371,9 +405,13 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
                 core.reset.eq(self.reset.re),
                 core.start.eq(self.start.re),
                 self.done.status.eq(core.done),
+                core.run.eq(self.run.storage),
+                self.ready.status.eq(core.ready),
                 core.base.eq(self.base.storage),
+                core.end.eq(self.end.storage),
                 core.length.eq(self.length.storage),
-                core.random.eq(self.random.storage),
+                core.random_data.eq(self.random_data.storage),
+                core.random_addr.eq(self.random_addr.storage),
                 self.ticks.status.eq(core.ticks)
             ]
 
@@ -612,13 +650,22 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
     done : out
         The module has completed checking
 
+    run : in
+        Continue reading of subsequent locations.
+    ready : out
+        Enabled for one cycle after read command has been sent.
+
     base : in
         DRAM address to start from.
+    end : in
+        Max DRAM address.
     length : in
         Number of DRAM words to check.
 
-    random : in
+    random_data : in
         Enable random data (LFSR)
+    random_addr : in
+        Enable random address (LFSR). Wrapped to (end - base), so may not be unique.
 
     ticks: out
         Duration of the check.
@@ -631,9 +678,13 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         self.reset  = CSR()
         self.start  = CSR()
         self.done   = CSRStatus()
+        self.run         = CSRStorage()
+        self.ready       = CSRStatus()
         self.base   = CSRStorage(awidth)
+        self.end         = CSRStorage(awidth)
         self.length = CSRStorage(awidth)
-        self.random = CSRStorage()
+        self.random_data = CSRStorage()
+        self.random_addr = CSRStorage()
         self.ticks  = CSRStatus(32)
         self.errors = CSRStatus(32)
 
@@ -664,18 +715,36 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
                 self.done.status.eq(done_sync.o)
             ]
 
+            run_sync = BusSynchronizer(1, clock_domain, "sys")
+            ready_sync = BusSynchronizer(1, clock_domain, "sys")
+            self.submodules += run_sync, ready_sync
+            self.comb += [
+                run_sync.i.eq(self.run.storage),
+                core.run.eq(run_sync.o),
+
+                ready_sync.i.eq(core.ready),
+                self.ready.status.eq(ready_sync.o),
+            ]
+
             base_sync = BusSynchronizer(awidth, "sys", clock_domain)
+            end_sync = BusSynchronizer(awidth, "sys", clock_domain)
             length_sync = BusSynchronizer(awidth, "sys", clock_domain)
-            self.submodules += base_sync, length_sync
+            self.submodules += base_sync, end_sync, length_sync
             self.comb += [
                 base_sync.i.eq(self.base.storage),
                 core.base.eq(base_sync.o),
+
+                end_sync.i.eq(self.end.storage),
+                core.end.eq(end_sync.o),
 
                 length_sync.i.eq(self.length.storage),
                 core.length.eq(length_sync.o)
             ]
 
-            self.specials += MultiReg(self.random.storage, core.random, clock_domain)
+            self.specials += [
+                MultiReg(self.random_data.storage, core.random_data, clock_domain),
+                MultiReg(self.random_addr.storage, core.random_addr, clock_domain),
+            ]
 
             ticks_sync = BusSynchronizer(32, clock_domain, "sys")
             self.submodules += ticks_sync
@@ -695,7 +764,10 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
                 core.reset.eq(self.reset.re),
                 core.start.eq(self.start.re),
                 self.done.status.eq(core.done),
+                core.run.eq(self.run.storage),
+                self.ready.status.eq(core.ready),
                 core.base.eq(self.base.storage),
+                core.end.eq(self.end.storage),
                 core.length.eq(self.length.storage),
                 core.random.eq(self.random.storage),
                 self.ticks.status.eq(core.ticks),
