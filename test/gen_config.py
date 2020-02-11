@@ -4,7 +4,7 @@ import json
 import argparse
 import itertools
 
-modules = [
+default_modules = [
     'IS42S16160',
     'IS42S16320',
     'MT48LC4M16',
@@ -39,41 +39,66 @@ modules = [
     #  'MT40A1G8',
     #  'MT40A512M16',
 ]
-data_widths = [32]
-bist_lengths = [1, 1024, 8192]
-bist_randoms = [False]
-access_patterns = ['access_pattern.csv']
+default_bist_alternatings = [True, False]
+default_data_widths = [32]
+default_bist_lengths = [1, 1024, 8192]
+default_bist_randoms = [False]
+default_access_patterns = ['access_pattern.csv']
+
+
+def convert_string_arg(args, arg, type):
+    map_func = {
+        bool: lambda s: {'false': False, 'true': True}[s.lower()],
+        int:  lambda s: int(s, 0),
+    }
+    setattr(args, arg, [map_func[type](val) if not isinstance(val, type) else val for val in getattr(args, arg)])
+
 
 def main():
     parser = argparse.ArgumentParser(description='Generate configuration for all possible argument combinations.',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--sdram-modules',     nargs='+', default=modules,         help='--sdram-module options')
-    parser.add_argument('--sdram-data-widths', nargs='+', default=data_widths,     help='--sdram-data-width options')
-    parser.add_argument('--bist-lengths',      nargs='+', default=bist_lengths,    help='--bist-length options')
-    parser.add_argument('--bist-randoms',      nargs='+', default=bist_randoms,    help='--bist-random options')
-    parser.add_argument('--access-patterns',   nargs='+', default=access_patterns, help='--access-pattern options')
-    parser.add_argument('--name-format',                  default='test_%d',       help='Name format for i-th test')
+    parser.add_argument('--sdram-modules',     nargs='+', default=default_modules,           help='--sdram-module options')
+    parser.add_argument('--sdram-data-widths', nargs='+', default=default_data_widths,       help='--sdram-data-width options')
+    parser.add_argument('--bist-alternatings', nargs='+', default=default_bist_alternatings, help='--bist-alternating options')
+    parser.add_argument('--bist-lengths',      nargs='+', default=default_bist_lengths,      help='--bist-length options')
+    parser.add_argument('--bist-randoms',      nargs='+', default=default_bist_randoms,      help='--bist-random options')
+    parser.add_argument('--access-patterns',   nargs='+', default=default_access_patterns,   help='--access-pattern options')
+    parser.add_argument('--name-format',                  default='test_%d',                 help='Name format for i-th test')
     args = parser.parse_args()
 
-    bist_product = itertools.product(args.sdram_modules, args.sdram_data_widths, args.bist_lengths, args.bist_randoms)
-    pattern_product = itertools.product(args.sdram_modules, args.sdram_data_widths, args.access_patterns)
+    # make sure not to write those as strings
+    convert_string_arg(args, 'sdram_data_widths', int)
+    convert_string_arg(args, 'bist_alternatings', bool)
+    convert_string_arg(args, 'bist_lengths',      int)
+    convert_string_arg(args, 'bist_randoms',      bool)
+
+    bist_product = itertools.product(args.sdram_modules, args.sdram_data_widths, args.bist_alternatings,
+                                     args.bist_lengths, args.bist_randoms)
+    pattern_product = itertools.product(args.sdram_modules, args.sdram_data_widths, args.bist_alternatings,
+                                        args.access_patterns)
 
     i = 0
     configurations = {}
-    for module, data_width, bist_length, bist_random in bist_product:
+    for module, data_width, bist_alternating, bist_length, bist_random in bist_product:
+        if bist_random and not bist_alternating:
+            continue
         configurations[args.name_format % i] = {
             'sdram_module':     module,
             'sdram_data_width': data_width,
+            'bist_alternating': bist_alternating,
             'access_pattern': {
                 'bist_length':  bist_length,
                 'bist_random':  bist_random,
             }
         }
         i += 1
-    for module, data_width, access_pattern in pattern_product:
+    for module, data_width, bist_alternating, access_pattern in pattern_product:
+        if bist_random and not bist_alternating:
+            continue
         configurations[args.name_format % i] = {
             'sdram_module':     module,
             'sdram_data_width': data_width,
+            'bist_alternating': bist_alternating,
             'access_pattern': {
                 'pattern_file': access_pattern,
             }

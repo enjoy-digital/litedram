@@ -87,7 +87,7 @@ class CustomAccess(Settings):
 
 
 class BenchmarkConfiguration(Settings):
-    def __init__(self, name, sdram_module, sdram_data_width, access_pattern):
+    def __init__(self, name, sdram_module, sdram_data_width, bist_alternating, access_pattern):
         self.set_attributes(locals())
 
     def as_args(self):
@@ -95,6 +95,8 @@ class BenchmarkConfiguration(Settings):
             '--sdram-module=%s' % self.sdram_module,
             '--sdram-data-width=%d' % self.sdram_data_width,
         ]
+        if self.bist_alternating:
+            args.append('--bist-alternating')
         args += self.access_pattern.as_args()
         return args
 
@@ -219,6 +221,7 @@ class ResultsSummary:
             'name':             lambda d: d.config.name,
             'sdram_module':     lambda d: d.config.sdram_module,
             'sdram_data_width': lambda d: d.config.sdram_data_width,
+            'bist_alternating': lambda d: d.config.bist_alternating,
             'bist_length':      lambda d: getattr(d.config.access_pattern, 'bist_length', None),
             'bist_random':      lambda d: getattr(d.config.access_pattern, 'bist_random', None),
             'pattern_file':     lambda d: getattr(d.config.access_pattern, 'pattern_file', None),
@@ -310,7 +313,7 @@ class ResultsSummary:
 
         formatters = self.text_formatters if formatted else {}
 
-        common_columns = ['name', 'sdram_module', 'sdram_data_width']
+        common_columns = ['name', 'sdram_module', 'sdram_data_width', 'bist_alternating']
         latency_columns = ['write_latency', 'read_latency']
         performance_columns = ['write_bandwidth', 'read_bandwidth', 'write_efficiency', 'read_efficiency']
 
@@ -319,12 +322,6 @@ class ResultsSummary:
             columns=common_columns + latency_columns,
             column_formatting=formatters,
         )
-        #  yield 'Any access pattern', self.get_summary(
-        #      mask=(df['is_latency'] == False),
-        #      columns=common_columns + performance_columns + ['length', 'bist_random', 'pattern_file'],
-        #      column_formatting=self.text_formatters,
-            #  **kwargs,
-        #  ),
         yield 'Custom access pattern', self.get_summary(
             mask=(df['is_latency'] == False) & (~pd.isna(df['pattern_file'])),
             columns=common_columns + performance_columns + ['length', 'pattern_file'],
