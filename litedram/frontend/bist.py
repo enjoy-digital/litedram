@@ -131,22 +131,29 @@ def get_ashift_awidth(dram_port):
 class _LiteDRAMBISTGenerator(Module):
     def __init__(self, dram_port):
         ashift, awidth = get_ashift_awidth(dram_port)
-        self.start  = Signal()
-        self.done   = Signal()
-        self.run    = Signal()
-        self.ready  = Signal()
-        self.base   = Signal(awidth)
-        self.length = Signal(awidth)
-        self.random = Signal()
-        self.ticks  = Signal(32)
+        self.start       = Signal()
+        self.done        = Signal()
+        self.run         = Signal()
+        self.ready       = Signal()
+        self.base        = Signal(awidth)
+        self.end         = Signal(awidth)
+        self.length      = Signal(awidth)
+        self.random_data = Signal()
+        self.random_addr = Signal()
+        self.ticks       = Signal(32)
 
         # # #
 
         # Data / Address generators ----------------------------------------------------------------
         data_gen = Generator(31, n_state=31, taps=[27, 30]) # PRBS31
-        addr_gen = CEInserter()(Counter(awidth))
+        addr_gen = Generator(31, n_state=31, taps=[27, 30])
         self.submodules += data_gen, addr_gen
-        self.comb += data_gen.random_enable.eq(self.random)
+        self.comb += data_gen.random_enable.eq(self.random_data)
+        self.comb += addr_gen.random_enable.eq(self.random_addr)
+
+        # mask random address to the range <base, end), range size must be power of 2
+        addr_mask = Signal(awidth)
+        self.comb += addr_mask.eq((self.end - self.base) - 1)
 
         # DMA --------------------------------------------------------------------------------------
         dma = LiteDRAMDMAWriter(dram_port)
@@ -189,13 +196,17 @@ class _LiteDRAMBISTGenerator(Module):
             self.ready.eq(1),
             self.done.eq(1)
         )
+
         if isinstance(dram_port, LiteDRAMNativePort): # addressing in dwords
-            self.comb += dma.sink.address.eq(self.base[ashift:] + addr_gen.o)
+            dma_sink_addr = dma.sink.address
         elif isinstance(dram_port, LiteDRAMAXIPort):  # addressing in bytes
-            self.comb += dma.sink.address[ashift:].eq(self.base[ashift:] + addr_gen.o)
+            dma_sink_addr = dma.sink.address[ashift:]
         else:
             raise NotImplementedError
+
+        self.comb += dma_sink_addr.eq(self.base[ashift:] + (addr_gen.o & addr_mask))
         self.comb += dma.sink.data.eq(data_gen.o)
+
 
 @ResetInserter()
 class _LiteDRAMPatternGenerator(Module):
@@ -372,23 +383,30 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 class _LiteDRAMBISTChecker(Module, AutoCSR):
     def __init__(self, dram_port):
         ashift, awidth = get_ashift_awidth(dram_port)
-        self.start  = Signal()
-        self.done   = Signal()
-        self.run    = Signal()
-        self.ready  = Signal()
-        self.base   = Signal(awidth)
-        self.length = Signal(awidth)
-        self.random = Signal()
-        self.ticks  = Signal(32)
-        self.errors = Signal(32)
+        self.start       = Signal()
+        self.done        = Signal()
+        self.run         = Signal()
+        self.ready       = Signal()
+        self.base        = Signal(awidth)
+        self.end         = Signal(awidth)
+        self.length      = Signal(awidth)
+        self.random_data = Signal()
+        self.random_addr = Signal()
+        self.ticks       = Signal(32)
+        self.errors      = Signal(32)
 
         # # #
 
         # Data / Address generators ----------------------------------------------------------------
         data_gen = Generator(31, n_state=31, taps=[27, 30]) # PRBS31
-        addr_gen = CEInserter()(Counter(awidth))
+        addr_gen = Generator(31, n_state=31, taps=[27, 30])
         self.submodules += data_gen, addr_gen
-        self.comb += data_gen.random_enable.eq(self.random)
+        self.comb += data_gen.random_enable.eq(self.random_data)
+        self.comb += addr_gen.random_enable.eq(self.random_addr)
+
+        # mask random address to the range <base, end), range size must be power of 2
+        addr_mask = Signal(awidth)
+        self.comb += addr_mask.eq((self.end - self.base) - 1)
 
         # DMA --------------------------------------------------------------------------------------
         dma = LiteDRAMDMAReader(dram_port)
@@ -428,12 +446,15 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             )
         )
         cmd_fsm.act("DONE")
+
         if isinstance(dram_port, LiteDRAMNativePort): # addressing in dwords
-            self.comb += dma.sink.address.eq(self.base[ashift:] + addr_gen.o)
+            dma_sink_addr = dma.sink.address
         elif isinstance(dram_port, LiteDRAMAXIPort):  # addressing in bytes
-            self.comb += dma.sink.address[ashift:].eq(self.base[ashift:] + addr_gen.o)
+            dma_sink_addr = dma.sink.address[ashift:]
         else:
             raise NotImplementedError
+
+        self.comb += dma_sink_addr.eq(self.base[ashift:] + (addr_gen.o & addr_mask))
 
         # Data FSM ---------------------------------------------------------------------------------
         data_counter = Signal(dram_port.address_width, reset_less=True)
