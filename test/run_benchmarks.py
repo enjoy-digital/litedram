@@ -438,7 +438,7 @@ def run_single_benchmark(func_args):
         # exit if checker had any read error
         if result.checker_errors != 0:
             raise RuntimeError('Error during benchmark: checker_errors = {}, args = {}'.format(
-                result.checker_errors, args
+                result.checker_errors, config.as_args()
             ))
     except Exception as e:
         if ignore_failures:
