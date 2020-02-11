@@ -29,6 +29,7 @@ class LiteDRAMBenchmarkSoC(SimSoC):
         bist_base        = 0x00000000,
         bist_length      = 1024,
         bist_random      = False,
+        bist_alternating = False,
         pattern_init     = None,
         **kwargs):
 
@@ -58,13 +59,16 @@ class LiteDRAMBenchmarkSoC(SimSoC):
                 bist_checker.length.eq(bist_length),
                 bist_checker.random.eq(bist_random),
             ]
+
+            assert not (bist_random and not bist_alternating), \
+                'Write to random address may overwrite previously written data before reading!'
         else:
-            # TODO: run checker in parallel to avoid overwriting previously written data
-            address_set = set()
-            for addr, _ in pattern_init:
-                assert addr not in address_set, \
-                    'Duplicate address 0x%08x in pattern_init, write will overwrite previous value!' % addr
-                address_set.add(addr)
+            if not bist_alternating:
+                address_set = set()
+                for addr, _ in pattern_init:
+                    assert addr not in address_set, \
+                        'Duplicate address 0x%08x in pattern_init, write will overwrite previous value!' % addr
+                    address_set.add(addr)
 
             bist_generator = _LiteDRAMPatternGenerator(self.sdram.crossbar.get_port(), init=pattern_init)
             bist_checker = _LiteDRAMPatternChecker(self.sdram.crossbar.get_port(), init=pattern_init)
@@ -89,20 +93,36 @@ class LiteDRAMBenchmarkSoC(SimSoC):
                 NextState("BIST-GENERATOR")
             )
         )
-        fsm.act("BIST-GENERATOR",
-            bist_generator.start.eq(1),
-            *generator_config,
-            If(bist_generator.done,
-                NextState("BIST-CHECKER")
+        if bist_alternating:
+            fsm.act("BIST-GENERATOR",
+                bist_generator.start.eq(1),
+                bist_checker.start.eq(1),
+                # force generator to wait for checker and vice versa
+                bist_generator.run.eq(bist_checker.ready),
+                bist_checker.run.eq(bist_generator.ready),
+                *generator_config,
+                *checker_config,
+                If(bist_checker.done,
+                    NextState("DISPLAY")
+                )
             )
-        )
-        fsm.act("BIST-CHECKER",
-            bist_checker.start.eq(1),
-            *checker_config,
-            If(bist_checker.done,
-                NextState("DISPLAY")
+        else:
+            fsm.act("BIST-GENERATOR",
+                bist_generator.start.eq(1),
+                bist_generator.run.eq(1),
+                *generator_config,
+                If(bist_generator.done,
+                    NextState("BIST-CHECKER")
+                )
             )
-        )
+            fsm.act("BIST-CHECKER",
+                bist_checker.start.eq(1),
+                bist_checker.run.eq(1),
+                *checker_config,
+                If(bist_checker.done,
+                    NextState("DISPLAY")
+                )
+            )
         fsm.act("DISPLAY",
             display.eq(1),
             NextState("FINISH")
@@ -149,6 +169,7 @@ def main():
     parser.add_argument("--bist-base",        default="0x00000000",   help="Base address of the test (default=0)")
     parser.add_argument("--bist-length",      default="1024",         help="Length of the test (default=1024)")
     parser.add_argument("--bist-random",      action="store_true",    help="Use random data during the test")
+    parser.add_argument("--bist-alternating", action="store_true",    help="Perform alternating writes/reads (WRWRWR... instead of WWW...RRR...)")
     parser.add_argument("--access-pattern",                           help="Load access pattern (address, data) from CSV (ignores --bist-*)")
     args = parser.parse_args()
 
@@ -164,6 +185,7 @@ def main():
     soc_kwargs["bist_base"]        = int(args.bist_base, 0)
     soc_kwargs["bist_length"]      = int(args.bist_length, 0)
     soc_kwargs["bist_random"]      = args.bist_random
+    soc_kwargs["bist_alternating"] = args.bist_alternating
 
     if args.access_pattern:
         soc_kwargs["pattern_init"] = load_access_pattern(args.access_pattern)
