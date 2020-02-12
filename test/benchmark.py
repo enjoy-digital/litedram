@@ -5,6 +5,9 @@
 
 import csv
 import argparse
+from operator import and_
+from functools import reduce
+from itertools import zip_longest
 
 from migen import *
 from migen.genlib.misc import WaitTimer
@@ -31,6 +34,8 @@ class LiteDRAMBenchmarkSoC(SimSoC):
         bist_length      = 1024,
         bist_random      = False,
         bist_alternating = False,
+        num_generators   = 1,
+        num_checkers     = 1,
         pattern_init     = None,
         **kwargs):
 
@@ -47,46 +52,57 @@ class LiteDRAMBenchmarkSoC(SimSoC):
         # make sure that we perform at least one access
         bist_length = max(bist_length, self.sdram.controller.interface.data_width // 8)
 
-        if pattern_init is None:
-            bist_generator = _LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
-            bist_checker = _LiteDRAMBISTChecker(self.sdram.crossbar.get_port())
+        custom_pattern_mode = pattern_init is not None
 
-            generator_config = [
-                bist_generator.base.eq(bist_base),
-                bist_generator.end.eq(bist_end),
-                bist_generator.length.eq(bist_length),
-                bist_generator.random_addr.eq(bist_random),
-            ]
-            checker_config = [
-                bist_checker.base.eq(bist_base),
-                bist_checker.end.eq(bist_end),
-                bist_checker.length.eq(bist_length),
-                bist_checker.random_addr.eq(bist_random),
-            ]
-
-            assert not (bist_random and not bist_alternating), \
-                'Write to random address may overwrite previously written data before reading!'
-
-            # check address correctness
-            assert bist_end > bist_base
-            assert bist_end <= 2**(len(bist_generator.end)) - 1, 'End address outside of range'
-            bist_addr_range = bist_end - bist_base
-            assert bist_addr_range > 0 and bist_addr_range & (bist_addr_range - 1) == 0, \
-                'Length of the address range must be a power of 2'
+        if custom_pattern_mode:
+            make_generator = lambda: _LiteDRAMPatternGenerator(self.sdram.crossbar.get_port(), init=pattern_init)
+            make_checker   = lambda: _LiteDRAMPatternChecker(self.sdram.crossbar.get_port(), init=pattern_init)
         else:
+            make_generator = lambda: _LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
+            make_checker   = lambda: _LiteDRAMBISTChecker(self.sdram.crossbar.get_port())
+
+        generators = [make_generator() for _ in range(num_generators)]
+        checkers = [make_checker() for _ in range(num_checkers)]
+        self.submodules += generators + checkers
+
+        if custom_pattern_mode:
+            def bist_config(module):
+                return []
+
             if not bist_alternating:
                 address_set = set()
                 for addr, _ in pattern_init:
                     assert addr not in address_set, \
                         'Duplicate address 0x%08x in pattern_init, write will overwrite previous value!' % addr
                     address_set.add(addr)
+        else:
+            def bist_config(module):
+                return [
+                    module.base.eq(bist_base),
+                    module.end.eq(bist_end),
+                    module.length.eq(bist_length),
+                    module.random_addr.eq(bist_random),
+                ]
 
-            bist_generator = _LiteDRAMPatternGenerator(self.sdram.crossbar.get_port(), init=pattern_init)
-            bist_checker = _LiteDRAMPatternChecker(self.sdram.crossbar.get_port(), init=pattern_init)
-            generator_config = checker_config = []
+            assert not (bist_random and not bist_alternating), \
+                'Write to random address may overwrite previously written data before reading!'
 
-        self.submodules.bist_generator = bist_generator
-        self.submodules.bist_checker = bist_checker
+            # check address correctness
+            assert bist_end > bist_base
+            assert bist_end <= 2**(len(generators[0].end)) - 1, 'End address outside of range'
+            bist_addr_range = bist_end - bist_base
+            assert bist_addr_range > 0 and bist_addr_range & (bist_addr_range - 1) == 0, \
+                'Length of the address range must be a power of 2'
+
+        def combined_read(modules, signal, operator):
+            sig = Signal()
+            self.comb += sig.eq(reduce(operator, (getattr(m, signal) for m in modules)))
+            return sig
+
+        def combined_write(modules, signal):
+            sig = Signal()
+            self.comb += [getattr(m, signal).eq(sig) for m in modules]
+            return sig
 
         # Sequencer --------------------------------------------------------------------------------
         class LiteDRAMCoreControl(Module, AutoCSR):
@@ -105,32 +121,36 @@ class LiteDRAMBenchmarkSoC(SimSoC):
             )
         )
         if bist_alternating:
+            # force generators to wait for checkers and vice versa
+            # connect them in pairs, with each unpaired connected to the first of the others
+            bist_connections = []
+            for generator, checker in zip_longest(generators, checkers):
+                g = generator or generators[0]
+                c = checker or checkers[0]
+                bist_connections += g.run.eq(c.ready), c.run.eq(g.ready)
+
             fsm.act("BIST-GENERATOR",
-                bist_generator.start.eq(1),
-                bist_checker.start.eq(1),
-                # force generator to wait for checker and vice versa
-                bist_generator.run.eq(bist_checker.ready),
-                bist_checker.run.eq(bist_generator.ready),
-                *generator_config,
-                *checker_config,
-                If(bist_checker.done,
+                combined_write(generators + checkers, 'start').eq(1),
+                *bist_connections,
+                *map(bist_config, generators + checkers),
+                If(combined_read(checkers, 'done', and_),
                     NextState("DISPLAY")
                 )
             )
         else:
             fsm.act("BIST-GENERATOR",
-                bist_generator.start.eq(1),
-                bist_generator.run.eq(1),
-                *generator_config,
-                If(bist_generator.done,
+                combined_write(generators, 'start').eq(1),
+                combined_write(generators, 'run').eq(1),
+                *map(bist_config, generators),
+                If(combined_read(generators, 'done', and_),
                     NextState("BIST-CHECKER")
                 )
             )
             fsm.act("BIST-CHECKER",
-                bist_checker.start.eq(1),
-                bist_checker.run.eq(1),
-                *checker_config,
-                If(bist_checker.done,
+                combined_write(checkers, 'start').eq(1),
+                combined_write(checkers, 'run').eq(1),
+                *map(bist_config, checkers),
+                If(combined_read(checkers, 'done', and_),
                     NextState("DISPLAY")
                 )
             )
@@ -143,11 +163,26 @@ class LiteDRAMBenchmarkSoC(SimSoC):
         )
 
         # Simulation Results -----------------------------------------------------------------------
+        def max_signal(signals):
+            signals = iter(signals)
+            s = next(signals)
+            out = Signal(len(s))
+            self.comb += out.eq(s)
+            for curr in signals:
+                prev = out
+                out = Signal(max(len(prev), len(curr)))
+                self.comb +=  If(prev > curr, out.eq(prev)).Else(out.eq(curr))
+            return out
+
+        generator_ticks = max_signal((g.ticks for g in generators))
+        checker_errors  = max_signal((c.errors for c in checkers))
+        checker_ticks   = max_signal((c.ticks for c in checkers))
+
         self.sync += [
             If(display,
-                Display("BIST-GENERATOR ticks:  %08d", bist_generator.ticks),
-                Display("BIST-CHECKER errors:   %08d", bist_checker.errors),
-                Display("BIST-CHECKER ticks:    %08d", bist_checker.ticks),
+                Display("BIST-GENERATOR ticks:  %08d", generator_ticks),
+                Display("BIST-CHECKER errors:   %08d", checker_errors),
+                Display("BIST-CHECKER ticks:    %08d", checker_ticks),
             )
         ]
 
@@ -181,6 +216,8 @@ def main():
     parser.add_argument("--bist-length",      default="1024",         help="Length of the test (default=1024)")
     parser.add_argument("--bist-random",      action="store_true",    help="Use random data during the test")
     parser.add_argument("--bist-alternating", action="store_true",    help="Perform alternating writes/reads (WRWRWR... instead of WWW...RRR...)")
+    parser.add_argument("--num-generators",   default=1,              help="Number of BIST generators")
+    parser.add_argument("--num-checkers",     default=1,              help="Number of BIST checkers")
     parser.add_argument("--access-pattern",                           help="Load access pattern (address, data) from CSV (ignores --bist-*)")
     args = parser.parse_args()
 
@@ -197,6 +234,8 @@ def main():
     soc_kwargs["bist_length"]      = int(args.bist_length, 0)
     soc_kwargs["bist_random"]      = args.bist_random
     soc_kwargs["bist_alternating"] = args.bist_alternating
+    soc_kwargs["num_generators"]   = int(args.num_generators)
+    soc_kwargs["num_checkers"]     = int(args.num_checkers)
 
     if args.access_pattern:
         soc_kwargs["pattern_init"] = load_access_pattern(args.access_pattern)
