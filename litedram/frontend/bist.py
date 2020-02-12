@@ -324,17 +324,17 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
     """
     def __init__(self, dram_port):
         ashift, awidth = get_ashift_awidth(dram_port)
-        self.reset  = CSR()
-        self.start  = CSR()
-        self.done   = CSRStatus()
+        self.reset       = CSR()
+        self.start       = CSR()
+        self.done        = CSRStatus()
         self.run         = CSRStorage()
         self.ready       = CSRStatus()
-        self.base   = CSRStorage(awidth)
+        self.base        = CSRStorage(awidth)
         self.end         = CSRStorage(awidth)
-        self.length = CSRStorage(awidth)
+        self.length      = CSRStorage(awidth)
         self.random_data = CSRStorage()
         self.random_addr = CSRStorage()
-        self.ticks  = CSRStatus(32)
+        self.ticks       = CSRStatus(32)
 
         # # #
 
@@ -675,18 +675,18 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
     """
     def __init__(self, dram_port):
         ashift, awidth = get_ashift_awidth(dram_port)
-        self.reset  = CSR()
-        self.start  = CSR()
-        self.done   = CSRStatus()
+        self.reset       = CSR()
+        self.start       = CSR()
+        self.done        = CSRStatus()
         self.run         = CSRStorage()
         self.ready       = CSRStatus()
-        self.base   = CSRStorage(awidth)
+        self.base        = CSRStorage(awidth)
         self.end         = CSRStorage(awidth)
-        self.length = CSRStorage(awidth)
+        self.length      = CSRStorage(awidth)
         self.random_data = CSRStorage()
         self.random_addr = CSRStorage()
-        self.ticks  = CSRStatus(32)
-        self.errors = CSRStatus(32)
+        self.ticks       = CSRStatus(32)
+        self.errors      = CSRStatus(32)
 
         # # #
 
