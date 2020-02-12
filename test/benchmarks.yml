@@ -1,8 +1,23 @@
+# ============================================================
+# Auto-generated on 2020-02-12 15:41:38 by ./gen_config.py
+# ------------------------------------------------------------
+# {'name_format': 'test_%d',
+#  'sdram_module': ['MT41K128M16', 'MT46V32M16', 'MT48LC16M16'],
+#  'sdram_data_width': [32],
+#  'bist_alternating': [True, False],
+#  'bist_length': [1, 1024],
+#  'bist_random': [True, False],
+#  'num_generators': [1, 3],
+#  'num_checkers': [1, 3],
+#  'access_pattern': ['access_pattern.csv']}
+# ============================================================
 {
     "test_0": {
         "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
             "bist_length": 1,
             "bist_random": true
@@ -12,6 +27,8 @@
         "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
             "bist_length": 1,
             "bist_random": false
@@ -21,6 +38,8 @@
         "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
             "bist_length": 1024,
             "bist_random": true
@@ -30,6 +49,8 @@
         "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
             "bist_length": 1024,
             "bist_random": false
@@ -39,8 +60,10 @@
         "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
         "access_pattern": {
-            "bist_length": 8192,
+            "bist_length": 1,
             "bist_random": true
         }
     },
@@ -48,24 +71,30 @@
         "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
         "access_pattern": {
-            "bist_length": 8192,
+            "bist_length": 1,
             "bist_random": false
         }
     },
     "test_6": {
         "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
         "access_pattern": {
-            "bist_length": 1,
-            "bist_random": false
+            "bist_length": 1024,
+            "bist_random": true
         }
     },
     "test_7": {
         "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
         "access_pattern": {
             "bist_length": 1024,
             "bist_random": false
@@ -74,315 +103,943 @@
     "test_8": {
         "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
         "access_pattern": {
-            "bist_length": 8192,
-            "bist_random": false
+            "bist_length": 1,
+            "bist_random": true
         }
     },
     "test_9": {
-        "sdram_module": "MT46V32M16",
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
         "access_pattern": {
             "bist_length": 1,
-            "bist_random": true
+            "bist_random": false
         }
     },
     "test_10": {
-        "sdram_module": "MT46V32M16",
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
         "access_pattern": {
-            "bist_length": 1,
-            "bist_random": false
+            "bist_length": 1024,
+            "bist_random": true
         }
     },
     "test_11": {
-        "sdram_module": "MT46V32M16",
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
         "access_pattern": {
             "bist_length": 1024,
-            "bist_random": true
+            "bist_random": false
         }
     },
     "test_12": {
-        "sdram_module": "MT46V32M16",
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
         "access_pattern": {
-            "bist_length": 1024,
-            "bist_random": false
-        }
-    },
-    "test_13": {
-        "sdram_module": "MT46V32M16",
-        "sdram_data_width": 32,
-        "bist_alternating": true,
-        "access_pattern": {
-            "bist_length": 8192,
+            "bist_length": 1,
             "bist_random": true
         }
     },
-    "test_14": {
-        "sdram_module": "MT46V32M16",
+    "test_13": {
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
         "access_pattern": {
-            "bist_length": 8192,
+            "bist_length": 1,
             "bist_random": false
         }
     },
-    "test_15": {
-        "sdram_module": "MT46V32M16",
+    "test_14": {
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
         "access_pattern": {
-            "bist_length": 1,
+            "bist_length": 1024,
+            "bist_random": true
+        }
+    },
+    "test_15": {
+        "sdram_module": "MT41K128M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1024,
             "bist_random": false
         }
     },
     "test_16": {
-        "sdram_module": "MT46V32M16",
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
-            "bist_length": 1024,
+            "bist_length": 1,
             "bist_random": false
         }
     },
     "test_17": {
-        "sdram_module": "MT46V32M16",
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
         "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
-            "bist_length": 8192,
+            "bist_length": 1024,
             "bist_random": false
         }
     },
     "test_18": {
-        "sdram_module": "MT47H64M16",
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
-        "bist_alternating": true,
-        "access_pattern": {
-            "bist_length": 1,
-            "bist_random": true
-        }
-    },
-    "test_19": {
-        "sdram_module": "MT47H64M16",
-        "sdram_data_width": 32,
-        "bist_alternating": true,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 3,
         "access_pattern": {
             "bist_length": 1,
             "bist_random": false
         }
     },
-    "test_20": {
-        "sdram_module": "MT47H64M16",
+    "test_19": {
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
-        "bist_alternating": true,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 3,
         "access_pattern": {
             "bist_length": 1024,
-            "bist_random": true
+            "bist_random": false
+        }
+    },
+    "test_20": {
+        "sdram_module": "MT41K128M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
         }
     },
     "test_21": {
-        "sdram_module": "MT47H64M16",
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
-        "bist_alternating": true,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 1,
         "access_pattern": {
             "bist_length": 1024,
             "bist_random": false
         }
     },
     "test_22": {
-        "sdram_module": "MT47H64M16",
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
-        "bist_alternating": true,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 3,
         "access_pattern": {
-            "bist_length": 8192,
-            "bist_random": true
+            "bist_length": 1,
+            "bist_random": false
         }
     },
     "test_23": {
-        "sdram_module": "MT47H64M16",
+        "sdram_module": "MT41K128M16",
         "sdram_data_width": 32,
-        "bist_alternating": true,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 3,
         "access_pattern": {
-            "bist_length": 8192,
+            "bist_length": 1024,
             "bist_random": false
         }
     },
     "test_24": {
-        "sdram_module": "MT47H64M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
             "bist_length": 1,
-            "bist_random": false
+            "bist_random": true
         }
     },
     "test_25": {
-        "sdram_module": "MT47H64M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
-            "bist_length": 1024,
+            "bist_length": 1,
             "bist_random": false
         }
     },
     "test_26": {
-        "sdram_module": "MT47H64M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
-            "bist_length": 8192,
-            "bist_random": false
+            "bist_length": 1024,
+            "bist_random": true
         }
     },
     "test_27": {
-        "sdram_module": "MT48LC16M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
-            "bist_length": 1,
-            "bist_random": true
+            "bist_length": 1024,
+            "bist_random": false
         }
     },
     "test_28": {
-        "sdram_module": "MT48LC16M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": true
+        }
+    },
+    "test_29": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
         "access_pattern": {
             "bist_length": 1,
             "bist_random": false
         }
     },
-    "test_29": {
-        "sdram_module": "MT48LC16M16",
+    "test_30": {
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
         "access_pattern": {
             "bist_length": 1024,
             "bist_random": true
-        }
-    },
-    "test_30": {
-        "sdram_module": "MT48LC16M16",
-        "sdram_data_width": 32,
-        "bist_alternating": true,
-        "access_pattern": {
-            "bist_length": 1024,
-            "bist_random": false
         }
     },
     "test_31": {
-        "sdram_module": "MT48LC16M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
         "access_pattern": {
-            "bist_length": 8192,
-            "bist_random": true
-        }
-    },
-    "test_32": {
-        "sdram_module": "MT48LC16M16",
-        "sdram_data_width": 32,
-        "bist_alternating": true,
-        "access_pattern": {
-            "bist_length": 8192,
+            "bist_length": 1024,
             "bist_random": false
         }
     },
-    "test_33": {
-        "sdram_module": "MT48LC16M16",
+    "test_32": {
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": true
+        }
+    },
+    "test_33": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
         "access_pattern": {
             "bist_length": 1,
             "bist_random": false
         }
     },
     "test_34": {
-        "sdram_module": "MT48LC16M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": true
+        }
+    },
+    "test_35": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
         "access_pattern": {
             "bist_length": 1024,
             "bist_random": false
         }
     },
-    "test_35": {
-        "sdram_module": "MT48LC16M16",
-        "sdram_data_width": 32,
-        "bist_alternating": false,
-        "access_pattern": {
-            "bist_length": 8192,
-            "bist_random": false
-        }
-    },
     "test_36": {
-        "sdram_module": "MT41K128M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
         "access_pattern": {
-            "pattern_file": "access_pattern.csv"
+            "bist_length": 1,
+            "bist_random": true
         }
     },
     "test_37": {
-        "sdram_module": "MT41K128M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
         "access_pattern": {
-            "pattern_file": "access_pattern.csv"
+            "bist_length": 1,
+            "bist_random": false
         }
     },
     "test_38": {
         "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
         "access_pattern": {
-            "pattern_file": "access_pattern.csv"
+            "bist_length": 1024,
+            "bist_random": true
         }
     },
     "test_39": {
         "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
-        "bist_alternating": false,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
         "access_pattern": {
-            "pattern_file": "access_pattern.csv"
+            "bist_length": 1024,
+            "bist_random": false
         }
     },
     "test_40": {
-        "sdram_module": "MT47H64M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
-        "bist_alternating": true,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
-            "pattern_file": "access_pattern.csv"
+            "bist_length": 1,
+            "bist_random": false
         }
     },
     "test_41": {
-        "sdram_module": "MT47H64M16",
+        "sdram_module": "MT46V32M16",
         "sdram_data_width": 32,
         "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
-            "pattern_file": "access_pattern.csv"
+            "bist_length": 1024,
+            "bist_random": false
         }
     },
     "test_42": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_43": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_44": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_45": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_46": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_47": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_48": {
         "sdram_module": "MT48LC16M16",
         "sdram_data_width": 32,
         "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": true
+        }
+    },
+    "test_49": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_50": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": true
+        }
+    },
+    "test_51": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_52": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": true
+        }
+    },
+    "test_53": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_54": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": true
+        }
+    },
+    "test_55": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_56": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": true
+        }
+    },
+    "test_57": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_58": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": true
+        }
+    },
+    "test_59": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_60": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": true
+        }
+    },
+    "test_61": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_62": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": true
+        }
+    },
+    "test_63": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_64": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_65": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_66": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_67": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_68": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_69": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_70": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1,
+            "bist_random": false
+        }
+    },
+    "test_71": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "bist_length": 1024,
+            "bist_random": false
+        }
+    },
+    "test_72": {
+        "sdram_module": "MT41K128M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
         "access_pattern": {
             "pattern_file": "access_pattern.csv"
         }
     },
-    "test_43": {
+    "test_73": {
+        "sdram_module": "MT41K128M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_74": {
+        "sdram_module": "MT41K128M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_75": {
+        "sdram_module": "MT41K128M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_76": {
+        "sdram_module": "MT41K128M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_77": {
+        "sdram_module": "MT41K128M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_78": {
+        "sdram_module": "MT41K128M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_79": {
+        "sdram_module": "MT41K128M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_80": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_81": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_82": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_83": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_84": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_85": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_86": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_87": {
+        "sdram_module": "MT46V32M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_88": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_89": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_90": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_91": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": true,
+        "num_generators": 3,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_92": {
         "sdram_module": "MT48LC16M16",
         "sdram_data_width": 32,
         "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_93": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 1,
+        "num_checkers": 3,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_94": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 1,
+        "access_pattern": {
+            "pattern_file": "access_pattern.csv"
+        }
+    },
+    "test_95": {
+        "sdram_module": "MT48LC16M16",
+        "sdram_data_width": 32,
+        "bist_alternating": false,
+        "num_generators": 3,
+        "num_checkers": 3,
         "access_pattern": {
             "pattern_file": "access_pattern.csv"
         }
