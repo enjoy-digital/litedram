@@ -31,7 +31,9 @@ class GenCheckDriver:
 
     def run(self, base, length):
         yield self.module.base.eq(base)
+        yield self.module.end.eq(base + 0x100000)
         yield self.module.length.eq(length)
+        yield self.module.run.eq(1)
         yield self.module.start.eq(1)
         yield
         yield self.module.start.eq(0)
