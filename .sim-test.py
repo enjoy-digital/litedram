@@ -14,7 +14,7 @@ args = parser.parse_args()
 tests = [
     {
         'id':      'litex_sim',
-        'command': f'litex_sim --with-sdram --sdram-module {args.sdram_module}',
+        'command': f'python3 -m litex.tools.litex_sim --with-sdram --sdram-module {args.sdram_module}',
         'cwd':     os.getcwd(),
         'checkpoints': [
             { 'timeout': 240, 'good': [b'\n\\s*BIOS built on[^\n]+\n'] },
