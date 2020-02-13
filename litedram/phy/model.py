@@ -12,7 +12,9 @@
 
 from migen import *
 
+from litedram.common import burst_lengths
 from litedram.phy.dfi import *
+from litedram.modules import _speedgrade_timings, _technology_timings
 
 from functools import reduce
 from operator import or_
@@ -112,6 +114,196 @@ class DFIPhaseModel(Module):
             )
         ]
 
+# DFI Timings Checker ------------------------------------------------------------------------------
+
+class SDRAMCMD:
+    def __init__(self, name: str, enc: int, idx: int):
+        self.name = name
+        self.enc = enc
+        self.idx = idx
+
+class TimingRule:
+    def __init__(self, prev: str, curr: str, delay: int):
+        self.name = prev+'->'+curr
+        self.prev = prev
+        self.curr = curr
+        self.delay = delay
+
+class DFITimingsChecker(Module):
+    CMDS = [
+        # Name, cs & ras & cas & we value
+        ('PRE',  '0010'), # Precharge
+        ('REF',  '0001'), # Self refresh
+        ('ACT',  '0011'), # Activate
+        ('RD',   '0101'), # Read
+        ('WR',   '0100'), # Write
+        ('ZQCS', '0110'), # ZQCS
+    ]
+
+    RULES = [
+        # tRP
+        ('PRE',  'ACT', 'tRP'),
+        ('PRE',  'REF', 'tRP'),
+        # tRCD
+        ('ACT',  'WR',  'tRCD'),
+        ('ACT',  'RD',  'tRCD'),
+        # tRAS
+        ('ACT',  'PRE', 'tRAS'),
+        # tRFC
+        ('REF',  'PRE', 'tRFC'),
+        ('REF',  'ACT', 'tRFC'),
+        # tCCD
+        ('WR',   'RD',  'tCCD'),
+        ('WR',   'WR',  'tCCD'),
+        ('RD',   'RD',  'tCCD'),
+        ('RD',   'WR',  'tCCD'),
+        # tRC
+        ('ACT',  'ACT', 'tRC'),
+        # tWR
+        ('WR',   'PRE', 'tWR'),
+        # tWTR
+        ('WR',   'RD',  'tWTR'),
+        # tZQCS
+        ('ZQCS', 'ACT', 'tZQCS'),
+    ]
+
+    def add_cmds(self):
+        self.cmds = {}
+        for idx, (name, pattern) in enumerate(self.CMDS):
+            self.cmds[name] = SDRAMCMD(name, int(pattern, 2), idx)
+
+    def add_rule(self, prev, curr, delay):
+        if not isinstance(delay, int):
+            delay = self.timings[delay]
+
+        self.rules.append(TimingRule(prev, curr, delay))
+
+    def add_rules(self):
+        self.rules = []
+        for rule in self.RULES:
+            self.add_rule(*rule)
+
+    # Convert ns to ps
+    def ns_to_ps(self, val):
+        return int(val * 1000)
+
+    def ck_ns_to_ps(self, val, tck):
+        c, t = val
+
+        c = 0 if c is None else c * tck
+        t = 0 if t is None else t
+
+        return self.ns_to_ps(max(c, t))
+
+    def prepare_timings(self, timings, refresh_mode, memtype):
+        CK_NS = ['tRFC', 'tWTR', 'tFAW', 'tCCD', 'tRRD', 'tZQCS']
+        REF = ['tREFI', 'tRFC']
+        self.timings = timings
+        new_timings = {}
+
+        tck = self.timings['tCK']
+
+        for key, val in self.timings.items():
+            if refresh_mode is not None and key in REF:
+                val = val[refresh_mode]
+
+            if val is None:
+                val = 0
+            elif key in CK_NS:
+                val = self.ck_ns_to_ps(val, tck)
+            else:
+                val = self.ns_to_ps(val)
+                
+            new_timings[key] = val
+
+        new_timings['tRC'] = new_timings['tRAS'] + new_timings['tRP']
+
+        # adjust timings relative to write burst - tWR & tWTR
+        wrburst = burst_lengths[memtype] if memtype == 'SDR' else burst_lengths[memtype] // 2
+        wrburst = (new_timings['tCK'] * (wrburst-1))
+        new_timings['tWR'] = new_timings['tWR'] + wrburst
+        new_timings['tWTR'] = new_timings['tWTR'] + wrburst
+
+        self.timings = new_timings
+
+    def __init__(self, dfi, nbanks, nphases, timings, refresh_mode, memtype, verbose=False):
+        self.prepare_timings(timings, refresh_mode, memtype)
+        self.add_cmds()
+        self.add_rules()
+
+        cnt = Signal(64)
+        self.sync += cnt.eq(cnt+nphases)
+
+        phases = [getattr(dfi, "p"+str(n)) for n in range(nphases)]
+
+        last_cmd_ps = [[Signal.like(cnt) for _ in range(len(self.cmds))] for _ in range(nbanks)]
+        last_cmd = [Signal(4) for i in range(nbanks)]
+
+        act_ps = Array([Signal().like(cnt) for i in range(4)])
+        act_curr = Signal(max=4)
+
+        ref_issued = Signal(nphases)
+
+        for np, phase in enumerate(phases):
+            ps = Signal().like(cnt)
+            self.comb += ps.eq((cnt+np)*self.timings['tCK'])
+            state = Signal(4)
+            self.comb += state.eq(Cat(phase.we_n, phase.cas_n, phase.ras_n, phase.cs_n))
+            all_banks = Signal()
+
+            self.comb += all_banks.eq((self.cmds['REF'].enc == state) | ((self.cmds['PRE'].enc == state) & phase.address[10]))
+
+            # tREFI
+            self.comb += ref_issued[np].eq(self.cmds['REF'].enc == state)
+
+            # Print debug information
+            if verbose:
+                for _, cmd in self.cmds.items():
+                    self.sync += If(state == cmd.enc, If(all_banks,
+                        Display("[%016dps] P%0d "+cmd.name, ps, np)).Else(
+                        Display("[%016dps] P%0d B%0d "+cmd.name, ps, np, phase.bank)))
+
+            # Bank command monitoring
+            for i in range(nbanks):
+                for _, curr in self.cmds.items():
+                    cmd_recv = Signal()
+                    self.comb += cmd_recv.eq(((phase.bank == i) | all_banks) & (state == curr.enc))
+
+                    # Checking rules from self.rules
+                    for _, prev in self.cmds.items():
+                        for rule in self.rules:
+                            if rule.prev == prev.name and rule.curr == curr.name:
+                                self.sync += If(cmd_recv & (last_cmd[i] == prev.enc) & (ps < (last_cmd_ps[i][prev.idx] + rule.delay)),
+                                    Display("[%016dps] {} violation on bank %0d".format(rule.name), ps, i))
+
+                    # Save command timestamp in an array
+                    self.sync += If(cmd_recv, last_cmd_ps[i][curr.idx].eq(ps), last_cmd[i].eq(state))
+
+                    # tRRD & tFAW
+                    if curr.name == 'ACT':
+                        act_next = Signal().like(act_curr)
+                        self.comb += act_next.eq(act_curr+1)
+
+                        # act_curr points to newest ACT timestamp
+                        self.sync += If(cmd_recv & (ps < (act_ps[act_curr] + self.timings['tRRD'])),
+                            Display("[%016dps] tRRD violation on bank %0d", ps, i))
+
+                        # act_next points to the oldest ACT timestamp
+                        self.sync += If(cmd_recv & (ps < (act_ps[act_next] + self.timings['tFAW'])),
+                            Display("[%016dps] tFAW violation on bank %0d", ps, i))
+
+                        # Save ACT timestamp in a circular buffer
+                        self.sync += If(cmd_recv, act_ps[act_next].eq(ps), act_curr.eq(act_next))
+
+        # tREFI
+        ref_ps = Signal().like(cnt)
+        ref_done = Signal()
+        self.sync += If(ref_issued != 0, ref_ps.eq(ps), ref_done.eq(1),
+            If(~ref_done, Display("[%016dps] Late refresh", ps)))
+
+        self.sync += If((ps > (ref_ps + self.timings['tREFI'])) & ref_done & (ref_issued == 0),
+                Display("[%016dps] tREFI violation", ps), ref_done.eq(0))
+
 # SDRAM PHY Model ----------------------------------------------------------------------------------
 
 class SDRAMPHYModel(Module):
@@ -168,7 +360,7 @@ class SDRAMPHYModel(Module):
 
         return bank_init
 
-    def __init__(self, module, settings, we_granularity=8, init=[], address_mapping="ROW_BANK_COL"):
+    def __init__(self, module, settings, clk_freq=100e6, we_granularity=8, init=[], address_mapping="ROW_BANK_COL", use_timing_checker=True, verbose_timing_checker=False):
         # Parameters
         burst_length = {
             "SDR":   1,
@@ -207,6 +399,16 @@ class SDRAMPHYModel(Module):
         # DFI phases -------------------------------------------------------------------------------
         phases = [DFIPhaseModel(self.dfi, n) for n in range(self.settings.nphases)]
         self.submodules += phases
+
+        # DFI timing checker -----------------------------------------------------------------------
+        if use_timing_checker:
+            timings = {'tCK': (1e9 / clk_freq) / nphases}
+
+            for name in _speedgrade_timings + _technology_timings:
+                timings[name] = self.module.get(name)
+
+            timing_checker = DFITimingsChecker(self.dfi, nbanks, nphases, timings, self.module.timing_settings.fine_refresh_mode, settings.memtype, verbose=verbose_timing_checker)
+            self.submodules += timing_checker
 
         # Bank init data ---------------------------------------------------------------------------
         bank_init  = [[] for i in range(nbanks)]
