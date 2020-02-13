@@ -115,14 +115,14 @@ class DFIPhaseModel(Module):
 class SDRAMCMD:
     def __init__(self, name: str, enc: int, idx: int):
         self.name = name
-        self.enc = enc
-        self.idx = idx
+        self.enc  = enc
+        self.idx  = idx
 
 class TimingRule:
     def __init__(self, prev: str, curr: str, delay: int):
-        self.name = prev+"->"+curr
-        self.prev = prev
-        self.curr = curr
+        self.name  = prev+"->"+curr
+        self.prev  = prev
+        self.curr  = curr
         self.delay = delay
 
 class DFITimingsChecker(Module):
@@ -193,9 +193,9 @@ class DFITimingsChecker(Module):
 
     def prepare_timings(self, timings, refresh_mode, memtype):
         CK_NS = ["tRFC", "tWTR", "tFAW", "tCCD", "tRRD", "tZQCS"]
-        REF = ["tREFI", "tRFC"]
+        REF   = ["tREFI", "tRFC"]
         self.timings = timings
-        new_timings = {}
+        new_timings  = {}
 
         tck = self.timings["tCK"]
 
@@ -217,7 +217,7 @@ class DFITimingsChecker(Module):
         # adjust timings relative to write burst - tWR & tWTR
         wrburst = burst_lengths[memtype] if memtype == "SDR" else burst_lengths[memtype] // 2
         wrburst = (new_timings["tCK"] * (wrburst-1))
-        new_timings["tWR"] = new_timings["tWR"] + wrburst
+        new_timings["tWR"]  = new_timings["tWR"]  + wrburst
         new_timings["tWTR"] = new_timings["tWTR"] + wrburst
 
         self.timings = new_timings
@@ -247,7 +247,10 @@ class DFITimingsChecker(Module):
             self.comb += state.eq(Cat(phase.we_n, phase.cas_n, phase.ras_n, phase.cs_n))
             all_banks = Signal()
 
-            self.comb += all_banks.eq((self.cmds["REF"].enc == state) | ((self.cmds["PRE"].enc == state) & phase.address[10]))
+            self.comb += all_banks.eq(
+                (self.cmds["REF"].enc == state) |
+                ((self.cmds["PRE"].enc == state) & phase.address[10])
+            )
 
             # tREFI
             self.comb += ref_issued[np].eq(self.cmds["REF"].enc == state)
@@ -269,7 +272,8 @@ class DFITimingsChecker(Module):
                     for _, prev in self.cmds.items():
                         for rule in self.rules:
                             if rule.prev == prev.name and rule.curr == curr.name:
-                                self.sync += If(cmd_recv & (last_cmd[i] == prev.enc) & (ps < (last_cmd_ps[i][prev.idx] + rule.delay)),
+                                self.sync += If(cmd_recv & (last_cmd[i] == prev.enc) &
+                                                (ps < (last_cmd_ps[i][prev.idx] + rule.delay)),
                                     Display("[%016dps] {} violation on bank %0d".format(rule.name), ps, i))
 
                     # Save command timestamp in an array
@@ -356,8 +360,14 @@ class SDRAMPHYModel(Module):
 
         return bank_init
 
-    def __init__(self, module, settings, clk_freq=100e6, we_granularity=8, init=[], address_mapping="ROW_BANK_COL", use_timing_checker=True, verbose_timing_checker=False):
-        # Parameters
+    def __init__(self, module, settings, clk_freq=100e6,
+        we_granularity         = 8,
+        init                   = [],
+        address_mapping        = "ROW_BANK_COL",
+        use_timing_checker     = True,
+        verbose_timing_checker = False):
+
+        # Parameters -------------------------------------------------------------------------------
         burst_length = {
             "SDR":   1,
             "DDR":   2,
@@ -375,7 +385,7 @@ class SDRAMPHYModel(Module):
         self.settings = settings
         self.module   = module
 
-        # DFI Interface
+        # DFI Interface ----------------------------------------------------------------------------
         self.dfi = Interface(
             addressbits = addressbits,
             bankbits    = bankbits,
@@ -403,17 +413,38 @@ class SDRAMPHYModel(Module):
             for name in _speedgrade_timings + _technology_timings:
                 timings[name] = self.module.get(name)
 
-            timing_checker = DFITimingsChecker(self.dfi, nbanks, nphases, timings, self.module.timing_settings.fine_refresh_mode, settings.memtype, verbose=verbose_timing_checker)
+            timing_checker = DFITimingsChecker(
+                dfi          = self.dfi,
+                nbanks       = nbanks,
+                nphases      = nphases,
+                timings      = timings,
+                refresh_mode = self.module.timing_settings.fine_refresh_mode,
+                memtype      = settings.memtype,
+                verbose      = verbose_timing_checker)
             self.submodules += timing_checker
 
         # Bank init data ---------------------------------------------------------------------------
         bank_init  = [[] for i in range(nbanks)]
 
         if init:
-            bank_init = self.__prepare_bank_init_data(init, nbanks, nrows, ncols, data_width, address_mapping)
+            bank_init = self.__prepare_bank_init_data(
+                init            = init,
+                nbanks          = nbanks,
+                nrows           = nrows,
+                ncols           = ncols,
+                data_width      = data_width,
+                address_mapping = address_mapping
+            )
 
         # Banks ------------------------------------------------------------------------------------
-        banks = [BankModel(data_width, nrows, ncols, burst_length, nphases, we_granularity, bank_init[i]) for i in range(nbanks)]
+        banks = [BankModel(
+            data_width     = data_width,
+            nrows          = nrows,
+            ncols          = ncols,
+            burst_length   = burst_length,
+            nphases        = nphases,
+            we_granularity = we_granularity,
+            init           = bank_init[i]) for i in range(nbanks)]
         self.submodules += banks
 
         # Connect DFI phases to Banks (CMDs, Write datapath) ---------------------------------------
