@@ -120,7 +120,7 @@ class SDRAMCMD:
 
 class TimingRule:
     def __init__(self, prev: str, curr: str, delay: int):
-        self.name = prev+'->'+curr
+        self.name = prev+"->"+curr
         self.prev = prev
         self.curr = curr
         self.delay = delay
@@ -128,39 +128,39 @@ class TimingRule:
 class DFITimingsChecker(Module):
     CMDS = [
         # Name, cs & ras & cas & we value
-        ('PRE',  '0010'), # Precharge
-        ('REF',  '0001'), # Self refresh
-        ('ACT',  '0011'), # Activate
-        ('RD',   '0101'), # Read
-        ('WR',   '0100'), # Write
-        ('ZQCS', '0110'), # ZQCS
+        ("PRE",  "0010"), # Precharge
+        ("REF",  "0001"), # Self refresh
+        ("ACT",  "0011"), # Activate
+        ("RD",   "0101"), # Read
+        ("WR",   "0100"), # Write
+        ("ZQCS", "0110"), # ZQCS
     ]
 
     RULES = [
         # tRP
-        ('PRE',  'ACT', 'tRP'),
-        ('PRE',  'REF', 'tRP'),
+        ("PRE",  "ACT", "tRP"),
+        ("PRE",  "REF", "tRP"),
         # tRCD
-        ('ACT',  'WR',  'tRCD'),
-        ('ACT',  'RD',  'tRCD'),
+        ("ACT",  "WR",  "tRCD"),
+        ("ACT",  "RD",  "tRCD"),
         # tRAS
-        ('ACT',  'PRE', 'tRAS'),
+        ("ACT",  "PRE", "tRAS"),
         # tRFC
-        ('REF',  'PRE', 'tRFC'),
-        ('REF',  'ACT', 'tRFC'),
+        ("REF",  "PRE", "tRFC"),
+        ("REF",  "ACT", "tRFC"),
         # tCCD
-        ('WR',   'RD',  'tCCD'),
-        ('WR',   'WR',  'tCCD'),
-        ('RD',   'RD',  'tCCD'),
-        ('RD',   'WR',  'tCCD'),
+        ("WR",   "RD",  "tCCD"),
+        ("WR",   "WR",  "tCCD"),
+        ("RD",   "RD",  "tCCD"),
+        ("RD",   "WR",  "tCCD"),
         # tRC
-        ('ACT',  'ACT', 'tRC'),
+        ("ACT",  "ACT", "tRC"),
         # tWR
-        ('WR',   'PRE', 'tWR'),
+        ("WR",   "PRE", "tWR"),
         # tWTR
-        ('WR',   'RD',  'tWTR'),
+        ("WR",   "RD",  "tWTR"),
         # tZQCS
-        ('ZQCS', 'ACT', 'tZQCS'),
+        ("ZQCS", "ACT", "tZQCS"),
     ]
 
     def add_cmds(self):
@@ -192,12 +192,12 @@ class DFITimingsChecker(Module):
         return self.ns_to_ps(max(c, t))
 
     def prepare_timings(self, timings, refresh_mode, memtype):
-        CK_NS = ['tRFC', 'tWTR', 'tFAW', 'tCCD', 'tRRD', 'tZQCS']
-        REF = ['tREFI', 'tRFC']
+        CK_NS = ["tRFC", "tWTR", "tFAW", "tCCD", "tRRD", "tZQCS"]
+        REF = ["tREFI", "tRFC"]
         self.timings = timings
         new_timings = {}
 
-        tck = self.timings['tCK']
+        tck = self.timings["tCK"]
 
         for key, val in self.timings.items():
             if refresh_mode is not None and key in REF:
@@ -212,13 +212,13 @@ class DFITimingsChecker(Module):
 
             new_timings[key] = val
 
-        new_timings['tRC'] = new_timings['tRAS'] + new_timings['tRP']
+        new_timings["tRC"] = new_timings["tRAS"] + new_timings["tRP"]
 
         # adjust timings relative to write burst - tWR & tWTR
-        wrburst = burst_lengths[memtype] if memtype == 'SDR' else burst_lengths[memtype] // 2
-        wrburst = (new_timings['tCK'] * (wrburst-1))
-        new_timings['tWR'] = new_timings['tWR'] + wrburst
-        new_timings['tWTR'] = new_timings['tWTR'] + wrburst
+        wrburst = burst_lengths[memtype] if memtype == "SDR" else burst_lengths[memtype] // 2
+        wrburst = (new_timings["tCK"] * (wrburst-1))
+        new_timings["tWR"] = new_timings["tWR"] + wrburst
+        new_timings["tWTR"] = new_timings["tWTR"] + wrburst
 
         self.timings = new_timings
 
@@ -242,15 +242,15 @@ class DFITimingsChecker(Module):
 
         for np, phase in enumerate(phases):
             ps = Signal().like(cnt)
-            self.comb += ps.eq((cnt+np)*self.timings['tCK'])
+            self.comb += ps.eq((cnt+np)*self.timings["tCK"])
             state = Signal(4)
             self.comb += state.eq(Cat(phase.we_n, phase.cas_n, phase.ras_n, phase.cs_n))
             all_banks = Signal()
 
-            self.comb += all_banks.eq((self.cmds['REF'].enc == state) | ((self.cmds['PRE'].enc == state) & phase.address[10]))
+            self.comb += all_banks.eq((self.cmds["REF"].enc == state) | ((self.cmds["PRE"].enc == state) & phase.address[10]))
 
             # tREFI
-            self.comb += ref_issued[np].eq(self.cmds['REF'].enc == state)
+            self.comb += ref_issued[np].eq(self.cmds["REF"].enc == state)
 
             # Print debug information
             if verbose:
@@ -276,16 +276,16 @@ class DFITimingsChecker(Module):
                     self.sync += If(cmd_recv, last_cmd_ps[i][curr.idx].eq(ps), last_cmd[i].eq(state))
 
                     # tRRD & tFAW
-                    if curr.name == 'ACT':
+                    if curr.name == "ACT":
                         act_next = Signal().like(act_curr)
                         self.comb += act_next.eq(act_curr+1)
 
                         # act_curr points to newest ACT timestamp
-                        self.sync += If(cmd_recv & (ps < (act_ps[act_curr] + self.timings['tRRD'])),
+                        self.sync += If(cmd_recv & (ps < (act_ps[act_curr] + self.timings["tRRD"])),
                             Display("[%016dps] tRRD violation on bank %0d", ps, i))
 
                         # act_next points to the oldest ACT timestamp
-                        self.sync += If(cmd_recv & (ps < (act_ps[act_next] + self.timings['tFAW'])),
+                        self.sync += If(cmd_recv & (ps < (act_ps[act_next] + self.timings["tFAW"])),
                             Display("[%016dps] tFAW violation on bank %0d", ps, i))
 
                         # Save ACT timestamp in a circular buffer
@@ -297,7 +297,7 @@ class DFITimingsChecker(Module):
         self.sync += If(ref_issued != 0, ref_ps.eq(ps), ref_done.eq(1),
             If(~ref_done, Display("[%016dps] Late refresh", ps)))
 
-        self.sync += If((ps > (ref_ps + self.timings['tREFI'])) & ref_done & (ref_issued == 0),
+        self.sync += If((ps > (ref_ps + self.timings["tREFI"])) & ref_done & (ref_issued == 0),
                 Display("[%016dps] tREFI violation", ps), ref_done.eq(0))
 
 # SDRAM PHY Model ----------------------------------------------------------------------------------
@@ -323,7 +323,7 @@ class SDRAMPHYModel(Module):
             new_init = [0]*(len(init)//model_data_ratio)
             for i in range(0, len(init), model_data_ratio):
                 ints = init[i:i+model_data_ratio]
-                strs = ''.join('{:08x}'.format(x) for x in reversed(ints))
+                strs = "".join("{:08x}".format(x) for x in reversed(ints))
                 new_init[i//model_data_ratio] = int(strs, 16)
             init = new_init
         elif model_data_ratio == 0:
@@ -398,7 +398,7 @@ class SDRAMPHYModel(Module):
 
         # DFI timing checker -----------------------------------------------------------------------
         if use_timing_checker:
-            timings = {'tCK': (1e9 / clk_freq) / nphases}
+            timings = {"tCK": (1e9 / clk_freq) / nphases}
 
             for name in _speedgrade_timings + _technology_timings:
                 timings[name] = self.module.get(name)
