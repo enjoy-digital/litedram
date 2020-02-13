@@ -1,0 +1,100 @@
+body {
+  font-family: 'Roboto', sans-serif;
+}
+
+footer {
+  text-align: center;
+  font-size: 10px;
+  padding: 20px;
+}
+
+.dataTables_filter {
+  margin: 15px 50px 10px 50px;
+}
+
+.dataTables_filter input {
+  width: 400px;
+}
+
+.table-select {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.table-select ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.table-select li {
+  float: left;
+}
+
+.table-select li a {
+  display: block;
+  padding: 10px 0px;
+  margin: 0px 20px;
+  text-align: center;
+  text-decoration: none;
+  font-size: 18px;
+  color:inherit;
+  border-bottom: 1px solid;
+  border-color: #ccc;
+  transition: 0.2s;
+}
+
+.table-select li a:hover {
+  border-color: #111;
+}
+
+/* did not work, .focus() couldn't turn it on */
+/* .table-select li a:focus { */
+/*   border-color: #222; */
+/* } */
+.table-select-active {
+  border-color: #111 !important;
+}
+
+.tables-wrapper {
+  width: 100%;
+  margin: auto;
+}
+
+.loading {
+  z-index: 999;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-right: -50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Loading animation */
+.lds-dual-ring {
+  display: inline-block;
+  width: 80px;
+  height: 80px;
+}
+.lds-dual-ring:after {
+  content: " ";
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 8px;
+  border-radius: 50%;
+  border: 6px solid #fff;
+  border-color: #aaa transparent #aaa transparent;
+  animation: lds-dual-ring 1.2s linear infinite;
+}
+@keyframes lds-dual-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* vim: set ts=2 sw=2: */

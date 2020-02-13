@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/fixedheader/3.1.5/js/dataTables.fixedHeader.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/fixedheader/3.1.5/css/fixedHeader.dataTables.min.css">
+
+    <style type="text/css" media="all">
+{% include 'summary.css' %}
+{# Calculate size of table selection elements so that they take up whole space #}
+.table-select li {
+  width: calc(100% / {{ tables.keys() | length }});
+}
+    </style>
+  </head>
+  <body>
+    {# Loading symbol that gets hidden after initialisation of all tables #}
+    <div class="loading lds-dual-ring"></div>
+
+    {# Bar for selecting the current data table #}
+    <div class="table-select">
+      <ul>
+        {% for id, name in names.items() %}
+          <li id='{{ id }}-button'><a href="#">{{ name }}</a></li>
+        {% endfor %}
+      </ul>
+      {# <hr/> #}
+    </div>
+
+    {# Display of the current data table #}
+    <div class="tables-wrapper">
+      {% for id, table in tables.items() %}
+        {# Hide tables not to show them before all DataTables are loaded #}
+        <div id="{{ id }}-div" style="display: none;">
+          {{ table }}
+        </div>
+      {% endfor %}
+    </div>
+  </body>
+
+  <footer id="footer">
+    <a href="https://github.com/enjoy-digital/litedram">LiteDRAM</a> is a part of <a href="https://github.com/enjoy-digital/litex">Litex</a>.
+    <br>
+    Generated using
+    <a href="https://github.com/enjoy-digital/litedram/blob/{{ revision }}/{{ script_path }}">{{ script_path }}</a>,
+    revision
+    <a href="https://github.com/enjoy-digital/litedram/commit/{{ revision }}">{{ revision_short }}</a>,
+    {{ generation_date }}.
+  </footer>
+
+  {# Script last, so that for large tables we get some content on the page before loading tables #}
+  <script>
+    {# Ids of the data tables #}
+    table_ids = [
+      {% for id in tables.keys() %}
+        '{{ id }}',
+    {% endfor %}
+    ];
+
+    {# Show table with given id and hide all the others #}
+    show_table = function(id) {
+      if (!table_ids.includes(id)) {
+        console.log('Error: show_table(' + id + ')');
+        return;
+      }
+      for (var table_div of $('.tables-wrapper').children()) {
+        if (table_div.id) {
+          var table_div = $('#' + table_div.id)
+          if (table_div.attr('id') == id + '-div') {
+            table_div.show();
+          } else {
+            table_div.hide();
+          }
+        }
+      }
+    }
+
+    // sort human-readable values assuming format "123 Kb", only first letter of unit is used
+    jQuery.fn.dataTable.ext.type.order['file-size-pre'] = function(data) {
+      var matches = data.match(/^(\d+(?:\.\d+)?)\s*([a-z]+)/i);
+      var multipliers = {
+        k: Math.pow(2, 10),
+        m: Math.pow(2, 20),
+        g: Math.pow(2, 30),
+        t: Math.pow(2, 40),
+      };
+
+      console.log(matches);
+      if (matches) {
+        var float = parseFloat(matches[1]);
+        var prefix = matches[2].toLowerCase()[0];
+        var multiplier = multipliers[prefix];
+        if (multiplier) {
+          float = float * multiplier;
+          console.log(matches, float, multiplier);
+        }
+        return float;
+      } else {
+        return -1;
+      };
+    };
+
+    {# Initialization after DOM has been loaded #}
+    $(document).ready(function() {
+      // generate data tables
+      for (var id of table_ids) {
+        // add human readable class to all bandwidth columns
+        var columns = $('#' + id + ' > thead > tr > th').filter(function(index) {
+          return $(this).text().toLowerCase().includes('bandwidth');
+        });
+        console.log(columns)
+        columns.addClass('human-readable-data');
+
+        // construct data table
+        table = $('#' + id);
+        table.DataTable({
+          paging: false,
+          fixedHeader: true,
+          columnDefs: [
+            { type: 'file-size', targets: [ 'human-readable-data' ] },
+            { className: 'dt-body-right', targets: [ '_all' ] },
+            { className: 'dt-head-center', targets: [ '_all' ] },
+          ]
+        });
+        table.addClass("stripe");
+        table.addClass("hover");
+        table.addClass("order-column");
+        table.addClass("cell-border");
+        table.addClass("row-border");
+      }
+
+      // add click handlers that change the table being shown
+      for (var id of table_ids) {
+        var ahref = $('#' + id + '-button a');
+        // use nested closure so that we avoid the situation
+        // where all click handlers end up with the last id
+        ahref.click(function(table_id) {
+          return function() {
+            // get rid of this class after first click
+            $('.table-select a').removeClass('table-select-active');
+            $(this).addClass('table-select-active');
+            show_table(table_id);
+          }
+        }(id))
+      }
+
+      // show the first one
+      $('#' + table_ids[0] + '-button a:first').click();
+
+      // hide all elements of class loading
+      $('.loading').hide();
+    });
+  </script>
+</html>
+{# vim: set ts=2 sts=2 sw=2 et: #}
