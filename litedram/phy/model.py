@@ -4,11 +4,7 @@
 
 # SDRAM simulation PHY at DFI level tested with SDR/DDR/DDR2/LPDDR/DDR3
 # TODO:
-# - test/add DDR4 support.
-# - add init/dump capabilities.
 # - add multirank support.
-# - add bandwidth/efficiency measurements.
-# - add timings checks.
 
 from migen import *
 
@@ -213,7 +209,7 @@ class DFITimingsChecker(Module):
                 val = self.ck_ns_to_ps(val, tck)
             else:
                 val = self.ns_to_ps(val)
-                
+
             new_timings[key] = val
 
         new_timings['tRC'] = new_timings['tRAS'] + new_timings['tRP']
