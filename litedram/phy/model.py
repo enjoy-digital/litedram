@@ -360,7 +360,7 @@ class SDRAMPHYModel(Module):
 
         return bank_init
 
-    def __init__(self, module, settings, clk_freq=100e6, we_granularity=8, init=[], address_mapping="ROW_BANK_COL"):
+    def __init__(self, module, settings, clk_freq=100e6, we_granularity=8, init=[], address_mapping="ROW_BANK_COL", use_timing_checker=True, verbose_timing_checker=False):
         # Parameters
         burst_length = {
             "SDR":   1,
@@ -401,13 +401,14 @@ class SDRAMPHYModel(Module):
         self.submodules += phases
 
         # DFI timing checker -----------------------------------------------------------------------
-        timings = {'tCK': (1e9 / clk_freq) / nphases}
+        if use_timing_checker:
+            timings = {'tCK': (1e9 / clk_freq) / nphases}
 
-        for name in _speedgrade_timings + _technology_timings:
-            timings[name] = self.module.get(name)
+            for name in _speedgrade_timings + _technology_timings:
+                timings[name] = self.module.get(name)
 
-        timing_checker = DFITimingsChecker(self.dfi, nbanks, nphases, timings, self.module.timing_settings.fine_refresh_mode, settings.memtype)
-        self.submodules += timing_checker
+            timing_checker = DFITimingsChecker(self.dfi, nbanks, nphases, timings, self.module.timing_settings.fine_refresh_mode, settings.memtype, verbose=verbose_timing_checker)
+            self.submodules += timing_checker
 
         # Bank init data ---------------------------------------------------------------------------
         bank_init  = [[] for i in range(nbanks)]
