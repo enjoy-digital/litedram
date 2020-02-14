@@ -223,6 +223,7 @@ class DFITimingsChecker(Module):
         self.timings = new_timings
 
     def __init__(self, dfi, nbanks, nphases, timings, refresh_mode, memtype, verbose=False):
+        ref_limit = {"1x": 9, "2x": 17, "4x": 36}
         self.prepare_timings(timings, refresh_mode, memtype)
         self.add_cmds()
         self.add_rules()
@@ -321,6 +322,14 @@ class DFITimingsChecker(Module):
 
             self.sync += If((curr_diff > 0) & ref_done & (ref_issued == 0),
                 Display("[%016dps] tREFI violation", ps), ref_done.eq(0))
+
+        # There is a maximum delay between refreshes on >=DDR
+        if memtype != "SDR":
+            refresh_mode = "1x" if refresh_mode is None else refresh_mode
+            ref_done = Signal()
+            self.sync += If(ref_issued != 0, ref_done.eq(1))
+            self.sync += If((ref_issued == 0) & ref_done & (ref_ps > (ps + ref_limit[refresh_mode] * self.timings['tREFI'])),
+                Display("[%016dps] tREFI violation (too many postponed refreshes)", ps), ref_done.eq(0))
 
 # SDRAM PHY Model ----------------------------------------------------------------------------------
 
