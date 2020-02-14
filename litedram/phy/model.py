@@ -297,11 +297,29 @@ class DFITimingsChecker(Module):
 
         # tREFI
         ref_ps = Signal().like(cnt)
-        ref_done = Signal()
-        self.sync += If(ref_issued != 0, ref_ps.eq(ps), ref_done.eq(1),
-            If(~ref_done, Display("[%016dps] Late refresh", ps)))
+        ref_ps_mod  = Signal().like(cnt)
+        ref_ps_diff = Signal(min=-2**63, max=2**63)
+        curr_diff   = Signal().like(ref_ps_diff)
 
-        self.sync += If((ps > (ref_ps + self.timings["tREFI"])) & ref_done & (ref_issued == 0),
+        self.comb += curr_diff.eq(ps - (ref_ps + self.timings["tREFI"]))
+        
+        # Work in 64ms periods
+        self.sync += If(ref_ps_mod < int(64e9),
+            ref_ps_mod.eq(ref_ps_mod + nphases * self.timings["tCK"])).Else(ref_ps_mod.eq(0))
+
+        # Update timestamp and difference
+        self.sync += If(ref_issued != 0, ref_ps.eq(ps), ref_ps_diff.eq(ref_ps_diff - curr_diff))
+
+        self.sync += If((ref_ps_mod == 0) & (ref_ps_diff > 0),
+            Display("[%016dps] tREFI violation (64ms period): %0d", ps, ref_ps_diff))
+
+        # Report any refresh periods longer than tREFI
+        if verbose:
+            ref_done = Signal()
+            self.sync += If(ref_issued != 0, ref_done.eq(1),
+                If(~ref_done, Display("[%016dps] Late refresh", ps)))
+
+            self.sync += If((curr_diff > 0) & ref_done & (ref_issued == 0),
                 Display("[%016dps] tREFI violation", ps), ref_done.eq(0))
 
 # SDRAM PHY Model ----------------------------------------------------------------------------------
