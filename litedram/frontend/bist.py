@@ -769,7 +769,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
                 core.base.eq(self.base.storage),
                 core.end.eq(self.end.storage),
                 core.length.eq(self.length.storage),
-                core.random.eq(self.random.storage),
+                core.random_data.eq(self.random_data.storage),
+                core.random_addr.eq(self.random_addr.storage),
                 self.ticks.status.eq(core.ticks),
                 self.errors.status.eq(core.errors)
             ]
