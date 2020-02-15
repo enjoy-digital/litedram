@@ -332,8 +332,10 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         self.base        = CSRStorage(awidth)
         self.end         = CSRStorage(awidth)
         self.length      = CSRStorage(awidth)
-        self.random_data = CSRStorage()
-        self.random_addr = CSRStorage()
+        self.random      = CSRStorage(fields=[
+            CSRField("data", size=1),
+            CSRField("addr", size=1),
+        ])
         self.ticks       = CSRStatus(32)
 
         # # #
@@ -390,8 +392,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
             ]
 
             self.specials += [
-                MultiReg(self.random_data.storage, core.random_data, clock_domain),
-                MultiReg(self.random_addr.storage, core.random_addr, clock_domain),
+                MultiReg(self.random.fields.data, core.random_data, clock_domain),
+                MultiReg(self.random.fields.addr, core.random_addr, clock_domain),
             ]
 
             ticks_sync = BusSynchronizer(32, clock_domain, "sys")
@@ -410,8 +412,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
                 core.base.eq(self.base.storage),
                 core.end.eq(self.end.storage),
                 core.length.eq(self.length.storage),
-                core.random_data.eq(self.random_data.storage),
-                core.random_addr.eq(self.random_addr.storage),
+                core.random_data.eq(self.random.fields.data),
+                core.random_addr.eq(self.random.fields.addr),
                 self.ticks.status.eq(core.ticks)
             ]
 
@@ -683,8 +685,10 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         self.base        = CSRStorage(awidth)
         self.end         = CSRStorage(awidth)
         self.length      = CSRStorage(awidth)
-        self.random_data = CSRStorage()
-        self.random_addr = CSRStorage()
+        self.random      = CSRStorage(fields=[
+            CSRField("data", size=1),
+            CSRField("addr", size=1),
+        ])
         self.ticks       = CSRStatus(32)
         self.errors      = CSRStatus(32)
 
@@ -742,8 +746,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             ]
 
             self.specials += [
-                MultiReg(self.random_data.storage, core.random_data, clock_domain),
-                MultiReg(self.random_addr.storage, core.random_addr, clock_domain),
+                MultiReg(self.random.fields.data, core.random_data, clock_domain),
+                MultiReg(self.random.fields.addr, core.random_addr, clock_domain),
             ]
 
             ticks_sync = BusSynchronizer(32, clock_domain, "sys")
@@ -769,8 +773,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
                 core.base.eq(self.base.storage),
                 core.end.eq(self.end.storage),
                 core.length.eq(self.length.storage),
-                core.random_data.eq(self.random_data.storage),
-                core.random_addr.eq(self.random_addr.storage),
+                core.random_data.eq(self.random.fields.data),
+                core.random_addr.eq(self.random.fields.addr),
                 self.ticks.status.eq(core.ticks),
                 self.errors.status.eq(core.errors)
             ]
