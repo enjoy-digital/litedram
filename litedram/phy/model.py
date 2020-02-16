@@ -17,6 +17,11 @@ from operator import or_
 
 import struct
 
+
+SDRAM_VERBOSE_OFF = 0
+SDRAM_VERBOSE_STD = 1
+SDRAM_VERBOSE_DBG = 2
+
 # Bank Model ---------------------------------------------------------------------------------------
 
 class BankModel(Module):
@@ -303,7 +308,7 @@ class DFITimingsChecker(Module):
         curr_diff   = Signal().like(ref_ps_diff)
 
         self.comb += curr_diff.eq(ps - (ref_ps + self.timings["tREFI"]))
-        
+
         # Work in 64ms periods
         self.sync += If(ref_ps_mod < int(64e9),
             ref_ps_mod.eq(ref_ps_mod + nphases * self.timings["tCK"])).Else(ref_ps_mod.eq(0))
@@ -391,8 +396,7 @@ class SDRAMPHYModel(Module):
         we_granularity         = 8,
         init                   = [],
         address_mapping        = "ROW_BANK_COL",
-        use_timing_checker     = True,
-        verbose_timing_checker = False):
+        verbosity              = SDRAM_VERBOSE_OFF):
 
         # Parameters -------------------------------------------------------------------------------
         burst_length = {
@@ -434,7 +438,7 @@ class SDRAMPHYModel(Module):
         self.submodules += phases
 
         # DFI timing checker -----------------------------------------------------------------------
-        if use_timing_checker:
+        if verbosity > SDRAM_VERBOSE_OFF:
             timings = {"tCK": (1e9 / clk_freq) / nphases}
 
             for name in _speedgrade_timings + _technology_timings:
@@ -447,7 +451,7 @@ class SDRAMPHYModel(Module):
                 timings      = timings,
                 refresh_mode = self.module.timing_settings.fine_refresh_mode,
                 memtype      = settings.memtype,
-                verbose      = verbose_timing_checker)
+                verbose      = verbosity > SDRAM_VERBOSE_DBG)
             self.submodules += timing_checker
 
         # Bank init data ---------------------------------------------------------------------------
