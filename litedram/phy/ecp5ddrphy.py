@@ -8,7 +8,7 @@
 import math
 
 from migen import *
-from migen.genlib.misc import timeline, BitSlip
+from migen.genlib.misc import timeline
 from migen.fhdl.specials import Tristate
 from migen.genlib.cdc import MultiReg
 from migen.genlib.misc import WaitTimer
@@ -127,7 +127,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             wrcmdphase    = wrcmdphase,
             cl            = cl,
             cwl           = cwl,
-            read_latency  = 2 + cl_sys_latency + 2 + log2_int(4//nphases) + 6,
+            read_latency  = 2 + cl_sys_latency + 2 + log2_int(4//nphases) + 5,
             write_latency = cwl_sys_latency
         )
 

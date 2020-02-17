@@ -9,7 +9,6 @@
 import math
 
 from migen import *
-from migen.genlib.misc import BitSlip
 
 from litex.soc.interconnect.csr import *
 
@@ -85,7 +84,7 @@ class S7DDRPHY(Module, AutoCSR):
             wrcmdphase    = wrcmdphase,
             cl            = cl,
             cwl           = cwl - cmd_latency,
-            read_latency  = 2 + cl_sys_latency + 2 + 3,
+            read_latency  = 2 + cl_sys_latency + 2 + 2,
             write_latency = cwl_sys_latency
         )
 
@@ -510,7 +509,7 @@ class S7DDRPHY(Module, AutoCSR):
         #  2 cycles through OSERDESE2
         #  cl_sys_latency cycles CAS
         #  2 cycles through ISERDESE2
-        #  3 cycles through Bitslip
+        #  2 cycles through Bitslip
         rddata_en = dfi.phases[self.settings.rdphase].rddata_en
         for i in range(self.settings.read_latency-1):
             n_rddata_en = Signal()
