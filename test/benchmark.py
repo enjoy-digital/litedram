@@ -208,6 +208,7 @@ def main():
     parser.add_argument("--threads",          default=1,              help="Set number of threads (default=1)")
     parser.add_argument("--sdram-module",     default="MT48LC16M16",  help="Select SDRAM chip")
     parser.add_argument("--sdram-data-width", default=32,             help="Set SDRAM chip data width")
+    parser.add_argument("--sdram-verbosity",  default=0,              help="Set SDRAM checker verbosity")
     parser.add_argument("--trace",            action="store_true",    help="Enable VCD tracing")
     parser.add_argument("--trace-start",      default=0,              help="Cycle to start VCD tracing")
     parser.add_argument("--trace-end",        default=-1,             help="Cycle to end VCD tracing")
@@ -230,6 +231,7 @@ def main():
     # Configuration --------------------------------------------------------------------------------
     soc_kwargs["sdram_module"]     = args.sdram_module
     soc_kwargs["sdram_data_width"] = int(args.sdram_data_width)
+    soc_kwargs["sdram_verbosity"]  = int(args.sdram_verbosity)
     soc_kwargs["bist_base"]        = int(args.bist_base, 0)
     soc_kwargs["bist_length"]      = int(args.bist_length, 0)
     soc_kwargs["bist_random"]      = args.bist_random
