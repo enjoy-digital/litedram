@@ -220,8 +220,7 @@ def get_git_file_path(filename):
 
 def get_git_revision_hash(short=False):
     short = ['--short'] if short else []
-    #  cmd = ['git', 'rev-parse', *short, 'HEAD']
-    cmd = ['git', 'rev-parse', *short, 'origin/master']
+    cmd = ['git', 'rev-parse', *short, 'HEAD']
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, cwd=os.path.dirname(__file__))
     return proc.stdout.decode().strip() if proc.returncode == 0 else ''
 

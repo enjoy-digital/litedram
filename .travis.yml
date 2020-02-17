@@ -5,12 +5,15 @@ python: "3.6"
 before_install:
   - sudo apt-get update
   - sudo apt-get -y install verilator libevent-dev libjson-c-dev
-  - pip install pexpect
+  - pip install pexpect numpy matplotlib pandas jinja2
 
 install:
   # Get Migen / LiteX / Cores
   - wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
   - python3 litex_setup.py init install
+  # litex_setup.py fails for litedram, which has already been cloned by Travis
+  # now install the local litedram so that it is available for benchmarks script
+  - python3 -m pip install .
 
 before_script:
   # Get RISC-V toolchain
@@ -58,3 +61,19 @@ jobs:
     - env: SDRAM_MODULE=MT40A1G8
     - env: SDRAM_MODULE=MT40A512M16
 
+    - stage: Benchmarks
+      script:
+      - python3 -m test.run_benchmarks test/benchmarks.yml --results-cache cache.json --html
+      # move benchmark artifacts to gh-pages/ directory that will be pushed to gh-pages branch
+      - mkdir -p gh-pages
+      - mv html/summary.html gh-pages/index.html
+      - mv cache.json gh-pages/cache.json
+      - touch gh-pages/.nojekyll
+      deploy:
+        provider: pages
+        skip_cleanup: true
+        token: $GITHUB_TOKEN
+        keep_history: true
+        local_dir: gh-pages
+        on:
+          branch: master
