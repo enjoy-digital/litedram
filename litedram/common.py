@@ -53,6 +53,23 @@ def get_sys_phases(nphases, sys_latency, cas_latency):
     cmd_phase = (dat_phase - 1)%nphases
     return cmd_phase, dat_phase
 
+# BitSlip ------------------------------------------------------------------------------------------
+
+class BitSlip(Module):
+    def __init__(self, dw):
+        self.i = Signal(dw)
+        self.o = Signal(dw)
+        self.value = Signal(max=dw)
+
+        # # #
+
+        r = Signal(2*dw)
+        self.sync += r.eq(Cat(r[dw:], self.i))
+        cases = {}
+        for i in range(dw):
+            cases[i] = self.o.eq(r[i:dw+i])
+        self.comb += Case(self.value, cases)
+
 # Settings -----------------------------------------------------------------------------------------
 
 class Settings:
