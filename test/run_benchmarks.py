@@ -492,7 +492,8 @@ def run_single_benchmark(func_args):
     # run as separate process, because else we cannot capture all output from verilator
     print('  {}: {}'.format(config.name, ' '.join(config.as_args())))
     try:
-        output = run_python(benchmark.__file__, config.as_args() + ['--output-dir', output_dir])
+        args = config.as_args() + ['--output-dir', output_dir, '--log-level', 'warning']
+        output = run_python(benchmark.__file__, args)
         result = BenchmarkResult(output)
         # exit if checker had any read error
         if result.checker_errors != 0:
