@@ -62,13 +62,13 @@ class BankModel(Module):
         rdaddr         = Signal(max=bank_mem_len)
 
         self.comb += [
-            wraddr.eq(row*ncols | self.write_col),
-            rdaddr.eq(row*ncols | self.read_col),
+            wraddr.eq((row*ncols | self.write_col)[log2_int(burst_length*nphases):]),
+            rdaddr.eq((row*ncols | self.read_col)[log2_int(burst_length*nphases):]),
         ]
 
         self.comb += [
             If(active,
-                write_port.adr.eq(wraddr[log2_int(burst_length*nphases):]),
+                write_port.adr.eq(wraddr),
                 write_port.dat_w.eq(self.write_data),
                 If(we_granularity,
                     write_port.we.eq(Replicate(self.write, data_width//8) & ~self.write_mask),
@@ -76,7 +76,7 @@ class BankModel(Module):
                     write_port.we.eq(self.write),
                 ),
                 If(self.read,
-                    read_port.adr.eq(rdaddr[log2_int(burst_length*nphases):]),
+                    read_port.adr.eq(rdaddr),
                     self.read_data.eq(read_port.dat_r)
                 )
             )
