@@ -4,6 +4,7 @@
 # License: BSD
 
 import csv
+import logging
 import argparse
 from operator import and_
 from functools import reduce
@@ -220,7 +221,12 @@ def main():
     parser.add_argument("--num-generators",   default=1,              help="Number of BIST generators")
     parser.add_argument("--num-checkers",     default=1,              help="Number of BIST checkers")
     parser.add_argument("--access-pattern",                           help="Load access pattern (address, data) from CSV (ignores --bist-*)")
+    parser.add_argument("--log-level",        default="info",         help="Set logging verbosity",
+                        choices=['critical', 'error', 'warning', 'info', 'debug'])
     args = parser.parse_args()
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, args.log_level.upper()))
 
     soc_kwargs     = soc_sdram_argdict(args)
     builder_kwargs = builder_argdict(args)

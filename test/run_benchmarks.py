@@ -12,6 +12,7 @@ import re
 import sys
 import json
 import argparse
+import datetime
 import subprocess
 from collections import defaultdict, namedtuple
 
@@ -211,13 +212,29 @@ def efficiency_fmt(eff):
     return '{:.1f} %'.format(eff * 100)
 
 
+def get_git_file_path(filename):
+    cmd = ['git', 'ls-files', '--full-name', filename]
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, cwd=os.path.dirname(__file__))
+    return proc.stdout.decode().strip() if proc.returncode == 0 else ''
+
+
+def get_git_revision_hash(short=False):
+    short = ['--short'] if short else []
+    cmd = ['git', 'rev-parse', *short, 'HEAD']
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, cwd=os.path.dirname(__file__))
+    return proc.stdout.decode().strip() if proc.returncode == 0 else ''
+
+
 class ResultsSummary:
     def __init__(self, run_data, plots_dir='plots'):
         self.plots_dir = plots_dir
 
-        # filter out failures
-        self.failed_configs = [data.config for data in run_data if data.result is None]
-        run_data = [data for data in run_data if data.result is not None]
+        # because .sdram_controller_data_width may fail for unimplemented modules
+        def except_none(func):
+            try:
+                return func()
+            except:
+                return None
 
         # gather results into tabular data
         column_mappings = {
@@ -231,14 +248,14 @@ class ResultsSummary:
             'bist_random':      lambda d: getattr(d.config.access_pattern, 'bist_random', None),
             'pattern_file':     lambda d: getattr(d.config.access_pattern, 'pattern_file', None),
             'length':           lambda d: d.config.length,
-            'generator_ticks':  lambda d: d.result.generator_ticks,
-            'checker_errors':   lambda d: d.result.checker_errors,
-            'checker_ticks':    lambda d: d.result.checker_ticks,
-            'ctrl_data_width':  lambda d: d.config.sdram_controller_data_width,
+            'generator_ticks':  lambda d: getattr(d.result, 'generator_ticks', None),  # None means benchmark failure
+            'checker_errors':   lambda d: getattr(d.result, 'checker_errors', None),
+            'checker_ticks':    lambda d: getattr(d.result, 'checker_ticks', None),
+            'ctrl_data_width':  lambda d: except_none(lambda: d.config.sdram_controller_data_width),
             'clk_freq':         lambda d: d.config.sdram_clk_freq,
         }
         columns = {name: [mapping(data) for data in run_data] for name, mapping, in column_mappings.items()}
-        self.df = df = pd.DataFrame(columns)
+        self._df = df = pd.DataFrame(columns)
 
         # replace None with NaN
         df.fillna(value=np.nan, inplace=True)
@@ -285,6 +302,16 @@ class ResultsSummary:
             'read_latency':     ScalarFormatter(),
         }
 
+    def df(self, ok=True, failures=False):
+        is_failure = lambda df: pd.isna(df['generator_ticks']) | pd.isna(df['checker_ticks']) | pd.isna(df['checker_errors'])
+        df = self._df
+        if not ok:  # remove ok
+            is_ok = ~is_failure(df)
+            df = df[~is_ok]
+        if not failures:  # remove failures
+            df = df[~is_failure(df)]
+        return df
+
     def header(self, text):
         return '===> {}'.format(text)
 
@@ -294,9 +321,9 @@ class ResultsSummary:
             print(self.header(title + ':'))
             print(df)
 
-    def get_summary(self, mask=None, columns=None, column_formatting=None, sort_kwargs=None):
+    def get_summary(self, df, mask=None, columns=None, column_formatting=None, sort_kwargs=None):
         # work on a copy
-        df = self.df.copy()
+        df = df.copy()
 
         if sort_kwargs is not None:
             df = df.sort_values(**sort_kwargs)
@@ -317,34 +344,67 @@ class ResultsSummary:
             self.print_df(title, df)
             print()
 
-    def groupped_results(self, formatted=True):
-        df = self.df
+    def html_summary(self, output_dir):
+        import jinja2
 
-        formatters = self.text_formatters if formatted else {}
+        tables = {}
+        names = {}
+        for title, df in self.groupped_results():
+            table_id = title.lower().replace(' ', '_')
+
+            tables[table_id] = df.to_html(table_id=table_id, border=0)
+            names[table_id] = title
+
+        template_dir = os.path.join(os.path.dirname(__file__), 'summary')
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir))
+        template = env.get_template('summary.html.jinja2')
+
+        os.makedirs(output_dir, exist_ok=True)
+        with open(os.path.join(output_dir, 'summary.html'), 'w') as f:
+            f.write(template.render(
+                title='LiteDRAM benchmarks summary',
+                tables=tables,
+                names=names,
+                script_path=get_git_file_path(__file__),
+                revision=get_git_revision_hash(),
+                revision_short=get_git_revision_hash(short=True),
+                generation_date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            ))
+
+    def groupped_results(self, formatters=None):
+        df = self.df()
+
+        if formatters is None:
+            formatters = self.text_formatters
 
         common_columns = ['name', 'sdram_module', 'sdram_data_width', 'bist_alternating', 'num_generators', 'num_checkers']
         latency_columns = ['write_latency', 'read_latency']
         performance_columns = ['write_bandwidth', 'read_bandwidth', 'write_efficiency', 'read_efficiency']
+        failure_columns = ['bist_length', 'bist_random', 'pattern_file', 'length', 'generator_ticks', 'checker_errors', 'checker_ticks']
 
-        yield 'Latency', self.get_summary(
+        yield 'Latency', self.get_summary(df,
             mask=df['is_latency'] == True,
             columns=common_columns + latency_columns,
             column_formatting=formatters,
         )
-        yield 'Custom access pattern', self.get_summary(
+        yield 'Custom access pattern', self.get_summary(df,
             mask=(df['is_latency'] == False) & (~pd.isna(df['pattern_file'])),
-            columns=common_columns + performance_columns + ['length', 'pattern_file'],
+            columns=common_columns + ['length', 'pattern_file'] + performance_columns,
             column_formatting=formatters,
         ),
-        yield 'Sequential access pattern', self.get_summary(
+        yield 'Sequential access pattern', self.get_summary(df,
             mask=(df['is_latency'] == False) & (pd.isna(df['pattern_file'])) & (df['bist_random'] == False),
-            columns=common_columns + performance_columns + ['bist_length'], # could be length
+            columns=common_columns + ['bist_length'] + performance_columns, # could be length
             column_formatting=formatters,
         ),
-        yield 'Random access pattern', self.get_summary(
+        yield 'Random access pattern', self.get_summary(df,
             mask=(df['is_latency'] == False) & (pd.isna(df['pattern_file'])) & (df['bist_random'] == True),
-            columns=common_columns + performance_columns + ['bist_length'],
+            columns=common_columns + ['bist_length'] + performance_columns,
             column_formatting=formatters,
+        ),
+        yield 'Failures', self.get_summary(self.df(ok=False, failures=True),
+            columns=common_columns + failure_columns,
+            column_formatting=None,
         ),
 
     def plot_summary(self, plots_dir='plots', backend='Agg', theme='default', save_format='png', **savefig_kw):
@@ -352,7 +412,7 @@ class ResultsSummary:
         import matplotlib.pyplot as plt
         plt.style.use(theme)
 
-        for title, df in self.groupped_results(formatted=False):
+        for title, df in self.groupped_results(formatters={}):
             for column in self.plot_xticks_formatters.keys():
                 if column not in df.columns or df[column].empty:
                     continue
@@ -398,14 +458,6 @@ class ResultsSummary:
 
         return axis
 
-    def failures_summary(self):
-        if len(self.failed_configs) > 0:
-            print(self.header('Failures:'))
-            for config in self.failed_configs:
-                print('  {}: {}'.format(config.name, config.as_args()))
-        else:
-            print(self.header('All benchmarks ok.'))
-
 # Run ----------------------------------------------------------------------------------------------
 
 class RunCache(list):
@@ -439,7 +491,8 @@ def run_single_benchmark(func_args):
     # run as separate process, because else we cannot capture all output from verilator
     print('  {}: {}'.format(config.name, ' '.join(config.as_args())))
     try:
-        output = run_python(benchmark.__file__, config.as_args() + ['--output-dir', output_dir])
+        args = config.as_args() + ['--output-dir', output_dir, '--log-level', 'warning']
+        output = run_python(benchmark.__file__, args)
         result = BenchmarkResult(output)
         # exit if checker had any read error
         if result.checker_errors != 0:
@@ -520,6 +573,8 @@ def main(argv=None):
     parser.add_argument('--names',            nargs='*',           help='Limit benchmarks to given names')
     parser.add_argument('--regex',                                 help='Limit benchmarks to names matching the regex')
     parser.add_argument('--not-regex',                             help='Limit benchmarks to names not matching the regex')
+    parser.add_argument('--html',             action='store_true', help='Generate HTML summary')
+    parser.add_argument('--html-output-dir',  default='html',      help='Output directory for generated HTML')
     parser.add_argument('--plot',             action='store_true', help='Generate plots with results summary')
     parser.add_argument('--plot-format',      default='png',       help='Specify plots file format (default=png)')
     parser.add_argument('--plot-backend',     default='Agg',       help='Optionally specify matplotlib GUI backend')
@@ -573,7 +628,8 @@ def main(argv=None):
     if _summary:
         summary = ResultsSummary(run_data)
         summary.text_summary()
-        summary.failures_summary()
+        if args.html:
+            summary.html_summary(args.html_output_dir)
         if args.plot:
             summary.plot_summary(
                 plots_dir=args.plot_output_dir,
