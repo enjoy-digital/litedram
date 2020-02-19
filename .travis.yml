@@ -63,7 +63,7 @@ jobs:
 
     - stage: Benchmarks
       script:
-      - python3 -m test.run_benchmarks test/benchmarks.yml --results-cache cache.json --html
+      - python3 -m test.run_benchmarks test/benchmarks.yml --results-cache cache.json --html --heartbeat 60
       # move benchmark artifacts to gh-pages/ directory that will be pushed to gh-pages branch
       - mkdir -p gh-pages
       - mv html/summary.html gh-pages/index.html
