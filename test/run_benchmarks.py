@@ -584,6 +584,7 @@ def main(argv=None):
     parser.add_argument('--fail-fast',        action='store_true', help='Exit on any benchmark error, do not continue')
     parser.add_argument('--output-dir',       default='build',     help='Directory to store benchmark build output')
     parser.add_argument('--njobs',            default=0, type=int, help='Use N parallel jobs to run benchmarks (default=0, which uses CPU count)')
+    parser.add_argument('--heartbeat',        default=0, type=int, help='Print heartbeat message with given interval (default=0 => never)')
     parser.add_argument('--results-cache',                         help="""Use given JSON file as results cache. If the file exists,
                                                                            it will be loaded instead of running actual benchmarks,
                                                                            else benchmarks will be run normally, and then saved
@@ -617,7 +618,12 @@ def main(argv=None):
         names_to_load = [c.name for c in configurations]
         run_data = [data for  data in cache if data.config.name in names_to_load]
     else:  # run all the benchmarks normally
+        if args.heartbeat:
+            heartbeat_cmd = ['/bin/sh', '-c', 'while true; do sleep %d; echo Heartbeat...; done' % args.heartbeat]
+            heartbeat = subprocess.Popen(heartbeat_cmd)
         run_data = run_benchmarks(configurations, args.output_dir, args.njobs, not args.fail_fast)
+        if args.heartbeat:
+            heartbeat.kill()
 
     # store outputs in cache
     if args.results_cache and not cache_exists:
