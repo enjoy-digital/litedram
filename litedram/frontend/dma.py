@@ -240,7 +240,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             self._sink.data.eq(self.sink.data),
             self._sink.address.eq(base + offset),
             self.sink.ready.eq(self._sink.ready),
-            If(self.sink.ready,
+            If(self.sink.valid & self.sink.ready,
                 NextValue(offset, offset + 1),
                 If(offset == (length - 1),
                     If(self._loop.storage,
