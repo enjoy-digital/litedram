@@ -1,1 +1,1651 @@
-LiteDRAM GitHub Page
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LiteDRAM benchmarks summary</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/fixedheader/3.1.5/js/dataTables.fixedHeader.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/fixedheader/3.1.5/css/fixedHeader.dataTables.min.css">
+
+    <style type="text/css" media="all">
+body {
+  font-family: 'Roboto', sans-serif;
+}
+
+footer {
+  text-align: center;
+  font-size: 10px;
+  padding: 20px;
+}
+
+.dataTables_filter {
+  margin: 15px 50px 10px 50px;
+}
+
+.dataTables_filter input {
+  width: 400px;
+}
+
+.table-select {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.table-select ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.table-select li {
+  float: left;
+}
+
+.table-select li a {
+  display: block;
+  padding: 10px 0px;
+  margin: 0px 20px;
+  text-align: center;
+  text-decoration: none;
+  font-size: 18px;
+  color:inherit;
+  border-bottom: 1px solid;
+  border-color: #ccc;
+  transition: 0.2s;
+}
+
+.table-select li a:hover {
+  border-color: #111;
+}
+
+/* did not work, .focus() couldn't turn it on */
+/* .table-select li a:focus { */
+/*   border-color: #222; */
+/* } */
+.table-select-active {
+  border-color: #111 !important;
+}
+
+.tables-wrapper {
+  width: 100%;
+  margin: auto;
+}
+
+.loading {
+  z-index: 999;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-right: -50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Loading animation */
+.lds-dual-ring {
+  display: inline-block;
+  width: 80px;
+  height: 80px;
+}
+.lds-dual-ring:after {
+  content: " ";
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 8px;
+  border-radius: 50%;
+  border: 6px solid #fff;
+  border-color: #aaa transparent #aaa transparent;
+  animation: lds-dual-ring 1.2s linear infinite;
+}
+@keyframes lds-dual-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* vim: set ts=2 sw=2: */
+
+.table-select li {
+  width: calc(100% / 5);
+}
+    </style>
+  </head>
+  <body>
+    
+    <div class="loading lds-dual-ring"></div>
+
+    
+    <div class="table-select">
+      <ul>
+        
+          <li id='latency-button'><a href="#">Latency</a></li>
+        
+          <li id='custom_access_pattern-button'><a href="#">Custom access pattern</a></li>
+        
+          <li id='sequential_access_pattern-button'><a href="#">Sequential access pattern</a></li>
+        
+          <li id='random_access_pattern-button'><a href="#">Random access pattern</a></li>
+        
+          <li id='failures-button'><a href="#">Failures</a></li>
+        
+      </ul>
+      
+    </div>
+
+    
+    <div class="tables-wrapper">
+      
+        
+        <div id="latency-div" style="display: none;">
+          <table border="0" class="dataframe" id="latency">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>name</th>
+      <th>sdram_module</th>
+      <th>sdram_data_width</th>
+      <th>bist_alternating</th>
+      <th>num_generators</th>
+      <th>num_checkers</th>
+      <th>write_latency</th>
+      <th>read_latency</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>test_0</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>2 clk</td>
+      <td>36 clk</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>test_1</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>2 clk</td>
+      <td>36 clk</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>test_4</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>2 clk</td>
+      <td>44 clk</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>test_5</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>2 clk</td>
+      <td>106 clk</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>test_8</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>25 clk</td>
+      <td>44 clk</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>test_9</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>25 clk</td>
+      <td>44 clk</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>test_12</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>25 clk</td>
+      <td>52 clk</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>test_13</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>25 clk</td>
+      <td>114 clk</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>test_16</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>1</td>
+      <td>2 clk</td>
+      <td>32 clk</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>test_18</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>3</td>
+      <td>2 clk</td>
+      <td>102 clk</td>
+    </tr>
+    <tr>
+      <th>20</th>
+      <td>test_20</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>1</td>
+      <td>25 clk</td>
+      <td>17 clk</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>test_22</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>3</td>
+      <td>25 clk</td>
+      <td>87 clk</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>test_24</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>2 clk</td>
+      <td>27 clk</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>test_25</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>2 clk</td>
+      <td>27 clk</td>
+    </tr>
+    <tr>
+      <th>28</th>
+      <td>test_28</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>2 clk</td>
+      <td>35 clk</td>
+    </tr>
+    <tr>
+      <th>29</th>
+      <td>test_29</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>2 clk</td>
+      <td>97 clk</td>
+    </tr>
+    <tr>
+      <th>32</th>
+      <td>test_32</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>20 clk</td>
+      <td>35 clk</td>
+    </tr>
+    <tr>
+      <th>33</th>
+      <td>test_33</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>20 clk</td>
+      <td>35 clk</td>
+    </tr>
+    <tr>
+      <th>36</th>
+      <td>test_36</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>20 clk</td>
+      <td>43 clk</td>
+    </tr>
+    <tr>
+      <th>37</th>
+      <td>test_37</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>20 clk</td>
+      <td>105 clk</td>
+    </tr>
+    <tr>
+      <th>40</th>
+      <td>test_40</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>1</td>
+      <td>2 clk</td>
+      <td>23 clk</td>
+    </tr>
+    <tr>
+      <th>42</th>
+      <td>test_42</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>3</td>
+      <td>2 clk</td>
+      <td>93 clk</td>
+    </tr>
+    <tr>
+      <th>44</th>
+      <td>test_44</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>1</td>
+      <td>20 clk</td>
+      <td>13 clk</td>
+    </tr>
+    <tr>
+      <th>46</th>
+      <td>test_46</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>3</td>
+      <td>20 clk</td>
+      <td>83 clk</td>
+    </tr>
+    <tr>
+      <th>48</th>
+      <td>test_48</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>2 clk</td>
+      <td>24 clk</td>
+    </tr>
+    <tr>
+      <th>49</th>
+      <td>test_49</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>2 clk</td>
+      <td>24 clk</td>
+    </tr>
+    <tr>
+      <th>52</th>
+      <td>test_52</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>2 clk</td>
+      <td>33 clk</td>
+    </tr>
+    <tr>
+      <th>53</th>
+      <td>test_53</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>2 clk</td>
+      <td>94 clk</td>
+    </tr>
+    <tr>
+      <th>56</th>
+      <td>test_56</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>18 clk</td>
+      <td>32 clk</td>
+    </tr>
+    <tr>
+      <th>57</th>
+      <td>test_57</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>18 clk</td>
+      <td>32 clk</td>
+    </tr>
+    <tr>
+      <th>60</th>
+      <td>test_60</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>18 clk</td>
+      <td>41 clk</td>
+    </tr>
+    <tr>
+      <th>61</th>
+      <td>test_61</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>18 clk</td>
+      <td>102 clk</td>
+    </tr>
+    <tr>
+      <th>64</th>
+      <td>test_64</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>1</td>
+      <td>2 clk</td>
+      <td>20 clk</td>
+    </tr>
+    <tr>
+      <th>66</th>
+      <td>test_66</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>3</td>
+      <td>2 clk</td>
+      <td>90 clk</td>
+    </tr>
+    <tr>
+      <th>68</th>
+      <td>test_68</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>1</td>
+      <td>18 clk</td>
+      <td>12 clk</td>
+    </tr>
+    <tr>
+      <th>70</th>
+      <td>test_70</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>3</td>
+      <td>18 clk</td>
+      <td>82 clk</td>
+    </tr>
+  </tbody>
+</table>
+        </div>
+      
+        
+        <div id="custom_access_pattern-div" style="display: none;">
+          <table border="0" class="dataframe" id="custom_access_pattern">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>name</th>
+      <th>sdram_module</th>
+      <th>sdram_data_width</th>
+      <th>bist_alternating</th>
+      <th>num_generators</th>
+      <th>num_checkers</th>
+      <th>length</th>
+      <th>pattern_file</th>
+      <th>write_bandwidth</th>
+      <th>read_bandwidth</th>
+      <th>write_efficiency</th>
+      <th>read_efficiency</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>72</th>
+      <td>test_72</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>39.9 Mbps</td>
+      <td>39.9 Mbps</td>
+      <td>0.2 %</td>
+      <td>0.2 %</td>
+    </tr>
+    <tr>
+      <th>73</th>
+      <td>test_73</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>26.3 Mbps</td>
+      <td>78.8 Mbps</td>
+      <td>0.1 %</td>
+      <td>0.3 %</td>
+    </tr>
+    <tr>
+      <th>74</th>
+      <td>test_74</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>81.6 Mbps</td>
+      <td>27.2 Mbps</td>
+      <td>0.3 %</td>
+      <td>0.1 %</td>
+    </tr>
+    <tr>
+      <th>75</th>
+      <td>test_75</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>71.2 Mbps</td>
+      <td>71.1 Mbps</td>
+      <td>0.3 %</td>
+      <td>0.3 %</td>
+    </tr>
+    <tr>
+      <th>76</th>
+      <td>test_76</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>181.7 Mbps</td>
+      <td>189.7 Mbps</td>
+      <td>0.7 %</td>
+      <td>0.8 %</td>
+    </tr>
+    <tr>
+      <th>77</th>
+      <td>test_77</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>181.7 Mbps</td>
+      <td>397.8 Mbps</td>
+      <td>0.7 %</td>
+      <td>1.6 %</td>
+    </tr>
+    <tr>
+      <th>78</th>
+      <td>test_78</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>389.7 Mbps</td>
+      <td>189.6 Mbps</td>
+      <td>1.6 %</td>
+      <td>0.8 %</td>
+    </tr>
+    <tr>
+      <th>79</th>
+      <td>test_79</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>389.7 Mbps</td>
+      <td>392.9 Mbps</td>
+      <td>1.6 %</td>
+      <td>1.6 %</td>
+    </tr>
+    <tr>
+      <th>80</th>
+      <td>test_80</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>54.6 Mbps</td>
+      <td>54.5 Mbps</td>
+      <td>0.4 %</td>
+      <td>0.4 %</td>
+    </tr>
+    <tr>
+      <th>81</th>
+      <td>test_81</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>33.0 Mbps</td>
+      <td>98.9 Mbps</td>
+      <td>0.3 %</td>
+      <td>0.8 %</td>
+    </tr>
+    <tr>
+      <th>82</th>
+      <td>test_82</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>102.6 Mbps</td>
+      <td>34.2 Mbps</td>
+      <td>0.8 %</td>
+      <td>0.3 %</td>
+    </tr>
+    <tr>
+      <th>83</th>
+      <td>test_83</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>81.6 Mbps</td>
+      <td>81.5 Mbps</td>
+      <td>0.7 %</td>
+      <td>0.7 %</td>
+    </tr>
+    <tr>
+      <th>84</th>
+      <td>test_84</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>225.3 Mbps</td>
+      <td>225.5 Mbps</td>
+      <td>1.8 %</td>
+      <td>1.8 %</td>
+    </tr>
+    <tr>
+      <th>85</th>
+      <td>test_85</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>225.3 Mbps</td>
+      <td>407.2 Mbps</td>
+      <td>1.8 %</td>
+      <td>3.3 %</td>
+    </tr>
+    <tr>
+      <th>86</th>
+      <td>test_86</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>409.1 Mbps</td>
+      <td>225.9 Mbps</td>
+      <td>3.4 %</td>
+      <td>1.9 %</td>
+    </tr>
+    <tr>
+      <th>87</th>
+      <td>test_87</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>409.1 Mbps</td>
+      <td>410.6 Mbps</td>
+      <td>3.4 %</td>
+      <td>3.4 %</td>
+    </tr>
+    <tr>
+      <th>88</th>
+      <td>test_88</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>57.2 Mbps</td>
+      <td>57.2 Mbps</td>
+      <td>1.9 %</td>
+      <td>1.9 %</td>
+    </tr>
+    <tr>
+      <th>89</th>
+      <td>test_89</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>34.6 Mbps</td>
+      <td>103.7 Mbps</td>
+      <td>1.1 %</td>
+      <td>3.4 %</td>
+    </tr>
+    <tr>
+      <th>90</th>
+      <td>test_90</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>106.2 Mbps</td>
+      <td>35.4 Mbps</td>
+      <td>3.5 %</td>
+      <td>1.2 %</td>
+    </tr>
+    <tr>
+      <th>91</th>
+      <td>test_91</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>72.7 Mbps</td>
+      <td>72.6 Mbps</td>
+      <td>2.4 %</td>
+      <td>2.4 %</td>
+    </tr>
+    <tr>
+      <th>92</th>
+      <td>test_92</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>301.8 Mbps</td>
+      <td>303.4 Mbps</td>
+      <td>9.9 %</td>
+      <td>9.9 %</td>
+    </tr>
+    <tr>
+      <th>93</th>
+      <td>test_93</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>301.8 Mbps</td>
+      <td>445.2 Mbps</td>
+      <td>9.9 %</td>
+      <td>14.6 %</td>
+    </tr>
+    <tr>
+      <th>94</th>
+      <td>test_94</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>443.4 Mbps</td>
+      <td>303.4 Mbps</td>
+      <td>14.5 %</td>
+      <td>9.9 %</td>
+    </tr>
+    <tr>
+      <th>95</th>
+      <td>test_95</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024</td>
+      <td>access_pattern.csv</td>
+      <td>443.4 Mbps</td>
+      <td>446.9 Mbps</td>
+      <td>14.5 %</td>
+      <td>14.6 %</td>
+    </tr>
+  </tbody>
+</table>
+        </div>
+      
+        
+        <div id="sequential_access_pattern-div" style="display: none;">
+          <table border="0" class="dataframe" id="sequential_access_pattern">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>name</th>
+      <th>sdram_module</th>
+      <th>sdram_data_width</th>
+      <th>bist_alternating</th>
+      <th>num_generators</th>
+      <th>num_checkers</th>
+      <th>bist_length</th>
+      <th>write_bandwidth</th>
+      <th>read_bandwidth</th>
+      <th>write_efficiency</th>
+      <th>read_efficiency</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>3</th>
+      <td>test_3</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>1.2 Gbps</td>
+      <td>1.1 Gbps</td>
+      <td>4.9 %</td>
+      <td>4.7 %</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>test_7</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>880.8 Mbps</td>
+      <td>2.4 Gbps</td>
+      <td>3.6 %</td>
+      <td>10.0 %</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>test_11</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>2.5 Gbps</td>
+      <td>836.5 Mbps</td>
+      <td>10.5 %</td>
+      <td>3.4 %</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>test_15</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>1.9 Gbps</td>
+      <td>1.8 Gbps</td>
+      <td>8.0 %</td>
+      <td>7.6 %</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>test_17</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>18.2 Gbps</td>
+      <td>14.1 Gbps</td>
+      <td>76.2 %</td>
+      <td>59.3 %</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>test_19</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>18.2 Gbps</td>
+      <td>11.4 Gbps</td>
+      <td>76.2 %</td>
+      <td>48.0 %</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>test_21</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>19.4 Gbps</td>
+      <td>15.9 Gbps</td>
+      <td>81.4 %</td>
+      <td>66.7 %</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>test_23</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>19.4 Gbps</td>
+      <td>11.9 Gbps</td>
+      <td>81.4 %</td>
+      <td>49.7 %</td>
+    </tr>
+    <tr>
+      <th>27</th>
+      <td>test_27</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>802.9 Mbps</td>
+      <td>786.8 Mbps</td>
+      <td>6.6 %</td>
+      <td>6.4 %</td>
+    </tr>
+    <tr>
+      <th>31</th>
+      <td>test_31</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>525.0 Mbps</td>
+      <td>1.5 Gbps</td>
+      <td>4.3 %</td>
+      <td>12.4 %</td>
+    </tr>
+    <tr>
+      <th>35</th>
+      <td>test_35</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>1.5 Gbps</td>
+      <td>511.3 Mbps</td>
+      <td>12.7 %</td>
+      <td>4.2 %</td>
+    </tr>
+    <tr>
+      <th>39</th>
+      <td>test_39</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>1.1 Gbps</td>
+      <td>1.1 Gbps</td>
+      <td>9.4 %</td>
+      <td>9.2 %</td>
+    </tr>
+    <tr>
+      <th>41</th>
+      <td>test_41</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>11.1 Gbps</td>
+      <td>9.3 Gbps</td>
+      <td>92.8 %</td>
+      <td>78.0 %</td>
+    </tr>
+    <tr>
+      <th>43</th>
+      <td>test_43</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>11.1 Gbps</td>
+      <td>9.2 Gbps</td>
+      <td>92.8 %</td>
+      <td>77.1 %</td>
+    </tr>
+    <tr>
+      <th>45</th>
+      <td>test_45</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>11.0 Gbps</td>
+      <td>10.0 Gbps</td>
+      <td>91.9 %</td>
+      <td>84.2 %</td>
+    </tr>
+    <tr>
+      <th>47</th>
+      <td>test_47</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>11.0 Gbps</td>
+      <td>8.8 Gbps</td>
+      <td>91.9 %</td>
+      <td>73.8 %</td>
+    </tr>
+    <tr>
+      <th>51</th>
+      <td>test_51</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>214.4 Mbps</td>
+      <td>213.3 Mbps</td>
+      <td>7.0 %</td>
+      <td>7.0 %</td>
+    </tr>
+    <tr>
+      <th>55</th>
+      <td>test_55</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>136.4 Mbps</td>
+      <td>405.0 Mbps</td>
+      <td>4.5 %</td>
+      <td>13.3 %</td>
+    </tr>
+    <tr>
+      <th>59</th>
+      <td>test_59</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>408.2 Mbps</td>
+      <td>135.7 Mbps</td>
+      <td>13.4 %</td>
+      <td>4.4 %</td>
+    </tr>
+    <tr>
+      <th>63</th>
+      <td>test_63</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>299.0 Mbps</td>
+      <td>296.9 Mbps</td>
+      <td>9.8 %</td>
+      <td>9.7 %</td>
+    </tr>
+    <tr>
+      <th>65</th>
+      <td>test_65</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>2.9 Gbps</td>
+      <td>2.8 Gbps</td>
+      <td>98.8 %</td>
+      <td>93.8 %</td>
+    </tr>
+    <tr>
+      <th>67</th>
+      <td>test_67</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>2.9 Gbps</td>
+      <td>2.7 Gbps</td>
+      <td>98.8 %</td>
+      <td>91.5 %</td>
+    </tr>
+    <tr>
+      <th>69</th>
+      <td>test_69</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>2.9 Gbps</td>
+      <td>2.8 Gbps</td>
+      <td>96.0 %</td>
+      <td>93.8 %</td>
+    </tr>
+    <tr>
+      <th>71</th>
+      <td>test_71</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>False</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>2.9 Gbps</td>
+      <td>2.7 Gbps</td>
+      <td>96.0 %</td>
+      <td>91.5 %</td>
+    </tr>
+  </tbody>
+</table>
+        </div>
+      
+        
+        <div id="random_access_pattern-div" style="display: none;">
+          <table border="0" class="dataframe" id="random_access_pattern">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>name</th>
+      <th>sdram_module</th>
+      <th>sdram_data_width</th>
+      <th>bist_alternating</th>
+      <th>num_generators</th>
+      <th>num_checkers</th>
+      <th>bist_length</th>
+      <th>write_bandwidth</th>
+      <th>read_bandwidth</th>
+      <th>write_efficiency</th>
+      <th>read_efficiency</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>2</th>
+      <td>test_2</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>1.0 Gbps</td>
+      <td>992.7 Mbps</td>
+      <td>4.3 %</td>
+      <td>4.1 %</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>test_6</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>708.9 Mbps</td>
+      <td>2.0 Gbps</td>
+      <td>2.9 %</td>
+      <td>8.4 %</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>test_10</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>2.1 Gbps</td>
+      <td>712.2 Mbps</td>
+      <td>8.9 %</td>
+      <td>2.9 %</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>test_14</td>
+      <td>MT41K128M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>1.8 Gbps</td>
+      <td>1.7 Gbps</td>
+      <td>7.5 %</td>
+      <td>7.3 %</td>
+    </tr>
+    <tr>
+      <th>26</th>
+      <td>test_26</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>672.3 Mbps</td>
+      <td>647.8 Mbps</td>
+      <td>5.5 %</td>
+      <td>5.3 %</td>
+    </tr>
+    <tr>
+      <th>30</th>
+      <td>test_30</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>442.9 Mbps</td>
+      <td>1.3 Gbps</td>
+      <td>3.6 %</td>
+      <td>10.7 %</td>
+    </tr>
+    <tr>
+      <th>34</th>
+      <td>test_34</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>1.3 Gbps</td>
+      <td>455.3 Mbps</td>
+      <td>11.3 %</td>
+      <td>3.7 %</td>
+    </tr>
+    <tr>
+      <th>38</th>
+      <td>test_38</td>
+      <td>MT46V32M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>1.0 Gbps</td>
+      <td>1015.0 Mbps</td>
+      <td>8.4 %</td>
+      <td>8.3 %</td>
+    </tr>
+    <tr>
+      <th>50</th>
+      <td>test_50</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>180.5 Mbps</td>
+      <td>179.5 Mbps</td>
+      <td>5.9 %</td>
+      <td>5.9 %</td>
+    </tr>
+    <tr>
+      <th>54</th>
+      <td>test_54</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>1</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>116.1 Mbps</td>
+      <td>345.3 Mbps</td>
+      <td>3.8 %</td>
+      <td>11.3 %</td>
+    </tr>
+    <tr>
+      <th>58</th>
+      <td>test_58</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1024.0</td>
+      <td>365.0 Mbps</td>
+      <td>121.4 Mbps</td>
+      <td>12.0 %</td>
+      <td>4.0 %</td>
+    </tr>
+    <tr>
+      <th>62</th>
+      <td>test_62</td>
+      <td>MT48LC16M16</td>
+      <td>32</td>
+      <td>True</td>
+      <td>3</td>
+      <td>3</td>
+      <td>1024.0</td>
+      <td>262.6 Mbps</td>
+      <td>261.3 Mbps</td>
+      <td>8.6 %</td>
+      <td>8.6 %</td>
+    </tr>
+  </tbody>
+</table>
+        </div>
+      
+        
+        <div id="failures-div" style="display: none;">
+          <table border="0" class="dataframe" id="failures">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>name</th>
+      <th>sdram_module</th>
+      <th>sdram_data_width</th>
+      <th>bist_alternating</th>
+      <th>num_generators</th>
+      <th>num_checkers</th>
+      <th>bist_length</th>
+      <th>bist_random</th>
+      <th>pattern_file</th>
+      <th>length</th>
+      <th>generator_ticks</th>
+      <th>checker_errors</th>
+      <th>checker_ticks</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
+        </div>
+      
+    </div>
+  </body>
+
+  <footer id="footer">
+    <a href="https://github.com/enjoy-digital/litedram">LiteDRAM</a> is a part of <a href="https://github.com/enjoy-digital/litex">Litex</a>.
+    <br>
+    Generated using
+    <a href="https://github.com/enjoy-digital/litedram/blob/ebaf612089d418c1b02b424ac211758a06d7ed74/test/run_benchmarks.py">test/run_benchmarks.py</a>,
+    revision
+    <a href="https://github.com/enjoy-digital/litedram/commit/ebaf612089d418c1b02b424ac211758a06d7ed74">ebaf612</a>,
+    2020-02-19 14:30:44.
+  </footer>
+
+  
+  <script>
+    
+    table_ids = [
+      
+        'latency',
+    
+        'custom_access_pattern',
+    
+        'sequential_access_pattern',
+    
+        'random_access_pattern',
+    
+        'failures',
+    
+    ];
+
+    
+    show_table = function(id) {
+      if (!table_ids.includes(id)) {
+        console.log('Error: show_table(' + id + ')');
+        return;
+      }
+      for (var table_div of $('.tables-wrapper').children()) {
+        if (table_div.id) {
+          var table_div = $('#' + table_div.id)
+          if (table_div.attr('id') == id + '-div') {
+            table_div.show();
+          } else {
+            table_div.hide();
+          }
+        }
+      }
+    }
+
+    // sort human-readable values assuming format "123 Kb", only first letter of unit is used
+    jQuery.fn.dataTable.ext.type.order['file-size-pre'] = function(data) {
+      var matches = data.match(/^(\d+(?:\.\d+)?)\s*([a-z]+)/i);
+      var multipliers = {
+        k: Math.pow(2, 10),
+        m: Math.pow(2, 20),
+        g: Math.pow(2, 30),
+        t: Math.pow(2, 40),
+      };
+
+      console.log(matches);
+      if (matches) {
+        var float = parseFloat(matches[1]);
+        var prefix = matches[2].toLowerCase()[0];
+        var multiplier = multipliers[prefix];
+        if (multiplier) {
+          float = float * multiplier;
+          console.log(matches, float, multiplier);
+        }
+        return float;
+      } else {
+        return -1;
+      };
+    };
+
+    
+    $(document).ready(function() {
+      // generate data tables
+      for (var id of table_ids) {
+        // add human readable class to all bandwidth columns
+        var columns = $('#' + id + ' > thead > tr > th').filter(function(index) {
+          return $(this).text().toLowerCase().includes('bandwidth');
+        });
+        console.log(columns)
+        columns.addClass('human-readable-data');
+
+        // construct data table
+        table = $('#' + id);
+        table.DataTable({
+          paging: false,
+          fixedHeader: true,
+          columnDefs: [
+            { type: 'file-size', targets: [ 'human-readable-data' ] },
+            { className: 'dt-body-right', targets: [ '_all' ] },
+            { className: 'dt-head-center', targets: [ '_all' ] },
+          ]
+        });
+        table.addClass("stripe");
+        table.addClass("hover");
+        table.addClass("order-column");
+        table.addClass("cell-border");
+        table.addClass("row-border");
+      }
+
+      // add click handlers that change the table being shown
+      for (var id of table_ids) {
+        var ahref = $('#' + id + '-button a');
+        // use nested closure so that we avoid the situation
+        // where all click handlers end up with the last id
+        ahref.click(function(table_id) {
+          return function() {
+            // get rid of this class after first click
+            $('.table-select a').removeClass('table-select-active');
+            $(this).addClass('table-select-active');
+            show_table(table_id);
+          }
+        }(id))
+      }
+
+      // show the first one
+      $('#' + table_ids[0] + '-button a:first').click();
+
+      // hide all elements of class loading
+      $('.loading').hide();
+    });
+  </script>
+</html>
