@@ -84,7 +84,7 @@
 
     // sort human-readable values assuming format "123 Kb", only first letter of unit is used
     jQuery.fn.dataTable.ext.type.order['file-size-pre'] = function(data) {
-      var matches = data.match(/^(\d+(?:\.\d+)?)\s*([a-z]+)/i);
+      var matches = data.match(/^(\d+(?:\.\d+)?)\s*(\S+)/i);
       var multipliers = {
         k: Math.pow(2, 10),
         m: Math.pow(2, 20),
@@ -92,14 +92,12 @@
         t: Math.pow(2, 40),
       };
 
-      console.log(matches);
       if (matches) {
         var float = parseFloat(matches[1]);
         var prefix = matches[2].toLowerCase()[0];
         var multiplier = multipliers[prefix];
         if (multiplier) {
           float = float * multiplier;
-          console.log(matches, float, multiplier);
         }
         return float;
       } else {
@@ -113,10 +111,10 @@
       for (var id of table_ids) {
         // add human readable class to all bandwidth columns
         var columns = $('#' + id + ' > thead > tr > th').filter(function(index) {
-          return $(this).text().toLowerCase().includes('bandwidth');
+          var name = $(this).text().toLowerCase();
+          return name.includes('bandwidth') || name.includes('latency') || name.includes('efficiency');
         });
-        console.log(columns)
-        columns.addClass('human-readable-data');
+        columns.addClass('data-with-unit-human-readable');
 
         // construct data table
         table = $('#' + id);
@@ -124,7 +122,7 @@
           paging: false,
           fixedHeader: true,
           columnDefs: [
-            { type: 'file-size', targets: [ 'human-readable-data' ] },
+            { type: 'file-size', targets: [ 'data-with-unit-human-readable' ] },
             { className: 'dt-body-right', targets: [ '_all' ] },
             { className: 'dt-head-center', targets: [ '_all' ] },
           ]
