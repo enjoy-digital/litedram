@@ -480,32 +480,34 @@ class RunCache(list):
         return loaded
 
 
-def run_python(script, args):
+def run_python(script, args, **kwargs):
     command = ['python3', script, *args]
-    proc = subprocess.run(command, stdout=subprocess.PIPE, cwd=os.path.dirname(script))
+    proc = subprocess.run(command, stdout=subprocess.PIPE, cwd=os.path.dirname(script), **kwargs)
     return str(proc.stdout)
 
 
-def run_single_benchmark(func_args):
-    config, output_dir, ignore_failures = func_args
+BenchmarkArgs = namedtuple('BenchmarkArgs', ['config', 'output_dir', 'ignore_failures', 'timeout'])
+
+
+def run_single_benchmark(fargs):
     # run as separate process, because else we cannot capture all output from verilator
-    print('  {}: {}'.format(config.name, ' '.join(config.as_args())))
+    print('  {}: {}'.format(fargs.config.name, ' '.join(fargs.config.as_args())))
     try:
-        args = config.as_args() + ['--output-dir', output_dir, '--log-level', 'warning']
-        output = run_python(benchmark.__file__, args)
+        args = fargs.config.as_args() + ['--output-dir', fargs.output_dir, '--log-level', 'warning']
+        output = run_python(benchmark.__file__, args, timeout=fargs.timeout)
         result = BenchmarkResult(output)
         # exit if checker had any read error
         if result.checker_errors != 0:
             raise RuntimeError('Error during benchmark: checker_errors = {}, args = {}'.format(
-                result.checker_errors, config.as_args()
+                result.checker_errors, fargs.config.as_args()
             ))
     except Exception as e:
-        if ignore_failures:
-            print('  {}: ERROR: {}'.format(config.name, e))
+        if fargs.ignore_failures:
+            print('  {}: ERROR: {}'.format(fargs.config.name, e))
             return None
         else:
             raise
-    print('  {}: ok'.format(config.name))
+    print('  {}: ok'.format(fargs.config.name))
     return result
 
 
@@ -513,7 +515,7 @@ InQueueItem = namedtuple('InQueueItem', ['index', 'config'])
 OutQueueItem = namedtuple('OutQueueItem', ['index', 'result'])
 
 
-def run_parallel(configurations, output_base_dir, njobs, ignore_failures):
+def run_parallel(configurations, output_base_dir, njobs, ignore_failures, timeout):
     from multiprocessing import Process, Queue
     import queue
 
@@ -522,7 +524,8 @@ def run_parallel(configurations, output_base_dir, njobs, ignore_failures):
             in_item = in_queue.get()
             if in_item is None:
                 return
-            result = run_single_benchmark((in_item.config, out_dir, ignore_failures))
+            fargs = BenchmarkArgs(in_item.config, out_dir, ignore_failures, timeout)
+            result = run_single_benchmark(fargs)
             out_queue.put(OutQueueItem(in_item.index, result))
 
     if njobs == 0:
@@ -556,12 +559,13 @@ def run_parallel(configurations, output_base_dir, njobs, ignore_failures):
     return results
 
 
-def run_benchmarks(configurations, output_base_dir, njobs, ignore_failures):
+def run_benchmarks(configurations, output_base_dir, njobs, ignore_failures, timeout):
     print('Running {:d} benchmarks ...'.format(len(configurations)))
     if njobs == 1:
-        results = [run_single_benchmark((config, output_base_dir, ignore_failures)) for config in configurations]
+        results = [run_single_benchmark(BenchmarkArgs(config, output_base_dir, ignore_failures, timeout))
+                   for config in configurations]
     else:
-        results = run_parallel(configurations, output_base_dir, njobs, ignore_failures)
+        results = run_parallel(configurations, output_base_dir, njobs, ignore_failures, timeout)
     run_data = [RunCache.RunData(config, result) for config, result in zip(configurations, results)]
     return run_data
 
@@ -585,6 +589,7 @@ def main(argv=None):
     parser.add_argument('--output-dir',       default='build',     help='Directory to store benchmark build output')
     parser.add_argument('--njobs',            default=0, type=int, help='Use N parallel jobs to run benchmarks (default=0, which uses CPU count)')
     parser.add_argument('--heartbeat',        default=0, type=int, help='Print heartbeat message with given interval (default=0 => never)')
+    parser.add_argument('--timeout',          default=None,        help='Set timeout for a single benchmark')
     parser.add_argument('--results-cache',                         help="""Use given JSON file as results cache. If the file exists,
                                                                            it will be loaded instead of running actual benchmarks,
                                                                            else benchmarks will be run normally, and then saved
@@ -621,7 +626,9 @@ def main(argv=None):
         if args.heartbeat:
             heartbeat_cmd = ['/bin/sh', '-c', 'while true; do sleep %d; echo Heartbeat...; done' % args.heartbeat]
             heartbeat = subprocess.Popen(heartbeat_cmd)
-        run_data = run_benchmarks(configurations, args.output_dir, args.njobs, not args.fail_fast)
+        if args.timeout is not None:
+            args.timeout = int(args.timeout)
+        run_data = run_benchmarks(configurations, args.output_dir, args.njobs, not args.fail_fast, args.timeout)
         if args.heartbeat:
             heartbeat.kill()
 
