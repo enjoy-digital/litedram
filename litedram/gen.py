@@ -329,8 +329,9 @@ class LiteDRAMCore(SoCSDRAM):
 
         # SoCSDRAM ---------------------------------------------------------------------------------
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
-            cpu_type      = cpu_type,
-            csr_alignment = csr_align,
+            cpu_type       = cpu_type,
+            csr_alignment  = csr_align,
+            max_sdram_size = 0x01000000, # Only expose 16MB to the CPU, enough for Init/Calib.
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
