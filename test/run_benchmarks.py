@@ -137,12 +137,15 @@ class BenchmarkConfiguration(Settings):
         return 100e6  # FIXME: value of 100MHz is hardcoded in litex_sim
 
     @property
-    def sdram_controller_data_width(self):
+    def sdram_memtype(self):
         # use values from module class (no need to instantiate it)
         sdram_module_cls = getattr(litedram_modules, self.sdram_module)
-        memtype = sdram_module_cls.memtype
-        nphases = sdram_module_nphases[memtype]
-        dfi_databits = self.sdram_data_width * (1 if memtype == 'SDR' else 2)
+        return sdram_module_cls.memtype
+
+    @property
+    def sdram_controller_data_width(self):
+        nphases = sdram_module_nphases[self.sdram_memtype]
+        dfi_databits = self.sdram_data_width * (1 if self.sdram_memtype == 'SDR' else 2)
         return dfi_databits * nphases
 
 # Benchmark results --------------------------------------------------------------------------------
@@ -252,6 +255,7 @@ class ResultsSummary:
             'checker_errors':   lambda d: getattr(d.result, 'checker_errors', None),
             'checker_ticks':    lambda d: getattr(d.result, 'checker_ticks', None),
             'ctrl_data_width':  lambda d: except_none(lambda: d.config.sdram_controller_data_width),
+            'sdram_memtype':    lambda d: except_none(lambda: d.config.sdram_memtype),
             'clk_freq':         lambda d: d.config.sdram_clk_freq,
         }
         columns = {name: [mapping(data) for data in run_data] for name, mapping, in column_mappings.items()}
@@ -377,10 +381,18 @@ class ResultsSummary:
         if formatters is None:
             formatters = self.text_formatters
 
-        common_columns = ['name', 'sdram_module', 'sdram_data_width', 'bist_alternating', 'num_generators', 'num_checkers']
+        common_columns = [
+            'name', 'sdram_module', 'sdram_memtype', 'sdram_data_width',
+            'bist_alternating', 'num_generators', 'num_checkers'
+        ]
         latency_columns = ['write_latency', 'read_latency']
-        performance_columns = ['write_bandwidth', 'read_bandwidth', 'write_efficiency', 'read_efficiency']
-        failure_columns = ['bist_length', 'bist_random', 'pattern_file', 'length', 'generator_ticks', 'checker_errors', 'checker_ticks']
+        performance_columns = [
+            'write_bandwidth', 'read_bandwidth', 'write_efficiency', 'read_efficiency'
+        ]
+        failure_columns = [
+            'bist_length', 'bist_random', 'pattern_file', 'length',
+            'generator_ticks', 'checker_errors', 'checker_ticks'
+        ]
 
         yield 'Latency', self.get_summary(df,
             mask=df['is_latency'] == True,
