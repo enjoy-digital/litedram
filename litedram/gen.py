@@ -249,15 +249,15 @@ class LiteDRAMECP5DDRPHYCRG(Module):
         pll.create_clkout(self.cd_init, core_config['init_clk_freq'])
         self.specials += [
             Instance("ECLKSYNCB",
-                i_ECLKI=self.cd_sys2x_i.clk,
-                i_STOP=self.stop,
-                o_ECLKO=self.cd_sys2x.clk),
+                i_ECLKI = self.cd_sys2x_i.clk,
+                i_STOP  = self.stop,
+                o_ECLKO = self.cd_sys2x.clk),
             Instance("CLKDIVF",
-                p_DIV="2.0",
-                i_ALIGNWD=0,
-                i_CLKI=self.cd_sys2x.clk,
-                i_RST=self.cd_sys2x.rst,
-                o_CDIVX=self.cd_sys.clk),
+                p_DIV     = "2.0",
+                i_ALIGNWD = 0,
+                i_CLKI    = self.cd_sys2x.clk,
+                i_RST     = self.cd_sys2x.rst,
+                o_CDIVX   = self.cd_sys.clk),
             AsyncResetSynchronizer(self.cd_init, ~por_done | ~pll.locked | rst),
             AsyncResetSynchronizer(self.cd_sys, ~por_done | ~pll.locked | rst)
         ]
@@ -306,11 +306,6 @@ class LiteDRAMCoreControl(Module, AutoCSR):
 # LiteDRAMCore -------------------------------------------------------------------------------------
 
 class LiteDRAMCore(SoCSDRAM):
-    csr_map = {
-        "ddrctrl":   16,
-        "ddrphy":    17
-    }
-    csr_map.update(SoCSDRAM.csr_map)
     def __init__(self, platform, core_config, **kwargs):
         platform.add_extension(get_common_ios())
 
@@ -334,8 +329,8 @@ class LiteDRAMCore(SoCSDRAM):
 
         # SoCSDRAM ---------------------------------------------------------------------------------
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
-            cpu_type=cpu_type,
-            csr_alignment=csr_align,
+            cpu_type      = cpu_type,
+            csr_alignment = csr_align,
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
@@ -349,38 +344,39 @@ class LiteDRAMCore(SoCSDRAM):
         if core_config["sdram_phy"] in  [litedram_phys.ECP5DDRPHY]:
             assert core_config["memtype"] in ["DDR3"]
             self.submodules.ddrphy = core_config["sdram_phy"](
-                platform.request("ddram"),
-                sys_clk_freq=sys_clk_freq)
+                pads         = platform.request("ddram"),
+                sys_clk_freq = sys_clk_freq)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
             sdram_module = core_config["sdram_module"](sys_clk_freq, "1:2")
         if core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             assert core_config["memtype"] in ["DDR2", "DDR3"]
             self.submodules.ddrphy = core_config["sdram_phy"](
-                platform.request("ddram"),
-                memtype=core_config["memtype"],
-                nphases=4 if core_config["memtype"] == "DDR3" else 2,
-                sys_clk_freq=sys_clk_freq,
-                iodelay_clk_freq=core_config["iodelay_clk_freq"],
-                cmd_latency=core_config["cmd_latency"])
+                pads             = platform.request("ddram"),
+                memtype          = core_config["memtype"],
+                nphases          = 4 if core_config["memtype"] == "DDR3" else 2,
+                sys_clk_freq     = sys_clk_freq,
+                iodelay_clk_freq = core_config["iodelay_clk_freq"],
+                cmd_latency      = core_config["cmd_latency"])
             self.add_constant("CMD_DELAY", core_config["cmd_delay"])
             if core_config["memtype"] == "DDR3":
                 self.ddrphy.settings.add_electrical_settings(
-                    rtt_nom=core_config["rtt_nom"],
-                    rtt_wr=core_config["rtt_wr"],
-                    ron=core_config["ron"])
-
+                    rtt_nom = core_config["rtt_nom"],
+                    rtt_wr  = core_config["rtt_wr"],
+                    ron     = core_config["ron"])
+        self.add_csr("ddrphy")
 
         sdram_module = core_config["sdram_module"](sys_clk_freq,
             "1:4" if core_config["memtype"] == "DDR3" else "1:2")
         controller_settings = controller_settings=ControllerSettings(
             cmd_buffer_depth=core_config["cmd_buffer_depth"])
         self.register_sdram(self.ddrphy,
-                            sdram_module.geom_settings,
-                            sdram_module.timing_settings,
-                            controller_settings=controller_settings)
+            geom_settings       = sdram_module.geom_settings,
+            timing_settings     = sdram_module.timing_settings,
+            controller_settings = controller_settings)
 
         # DRAM Initialization ----------------------------------------------------------------------
         self.submodules.ddrctrl = LiteDRAMCoreControl()
+        self.add_csr("ddrctrl")
         self.comb += [
             platform.request("init_done").eq(self.ddrctrl.init_done.storage),
             platform.request("init_error").eq(self.ddrctrl.init_error.storage)
@@ -389,11 +385,10 @@ class LiteDRAMCore(SoCSDRAM):
         # CSR port ---------------------------------------------------------------------------------
         if csr_expose:
             csr_port = csr_bus.Interface(
-                address_width=self.csr_address_width,
-                data_width=self.csr_data_width)
+                address_width = self.csr_address_width,
+                data_width    = self.csr_data_width)
             self.add_csr_master(csr_port)
-            platform.add_extension(get_csr_ios(self.csr_address_width,
-                                               self.csr_data_width))
+            platform.add_extension(get_csr_ios(self.csr_address_width, self.csr_data_width))
             _csr_port_io = platform.request("csr_port", 0)
             self.comb += [
                 csr_port.adr.eq(_csr_port_io.adr),
