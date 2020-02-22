@@ -348,6 +348,7 @@ class LiteDRAMCore(SoCSDRAM):
                 pads         = platform.request("ddram"),
                 sys_clk_freq = sys_clk_freq)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
+            self.add_constant("ECP5DDRPHY", None)
             sdram_module = core_config["sdram_module"](sys_clk_freq, "1:2")
         if core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             assert core_config["memtype"] in ["DDR2", "DDR3"]
