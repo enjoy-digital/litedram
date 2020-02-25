@@ -3,7 +3,7 @@
        / /__/ / __/ -_) // / , _/ __ |/ /|_/ /
       /____/_/\__/\__/____/_/|_/_/ |_/_/  /_/
 
-           Copyright 2015-2019 / EnjoyDigital
+           Copyright 2015-2020 / EnjoyDigital
 
        A small footprint and configurable DRAM core
                 powered by Migen & LiteX
@@ -27,7 +27,7 @@ PHY:
   - Generic SDRAM PHY (vendor agnostic, tested on Xilinx, Altera, Lattice)
   - Spartan6 DDR/LPDDR/DDR2/DDR3 PHY (1:2 or 1:4 frequency ratio)
   - Spartan7/Artix7/Kintex7/Virtex7 DDR2/DDR3 PHY (1:2 or 1:4 frequency ratio)
-  - Kintex/Virtex Ultrascale DDR3/DDR4 PHY (1:4 frequency ratio)
+  - Kintex/Virtex Ultrascale (Plus) DDR3/DDR4 PHY (1:4 frequency ratio)
   - ECP5 DDR3 PHY (1:2 frequency ratio)
 Core:
   - Fully pipelined, high performance.

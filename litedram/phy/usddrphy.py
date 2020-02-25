@@ -1,7 +1,7 @@
 # This file is Copyright (c) 2015-2020 Florent Kermarrec <florent@enjoy-digital.fr>
 # License: BSD
 
-# 1:4 frequency-ratio DDR3/DDR4 PHY for Kintex/Virtex Ultrascale
+# 1:4 frequency-ratio DDR3/DDR4 PHY for Kintex/Virtex Ultrascale (Plus)
 # DDR3: 800, 1066, 1333 and 1600 MT/s
 # DDR4: 1600 MT/s
 
@@ -15,14 +15,15 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
-# Xilinx Ultrascale DDR3/DDR4 PHY ------------------------------------------------------------------
+# Xilinx Ultrascale (Plus) DDR3/DDR4 PHY -----------------------------------------------------------
 
 class USDDRPHY(Module, AutoCSR):
     def __init__(self, pads,
         memtype          = "DDR3",
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
-        cmd_latency      = 0):
+        cmd_latency      = 0,
+        sim_device       = "ULTRASCALE"):
         tck         = 2/(2*4*sys_clk_freq)
         addressbits = len(pads.a)
         if memtype == "DDR4":
@@ -32,6 +33,7 @@ class USDDRPHY(Module, AutoCSR):
         databits = len(pads.dq)
         nphases  = 4
         assert databits%8 == 0
+        assert sim_device in ["ULTRASCALE", "ULTRASCALE_PLUS"]
 
         if hasattr(pads, "ten"):
             self.comb += pads.ten.eq(0)
@@ -96,6 +98,7 @@ class USDDRPHY(Module, AutoCSR):
         clk_o_delayed = Signal()
         self.specials += [
             Instance("OSERDESE3",
+                p_SIM_DEVICE         = sim_device,
                 p_DATA_WIDTH         = 8,
                 p_INIT               = 0,
                 p_IS_RST_INVERTED    = 0,
@@ -108,6 +111,7 @@ class USDDRPHY(Module, AutoCSR):
                 o_OQ     = clk_o_nodelay,
             ),
             Instance("ODELAYE3",
+                p_SIM_DEVICE         = sim_device,
                 p_CASCADE          = "NONE",
                 p_UPDATE_MODE      = "ASYNC",
                 p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
@@ -134,6 +138,7 @@ class USDDRPHY(Module, AutoCSR):
             a_o_nodelay = Signal()
             self.specials += [
                 Instance("OSERDESE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_DATA_WIDTH         = 8,
                     p_INIT               = 0,
                     p_IS_RST_INVERTED    = 0,
@@ -149,6 +154,7 @@ class USDDRPHY(Module, AutoCSR):
                      o_OQ     = a_o_nodelay,
                 ),
                 Instance("ODELAYE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_CASCADE          = "NONE",
                     p_UPDATE_MODE      = "ASYNC",
                     p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
@@ -175,6 +181,7 @@ class USDDRPHY(Module, AutoCSR):
             ba_o_nodelay = Signal()
             self.specials += [
                 Instance("OSERDESE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_DATA_WIDTH         = 8,
                     p_INIT               = 0,
                     p_IS_RST_INVERTED    = 0,
@@ -191,6 +198,7 @@ class USDDRPHY(Module, AutoCSR):
                     o_OQ     = ba_o_nodelay,
                 ),
                 Instance("ODELAYE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_CASCADE          = "NONE",
                     p_UPDATE_MODE      = "ASYNC",
                     p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
@@ -218,6 +226,7 @@ class USDDRPHY(Module, AutoCSR):
             x_o_nodelay = Signal()
             self.specials += [
                 Instance("OSERDESE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_DATA_WIDTH         = 8,
                     p_INIT               = 0,
                     p_IS_RST_INVERTED    = 0,
@@ -234,6 +243,7 @@ class USDDRPHY(Module, AutoCSR):
                     o_OQ     = x_o_nodelay,
                 ),
                 Instance("ODELAYE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_CASCADE          = "NONE",
                     p_UPDATE_MODE      = "ASYNC",
                     p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
@@ -266,6 +276,7 @@ class USDDRPHY(Module, AutoCSR):
             dm_o_nodelay = Signal()
             self.specials += [
                 Instance("OSERDESE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_DATA_WIDTH         = 8,
                     p_INIT               = 0,
                     p_IS_RST_INVERTED    = 0,
@@ -282,6 +293,7 @@ class USDDRPHY(Module, AutoCSR):
                     o_OQ     = dm_o_nodelay,
                 ),
                 Instance("ODELAYE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_CASCADE          = "NONE",
                     p_UPDATE_MODE      = "ASYNC",
                     p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
@@ -317,6 +329,7 @@ class USDDRPHY(Module, AutoCSR):
                     )
             self.specials += [
                 Instance("OSERDESE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_DATA_WIDTH         = 8,
                     p_INIT               = 0,
                     p_IS_RST_INVERTED    = 0,
@@ -336,6 +349,7 @@ class USDDRPHY(Module, AutoCSR):
 
                 ),
                 Instance("ODELAYE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_CASCADE          = "NONE",
                     p_UPDATE_MODE      = "ASYNC",
                     p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
@@ -381,6 +395,7 @@ class USDDRPHY(Module, AutoCSR):
             self.submodules += dq_bitslip
             self.specials += [
                 Instance("OSERDESE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_DATA_WIDTH         = 8,
                     p_INIT               = 0,
                     p_IS_RST_INVERTED    = 0,
@@ -399,6 +414,7 @@ class USDDRPHY(Module, AutoCSR):
                     o_T_OUT  = dq_t,
                 ),
                 Instance("ISERDESE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_IS_CLK_INVERTED   = 0,
                     p_IS_CLK_B_INVERTED = 1,
                     p_DATA_WIDTH        = 8,
@@ -411,6 +427,7 @@ class USDDRPHY(Module, AutoCSR):
                     o_Q          = dq_bitslip.i,
                 ),
                 Instance("ODELAYE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_CASCADE          = "NONE",
                     p_UPDATE_MODE      = "ASYNC",
                     p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
@@ -428,6 +445,7 @@ class USDDRPHY(Module, AutoCSR):
                     o_DATAOUT = dq_o_delayed,
                 ),
                 Instance("IDELAYE3",
+                    p_SIM_DEVICE         = sim_device,
                     p_CASCADE          = "NONE",
                     p_UPDATE_MODE      = "ASYNC",
                     p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
