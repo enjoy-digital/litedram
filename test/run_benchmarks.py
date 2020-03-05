@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# This file is Copyright (c) 2020 Jędrzej Boczar <jboczar@antmicro.com>
+# This file is Copyright (c) 2020 Antmicro <www.antmicro.com>
 # License: BSD
 
 # Limitations/TODO
