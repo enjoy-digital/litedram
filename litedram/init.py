@@ -529,19 +529,26 @@ def get_sdram_phy_c_header(settings):
                 #ifndef SDRAM_PHY_DISABLE_BACKWARD_COMPATIBILITY
 
                 #define DFII_NPHASES {nphases}
+
                 """
+
+            def gen_alias_func(alias_name, arg_type, name):
+                v = "v" if arg_type else ""
+                arg_def = f"{arg_type} {v}" if arg_type else "void"
+                return (f"static inline __attribute__((always_inline)) " +
+                        f"void {alias_name}({arg_def}) {{ {name}({v}); }}\n")
 
             for n in range(nphases):
-                old_code += f"\n#define command_p{n}(cmd) {command_px[n]}(cmd)\n"
+                old_code += gen_alias_func(f"command_p{n}", "uint8_t", command_px[n])
 
-            old_code += f"""
-                #define sdram_dfii_pird_address_write(X) sdram_dfii_pi{rdphase:d}_address_write(X)
-                #define sdram_dfii_piwr_address_write(X) sdram_dfii_pi{wrphase:d}_address_write(X)
-                #define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi{rdphase:d}_baddress_write(X)
-                #define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi{wrphase:d}_baddress_write(X)
-                #define command_prd(X) command_p{rdphase:d}(X)
-                #define command_pwr(X) command_p{wrphase:d}(X)
-                """
+            old_code += (
+                  gen_alias_func("sdram_dfii_pird_address_write",  "uint16_t", f"sdram_dfii_pi{rdphase:d}_address_write")
+                + gen_alias_func("sdram_dfii_piwr_address_write",  "uint16_t", f"sdram_dfii_pi{wrphase:d}_address_write")
+                + gen_alias_func("sdram_dfii_pird_baddress_write", "uint8_t",  f"sdram_dfii_pi{rdphase:d}_baddress_write")
+                + gen_alias_func("sdram_dfii_piwr_baddress_write", "uint8_t",  f"sdram_dfii_pi{wrphase:d}_baddress_write")
+                + gen_alias_func("command_prd",                    "uint8_t",  command_px[rdphase])
+                + gen_alias_func("command_pwr",                    "uint8_t",  command_px[wrphase])
+            )
 
             old_code += f"\n#define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE\n"
 
@@ -558,9 +565,8 @@ def get_sdram_phy_c_header(settings):
             if phy_settings.memtype in ["DDR3", "DDR4"]:
                 old_code += f"#define DDRX_MR1 {mr1}\n\n"
 
+            old_code += gen_alias_func("init_sequence", None, "sdram_phy_init_all")
             old_code += f"""
-                #define init_sequence() sdram_phy_init_all()
-
                 #endif /* SDRAM_PHY_DISABLE_BACKWARD_COMPATIBILITY */
                 """
 
