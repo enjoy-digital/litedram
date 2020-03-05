@@ -21,7 +21,7 @@ class TestInit(unittest.TestCase):
     def test_sdr(self):
         from litex.boards.targets.minispartan6 import BaseSoC
         soc = BaseSoC()
-        c_header = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
+        c_header = get_sdram_phy_c_header([(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing, "sdram")])
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         self.assertEqual(compare_with_reference(c_header, "sdr_init.h"), True)
         self.assertEqual(compare_with_reference(py_header, "sdr_init.py"), True)
@@ -29,7 +29,7 @@ class TestInit(unittest.TestCase):
     def test_ddr3(self):
         from litex.boards.targets.kc705 import BaseSoC
         soc = BaseSoC()
-        c_header = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
+        c_header = get_sdram_phy_c_header([(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing, "sdram")])
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         self.assertEqual(compare_with_reference(c_header, "ddr3_init.h"), True)
         self.assertEqual(compare_with_reference(py_header, "ddr3_init.py"), True)
@@ -37,7 +37,7 @@ class TestInit(unittest.TestCase):
     def test_ddr4(self):
         from litex.boards.targets.kcu105 import BaseSoC
         soc = BaseSoC(max_sdram_size=0x4000000)
-        c_header = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
+        c_header = get_sdram_phy_c_header([(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing, "sdram")])
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         self.assertEqual(compare_with_reference(c_header, "ddr4_init.h"), True)
         self.assertEqual(compare_with_reference(py_header, "ddr4_init.py"), True)

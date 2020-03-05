@@ -393,82 +393,249 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
 
 # C Header -----------------------------------------------------------------------------------------
 
-def get_sdram_phy_c_header(phy_settings, timing_settings):
-    r = "#ifndef __GENERATED_SDRAM_PHY_H\n#define __GENERATED_SDRAM_PHY_H\n"
-    r += "#include <hw/common.h>\n#include <generated/csr.h>\n#include <hw/flags.h>\n\n"
+def get_sdram_phy_c_header(settings):
+    nphases_max = max(phy_settings.nphases for phy_settings, _, _ in settings)
+    # CSR_x_DFII_PIn_WRDATA_SIZE == phy_settings.dfi_databits/8
+    pix_data_size_max = max(phy_settings.dfi_databits//8 for phy_settings, _, _ in settings)
 
-    nphases = phy_settings.nphases
-    r += "#define DFII_NPHASES "+str(nphases)+"\n\n"
+    command_px_definitions_code   = ""
+    init_definitions_code         = ""
+    sdram_phys_entries_code_frags = []
+    init_all_code_frags           = []
+    old_code                      = ""
 
-    r += "static void cdelay(int i);\n"
+    for phy_settings, timing_settings, name in settings:
+        nphases = phy_settings.nphases
+        rdphase = phy_settings.rdphase
+        wrphase = phy_settings.wrphase
 
-    # commands_px functions
-    for n in range(nphases):
-        r += """
-__attribute__((unused)) static void command_p{n}(int cmd)
-{{
-    sdram_dfii_pi{n}_command_write(cmd);
-    sdram_dfii_pi{n}_command_issue_write(1);
-}}""".format(n=str(n))
-    r += "\n\n"
+        control_write           = f"{name}_dfii_control_write"
+        init                    = f"sdram_phy_{name}_init_sequence"
+        pix_wrdata_addr         = []
+        pix_rddata_addr         = []
+        pix_command_write       = []
+        pix_command_issue_write = []
+        pix_address_write       = []
+        pix_baddress_write      = []
+        command_px              = []
+        for n in range(nphases):
+            pix_wrdata_addr         += [f"CSR_{name.upper()}_DFII_PI{n}_WRDATA_ADDR"]
+            pix_rddata_addr         += [f"CSR_{name.upper()}_DFII_PI{n}_RDDATA_ADDR"]
+            pix_command_write       += [f"{name}_dfii_pi{n}_command_write"]
+            pix_command_issue_write += [f"{name}_dfii_pi{n}_command_issue_write"]
+            pix_address_write       += [f"{name}_dfii_pi{n}_address_write"]
+            pix_baddress_write      += [f"{name}_dfii_pi{n}_baddress_write"]
+            command_px              += [f"sdram_phy_{name}_command_p{n}"]
 
-    # rd/wr access macros
-    r += """
-#define sdram_dfii_pird_address_write(X) sdram_dfii_pi{rdphase}_address_write(X)
-#define sdram_dfii_piwr_address_write(X) sdram_dfii_pi{wrphase}_address_write(X)
-#define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi{rdphase}_baddress_write(X)
-#define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi{wrphase}_baddress_write(X)
-#define command_prd(X) command_p{rdphase}(X)
-#define command_pwr(X) command_p{wrphase}(X)
-""".format(rdphase=str(phy_settings.rdphase), wrphase=str(phy_settings.wrphase))
-    r += "\n"
+        pird_address_write  = pix_address_write[rdphase]
+        piwr_address_write  = pix_address_write[wrphase]
+        pird_baddress_write = pix_baddress_write[rdphase]
+        piwr_baddress_write = pix_baddress_write[wrphase]
+        command_prd         = command_px[rdphase]
+        command_pwr         = command_px[wrphase]
 
-    #
-    # sdrrd/sdrwr functions utilities
-    #
-    r += "#define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE\n"
-    sdram_dfii_pix_wrdata_addr = []
-    for n in range(nphases):
-        sdram_dfii_pix_wrdata_addr.append("CSR_SDRAM_DFII_PI{n}_WRDATA_ADDR".format(n=n))
-    r += """
-const unsigned long sdram_dfii_pix_wrdata_addr[DFII_NPHASES] = {{
-\t{sdram_dfii_pix_wrdata_addr}
-}};
-""".format(sdram_dfii_pix_wrdata_addr=",\n\t".join(sdram_dfii_pix_wrdata_addr))
+        for n in range(nphases):
+            command_px_definitions_code += f"""
+                static void {command_px[n]}(uint8_t cmd)
+                {{
+                    {pix_command_write[n]}(cmd);
+                    {pix_command_issue_write[n]}(cmd);
+                }}
+                """
 
-    sdram_dfii_pix_rddata_addr = []
-    for n in range(nphases):
-        sdram_dfii_pix_rddata_addr.append("CSR_SDRAM_DFII_PI{n}_RDDATA_ADDR".format(n=n))
-    r += """
-const unsigned long sdram_dfii_pix_rddata_addr[DFII_NPHASES] = {{
-\t{sdram_dfii_pix_rddata_addr}
-}};
-""".format(sdram_dfii_pix_rddata_addr=",\n\t".join(sdram_dfii_pix_rddata_addr))
-    r += "\n"
+        init_sequence_code_frags = []
+        init_sequence, mr1 = get_sdram_phy_init_sequence(phy_settings, timing_settings)
+        for comment, a, ba, cmd, delay in init_sequence:
+            frag = """\
+                /* {comment} */
+                {pix_address_write}({a:#x});
+                {pix_baddress_write}({ba:d});
+                {ctrl_or_cmd_write}({cmd});"""
+            if delay:
+                frag += "\ncdelay({delay:d});"
 
-    init_sequence, mr1 = get_sdram_phy_init_sequence(phy_settings, timing_settings)
+            init_sequence_code_frags.append(frag.format(
+                    comment = comment, a = a, ba = ba, cmd = cmd, delay = delay,
+                    pix_address_write  = pix_address_write[0],
+                    pix_baddress_write = pix_baddress_write[0],
+                    ctrl_or_cmd_write  = control_write if cmd.startswith("DFII_CONTROL")
+                                         else command_px[0]
+                )
+            )
 
-    if phy_settings.memtype in ["DDR3", "DDR4"]:
-        # the value of MR1 needs to be modified during write leveling
-        r += "#define DDRX_MR1 {}\n\n".format(mr1)
+        init_sequence_code = "\n\n".join(init_sequence_code_frags)
+        init_definitions_code += f"""
+            static void {init}(void)
+            {{
+            {init_sequence_code}
+            }}
+            """
+        init_all_code_frags.append(f"{init}();")
 
-    r += "static void init_sequence(void)\n{\n"
-    for comment, a, ba, cmd, delay in init_sequence:
-        r += "\t/* {0} */\n".format(comment)
-        r += "\tsdram_dfii_pi0_address_write({0:#x});\n".format(a)
-        r += "\tsdram_dfii_pi0_baddress_write({0:d});\n".format(ba)
-        if cmd[:12] == "DFII_CONTROL":
-            r += "\tsdram_dfii_control_write({0});\n".format(cmd)
-        else:
-            r += "\tcommand_p0({0});\n".format(cmd)
-        if delay:
-            r += "\tcdelay({0:d});\n".format(delay)
-        r += "\n"
-    r += "}\n"
+        pix_data_size                = f"CSR_{name.upper()}_DFII_PI0_WRDATA_SIZE"
+        mr1                          = mr1 or 0
+        pix_wrdata_addr_ents         = ",\n".join(pix_wrdata_addr)
+        pix_rddata_addr_ents         = ",\n".join(pix_rddata_addr)
+        pix_command_write_ents       = ",\n".join(pix_command_write)
+        pix_command_issue_write_ents = ",\n".join(pix_command_issue_write)
+        pix_address_write_ents       = ",\n".join(pix_address_write)
+        pix_baddress_write_ents      = ",\n".join(pix_baddress_write)
+        command_px_ents              = ",\n".join(command_px)
 
-    r += "#endif\n"
+        sdram_phys_entries_code_frags.append(f"""\
+            /* {name} */
+            {{
+                {nphases},
+                {pix_data_size},
+                0x{mr1:x},
+                {{
+                    {pix_wrdata_addr_ents}
+                }},
+                {{
+                    {pix_rddata_addr_ents}
+                }},
+                {control_write},
+                {{
+                    {pix_command_write_ents}
+                }},
+                {{
+                    {pix_command_issue_write_ents}
+                }},
+                {{
+                    {pix_address_write_ents}
+                }},
+                {pird_address_write}, /* rd */
+                {piwr_address_write}, /* wr */
+                {{
+                    {pix_baddress_write_ents}
+                }},
+                {pird_baddress_write}, /* rd */
+                {piwr_baddress_write}, /* wr */
+                {{
+                    {command_px_ents}
+                }},
+                {command_prd}, /* rd */
+                {command_pwr}, /* wr */
+                {init}
+            }}"""
+        )
 
-    return r
+        # Generate code for backward compatibility
+        if name == "sdram":
+            old_code += f"""
+
+                /*** backward compatibility ***/
+
+                #ifndef SDRAM_PHY_DISABLE_BACKWARD_COMPATIBILITY
+
+                #define DFII_NPHASES {nphases}
+                """
+
+            for n in range(nphases):
+                old_code += f"\n#define command_p{n}(cmd) {command_px[n]}(cmd)\n"
+
+            old_code += f"""
+                #define sdram_dfii_pird_address_write(X) sdram_dfii_pi{rdphase:d}_address_write(X)
+                #define sdram_dfii_piwr_address_write(X) sdram_dfii_pi{wrphase:d}_address_write(X)
+                #define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi{rdphase:d}_baddress_write(X)
+                #define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi{wrphase:d}_baddress_write(X)
+                #define command_prd(X) command_p{rdphase:d}(X)
+                #define command_pwr(X) command_p{wrphase:d}(X)
+                """
+
+            old_code += f"\n#define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE\n"
+
+            old_code += f"""
+                const unsigned long sdram_dfii_pix_wrdata_addr[DFII_NPHASES] = {{
+                    {pix_wrdata_addr_ents}
+                }};
+                const unsigned long sdram_dfii_pix_rddata_addr[DFII_NPHASES] = {{
+                    {pix_rddata_addr_ents}
+                }};
+
+                """
+
+            if phy_settings.memtype in ["DDR3", "DDR4"]:
+                old_code += f"#define DDRX_MR1 {mr1}\n\n"
+
+            old_code += f"""
+                #define init_sequence() sdram_phy_init_all()
+
+                #endif /* SDRAM_PHY_DISABLE_BACKWARD_COMPATIBILITY */
+                """
+
+    init_all_code           = "\n".join(init_all_code_frags)
+    sdram_phys_entries_code = ",\n".join(sdram_phys_entries_code_frags)
+
+    code = f"""\
+        #ifndef __GENERATED_SDRAM_PHY_H
+        #define __GENERATED_SDRAM_PHY_H
+
+        #include <hw/common.h>
+        #include <generated/csr.h>
+        #include <hw/flags.h>
+        #include <stdint.h>
+
+        #define DFII_NPHASES_MAX       {nphases_max}
+        #define DFII_PIX_DATA_SIZE_MAX {pix_data_size_max}
+
+        static void cdelay(int i);
+
+        {command_px_definitions_code}
+        {init_definitions_code}
+
+        static inline void sdram_phy_init_all(void)
+        {{
+            {init_all_code}
+        }}
+
+
+        struct sdram_phy_t {{
+            uint8_t nphases;
+            uint8_t pix_data_size;
+            uint16_t ddrx_mr1;
+
+            unsigned long pix_wrdata_addr[DFII_NPHASES_MAX];
+            unsigned long pix_rddata_addr[DFII_NPHASES_MAX];
+
+            void (* control_write)(uint8_t v);
+
+            void (* pix_command_write[DFII_NPHASES_MAX])(uint8_t v);
+            void (* pix_command_issue_write[DFII_NPHASES_MAX])(uint8_t v);
+
+            void (* pix_address_write[DFII_NPHASES_MAX])(uint16_t v);
+            void (* pird_address_write)(uint16_t v);
+            void (* piwr_address_write)(uint16_t v);
+
+            void (* pix_baddress_write[DFII_NPHASES_MAX])(uint8_t v);
+            void (* pird_baddress_write)(uint8_t v);
+            void (* piwr_baddress_write)(uint8_t v);
+
+            void (* command_px[DFII_NPHASES_MAX])(uint8_t cmd);
+            void (* command_prd)(uint8_t cmd);
+            void (* command_pwr)(uint8_t cmd);
+
+            void (* init)(void);
+        }};
+
+        static const struct sdram_phy_t sdram_phys[] = {{
+            {sdram_phys_entries_code}
+        }};
+        {old_code}
+        #endif /* __GENERATED_SDRAM_PHY_H */"""
+
+    # Fix indentation
+    formatted_code = ""
+    indent = 0
+    for line in code.split('\n'):
+        line = line.strip()
+        if len(line) > 0:
+            if line.startswith("}"): indent -= 1
+            formatted_code += "\t"*indent + line
+            if line.endswith("{"):   indent += 1
+        formatted_code += "\n"
+
+    return formatted_code
 
 # Python Header ------------------------------------------------------------------------------------
 
