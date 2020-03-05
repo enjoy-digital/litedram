@@ -31,11 +31,11 @@ __attribute__((unused)) static void command_p3(int cmd)
 
 
 #define sdram_dfii_pird_address_write(X) sdram_dfii_pi1_address_write(X)
-#define sdram_dfii_piwr_address_write(X) sdram_dfii_pi2_address_write(X)
+#define sdram_dfii_piwr_address_write(X) sdram_dfii_pi1_address_write(X)
 #define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi1_baddress_write(X)
-#define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi2_baddress_write(X)
+#define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi1_baddress_write(X)
 #define command_prd(X) command_p1(X)
-#define command_pwr(X) command_p2(X)
+#define command_pwr(X) command_p1(X)
 
 #define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE
 
