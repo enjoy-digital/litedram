@@ -44,11 +44,11 @@ class ControllerSettings(Settings):
 
 class LiteDRAMController(Module):
     def __init__(self, phy_settings, geom_settings, timing_settings, clk_freq,
-        controller_settings=ControllerSettings()):
+        controller_settings=None):
         address_align = log2_int(burst_lengths[phy_settings.memtype])
 
         # Settings ---------------------------------------------------------------------------------
-        self.settings        = controller_settings
+        self.settings        = controller_settings or ControllerSettings()
         self.settings.phy    = phy_settings
         self.settings.geom   = geom_settings
         self.settings.timing = timing_settings
