@@ -32,7 +32,7 @@ from litedram.phy.dfi import *
 
 
 class S6HalfRateDDRPHY(Module):
-    def __init__(self, pads, memtype, rd_bitslip, wr_bitslip, dqs_ddr_alignment):
+    def __init__(self, pads, memtype, rd_bitslip, wr_bitslip, dqs_ddr_alignment, clk_suffix=""):
         if memtype not in ["DDR", "LPDDR", "DDR2", "DDR3"]:
             raise NotImplementedError("S6HalfRateDDRPHY only supports DDR, LPDDR, DDR2 and DDR3")
         addressbits = len(pads.a)
@@ -41,6 +41,9 @@ class S6HalfRateDDRPHY(Module):
         databits    = len(pads.dq)
         nphases     = 2
         assert databits%8 == 0
+
+        if clk_suffix:
+            clk_suffix = "_" + clk_suffix
 
         # PHY settings -----------------------------------------------------------------------------
         if memtype == "DDR3":
@@ -88,12 +91,12 @@ class S6HalfRateDDRPHY(Module):
         # sdram_full_wr_clk : full rate sdram write clk
         # sdram_full_rd_clk : full rate sdram read clk
         sd_sys = getattr(self.sync, "sys")
-        sd_sdram_half = getattr(self.sync, "sdram_half")
+        sd_sdram_half = getattr(self.sync, "sdram_half" + clk_suffix)
 
         sys_clk = ClockSignal("sys")
-        sdram_half_clk = ClockSignal("sdram_half")
-        sdram_full_wr_clk = ClockSignal("sdram_full_wr")
-        sdram_full_rd_clk = ClockSignal("sdram_full_rd")
+        sdram_half_clk = ClockSignal("sdram_half" + clk_suffix)
+        sdram_full_wr_clk = ClockSignal("sdram_full_wr" + clk_suffix)
+        sdram_full_rd_clk = ClockSignal("sdram_full_rd" + clk_suffix)
 
         # Addresses and Commands -------------------------------------------------------------------
 
