@@ -24,6 +24,7 @@ class USDDRPHY(Module, AutoCSR):
         iodelay_clk_freq = 200e6,
         cmd_latency      = 0,
         sim_device       = "ULTRASCALE"):
+        pads        = PHYPadsCombiner(pads)
         tck         = 2/(2*4*sys_clk_freq)
         addressbits = len(pads.a)
         if memtype == "DDR4":
@@ -93,49 +94,13 @@ class USDDRPHY(Module, AutoCSR):
 
         # # #
 
-        # Clock ------------------------------------------------------------------------------------
-        clk_o_nodelay = Signal()
-        clk_o_delayed = Signal()
-        self.specials += [
-            Instance("OSERDESE3",
-                p_SIM_DEVICE         = sim_device,
-                p_DATA_WIDTH         = 8,
-                p_INIT               = 0,
-                p_IS_RST_INVERTED    = 0,
-                p_IS_CLK_INVERTED    = 0,
-                p_IS_CLKDIV_INVERTED = 0,
-                i_RST    = ResetSignal(),
-                i_CLK    = ClockSignal("sys4x"),
-                i_CLKDIV = ClockSignal(),
-                i_D      = 0b10101010,
-                o_OQ     = clk_o_nodelay,
-            ),
-            Instance("ODELAYE3",
-                p_SIM_DEVICE         = sim_device,
-                p_CASCADE          = "NONE",
-                p_UPDATE_MODE      = "ASYNC",
-                p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
-                p_DELAY_FORMAT     = "TIME",
-                p_DELAY_TYPE       = "VARIABLE",
-                p_DELAY_VALUE      = 0,
-                i_RST     = self._cdly_rst.re,
-                i_CLK     = ClockSignal(),
-                i_EN_VTC  = self._en_vtc.storage,
-                i_CE      = self._cdly_inc.re,
-                i_INC     = 1,
-                i_ODATAIN = clk_o_nodelay,
-                o_DATAOUT = clk_o_delayed,
-            ),
-            Instance("OBUFDS",
-                i_I  = clk_o_delayed,
-                o_O  = pads.clk_p,
-                o_OB = pads.clk_n,
-            )
-        ]
+        # Iterate on pads groups -------------------------------------------------------------------
+        for pads_group in range(len(pads.groups)):
+            pads.sel_group(pads_group)
 
-        # Addresses and Commands -------------------------------------------------------------------
-        for i in range(addressbits if memtype=="DDR3" else addressbits-3):
-            a_o_nodelay = Signal()
+            # Clock ------------------------------------------------------------------------------------
+            clk_o_nodelay = Signal()
+            clk_o_delayed = Signal()
             self.specials += [
                 Instance("OSERDESE3",
                     p_SIM_DEVICE         = sim_device,
@@ -147,11 +112,8 @@ class USDDRPHY(Module, AutoCSR):
                     i_RST    = ResetSignal(),
                     i_CLK    = ClockSignal("sys4x"),
                     i_CLKDIV = ClockSignal(),
-                    i_D      = Cat(dfi.phases[0].address[i], dfi.phases[0].address[i],
-                                   dfi.phases[1].address[i], dfi.phases[1].address[i],
-                                   dfi.phases[2].address[i], dfi.phases[2].address[i],
-                                   dfi.phases[3].address[i], dfi.phases[3].address[i]),
-                     o_OQ     = a_o_nodelay,
+                    i_D      = 0b10101010,
+                    o_OQ     = clk_o_nodelay,
                 ),
                 Instance("ODELAYE3",
                     p_SIM_DEVICE         = sim_device,
@@ -166,99 +128,142 @@ class USDDRPHY(Module, AutoCSR):
                     i_EN_VTC  = self._en_vtc.storage,
                     i_CE      = self._cdly_inc.re,
                     i_INC     = 1,
-                    i_ODATAIN = a_o_nodelay,
-                    o_DATAOUT = pads.a[i],
+                    i_ODATAIN = clk_o_nodelay,
+                    o_DATAOUT = clk_o_delayed,
+                ),
+                Instance("OBUFDS",
+                    i_I  = clk_o_delayed,
+                    o_O  = pads.clk_p,
+                    o_OB = pads.clk_n,
                 )
             ]
 
-        pads_ba = Signal(bankbits)
-        if memtype == "DDR3":
-            self.comb += pads.ba.eq(pads_ba)
-        else:
-            self.comb += pads.ba.eq(pads_ba[:len(pads.ba)])
-            self.comb += pads.bg.eq(pads_ba[len(pads.ba):])
-        for i in range(bankbits):
-            ba_o_nodelay = Signal()
-            self.specials += [
-                Instance("OSERDESE3",
-                    p_SIM_DEVICE         = sim_device,
-                    p_DATA_WIDTH         = 8,
-                    p_INIT               = 0,
-                    p_IS_RST_INVERTED    = 0,
-                    p_IS_CLK_INVERTED    = 0,
-                    p_IS_CLKDIV_INVERTED = 0,
-                    i_RST    = ResetSignal(),
-                    i_CLK    = ClockSignal("sys4x"),
-                    i_CLKDIV = ClockSignal(),
-                    i_D      = Cat(
-                        dfi.phases[0].bank[i], dfi.phases[0].bank[i],
-                        dfi.phases[1].bank[i], dfi.phases[1].bank[i],
-                        dfi.phases[2].bank[i], dfi.phases[2].bank[i],
-                        dfi.phases[3].bank[i], dfi.phases[3].bank[i]),
-                    o_OQ     = ba_o_nodelay,
-                ),
-                Instance("ODELAYE3",
-                    p_SIM_DEVICE         = sim_device,
-                    p_CASCADE          = "NONE",
-                    p_UPDATE_MODE      = "ASYNC",
-                    p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
-                    p_DELAY_FORMAT     = "TIME",
-                    p_DELAY_TYPE       = "VARIABLE",
-                    p_DELAY_VALUE      = 0,
-                    i_RST     = self._cdly_rst.re,
-                    i_CLK     = ClockSignal(),
-                    i_EN_VTC  = self._en_vtc.storage,
-                    i_CE      = self._cdly_inc.re,
-                    i_INC     = 1,
-                    i_ODATAIN = ba_o_nodelay,
-                    o_DATAOUT = pads_ba[i],
-                )
-            ]
+            # Addresses and Commands -------------------------------------------------------------------
+            for i in range(addressbits if memtype=="DDR3" else addressbits-3):
+                a_o_nodelay = Signal()
+                self.specials += [
+                    Instance("OSERDESE3",
+                        p_SIM_DEVICE         = sim_device,
+                        p_DATA_WIDTH         = 8,
+                        p_INIT               = 0,
+                        p_IS_RST_INVERTED    = 0,
+                        p_IS_CLK_INVERTED    = 0,
+                        p_IS_CLKDIV_INVERTED = 0,
+                        i_RST    = ResetSignal(),
+                        i_CLK    = ClockSignal("sys4x"),
+                        i_CLKDIV = ClockSignal(),
+                        i_D      = Cat(dfi.phases[0].address[i], dfi.phases[0].address[i],
+                                       dfi.phases[1].address[i], dfi.phases[1].address[i],
+                                       dfi.phases[2].address[i], dfi.phases[2].address[i],
+                                       dfi.phases[3].address[i], dfi.phases[3].address[i]),
+                         o_OQ     = a_o_nodelay,
+                    ),
+                    Instance("ODELAYE3",
+                        p_SIM_DEVICE         = sim_device,
+                        p_CASCADE          = "NONE",
+                        p_UPDATE_MODE      = "ASYNC",
+                        p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
+                        p_DELAY_FORMAT     = "TIME",
+                        p_DELAY_TYPE       = "VARIABLE",
+                        p_DELAY_VALUE      = 0,
+                        i_RST     = self._cdly_rst.re,
+                        i_CLK     = ClockSignal(),
+                        i_EN_VTC  = self._en_vtc.storage,
+                        i_CE      = self._cdly_inc.re,
+                        i_INC     = 1,
+                        i_ODATAIN = a_o_nodelay,
+                        o_DATAOUT = pads.a[i],
+                    )
+                ]
 
-        controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
-        if hasattr(pads, "reset_n"):
-            controls.append("reset_n")
-        if hasattr(pads, "cs_n"):
-            controls.append("cs_n")
-        if hasattr(pads, "act_n"):
-            controls.append("act_n")
-        for name in controls:
-            x_o_nodelay = Signal()
-            self.specials += [
-                Instance("OSERDESE3",
-                    p_SIM_DEVICE         = sim_device,
-                    p_DATA_WIDTH         = 8,
-                    p_INIT               = 0,
-                    p_IS_RST_INVERTED    = 0,
-                    p_IS_CLK_INVERTED    = 0,
-                    p_IS_CLKDIV_INVERTED = 0,
-                    i_RST    = ResetSignal(),
-                    i_CLK    = ClockSignal("sys4x"),
-                    i_CLKDIV = ClockSignal(),
-                    i_D      = Cat(
-                        getattr(dfi.phases[0], name), getattr(dfi.phases[0], name),
-                        getattr(dfi.phases[1], name), getattr(dfi.phases[1], name),
-                        getattr(dfi.phases[2], name), getattr(dfi.phases[2], name),
-                        getattr(dfi.phases[3], name), getattr(dfi.phases[3], name)),
-                    o_OQ     = x_o_nodelay,
-                ),
-                Instance("ODELAYE3",
-                    p_SIM_DEVICE         = sim_device,
-                    p_CASCADE          = "NONE",
-                    p_UPDATE_MODE      = "ASYNC",
-                    p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
-                    p_DELAY_FORMAT     = "TIME",
-                    p_DELAY_TYPE       = "VARIABLE",
-                    p_DELAY_VALUE      = 0,
-                    i_RST     = self._cdly_rst.re,
-                    i_CLK     = ClockSignal(),
-                    i_EN_VTC  = self._en_vtc.storage,
-                    i_CE      = self._cdly_inc.re,
-                    i_INC     = 1,
-                    i_ODATAIN = x_o_nodelay,
-                    o_DATAOUT = getattr(pads, name),
-                )
-            ]
+            pads_ba = Signal(bankbits)
+            if memtype == "DDR3":
+                self.comb += pads.ba.eq(pads_ba)
+            else:
+                self.comb += pads.ba.eq(pads_ba[:len(pads.ba)])
+                self.comb += pads.bg.eq(pads_ba[len(pads.ba):])
+            for i in range(bankbits):
+                ba_o_nodelay = Signal()
+                self.specials += [
+                    Instance("OSERDESE3",
+                        p_SIM_DEVICE         = sim_device,
+                        p_DATA_WIDTH         = 8,
+                        p_INIT               = 0,
+                        p_IS_RST_INVERTED    = 0,
+                        p_IS_CLK_INVERTED    = 0,
+                        p_IS_CLKDIV_INVERTED = 0,
+                        i_RST    = ResetSignal(),
+                        i_CLK    = ClockSignal("sys4x"),
+                        i_CLKDIV = ClockSignal(),
+                        i_D      = Cat(
+                            dfi.phases[0].bank[i], dfi.phases[0].bank[i],
+                            dfi.phases[1].bank[i], dfi.phases[1].bank[i],
+                            dfi.phases[2].bank[i], dfi.phases[2].bank[i],
+                            dfi.phases[3].bank[i], dfi.phases[3].bank[i]),
+                        o_OQ     = ba_o_nodelay,
+                    ),
+                    Instance("ODELAYE3",
+                        p_SIM_DEVICE         = sim_device,
+                        p_CASCADE          = "NONE",
+                        p_UPDATE_MODE      = "ASYNC",
+                        p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
+                        p_DELAY_FORMAT     = "TIME",
+                        p_DELAY_TYPE       = "VARIABLE",
+                        p_DELAY_VALUE      = 0,
+                        i_RST     = self._cdly_rst.re,
+                        i_CLK     = ClockSignal(),
+                        i_EN_VTC  = self._en_vtc.storage,
+                        i_CE      = self._cdly_inc.re,
+                        i_INC     = 1,
+                        i_ODATAIN = ba_o_nodelay,
+                        o_DATAOUT = pads_ba[i],
+                    )
+                ]
+
+            controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
+            if hasattr(pads, "reset_n"):
+                controls.append("reset_n")
+            if hasattr(pads, "cs_n"):
+                controls.append("cs_n")
+            if hasattr(pads, "act_n"):
+                controls.append("act_n")
+            for name in controls:
+                x_o_nodelay = Signal()
+                self.specials += [
+                    Instance("OSERDESE3",
+                        p_SIM_DEVICE         = sim_device,
+                        p_DATA_WIDTH         = 8,
+                        p_INIT               = 0,
+                        p_IS_RST_INVERTED    = 0,
+                        p_IS_CLK_INVERTED    = 0,
+                        p_IS_CLKDIV_INVERTED = 0,
+                        i_RST    = ResetSignal(),
+                        i_CLK    = ClockSignal("sys4x"),
+                        i_CLKDIV = ClockSignal(),
+                        i_D      = Cat(
+                            getattr(dfi.phases[0], name), getattr(dfi.phases[0], name),
+                            getattr(dfi.phases[1], name), getattr(dfi.phases[1], name),
+                            getattr(dfi.phases[2], name), getattr(dfi.phases[2], name),
+                            getattr(dfi.phases[3], name), getattr(dfi.phases[3], name)),
+                        o_OQ     = x_o_nodelay,
+                    ),
+                    Instance("ODELAYE3",
+                        p_SIM_DEVICE         = sim_device,
+                        p_CASCADE          = "NONE",
+                        p_UPDATE_MODE      = "ASYNC",
+                        p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
+                        p_DELAY_FORMAT     = "TIME",
+                        p_DELAY_TYPE       = "VARIABLE",
+                        p_DELAY_VALUE      = 0,
+                        i_RST     = self._cdly_rst.re,
+                        i_CLK     = ClockSignal(),
+                        i_EN_VTC  = self._en_vtc.storage,
+                        i_CE      = self._cdly_inc.re,
+                        i_INC     = 1,
+                        i_ODATAIN = x_o_nodelay,
+                        o_DATAOUT = getattr(pads, name),
+                    )
+                ]
 
         # DQS and DM -------------------------------------------------------------------------------
         oe_dqs             = Signal()

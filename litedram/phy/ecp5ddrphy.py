@@ -82,6 +82,7 @@ class ECP5DDRPHYInit(Module):
 
 class ECP5DDRPHY(Module, AutoCSR):
     def __init__(self, pads, sys_clk_freq=100e6):
+        pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
         tck         = 2/(2*2*sys_clk_freq)
         addressbits = len(pads.a)
@@ -138,60 +139,64 @@ class ECP5DDRPHY(Module, AutoCSR):
 
         bl8_sel = Signal()
 
-        # Clock ------------------------------------------------------------------------------------
-        for i in range(len(pads.clk_p)):
-            sd_clk_se = Signal()
-            self.specials += Instance("ODDRX2F",
-                i_RST  = ResetSignal("sys2x"),
-                i_ECLK = ClockSignal("sys2x"),
-                i_SCLK = ClockSignal(),
-                i_D0   = 0,
-                i_D1   = 1,
-                i_D2   = 0,
-                i_D3   = 1,
-                o_Q    = pads.clk_p[i]
-            )
+        # Iterate on pads groups -------------------------------------------------------------------
+        for pads_group in range(len(pads.groups)):
+            pads.sel_group(pads_group)
 
-        # Addresses and Commands -------------------------------------------------------------------
-        for i in range(addressbits):
-            self.specials += Instance("ODDRX2F",
-                i_RST  = ResetSignal("sys2x"),
-                i_ECLK = ClockSignal("sys2x"),
-                i_SCLK = ClockSignal(),
-                i_D0   = dfi.phases[0].address[i],
-                i_D1   = dfi.phases[0].address[i],
-                i_D2   = dfi.phases[1].address[i],
-                i_D3   = dfi.phases[1].address[i],
-                o_Q    = pads.a[i]
-            )
-        for i in range(bankbits):
-            self.specials += Instance("ODDRX2F",
-                i_RST  = ResetSignal("sys2x"),
-                i_ECLK = ClockSignal("sys2x"),
-                i_SCLK = ClockSignal(),
-                i_D0   = dfi.phases[0].bank[i],
-                i_D1   = dfi.phases[0].bank[i],
-                i_D2   = dfi.phases[1].bank[i],
-                i_D3   = dfi.phases[1].bank[i],
-                o_Q    = pads.ba[i]
-            )
-        controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
-        if hasattr(pads, "reset_n"):
-            controls.append("reset_n")
-        if hasattr(pads, "cs_n"):
-            controls.append("cs_n")
-        for name in controls:
-            for i in range(len(getattr(pads, name))):
+            # Clock ------------------------------------------------------------------------------------
+            for i in range(len(pads.clk_p)):
+                sd_clk_se = Signal()
                 self.specials += Instance("ODDRX2F",
                     i_RST  = ResetSignal("sys2x"),
                     i_ECLK = ClockSignal("sys2x"),
                     i_SCLK = ClockSignal(),
-                    i_D0   = getattr(dfi.phases[0], name)[i],
-                    i_D1   = getattr(dfi.phases[0], name)[i],
-                    i_D2   = getattr(dfi.phases[1], name)[i],
-                    i_D3   = getattr(dfi.phases[1], name)[i],
-                    o_Q    = getattr(pads, name)[i]
+                    i_D0   = 0,
+                    i_D1   = 1,
+                    i_D2   = 0,
+                    i_D3   = 1,
+                    o_Q    = pads.clk_p[i]
                 )
+
+            # Addresses and Commands -------------------------------------------------------------------
+            for i in range(addressbits):
+                self.specials += Instance("ODDRX2F",
+                    i_RST  = ResetSignal("sys2x"),
+                    i_ECLK = ClockSignal("sys2x"),
+                    i_SCLK = ClockSignal(),
+                    i_D0   = dfi.phases[0].address[i],
+                    i_D1   = dfi.phases[0].address[i],
+                    i_D2   = dfi.phases[1].address[i],
+                    i_D3   = dfi.phases[1].address[i],
+                    o_Q    = pads.a[i]
+                )
+            for i in range(bankbits):
+                self.specials += Instance("ODDRX2F",
+                    i_RST  = ResetSignal("sys2x"),
+                    i_ECLK = ClockSignal("sys2x"),
+                    i_SCLK = ClockSignal(),
+                    i_D0   = dfi.phases[0].bank[i],
+                    i_D1   = dfi.phases[0].bank[i],
+                    i_D2   = dfi.phases[1].bank[i],
+                    i_D3   = dfi.phases[1].bank[i],
+                    o_Q    = pads.ba[i]
+                )
+            controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
+            if hasattr(pads, "reset_n"):
+                controls.append("reset_n")
+            if hasattr(pads, "cs_n"):
+                controls.append("cs_n")
+            for name in controls:
+                for i in range(len(getattr(pads, name))):
+                    self.specials += Instance("ODDRX2F",
+                        i_RST  = ResetSignal("sys2x"),
+                        i_ECLK = ClockSignal("sys2x"),
+                        i_SCLK = ClockSignal(),
+                        i_D0   = getattr(dfi.phases[0], name)[i],
+                        i_D1   = getattr(dfi.phases[0], name)[i],
+                        i_D2   = getattr(dfi.phases[1], name)[i],
+                        i_D3   = getattr(dfi.phases[1], name)[i],
+                        o_Q    = getattr(pads, name)[i]
+                    )
 
         # DQ ---------------------------------------------------------------------------------------
         oe_dq         = Signal()

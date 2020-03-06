@@ -27,12 +27,13 @@ from migen import *
 from migen.genlib.record import *
 from migen.fhdl.decorators import ClockDomainsRenamer
 
-from litedram.common import PhySettings
+from litedram.common import *
 from litedram.phy.dfi import *
 
 
 class S6HalfRateDDRPHY(Module):
     def __init__(self, pads, memtype, rd_bitslip, wr_bitslip, dqs_ddr_alignment):
+        pads        = PHYPadsCombiner(pads)
         if memtype not in ["DDR", "LPDDR", "DDR2", "DDR3"]:
             raise NotImplementedError("S6HalfRateDDRPHY only supports DDR, LPDDR, DDR2 and DDR3")
         addressbits = len(pads.a)
@@ -130,19 +131,23 @@ class S6HalfRateDDRPHY(Module):
                 r_dfi[n].we_n.eq(phase.we_n)
             ]
 
-        # output cmds
-        sd_sdram_half += [
-            pads.a.eq(r_dfi[phase_sel].address),
-            pads.ba.eq(r_dfi[phase_sel].bank),
-            pads.cke.eq(r_dfi[phase_sel].cke),
-            pads.ras_n.eq(r_dfi[phase_sel].ras_n),
-            pads.cas_n.eq(r_dfi[phase_sel].cas_n),
-            pads.we_n.eq(r_dfi[phase_sel].we_n)
-        ]
-        # optional pads
-        for name in "reset_n", "cs_n", "odt":
-          if hasattr(pads, name):
-              sd_sdram_half += getattr(pads, name).eq(getattr(r_dfi[phase_sel], name))
+        # Iterate on pads groups -------------------------------------------------------------------
+        for pads_group in range(len(pads.groups)):
+            pads.sel_group(pads_group)
+
+            # output cmds
+            sd_sdram_half += [
+                pads.a.eq(r_dfi[phase_sel].address),
+                pads.ba.eq(r_dfi[phase_sel].bank),
+                pads.cke.eq(r_dfi[phase_sel].cke),
+                pads.ras_n.eq(r_dfi[phase_sel].ras_n),
+                pads.cas_n.eq(r_dfi[phase_sel].cas_n),
+                pads.we_n.eq(r_dfi[phase_sel].we_n)
+            ]
+            # optional pads
+            for name in "reset_n", "cs_n", "odt":
+              if hasattr(pads, name):
+                  sd_sdram_half += getattr(pads, name).eq(getattr(r_dfi[phase_sel], name))
 
         # Bitslip ----------------------------------------------------------------------------------
         bitslip_cnt = Signal(4)
@@ -406,6 +411,7 @@ class S6HalfRateDDRPHY(Module):
 
 class S6QuarterRateDDRPHY(Module):
     def __init__(self, pads, rd_bitslip, wr_bitslip, dqs_ddr_alignment):
+        pads        = PHYPadsCombiner(pads)
         addressbits = len(pads.a)
         bankbits = len(pads.ba)
         nranks = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
