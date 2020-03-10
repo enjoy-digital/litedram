@@ -35,6 +35,10 @@ class USDDRPHY(Module, AutoCSR):
         nphases  = 4
         assert databits%8 == 0
         assert device in ["ULTRASCALE", "ULTRASCALE_PLUS"]
+        if device == "ULTRASCALE":
+            assert iodelay_clk_freq >= 200e6
+        if device == "ULTRASCALE_PLUS":
+            assert iodelay_clk_freq >= 300e6
 
         if hasattr(pads, "ten"):
             self.comb += pads.ten.eq(0)
