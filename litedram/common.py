@@ -76,7 +76,7 @@ class PHYPadsCombiner:
         self.sel = n
 
     def __getattr__(self, name):
-        if name in ["dm", "dq", "dqs_p", "dqs_n"]:
+        if name in ["dm", "dq", "dqs", "dqs_p", "dqs_n"]:
             return Array([getattr(self.groups[j], name)[i]
                 for i in range(len(getattr(self.groups[0], name)))
                 for j in range(len(self.groups))])
