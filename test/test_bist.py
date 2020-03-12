@@ -11,8 +11,8 @@ from litex.soc.interconnect.stream import *
 
 from litedram.common import *
 from litedram.frontend.bist import *
-from litedram.frontend.bist import _LiteDRAMBISTGenerator
-from litedram.frontend.bist import _LiteDRAMBISTChecker
+from litedram.frontend.bist import _LiteDRAMBISTGenerator, _LiteDRAMBISTChecker, \
+    _LiteDRAMPatternGenerator, _LiteDRAMPatternChecker
 
 from test.common import *
 
@@ -165,6 +165,162 @@ class TestBIST(unittest.TestCase):
         mem_expected = [0] * 4 + list(range(16)) + [0] * (128 - 4 - 16)
         mem_expected[4:4+8] = list(range(16, 24))
         self.assertEqual(dut.mem.mem, mem_expected)
+
+    def pattern_generator_test(self, pattern, mem_expected, data_width, mem_depth):
+        class DUT(Module):
+            def __init__(self, init):
+                self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=data_width)
+                self.submodules.generator = _LiteDRAMPatternGenerator(self.write_port, init=init)
+                self.mem = DRAMMemory(data_width, mem_depth)
+
+        def main_generator(dut):
+            generator = GenCheckDriver(dut.generator)
+
+            yield from generator.reset()
+            yield from generator.run()
+            yield
+
+        dut = DUT(init=pattern)
+
+        generators = [
+            main_generator(dut),
+            dut.mem.write_handler(dut.write_port),
+        ]
+        run_simulation(dut, generators, vcd_name='/tmp/sim.vcd')
+
+        assert len(mem_expected) == mem_depth
+        self.assertEqual(dut.mem.mem, mem_expected)
+
+    def test_pattern_generator_8bit(self):
+        pattern = [
+            # address, data
+            (0x00, 0xaa),
+            (0x05, 0xbb),
+            (0x02, 0xcc),
+            (0x07, 0xdd),
+        ]
+        expected = [
+            # data, address
+            0xaa,  # 0x00
+            0x00,  # 0x01
+            0xcc,  # 0x02
+            0x00,  # 0x03
+            0x00,  # 0x04
+            0xbb,  # 0x05
+            0x00,  # 0x06
+            0xdd,  # 0x07
+        ]
+        self.pattern_generator_test(pattern, expected, data_width=8, mem_depth=8)
+
+    def test_pattern_generator_64bit(self):
+        pattern = [
+            # address, data
+            (0x00, 0x0ddf00dbadc0ffee),
+            (0x05, 0xabadcafebaadf00d),
+            (0x02, 0xcafefeedfeedface),
+            (0x07, 0xdeadc0debaadbeef),
+        ]
+        expected = [
+            # data, address
+            0x0ddf00dbadc0ffee,  # 0x00
+            0x0000000000000000,  # 0x08
+            0xcafefeedfeedface,  # 0x10
+            0x0000000000000000,  # 0x18
+            0x0000000000000000,  # 0x20
+            0xabadcafebaadf00d,  # 0x28
+            0x0000000000000000,  # 0x30
+            0xdeadc0debaadbeef,  # 0x38
+        ]
+        self.pattern_generator_test(pattern, expected, data_width=64, mem_depth=8)
+
+    def test_pattern_generator_aligned(self):
+        pattern = [
+            # address, data
+            (0x00, 0xabadcafe),
+            (0x07, 0xbaadf00d),
+            (0x02, 0xcafefeed),
+            (0x01, 0xdeadc0de),
+        ]
+        expected = [
+            # data, address
+            0xabadcafe,  # 0x00
+            0xdeadc0de,  # 0x04
+            0xcafefeed,  # 0x08
+            0x00000000,  # 0x0c
+            0x00000000,  # 0x10
+            0x00000000,  # 0x14
+            0x00000000,  # 0x18
+            0xbaadf00d,  # 0x1c
+        ]
+        self.pattern_generator_test(pattern, expected, data_width=32, mem_depth=8)
+
+    def test_pattern_generator_not_aligned(self):
+        pattern = [
+            # address, data
+            (0x00, 0xabadcafe),
+            (0x07, 0xbaadf00d),
+            (0x02, 0xcafefeed),
+            (0x01, 0xdeadc0de),
+        ]
+        expected = [
+            # data, address
+            0xabadcafe,  # 0x00
+            0xdeadc0de,  # 0x04
+            0xcafefeed,  # 0x08
+            0x00000000,  # 0x0c
+            0x00000000,  # 0x10
+            0x00000000,  # 0x14
+            0x00000000,  # 0x18
+            0xbaadf00d,  # 0x1c
+        ]
+        self.pattern_generator_test(pattern, expected, data_width=32, mem_depth=8)
+
+    def test_pattern_generator_overwriting(self):
+        pattern = [
+            # address, data
+            (0x00, 0xabadcafe),
+            (0x07, 0xbaadf00d),
+            (0x00, 0xcafefeed),
+            (0x07, 0xdeadc0de),
+        ]
+        expected = [
+            # data, address
+            0xcafefeed,  # 0x00
+            0x00000000,  # 0x04
+            0x00000000,  # 0x08
+            0x00000000,  # 0x0c
+            0x00000000,  # 0x10
+            0x00000000,  # 0x14
+            0x00000000,  # 0x18
+            0xdeadc0de,  # 0x1c
+        ]
+        self.pattern_generator_test(pattern, expected, data_width=32, mem_depth=8)
+
+    def test_pattern_generator_sequential(self):
+        length = 64
+        prng = random.Random(42)
+        address = [a for a in range(length)]
+        data =  prng.choices(range(2**32 - 1), k=length)
+        pattern = list(zip(address, data))
+
+        expected = [0x00000000] * 128
+        for adr, data in pattern:
+            expected[adr] = data
+
+        self.pattern_generator_test(pattern, expected, data_width=32, mem_depth=128)
+
+    def test_pattern_generator_random(self):
+        length = 64
+        prng = random.Random(42)
+        address = [a for a in prng.sample(range(128), k=length)]
+        data =  prng.choices(range(2**32 - 1), k=length)
+        pattern = list(zip(address, data))
+
+        expected = [0x00000000] * 128
+        for adr, data in pattern:
+            expected[adr] = data
+
+        self.pattern_generator_test(pattern, expected, data_width=32, mem_depth=128)
 
     def test_bist(self):
         class DUT(Module):
