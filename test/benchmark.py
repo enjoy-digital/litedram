@@ -235,6 +235,8 @@ def main():
     sim_config.add_module("serial2console", "serial")
 
     # Configuration --------------------------------------------------------------------------------
+    soc_kwargs["with_uart"]        = False
+
     soc_kwargs["sdram_module"]     = args.sdram_module
     soc_kwargs["sdram_data_width"] = int(args.sdram_data_width)
     soc_kwargs["sdram_verbosity"]  = int(args.sdram_verbosity)
