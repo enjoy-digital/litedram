@@ -125,6 +125,69 @@ class TestBIST(unittest.TestCase):
         mem_expected = [0] * before + list(range(64//4)) + [0] * (128 - 64//4 - before)
         self.assertEqual(dut.mem.mem, mem_expected)
 
+    def test_bist_generator_8bit(self):
+        expected = [0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x00]
+        dut, generators = self.bist_generator_test(mem_depth=len(expected), data_width=8,
+                                                   base=2, end=2 + 8, length=5)
+        run_simulation(dut, generators)
+        self.assertEqual(dut.mem.mem, expected)
+
+    def test_bist_generator_range_must_be_pow2(self):
+        # NOTE: in the current implementation (end - start) must be a power of 2,
+        #       but it would be better if this restriction didn't hold,
+        #       this test is here just to notice the change if it happens unintentionally
+        #       and may be removed if we start supporting arbitrary ranges
+        expected = [0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x00]
+        dut, generators = self.bist_generator_test(mem_depth=len(expected), data_width=8,
+                                                   base=2, end=2 + 6, length=5)
+        run_simulation(dut, generators)
+        self.assertNotEqual(dut.mem.mem, expected)
+
+    def test_bist_generator_64bit(self):
+        expected = [
+            0x0000000000000000, # 0x00
+            0x0000000000000000, # 0x08
+            0x0000000000000000, # 0x10
+            0x0000000000000001, # 0x18
+            0x0000000000000002, # 0x20
+            0x0000000000000003, # 0x28
+            0x0000000000000004, # 0x30
+            0x0000000000000000, # 0x38
+        ]
+        dut, generators = self.bist_generator_test(mem_depth=len(expected), data_width=64,
+                                                   base=0x10, end=0x10 + 0x20, length=5 * 8)
+        run_simulation(dut, generators)
+        self.assertEqual(dut.mem.mem, expected)
+
+    def test_bist_generator_address_masked(self):
+        expected = [
+            0x00000000, # 0x00
+            0x00000004, # 0x04
+            0x00000005, # 0x08
+            0x00000002, # 0x0c
+            0x00000003, # 0x10
+            0x00000000, # 0x14
+            0x00000000, # 0x18
+            0x00000000, # 0x1c
+        ]
+        dut, generators = self.bist_generator_test(mem_depth=len(expected), data_width=32,
+                                                   base=0x04, end=0x04 + 0x04, length=6 * 4)
+        run_simulation(dut, generators, vcd_name='/tmp/sim.vcd')
+        self.assertEqual(dut.mem.mem, expected)
+
+    def test_bist_generator_address_masked_long(self):
+        dut, generators = self.bist_generator_test(mem_depth=128, data_width=32,
+                                                   base=16, length=96, end=32)
+        run_simulation(dut, generators)
+
+        # we restrict address to <16, 32) and write 96 bytes (which results in 96/4=24 words generated)
+        # this means that the address should wrap and last 8 generated words should overwrite memory
+        # at address <16, 24)
+        before = 16 // 4
+        mem_expected = [0] * 4 + list(range(16)) + [0] * (128 - 4 - 16)
+        mem_expected[4:4+8] = list(range(16, 24))
+        self.assertEqual(dut.mem.mem, mem_expected)
+
     def test_bist_generator_random_data(self):
         def init(dut):
             yield dut.generator.random_data.eq(1)
@@ -153,19 +216,6 @@ class TestBIST(unittest.TestCase):
         # we can at least check that the values written are not an ordered sequence
         self.assertNotEqual(dut.mem.mem, list(range(128)), msg='Values are a sequence')
 
-    def test_bist_generator_wraps_addr(self):
-        dut, generators = self.bist_generator_test(mem_depth=128, data_width=32,
-                                                   base=16, length=96, end=32)
-        run_simulation(dut, generators)
-
-        # we restrict address to <16, 32) and write 96 bytes (which results in 96/4=24 words generated)
-        # this means that the address should wrap and last 8 generated words should overwrite memory
-        # at address <16, 24)
-        before = 16 // 4
-        mem_expected = [0] * 4 + list(range(16)) + [0] * (128 - 4 - 16)
-        mem_expected[4:4+8] = list(range(16, 24))
-        self.assertEqual(dut.mem.mem, mem_expected)
-
     def pattern_generator_test(self, pattern, mem_expected, data_width, mem_depth):
         class DUT(Module):
             def __init__(self, init):
@@ -186,7 +236,7 @@ class TestBIST(unittest.TestCase):
             main_generator(dut),
             dut.mem.write_handler(dut.write_port),
         ]
-        run_simulation(dut, generators, vcd_name='/tmp/sim.vcd')
+        run_simulation(dut, generators)
 
         assert len(mem_expected) == mem_depth
         self.assertEqual(dut.mem.mem, mem_expected)
