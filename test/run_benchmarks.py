@@ -664,6 +664,10 @@ def main(argv=None):
                 transparent=args.plot_transparent,
             )
 
+    # exit with error when there is no single benchmark that succeeded
+    succeeded = sum(1 if d.result is not None else 0 for d in run_data)
+    if succeeded == 0:
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
