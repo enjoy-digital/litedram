@@ -50,6 +50,189 @@ class GenCheckDriver:
 
 
 class TestBIST(unittest.TestCase):
+    def setUp(self):
+        # define common test data used for both generator and checker tests
+        self.bist_test_data = {
+            '8bit': dict(
+                base = 2,
+                end = 2 + 8,  # (end - base) must be pow of 2
+                length = 5,
+                #                       2     3     4     5     6     7=2+5
+                expected = [0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x00],
+            ),
+            '32bit': dict(
+                base = 0x04,
+                end = 0x04 + 8,
+                length = 5 * 4,
+                expected = [
+                    0x00000000, # 0x00
+                    0x00000000, # 0x04
+                    0x00000001, # 0x08
+                    0x00000002, # 0x0c
+                    0x00000003, # 0x10
+                    0x00000004, # 0x14
+                    0x00000000, # 0x18
+                    0x00000000, # 0x1c
+                ],
+            ),
+            '64bit': dict(
+                base = 0x10,
+                end = 0x10 + 8,  # TODO: fix address masking to be consistent
+                length = 5 * 8,
+                expected = [
+                    0x0000000000000000, # 0x00
+                    0x0000000000000000, # 0x08
+                    0x0000000000000000, # 0x10
+                    0x0000000000000001, # 0x18
+                    0x0000000000000002, # 0x20
+                    0x0000000000000003, # 0x28
+                    0x0000000000000004, # 0x30
+                    0x0000000000000000, # 0x38
+                ],
+            ),
+            '32bit_masked': dict(
+                base = 0x04,
+                end = 0x04 + 0x04,
+                length = 6 * 4,
+                expected = [
+                    0x00000000, # 0x00
+                    0x00000004, # 0x04
+                    0x00000005, # 0x08
+                    0x00000002, # 0x0c
+                    0x00000003, # 0x10
+                    0x00000000, # 0x14
+                    0x00000000, # 0x18
+                    0x00000000, # 0x1c
+                ],
+            ),
+            '32bit_long_sequential': dict(
+                base = 0x04,
+                end = 0x04 + 0x04,
+                length = 6 * 4,
+                expected = [
+                    0x00000000, # 0x00
+                    0x00000004, # 0x04
+                    0x00000005, # 0x08
+                    0x00000002, # 0x0c
+                    0x00000003, # 0x10
+                    0x00000000, # 0x14
+                    0x00000000, # 0x18
+                    0x00000000, # 0x1c
+                ],
+            ),
+        }
+        self.bist_test_data['32bit_long_sequential'] = dict(
+            base = 16,
+            end = 16 + 128,
+            length = 64,
+            expected = [0x00000000] * 128
+        )
+        expected = self.bist_test_data['32bit_long_sequential']['expected']
+        expected[16//4:(16 + 64)//4] = list(range(64//4))
+
+        self.pattern_test_data = {
+            '8bit': dict(
+                pattern = [
+                    # address, data
+                    (0x00, 0xaa),
+                    (0x05, 0xbb),
+                    (0x02, 0xcc),
+                    (0x07, 0xdd),
+                ],
+                expected = [
+                    # data, address
+                    0xaa,  # 0x00
+                    0x00,  # 0x01
+                    0xcc,  # 0x02
+                    0x00,  # 0x03
+                    0x00,  # 0x04
+                    0xbb,  # 0x05
+                    0x00,  # 0x06
+                    0xdd,  # 0x07
+                ],
+            ),
+            '32bit': dict(
+                pattern = [
+                    # address, data
+                    (0x00, 0xabadcafe),
+                    (0x07, 0xbaadf00d),
+                    (0x02, 0xcafefeed),
+                    (0x01, 0xdeadc0de),
+                ],
+                expected = [
+                    # data, address
+                    0xabadcafe,  # 0x00
+                    0xdeadc0de,  # 0x04
+                    0xcafefeed,  # 0x08
+                    0x00000000,  # 0x0c
+                    0x00000000,  # 0x10
+                    0x00000000,  # 0x14
+                    0x00000000,  # 0x18
+                    0xbaadf00d,  # 0x1c
+                ],
+            ),
+            '64bit': dict(
+                pattern = [
+                    # address, data
+                    (0x00, 0x0ddf00dbadc0ffee),
+                    (0x05, 0xabadcafebaadf00d),
+                    (0x02, 0xcafefeedfeedface),
+                    (0x07, 0xdeadc0debaadbeef),
+                ],
+                expected = [
+                    # data, address
+                    0x0ddf00dbadc0ffee,  # 0x00
+                    0x0000000000000000,  # 0x08
+                    0xcafefeedfeedface,  # 0x10
+                    0x0000000000000000,  # 0x18
+                    0x0000000000000000,  # 0x20
+                    0xabadcafebaadf00d,  # 0x28
+                    0x0000000000000000,  # 0x30
+                    0xdeadc0debaadbeef,  # 0x38
+                ],
+            ),
+            '32bit_not_aligned': dict(
+                pattern = [
+                    # address, data
+                    (0x00, 0xabadcafe),
+                    (0x07, 0xbaadf00d),
+                    (0x02, 0xcafefeed),
+                    (0x01, 0xdeadc0de),
+                ],
+                expected = [
+                    # data, address
+                    0xabadcafe,  # 0x00
+                    0xdeadc0de,  # 0x04
+                    0xcafefeed,  # 0x08
+                    0x00000000,  # 0x0c
+                    0x00000000,  # 0x10
+                    0x00000000,  # 0x14
+                    0x00000000,  # 0x18
+                    0xbaadf00d,  # 0x1c
+                ],
+            ),
+            '32bit_duplicates': dict(
+                pattern = [
+                    # address, data
+                    (0x00, 0xabadcafe),
+                    (0x07, 0xbaadf00d),
+                    (0x00, 0xcafefeed),
+                    (0x07, 0xdeadc0de),
+                ],
+                expected = [
+                    # data, address
+                    0xcafefeed,  # 0x00
+                    0x00000000,  # 0x04
+                    0x00000000,  # 0x08
+                    0x00000000,  # 0x0c
+                    0x00000000,  # 0x10
+                    0x00000000,  # 0x14
+                    0x00000000,  # 0x18
+                    0xdeadc0de,  # 0x1c
+                ],
+            ),
+        }
+
     def test_generator(self):
         port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
 
@@ -116,64 +299,58 @@ class TestBIST(unittest.TestCase):
         ]
         return dut, generators
 
-    def test_bist_generator(self):
-        dut, generators = self.bist_generator_test(mem_depth=128, data_width=32, end=128 * 4,
-                                                   base=16, length=64)
-        run_simulation(dut, generators)
-
-        before = 16 // 4
-        mem_expected = [0] * before + list(range(64//4)) + [0] * (128 - 64//4 - before)
-        self.assertEqual(dut.mem.mem, mem_expected)
-
     def test_bist_generator_8bit(self):
-        expected = [0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x00]
-        dut, generators = self.bist_generator_test(mem_depth=len(expected), data_width=8,
-                                                   base=2, end=2 + 8, length=5)
+        data = self.bist_test_data['8bit']
+        dut, generators = self.bist_generator_test(
+            mem_depth=len(data['expected']), data_width=8,
+            base=data['base'], end=data['end'], length=data['length'])
         run_simulation(dut, generators)
-        self.assertEqual(dut.mem.mem, expected)
+        self.assertEqual(dut.mem.mem, data['expected'])
 
     def test_bist_generator_range_must_be_pow2(self):
-        # NOTE: in the current implementation (end - start) must be a power of 2,
-        #       but it would be better if this restriction didn't hold,
-        #       this test is here just to notice the change if it happens unintentionally
-        #       and may be removed if we start supporting arbitrary ranges
-        expected = [0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x00]
-        dut, generators = self.bist_generator_test(mem_depth=len(expected), data_width=8,
-                                                   base=2, end=2 + 6, length=5)
+        # NOTE:
+        # in the current implementation (end - start) must be a power of 2,
+        # but it would be better if this restriction didn't hold, this test
+        # is here just to notice the change if it happens unintentionally
+        # and may be removed if we start supporting arbitrary ranges
+        data = self.bist_test_data['8bit']
+        dut, generators = self.bist_generator_test(
+            mem_depth=len(data['expected']), data_width=8,
+            base=data['base'], end=data['end'] + 1, length=data['length'])
         run_simulation(dut, generators)
-        self.assertNotEqual(dut.mem.mem, expected)
+        self.assertNotEqual(dut.mem.mem, data['expected'])
+
+    def test_bist_generator_32bit(self):
+        data = self.bist_test_data['32bit']
+        dut, generators = self.bist_generator_test(
+            mem_depth=len(data['expected']), data_width=32,
+            base=data['base'], end=data['end'], length=data['length'])
+        run_simulation(dut, generators)
+        self.assertEqual(dut.mem.mem, data['expected'])
 
     def test_bist_generator_64bit(self):
-        expected = [
-            0x0000000000000000, # 0x00
-            0x0000000000000000, # 0x08
-            0x0000000000000000, # 0x10
-            0x0000000000000001, # 0x18
-            0x0000000000000002, # 0x20
-            0x0000000000000003, # 0x28
-            0x0000000000000004, # 0x30
-            0x0000000000000000, # 0x38
-        ]
-        dut, generators = self.bist_generator_test(mem_depth=len(expected), data_width=64,
-                                                   base=0x10, end=0x10 + 0x20, length=5 * 8)
+        data = self.bist_test_data['64bit']
+        dut, generators = self.bist_generator_test(
+            mem_depth=len(data['expected']), data_width=64,
+            base=data['base'], end=data['end'], length=data['length'])
         run_simulation(dut, generators)
-        self.assertEqual(dut.mem.mem, expected)
+        self.assertEqual(dut.mem.mem, data['expected'])
 
-    def test_bist_generator_address_masked(self):
-        expected = [
-            0x00000000, # 0x00
-            0x00000004, # 0x04
-            0x00000005, # 0x08
-            0x00000002, # 0x0c
-            0x00000003, # 0x10
-            0x00000000, # 0x14
-            0x00000000, # 0x18
-            0x00000000, # 0x1c
-        ]
-        dut, generators = self.bist_generator_test(mem_depth=len(expected), data_width=32,
-                                                   base=0x04, end=0x04 + 0x04, length=6 * 4)
-        run_simulation(dut, generators, vcd_name='/tmp/sim.vcd')
-        self.assertEqual(dut.mem.mem, expected)
+    def test_bist_generator_32bit_address_masked(self):
+        data = self.bist_test_data['32bit_masked']
+        dut, generators = self.bist_generator_test(
+            mem_depth=len(data['expected']), data_width=32,
+            base=data['base'], end=data['end'], length=data['length'])
+        run_simulation(dut, generators)
+        self.assertEqual(dut.mem.mem, data['expected'])
+
+    def test_bist_generator_32bit_long_sequential(self):
+        data = self.bist_test_data['32bit_long_sequential']
+        dut, generators = self.bist_generator_test(
+            mem_depth=len(data['expected']), data_width=32,
+            base=data['base'], end=data['end'], length=data['length'])
+        run_simulation(dut, generators)
+        self.assertEqual(dut.mem.mem, data['expected'])
 
     def test_bist_generator_address_masked_long(self):
         dut, generators = self.bist_generator_test(mem_depth=128, data_width=32,
@@ -242,109 +419,24 @@ class TestBIST(unittest.TestCase):
         self.assertEqual(dut.mem.mem, mem_expected)
 
     def test_pattern_generator_8bit(self):
-        pattern = [
-            # address, data
-            (0x00, 0xaa),
-            (0x05, 0xbb),
-            (0x02, 0xcc),
-            (0x07, 0xdd),
-        ]
-        expected = [
-            # data, address
-            0xaa,  # 0x00
-            0x00,  # 0x01
-            0xcc,  # 0x02
-            0x00,  # 0x03
-            0x00,  # 0x04
-            0xbb,  # 0x05
-            0x00,  # 0x06
-            0xdd,  # 0x07
-        ]
-        self.pattern_generator_test(pattern, expected, data_width=8, mem_depth=8)
+        data = self.pattern_test_data['8bit']
+        self.pattern_generator_test(data['pattern'], data['expected'], data_width=8, mem_depth=len(data['expected']))
 
     def test_pattern_generator_64bit(self):
-        pattern = [
-            # address, data
-            (0x00, 0x0ddf00dbadc0ffee),
-            (0x05, 0xabadcafebaadf00d),
-            (0x02, 0xcafefeedfeedface),
-            (0x07, 0xdeadc0debaadbeef),
-        ]
-        expected = [
-            # data, address
-            0x0ddf00dbadc0ffee,  # 0x00
-            0x0000000000000000,  # 0x08
-            0xcafefeedfeedface,  # 0x10
-            0x0000000000000000,  # 0x18
-            0x0000000000000000,  # 0x20
-            0xabadcafebaadf00d,  # 0x28
-            0x0000000000000000,  # 0x30
-            0xdeadc0debaadbeef,  # 0x38
-        ]
-        self.pattern_generator_test(pattern, expected, data_width=64, mem_depth=8)
+        data = self.pattern_test_data['64bit']
+        self.pattern_generator_test(data['pattern'], data['expected'], data_width=64, mem_depth=len(data['expected']))
 
-    def test_pattern_generator_aligned(self):
-        pattern = [
-            # address, data
-            (0x00, 0xabadcafe),
-            (0x07, 0xbaadf00d),
-            (0x02, 0xcafefeed),
-            (0x01, 0xdeadc0de),
-        ]
-        expected = [
-            # data, address
-            0xabadcafe,  # 0x00
-            0xdeadc0de,  # 0x04
-            0xcafefeed,  # 0x08
-            0x00000000,  # 0x0c
-            0x00000000,  # 0x10
-            0x00000000,  # 0x14
-            0x00000000,  # 0x18
-            0xbaadf00d,  # 0x1c
-        ]
-        self.pattern_generator_test(pattern, expected, data_width=32, mem_depth=8)
+    def test_pattern_generator_32bit(self):
+        data = self.pattern_test_data['32bit']
+        self.pattern_generator_test(data['pattern'], data['expected'], data_width=32, mem_depth=len(data['expected']))
 
     def test_pattern_generator_not_aligned(self):
-        pattern = [
-            # address, data
-            (0x00, 0xabadcafe),
-            (0x07, 0xbaadf00d),
-            (0x02, 0xcafefeed),
-            (0x01, 0xdeadc0de),
-        ]
-        expected = [
-            # data, address
-            0xabadcafe,  # 0x00
-            0xdeadc0de,  # 0x04
-            0xcafefeed,  # 0x08
-            0x00000000,  # 0x0c
-            0x00000000,  # 0x10
-            0x00000000,  # 0x14
-            0x00000000,  # 0x18
-            0xbaadf00d,  # 0x1c
-        ]
-        self.pattern_generator_test(pattern, expected, data_width=32, mem_depth=8)
+        data = self.pattern_test_data['32bit_not_aligned']
+        self.pattern_generator_test(data['pattern'], data['expected'], data_width=32, mem_depth=len(data['expected']))
 
-    def test_pattern_generator_overwriting(self):
-        pattern = [
-            # address, data
-            (0x00, 0xabadcafe),
-            (0x07, 0xbaadf00d),
-            (0x00, 0xcafefeed),
-            (0x07, 0xdeadc0de),
-        ]
-        expected = [
-            # data, address
-            0xcafefeed,  # 0x00
-            0x00000000,  # 0x04
-            0x00000000,  # 0x08
-            0x00000000,  # 0x0c
-            0x00000000,  # 0x10
-            0x00000000,  # 0x14
-            0x00000000,  # 0x18
-            0xdeadc0de,  # 0x1c
-        ]
-        self.pattern_generator_test(pattern, expected, data_width=32, mem_depth=8)
+    def test_pattern_generator_duplicates(self):
+        data = self.pattern_test_data['32bit_duplicates']
+        self.pattern_generator_test(data['pattern'], data['expected'], data_width=32, mem_depth=len(data['expected']))
 
     def test_pattern_generator_sequential(self):
         length = 64
@@ -371,6 +463,74 @@ class TestBIST(unittest.TestCase):
             expected[adr] = data
 
         self.pattern_generator_test(pattern, expected, data_width=32, mem_depth=128)
+
+    def bist_checker_test(self, memory, data_width, pattern=None, config_args=None, expected_errors=0):
+        assert pattern is None or config_args is None, '_LiteDRAMBISTChecker xor _LiteDRAMPatternChecker'
+
+        class DUT(Module):
+            def __init__(self):
+                self.read_port = LiteDRAMNativeReadPort(address_width=32, data_width=data_width)
+                if pattern is not None:
+                    self.submodules.checker = _LiteDRAMPatternChecker(self.read_port, init=pattern)
+                else:
+                    self.submodules.checker = _LiteDRAMBISTChecker(self.read_port)
+                self.mem = DRAMMemory(data_width, len(memory), init=memory)
+
+        def main_generator(dut):
+
+            yield from dut.reset()
+            if pattern is None:
+                yield from dut.configure(**config_args)
+            yield from dut.run()
+            yield
+
+        dut = DUT()
+        checker = GenCheckDriver(dut.checker)
+
+        generators = [
+            main_generator(checker),
+            dut.mem.read_handler(dut.read_port),
+        ]
+        run_simulation(dut, generators, vcd_name='/tmp/sim.vcd')
+        self.assertEqual(checker.errors, expected_errors)
+
+
+    def test_bist_checker_8bit(self):
+        data = self.bist_test_data['8bit']
+        memory = data.pop('expected')
+        self.bist_checker_test(memory, data_width=8, config_args=data)
+
+    def test_bist_checker_32bit(self):
+        data = self.bist_test_data['32bit']
+        memory = data.pop('expected')
+        self.bist_checker_test(memory, data_width=32, config_args=data)
+
+    def test_bist_checker_64bit(self):
+        data = self.bist_test_data['32bit']
+        memory = data.pop('expected')
+        self.bist_checker_test(memory, data_width=32, config_args=data)
+
+    def test_pattern_checker_8bit(self):
+        data = self.pattern_test_data['8bit']
+        self.bist_checker_test(memory=data['expected'], data_width=8, pattern=data['pattern'])
+
+    def test_pattern_checker_32bit(self):
+        data = self.pattern_test_data['32bit']
+        self.bist_checker_test(memory=data['expected'], data_width=32, pattern=data['pattern'])
+
+    def test_pattern_checker_64bit(self):
+        data = self.pattern_test_data['64bit']
+        self.bist_checker_test(memory=data['expected'], data_width=64, pattern=data['pattern'])
+
+    def test_pattern_checker_32bit_not_aligned(self):
+        data = self.pattern_test_data['32bit_not_aligned']
+        self.bist_checker_test(memory=data['expected'], data_width=32, pattern=data['pattern'])
+
+    def test_pattern_checker_32bit_duplicates(self):
+        data = self.pattern_test_data['32bit_duplicates']
+        num_duplicates = len(data['pattern']) - len(set(adr for adr, _ in data['pattern']))
+        self.bist_checker_test(memory=data['expected'], data_width=32, pattern=data['pattern'],
+                               expected_errors=num_duplicates)
 
     def test_bist(self):
         class DUT(Module):
