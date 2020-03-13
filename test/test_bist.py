@@ -29,12 +29,15 @@ class GenCheckDriver:
         yield self.module.reset.eq(0)
         yield
 
-    def run(self, base, length, end=None):
+    def configure(self, base, length, end=None):
+        # for non-pattern generators/checkers
         if end is None:
             end = base + 0x100000
         yield self.module.base.eq(base)
         yield self.module.end.eq(end)
         yield self.module.length.eq(length)
+
+    def run(self):
         yield self.module.run.eq(1)
         yield self.module.start.eq(1)
         yield
@@ -101,7 +104,8 @@ class TestBIST(unittest.TestCase):
                 yield from init_generator(dut)
 
             yield from generator.reset()
-            yield from generator.run(base, length, end=end)
+            yield from generator.configure(base, length, end=end)
+            yield from generator.run()
             yield
 
         dut = DUT()
@@ -176,25 +180,30 @@ class TestBIST(unittest.TestCase):
 
             # write
             yield from generator.reset()
-            yield from generator.run(16, 64)
+            yield from generator.configure(16, 64)
+            yield from generator.run()
 
             # read (no errors)
             yield from checker.reset()
-            yield from checker.run(16, 64)
+            yield from checker.configure(16, 64)
+            yield from checker.run()
             assert checker.errors == 0
 
             # corrupt memory (using generator)
             yield from generator.reset()
-            yield from generator.run(16 + 60, 64)
+            yield from generator.configure(16 + 60, 64)
+            yield from generator.run()
 
             # read (4 errors)
             yield from checker.reset()
-            yield from checker.run(16, 64)
+            yield from checker.configure(16, 64)
+            yield from checker.run()
             assert checker.errors != 0
 
             # read (no errors)
             yield from checker.reset()
-            yield from checker.run(16 + 60, 64)
+            yield from checker.configure(16 + 60, 64)
+            yield from checker.run()
             assert checker.errors == 0
 
         # dut
