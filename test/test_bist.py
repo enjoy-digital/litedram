@@ -53,6 +53,38 @@ class GenCheckDriver:
             self.errors = (yield self.module.errors)
 
 
+class GenCheckCSRDriver:
+    def __init__(self, module):
+        self.module = module
+
+    def reset(self):
+        yield from self.module.reset.write(1)
+        yield from self.module.reset.write(0)
+
+    def configure(self, base, length, end=None, random_addr=None, random_data=None):
+        # for non-pattern generators/checkers
+        if end is None:
+            end = base + 0x100000
+        yield from self.module.base.write(base)
+        yield from self.module.end.write(end)
+        yield from self.module.length.write(length)
+        if random_addr is not None:
+            yield from self.module.random.addr.write(random_addr)
+        if random_data is not None:
+            yield from self.module.random.data.write(random_data)
+
+    def run(self):
+        yield from self.module.run.write(1)
+        yield from self.module.start.write(1)
+        yield
+        yield from self.module.start.write(0)
+        yield
+        while((yield from self.module.done.read()) == 0):
+            yield
+        if hasattr(self.module, "errors"):
+            self.errors = (yield from self.module.errors.read())
+
+
 class TestBIST(unittest.TestCase):
     def setUp(self):
         # define common test data used for both generator and checker tests
@@ -448,7 +480,39 @@ class TestBIST(unittest.TestCase):
         dut, checker = self.checker_test(memory=data['expected'], data_width=32, pattern=data['pattern'], check_errors=False)
         self.assertEqual(checker.errors, num_duplicates)
 
-    def test_bist(self):
+    def bist_test(self, generator, checker, mem):
+        # write
+        yield from generator.reset()
+        yield from generator.configure(16, 64)
+        yield from generator.run()
+
+        # read (no errors)
+        yield from checker.reset()
+        yield from checker.configure(16, 64)
+        yield from checker.run()
+        self.assertEqual(checker.errors, 0)
+
+        # corrupt memory (using generator)
+        yield from generator.reset()
+        yield from generator.configure(16 + 48, 64)
+        yield from generator.run()
+
+        # read (errors)
+        yield from checker.reset()
+        yield from checker.configure(16, 64)
+        yield from checker.run()
+        # errors for words:
+        # from (16 + 48) / 4 = 16  (corrupting generator start)
+        # to   (16 + 64) / 4 = 20  (first generator end)
+        self.assertEqual(checker.errors, 4)
+
+        # read (no errors)
+        yield from checker.reset()
+        yield from checker.configure(16 + 48, 64)
+        yield from checker.run()
+        self.assertEqual(checker.errors, 0)
+
+    def test_bist_base(self):
         class DUT(Module):
             def __init__(self):
                 self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
@@ -459,38 +523,11 @@ class TestBIST(unittest.TestCase):
         def main_generator(dut, mem):
             generator = GenCheckDriver(dut.generator)
             checker = GenCheckDriver(dut.checker)
-
-            # write
-            yield from generator.reset()
-            yield from generator.configure(16, 64)
-            yield from generator.run()
-
-            # read (no errors)
-            yield from checker.reset()
-            yield from checker.configure(16, 64)
-            yield from checker.run()
-            assert checker.errors == 0
-
-            # corrupt memory (using generator)
-            yield from generator.reset()
-            yield from generator.configure(16 + 60, 64)
-            yield from generator.run()
-
-            # read (4 errors)
-            yield from checker.reset()
-            yield from checker.configure(16, 64)
-            yield from checker.run()
-            assert checker.errors != 0
-
-            # read (no errors)
-            yield from checker.reset()
-            yield from checker.configure(16 + 60, 64)
-            yield from checker.run()
-            assert checker.errors == 0
+            yield from self.bist_test(generator, checker, mem)
 
         # dut
         dut = DUT()
-        mem = DRAMMemory(32, 128)
+        mem = DRAMMemory(32, 48)
 
         # simulation
         generators = [
@@ -499,3 +536,60 @@ class TestBIST(unittest.TestCase):
             mem.read_handler(dut.read_port)
          ]
         run_simulation(dut, generators)
+
+    def test_bist_csr(self):
+        class DUT(Module):
+            def __init__(self):
+                self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
+                self.read_port = LiteDRAMNativeReadPort(address_width=32, data_width=32)
+                self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
+                self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
+
+        def main_generator(dut, mem):
+            generator = GenCheckCSRDriver(dut.generator)
+            checker = GenCheckCSRDriver(dut.checker)
+            yield from self.bist_test(generator, checker, mem)
+
+        # dut
+        dut = DUT()
+        mem = DRAMMemory(32, 48)
+
+        # simulation
+        generators = [
+            main_generator(dut, mem),
+            mem.write_handler(dut.write_port),
+            mem.read_handler(dut.read_port)
+         ]
+        run_simulation(dut, generators)
+
+    def test_bist_csr_cdc(self):
+        class DUT(Module):
+            def __init__(self):
+                self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32, clock_domain='async')
+                self.read_port = LiteDRAMNativeReadPort(address_width=32, data_width=32, clock_domain='async')
+                self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
+                self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
+
+        def main_generator(dut, mem):
+            generator = GenCheckCSRDriver(dut.generator)
+            checker = GenCheckCSRDriver(dut.checker)
+            yield from self.bist_test(generator, checker, mem)
+
+        # dut
+        dut = DUT()
+        mem = DRAMMemory(32, 48)
+
+        generators = {
+            'sys': [
+                main_generator(dut, mem),
+            ],
+            'async': [
+                mem.write_handler(dut.write_port),
+                mem.read_handler(dut.read_port)
+            ]
+        }
+        clocks = {
+            'sys': 10,
+            'async': (7, 3),
+        }
+        run_simulation(dut, generators, clocks)
