@@ -542,6 +542,8 @@ class LiteDRAMCore(SoCSDRAM):
 
 def main():
     parser = argparse.ArgumentParser(description="LiteDRAM standalone core generator")
+    builder_args(parser)
+    parser.set_defaults(output_dir="build")
     parser.add_argument("config", help="YAML config file")
     args = parser.parse_args()
     core_config = yaml.load(open(args.config).read(), Loader=yaml.Loader)
@@ -567,8 +569,11 @@ def main():
     else:
         raise ValueError("Unsupported SDRAM PHY: {}".format(core_config["sdram_phy"]))
 
+    builder_arguments = builder_argdict(args)
+    builder_arguments["compile_gateware"] = False
+
     soc      = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000, integrated_sram_size=0x1000)
-    builder  = Builder(soc, output_dir="build", compile_gateware=False)
+    builder  = Builder(soc, **builder_arguments)
     vns      = builder.build(build_name="litedram_core", regular_comb=False)
 
     # Prepare core (could be improved)
@@ -586,8 +591,11 @@ def main():
 
     if soc.cpu_type is not None:
         init_filename = "mem.init"
-        os.system("mv build/gateware/{} build/gateware/litedram_core.init".format(init_filename))
-        replace_in_file("build/gateware/litedram_core.v", init_filename, "litedram_core.init")
+        os.system("mv {} {}".format(
+            os.path.join(builder.gateware_dir, init_filename),
+            os.path.join(builder.gateware_dir, "litedram_core.init"),
+        ))
+        replace_in_file(os.path.join(builder.gateware_dir, "litedram_core.v"), init_filename, "litedram_core.init")
 
 if __name__ == "__main__":
     main()
