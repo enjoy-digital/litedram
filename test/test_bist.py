@@ -95,8 +95,7 @@ class DMAWriterDriver:
             yield self.dma.sink.data.eq(data)
             while not (yield self.dma.sink.ready):
                 yield
-            while (yield self.dma.sink.ready):
-                yield
+            yield
         yield self.dma.sink.valid.eq(0)
 
     @staticmethod
@@ -104,8 +103,7 @@ class DMAWriterDriver:
         for _ in range(n):
             while not (yield port.wdata.ready):
                 yield
-            while (yield port.wdata.ready):
-                yield
+            yield
 
 
 class DMAReaderDriver:
@@ -130,10 +128,8 @@ class DMAReaderDriver:
     def read_handler(self):
         yield self.dma.source.ready.eq(1)
         while True:
-            while not (yield self.dma.source.valid):
-                yield
-            data = (yield self.dma.source.data)
-            self.data.append(data)
+            if (yield self.dma.source.valid):
+                self.data.append((yield self.dma.source.data))
             yield
 
 
