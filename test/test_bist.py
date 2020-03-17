@@ -3,7 +3,6 @@
 # License: BSD
 
 import unittest
-import random
 
 from migen import *
 
@@ -89,14 +88,14 @@ class TestBIST(unittest.TestCase):
     def setUp(self):
         # define common test data used for both generator and checker tests
         self.bist_test_data = {
-            '8bit': dict(
+            "8bit": dict(
                 base = 2,
                 end = 2 + 8,  # (end - base) must be pow of 2
                 length = 5,
                 #                       2     3     4     5     6     7=2+5
                 expected = [0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x00],
             ),
-            '32bit': dict(
+            "32bit": dict(
                 base = 0x04,
                 end = 0x04 + 8,
                 length = 5 * 4,
@@ -111,7 +110,7 @@ class TestBIST(unittest.TestCase):
                     0x00000000, # 0x1c
                 ],
             ),
-            '64bit': dict(
+            "64bit": dict(
                 base = 0x10,
                 end = 0x10 + 8,
                 length = 5 * 8,
@@ -126,7 +125,7 @@ class TestBIST(unittest.TestCase):
                     0x0000000000000000, # 0x38
                 ],
             ),
-            '32bit_masked': dict(
+            "32bit_masked": dict(
                 base = 0x04,
                 end = 0x04 + 0x04,  # TODO: fix address masking to be consistent
                 length = 6 * 4,
@@ -142,17 +141,17 @@ class TestBIST(unittest.TestCase):
                 ],
             ),
         }
-        self.bist_test_data['32bit_long_sequential'] = dict(
+        self.bist_test_data["32bit_long_sequential"] = dict(
             base = 16,
             end = 16 + 128,
             length = 64,
             expected = [0x00000000] * 128
         )
-        expected = self.bist_test_data['32bit_long_sequential']['expected']
+        expected = self.bist_test_data["32bit_long_sequential"]["expected"]
         expected[16//4:(16 + 64)//4] = list(range(64//4))
 
         self.pattern_test_data = {
-            '8bit': dict(
+            "8bit": dict(
                 pattern = [
                     # address, data
                     (0x00, 0xaa),
@@ -172,7 +171,7 @@ class TestBIST(unittest.TestCase):
                     0xdd,  # 0x07
                 ],
             ),
-            '32bit': dict(
+            "32bit": dict(
                 pattern = [
                     # address, data
                     (0x00, 0xabadcafe),
@@ -192,7 +191,7 @@ class TestBIST(unittest.TestCase):
                     0xbaadf00d,  # 0x1c
                 ],
             ),
-            '64bit': dict(
+            "64bit": dict(
                 pattern = [
                     # address, data
                     (0x00, 0x0ddf00dbadc0ffee),
@@ -212,7 +211,7 @@ class TestBIST(unittest.TestCase):
                     0xdeadc0debaadbeef,  # 0x38
                 ],
             ),
-            '32bit_not_aligned': dict(
+            "32bit_not_aligned": dict(
                 pattern = [
                     # address, data
                     (0x00, 0xabadcafe),
@@ -232,7 +231,7 @@ class TestBIST(unittest.TestCase):
                     0xbaadf00d,  # 0x1c
                 ],
             ),
-            '32bit_duplicates': dict(
+            "32bit_duplicates": dict(
                 pattern = [
                     # address, data
                     (0x00, 0xabadcafe),
@@ -252,7 +251,7 @@ class TestBIST(unittest.TestCase):
                     0xdeadc0de,  # 0x1c
                 ],
             ),
-            '32bit_sequential': dict(
+            "32bit_sequential": dict(
                 pattern = [
                     # address, data
                     (0x02, 0xabadcafe),
@@ -275,8 +274,6 @@ class TestBIST(unittest.TestCase):
         }
 
     def test_generator(self):
-        port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
-
         def main_generator(dut):
             self.errors = 0
 
@@ -304,13 +301,13 @@ class TestBIST(unittest.TestCase):
         # dut
         dut = Generator(23, n_state=23, taps=[17, 22])
 
-         # simulation
+        # simulation
         generators = [main_generator(dut)]
         run_simulation(dut, generators)
         self.assertEqual(self.errors, 0)
 
     def generator_test(self, mem_expected, data_width, pattern=None, config_args=None, check_mem=True):
-        assert pattern is None or config_args is None, '_LiteDRAMBISTGenerator xor _LiteDRAMPatternGenerator'
+        assert pattern is None or config_args is None, "_LiteDRAMBISTGenerator xor _LiteDRAMPatternGenerator"
 
         class DUT(Module):
             def __init__(self):
@@ -339,8 +336,8 @@ class TestBIST(unittest.TestCase):
         return dut
 
     def test_bist_generator_8bit(self):
-        data = self.bist_test_data['8bit']
-        self.generator_test(data.pop('expected'), data_width=8, config_args=data)
+        data = self.bist_test_data["8bit"]
+        self.generator_test(data.pop("expected"), data_width=8, config_args=data)
 
     def test_bist_generator_range_must_be_pow2(self):
         # NOTE:
@@ -348,73 +345,73 @@ class TestBIST(unittest.TestCase):
         # but it would be better if this restriction didn't hold, this test
         # is here just to notice the change if it happens unintentionally
         # and may be removed if we start supporting arbitrary ranges
-        data = self.bist_test_data['8bit']
-        data['end'] += 1
-        reference = data.pop('expected')
+        data = self.bist_test_data["8bit"]
+        data["end"] += 1
+        reference = data.pop("expected")
         dut = self.generator_test(reference, data_width=8, config_args=data, check_mem=False)
         self.assertNotEqual(dut.mem.mem, reference)
 
     def test_bist_generator_32bit(self):
-        data = self.bist_test_data['32bit']
-        self.generator_test(data.pop('expected'), data_width=32, config_args=data)
+        data = self.bist_test_data["32bit"]
+        self.generator_test(data.pop("expected"), data_width=32, config_args=data)
 
     def test_bist_generator_64bit(self):
-        data = self.bist_test_data['64bit']
-        self.generator_test(data.pop('expected'), data_width=64, config_args=data)
+        data = self.bist_test_data["64bit"]
+        self.generator_test(data.pop("expected"), data_width=64, config_args=data)
 
     def test_bist_generator_32bit_address_masked(self):
-        data = self.bist_test_data['32bit_masked']
-        self.generator_test(data.pop('expected'), data_width=32, config_args=data)
+        data = self.bist_test_data["32bit_masked"]
+        self.generator_test(data.pop("expected"), data_width=32, config_args=data)
 
     def test_bist_generator_32bit_long_sequential(self):
-        data = self.bist_test_data['32bit_long_sequential']
-        self.generator_test(data.pop('expected'), data_width=32, config_args=data)
+        data = self.bist_test_data["32bit_long_sequential"]
+        self.generator_test(data.pop("expected"), data_width=32, config_args=data)
 
     def test_bist_generator_random_data(self):
-        data = self.bist_test_data['32bit']
-        data['random_data'] = True
-        dut = self.generator_test(data.pop('expected'), data_width=32, config_args=data, check_mem=False)
+        data = self.bist_test_data["32bit"]
+        data["random_data"] = True
+        dut = self.generator_test(data.pop("expected"), data_width=32, config_args=data, check_mem=False)
         # only check that there are no duplicates and that data is not a simple sequence
         mem = [val for val in dut.mem.mem if val != 0]
-        self.assertEqual(len(set(mem)), len(mem), msg='Duplicate values in memory')
-        self.assertNotEqual(mem, list(range(len(mem))), msg='Values are a sequence')
+        self.assertEqual(len(set(mem)), len(mem), msg="Duplicate values in memory")
+        self.assertNotEqual(mem, list(range(len(mem))), msg="Values are a sequence")
 
     def test_bist_generator_random_addr(self):  # write whole memory and check if there are no repetitions?
-        data = self.bist_test_data['32bit']
-        data['random_addr'] = True
-        dut = self.generator_test(data.pop('expected'), data_width=32, config_args=data, check_mem=False)
+        data = self.bist_test_data["32bit"]
+        data["random_addr"] = True
+        dut = self.generator_test(data.pop("expected"), data_width=32, config_args=data, check_mem=False)
         # with random address and address wrapping (generator.end) we _can_ have duplicates
         # we can at least check that the values written are not an ordered sequence
         mem = [val for val in dut.mem.mem if val != 0]
-        self.assertNotEqual(mem, list(range(len(mem))), msg='Values are a sequence')
-        self.assertLess(max(mem), data['length'], msg='Too big value found')
+        self.assertNotEqual(mem, list(range(len(mem))), msg="Values are a sequence")
+        self.assertLess(max(mem), data["length"], msg="Too big value found")
 
     def test_pattern_generator_8bit(self):
-        data = self.pattern_test_data['8bit']
-        self.generator_test(data['expected'], data_width=8, pattern=data['pattern'])
+        data = self.pattern_test_data["8bit"]
+        self.generator_test(data["expected"], data_width=8, pattern=data["pattern"])
 
     def test_pattern_generator_32bit(self):
-        data = self.pattern_test_data['32bit']
-        self.generator_test(data['expected'], data_width=32, pattern=data['pattern'])
+        data = self.pattern_test_data["32bit"]
+        self.generator_test(data["expected"], data_width=32, pattern=data["pattern"])
 
     def test_pattern_generator_64bit(self):
-        data = self.pattern_test_data['64bit']
-        self.generator_test(data['expected'], data_width=64, pattern=data['pattern'])
+        data = self.pattern_test_data["64bit"]
+        self.generator_test(data["expected"], data_width=64, pattern=data["pattern"])
 
     def test_pattern_generator_32bit_not_aligned(self):
-        data = self.pattern_test_data['32bit_not_aligned']
-        self.generator_test(data['expected'], data_width=32, pattern=data['pattern'])
+        data = self.pattern_test_data["32bit_not_aligned"]
+        self.generator_test(data["expected"], data_width=32, pattern=data["pattern"])
 
     def test_pattern_generator_32bit_duplicates(self):
-        data = self.pattern_test_data['32bit_duplicates']
-        self.generator_test(data['expected'], data_width=32, pattern=data['pattern'])
+        data = self.pattern_test_data["32bit_duplicates"]
+        self.generator_test(data["expected"], data_width=32, pattern=data["pattern"])
 
     def test_pattern_generator_32bit_sequential(self):
-        data = self.pattern_test_data['32bit_sequential']
-        self.generator_test(data['expected'], data_width=32, pattern=data['pattern'])
+        data = self.pattern_test_data["32bit_sequential"]
+        self.generator_test(data["expected"], data_width=32, pattern=data["pattern"])
 
     def checker_test(self, memory, data_width, pattern=None, config_args=None, check_errors=False):
-        assert pattern is None or config_args is None, '_LiteDRAMBISTChecker xor _LiteDRAMPatternChecker'
+        assert pattern is None or config_args is None, "_LiteDRAMBISTChecker xor _LiteDRAMPatternChecker"
 
         class DUT(Module):
             def __init__(self):
@@ -444,40 +441,41 @@ class TestBIST(unittest.TestCase):
         return dut, checker
 
     def test_bist_checker_8bit(self):
-        data = self.bist_test_data['8bit']
-        memory = data.pop('expected')
+        data = self.bist_test_data["8bit"]
+        memory = data.pop("expected")
         self.checker_test(memory, data_width=8, config_args=data)
 
     def test_bist_checker_32bit(self):
-        data = self.bist_test_data['32bit']
-        memory = data.pop('expected')
+        data = self.bist_test_data["32bit"]
+        memory = data.pop("expected")
         self.checker_test(memory, data_width=32, config_args=data)
 
     def test_bist_checker_64bit(self):
-        data = self.bist_test_data['32bit']
-        memory = data.pop('expected')
+        data = self.bist_test_data["32bit"]
+        memory = data.pop("expected")
         self.checker_test(memory, data_width=32, config_args=data)
 
     def test_pattern_checker_8bit(self):
-        data = self.pattern_test_data['8bit']
-        self.checker_test(memory=data['expected'], data_width=8, pattern=data['pattern'])
+        data = self.pattern_test_data["8bit"]
+        self.checker_test(memory=data["expected"], data_width=8, pattern=data["pattern"])
 
     def test_pattern_checker_32bit(self):
-        data = self.pattern_test_data['32bit']
-        self.checker_test(memory=data['expected'], data_width=32, pattern=data['pattern'])
+        data = self.pattern_test_data["32bit"]
+        self.checker_test(memory=data["expected"], data_width=32, pattern=data["pattern"])
 
     def test_pattern_checker_64bit(self):
-        data = self.pattern_test_data['64bit']
-        self.checker_test(memory=data['expected'], data_width=64, pattern=data['pattern'])
+        data = self.pattern_test_data["64bit"]
+        self.checker_test(memory=data["expected"], data_width=64, pattern=data["pattern"])
 
     def test_pattern_checker_32bit_not_aligned(self):
-        data = self.pattern_test_data['32bit_not_aligned']
-        self.checker_test(memory=data['expected'], data_width=32, pattern=data['pattern'])
+        data = self.pattern_test_data["32bit_not_aligned"]
+        self.checker_test(memory=data["expected"], data_width=32, pattern=data["pattern"])
 
     def test_pattern_checker_32bit_duplicates(self):
-        data = self.pattern_test_data['32bit_duplicates']
-        num_duplicates = len(data['pattern']) - len(set(adr for adr, _ in data['pattern']))
-        dut, checker = self.checker_test(memory=data['expected'], data_width=32, pattern=data['pattern'], check_errors=False)
+        data = self.pattern_test_data["32bit_duplicates"]
+        num_duplicates = len(data["pattern"]) - len(set(adr for adr, _ in data["pattern"]))
+        dut, checker = self.checker_test(
+            memory=data["expected"], data_width=32, pattern=data["pattern"], check_errors=False)
         self.assertEqual(checker.errors, num_duplicates)
 
     def bist_test(self, generator, checker, mem):
@@ -534,7 +532,7 @@ class TestBIST(unittest.TestCase):
             main_generator(dut, mem),
             mem.write_handler(dut.write_port),
             mem.read_handler(dut.read_port)
-         ]
+        ]
         run_simulation(dut, generators)
 
     def test_bist_csr(self):
@@ -559,14 +557,14 @@ class TestBIST(unittest.TestCase):
             main_generator(dut, mem),
             mem.write_handler(dut.write_port),
             mem.read_handler(dut.read_port)
-         ]
+        ]
         run_simulation(dut, generators)
 
     def test_bist_csr_cdc(self):
         class DUT(Module):
             def __init__(self):
-                self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32, clock_domain='async')
-                self.read_port = LiteDRAMNativeReadPort(address_width=32, data_width=32, clock_domain='async')
+                self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32, clock_domain="async")
+                self.read_port = LiteDRAMNativeReadPort(address_width=32, data_width=32, clock_domain="async")
                 self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
                 self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
 
@@ -580,16 +578,16 @@ class TestBIST(unittest.TestCase):
         mem = DRAMMemory(32, 48)
 
         generators = {
-            'sys': [
+            "sys": [
                 main_generator(dut, mem),
             ],
-            'async': [
+            "async": [
                 mem.write_handler(dut.write_port),
                 mem.read_handler(dut.read_port)
             ]
         }
         clocks = {
-            'sys': 10,
-            'async': (7, 3),
+            "sys": 10,
+            "async": (7, 3),
         }
         run_simulation(dut, generators, clocks)
