@@ -1,12 +1,13 @@
 # This file is Copyright (c) 2016-2018 Florent Kermarrec <florent@enjoy-digital.fr>
 # This file is Copyright (c) 2016 Tim 'mithro' Ansell <mithro@mithis.com>
+# This file is Copyright (c) 2020 Antmicro <www.antmicro.com>
 # License: BSD
 
 import unittest
 
 from migen import *
 
-from litex.soc.interconnect.stream import *
+from litex.gen.sim import *
 
 from litedram.common import *
 from litedram.frontend.bist import *
@@ -14,8 +15,6 @@ from litedram.frontend.bist import _LiteDRAMBISTGenerator, _LiteDRAMBISTChecker,
     _LiteDRAMPatternGenerator, _LiteDRAMPatternChecker
 
 from test.common import *
-
-from litex.gen.sim import *
 
 
 class GenCheckDriver:
@@ -84,248 +83,7 @@ class GenCheckCSRDriver:
             self.errors = (yield from self.module.errors.read())
 
 
-class DMAWriterDriver:
-    def __init__(self, dma):
-        self.dma = dma
-
-    def write(self, pattern):
-        yield self.dma.sink.valid.eq(1)
-        for adr, data in pattern:
-            yield self.dma.sink.address.eq(adr)
-            yield self.dma.sink.data.eq(data)
-            while not (yield self.dma.sink.ready):
-                yield
-            yield
-        yield self.dma.sink.valid.eq(0)
-
-    @staticmethod
-    def wait_complete(port, n):
-        for _ in range(n):
-            while not (yield port.wdata.ready):
-                yield
-            yield
-
-
-class DMAReaderDriver:
-    def __init__(self, dma):
-        self.dma = dma
-        self.data = []
-
-    def read(self, address_list):
-        n_last = len(self.data)
-        yield self.dma.sink.valid.eq(1)
-        for adr in address_list:
-            yield self.dma.sink.address.eq(adr)
-            while not (yield self.dma.sink.ready):
-                yield
-            while (yield self.dma.sink.ready):
-                yield
-        yield self.dma.sink.valid.eq(0)
-        while len(self.data) < n_last + len(address_list):
-            yield
-
-    @passive
-    def read_handler(self):
-        yield self.dma.source.ready.eq(1)
-        while True:
-            if (yield self.dma.source.valid):
-                self.data.append((yield self.dma.source.data))
-            yield
-
-
-class TestBIST(unittest.TestCase):
-    def setUp(self):
-        # define common test data used for both generator and checker tests
-        self.bist_test_data = {
-            "8bit": dict(
-                base=2,
-                end=2 + 8,  # (end - base) must be pow of 2
-                length=5,
-                #                       2     3     4     5     6     7=2+5
-                expected=[0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x00],
-            ),
-            "32bit": dict(
-                base=0x04,
-                end=0x04 + 8,
-                length=5 * 4,
-                expected=[
-                    0x00000000,  # 0x00
-                    0x00000000,  # 0x04
-                    0x00000001,  # 0x08
-                    0x00000002,  # 0x0c
-                    0x00000003,  # 0x10
-                    0x00000004,  # 0x14
-                    0x00000000,  # 0x18
-                    0x00000000,  # 0x1c
-                ],
-            ),
-            "64bit": dict(
-                base=0x10,
-                end=0x10 + 8,
-                length=5 * 8,
-                expected=[
-                    0x0000000000000000,  # 0x00
-                    0x0000000000000000,  # 0x08
-                    0x0000000000000000,  # 0x10
-                    0x0000000000000001,  # 0x18
-                    0x0000000000000002,  # 0x20
-                    0x0000000000000003,  # 0x28
-                    0x0000000000000004,  # 0x30
-                    0x0000000000000000,  # 0x38
-                ],
-            ),
-            "32bit_masked": dict(
-                base=0x04,
-                end=0x04 + 0x04,  # TODO: fix address masking to be consistent
-                length=6 * 4,
-                expected=[  # due to masking
-                    0x00000000,  # 0x00
-                    0x00000004,  # 0x04
-                    0x00000005,  # 0x08
-                    0x00000002,  # 0x0c
-                    0x00000003,  # 0x10
-                    0x00000000,  # 0x14
-                    0x00000000,  # 0x18
-                    0x00000000,  # 0x1c
-                ],
-            ),
-        }
-        self.bist_test_data["32bit_long_sequential"] = dict(
-            base=16,
-            end=16 + 128,
-            length=64,
-            expected=[0x00000000] * 128
-        )
-        expected = self.bist_test_data["32bit_long_sequential"]["expected"]
-        expected[16//4:(16 + 64)//4] = list(range(64//4))
-
-        self.pattern_test_data = {
-            "8bit": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0xaa),
-                    (0x05, 0xbb),
-                    (0x02, 0xcc),
-                    (0x07, 0xdd),
-                ],
-                expected=[
-                    # data, address
-                    0xaa,  # 0x00
-                    0x00,  # 0x01
-                    0xcc,  # 0x02
-                    0x00,  # 0x03
-                    0x00,  # 0x04
-                    0xbb,  # 0x05
-                    0x00,  # 0x06
-                    0xdd,  # 0x07
-                ],
-            ),
-            "32bit": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0xabadcafe),
-                    (0x07, 0xbaadf00d),
-                    (0x02, 0xcafefeed),
-                    (0x01, 0xdeadc0de),
-                ],
-                expected=[
-                    # data, address
-                    0xabadcafe,  # 0x00
-                    0xdeadc0de,  # 0x04
-                    0xcafefeed,  # 0x08
-                    0x00000000,  # 0x0c
-                    0x00000000,  # 0x10
-                    0x00000000,  # 0x14
-                    0x00000000,  # 0x18
-                    0xbaadf00d,  # 0x1c
-                ],
-            ),
-            "64bit": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0x0ddf00dbadc0ffee),
-                    (0x05, 0xabadcafebaadf00d),
-                    (0x02, 0xcafefeedfeedface),
-                    (0x07, 0xdeadc0debaadbeef),
-                ],
-                expected=[
-                    # data, address
-                    0x0ddf00dbadc0ffee,  # 0x00
-                    0x0000000000000000,  # 0x08
-                    0xcafefeedfeedface,  # 0x10
-                    0x0000000000000000,  # 0x18
-                    0x0000000000000000,  # 0x20
-                    0xabadcafebaadf00d,  # 0x28
-                    0x0000000000000000,  # 0x30
-                    0xdeadc0debaadbeef,  # 0x38
-                ],
-            ),
-            "32bit_not_aligned": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0xabadcafe),
-                    (0x07, 0xbaadf00d),
-                    (0x02, 0xcafefeed),
-                    (0x01, 0xdeadc0de),
-                ],
-                expected=[
-                    # data, address
-                    0xabadcafe,  # 0x00
-                    0xdeadc0de,  # 0x04
-                    0xcafefeed,  # 0x08
-                    0x00000000,  # 0x0c
-                    0x00000000,  # 0x10
-                    0x00000000,  # 0x14
-                    0x00000000,  # 0x18
-                    0xbaadf00d,  # 0x1c
-                ],
-            ),
-            "32bit_duplicates": dict(
-                pattern=[
-                    # address, data
-                    (0x00, 0xabadcafe),
-                    (0x07, 0xbaadf00d),
-                    (0x00, 0xcafefeed),
-                    (0x07, 0xdeadc0de),
-                ],
-                expected=[
-                    # data, address
-                    0xcafefeed,  # 0x00
-                    0x00000000,  # 0x04
-                    0x00000000,  # 0x08
-                    0x00000000,  # 0x0c
-                    0x00000000,  # 0x10
-                    0x00000000,  # 0x14
-                    0x00000000,  # 0x18
-                    0xdeadc0de,  # 0x1c
-                ],
-            ),
-            "32bit_sequential": dict(
-                pattern=[
-                    # address, data
-                    (0x02, 0xabadcafe),
-                    (0x03, 0xbaadf00d),
-                    (0x04, 0xcafefeed),
-                    (0x05, 0xdeadc0de),
-                ],
-                expected=[
-                    # data, address
-                    0x00000000,  # 0x00
-                    0x00000000,  # 0x04
-                    0xabadcafe,  # 0x08
-                    0xbaadf00d,  # 0x0c
-                    0xcafefeed,  # 0x10
-                    0xdeadc0de,  # 0x14
-                    0x00000000,  # 0x18
-                    0x00000000,  # 0x1c
-                ],
-            ),
-            "32bit_long_sequential": dict(pattern=[], expected=[0] * 64),
-        }
-        for i in range(32):
-            data = self.pattern_test_data["32bit_long_sequential"]
-            data["pattern"].append((i, 64 + i))
-            data["expected"][i] = 64 + i
+class TestBIST(MemoryTestDataMixin, unittest.TestCase):
 
     # Generator ------------------------------------------------------------------------------------
 
@@ -631,135 +389,36 @@ class TestBIST(unittest.TestCase):
         ]
         run_simulation(dut, generators)
 
-    def test_bist_csr_cdc(self):
-        class DUT(Module):
-            def __init__(self):
-                port_kwargs = dict(address_width=32, data_width=32, clock_domain="async")
-                self.write_port = LiteDRAMNativeWritePort(**port_kwargs)
-                self.read_port = LiteDRAMNativeReadPort(**port_kwargs)
-                self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
-                self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
-
-        def main_generator(dut, mem):
-            generator = GenCheckCSRDriver(dut.generator)
-            checker = GenCheckCSRDriver(dut.checker)
-            yield from self.bist_test(generator, checker, mem)
-
-        # dut
-        dut = DUT()
-        mem = DRAMMemory(32, 48)
-
-        generators = {
-            "sys": [
-                main_generator(dut, mem),
-            ],
-            "async": [
-                mem.write_handler(dut.write_port),
-                mem.read_handler(dut.read_port)
-            ]
-        }
-        clocks = {
-            "sys": 10,
-            "async": (7, 3),
-        }
-        run_simulation(dut, generators, clocks)
-
-    # LiteDRAMDMAWriter ----------------------------------------------------------------------------
-
-    def dma_writer_test(self, pattern, mem_expected, data_width, **kwargs):
-        class DUT(Module):
-            def __init__(self):
-                self.port = LiteDRAMNativeWritePort(address_width=32, data_width=data_width)
-                self.submodules.dma = LiteDRAMDMAWriter(self.port, **kwargs)
-
-        dut = DUT()
-        driver = DMAWriterDriver(dut.dma)
-        mem = DRAMMemory(data_width, len(mem_expected))
-
-        generators = [
-            driver.write(pattern),
-            driver.wait_complete(dut.port, len(pattern)),
-            mem.write_handler(dut.port),
-        ]
-        run_simulation(dut, generators)
-        self.assertEqual(mem.mem, mem_expected)
-
-    def test_dma_writer_single(self):
-        pattern = [(0x04, 0xdeadc0de)]
-        mem_expected = [0] * 32
-        mem_expected[0x04] = 0xdeadc0de
-        self.dma_writer_test(pattern, mem_expected, data_width=32)
-
-    def test_dma_writer_multiple(self):
-        data = self.pattern_test_data["32bit"]
-        self.dma_writer_test(data["pattern"], data["expected"], data_width=32)
-
-    def test_dma_writer_sequential(self):
-        data = self.pattern_test_data["32bit_sequential"]
-        self.dma_writer_test(data["pattern"], data["expected"], data_width=32)
-
-    def test_dma_writer_long_sequential(self):
-        data = self.pattern_test_data["32bit_long_sequential"]
-        self.dma_writer_test(data["pattern"], data["expected"], data_width=32)
-
-    def test_dma_writer_no_fifo(self):
-        data = self.pattern_test_data["32bit_long_sequential"]
-        self.dma_writer_test(data["pattern"], data["expected"], data_width=32,
-                             fifo_depth=1)
-
-    def test_dma_writer_fifo_buffered(self):
-        data = self.pattern_test_data["32bit_long_sequential"]
-        self.dma_writer_test(data["pattern"], data["expected"], data_width=32,
-                             fifo_buffered=True)
-
-    def test_dma_writer_duplicates(self):
-        data = self.pattern_test_data["32bit_duplicates"]
-        self.dma_writer_test(data["pattern"], data["expected"], data_width=32)
-
-    # LiteDRAMDMAReader ----------------------------------------------------------------------------
-
-    def dma_reader_test(self, pattern, mem_expected, data_width, **kwargs):
-        class DUT(Module):
-            def __init__(self):
-                self.port = LiteDRAMNativeReadPort(address_width=32, data_width=data_width)
-                self.submodules.dma = LiteDRAMDMAReader(self.port, **kwargs)
-
-        dut = DUT()
-        driver = DMAReaderDriver(dut.dma)
-        mem = DRAMMemory(data_width, len(mem_expected), init=mem_expected)
-
-        generators = [
-            driver.read([adr for adr, data in pattern]),
-            driver.read_handler(),
-            mem.read_handler(dut.port),
-        ]
-        run_simulation(dut, generators)
-        self.assertEqual(driver.data, [data for adr, data in pattern])
-
-    def test_dma_reader_single(self):
-        pattern = [(0x04, 0xdeadc0de)]
-        mem_expected = [0] * 32
-        mem_expected[0x04] = 0xdeadc0de
-        self.dma_reader_test(pattern, mem_expected, data_width=32)
-
-    def test_dma_reader_multiple(self):
-        data = self.pattern_test_data["32bit"]
-        self.dma_reader_test(data["pattern"], data["expected"], data_width=32)
-
-    def test_dma_reader_sequential(self):
-        data = self.pattern_test_data["32bit_sequential"]
-        self.dma_reader_test(data["pattern"], data["expected"], data_width=32)
-
-    def test_dma_reader_long_sequential(self):
-        data = self.pattern_test_data["32bit_long_sequential"]
-        self.dma_reader_test(data["pattern"], data["expected"], data_width=32)
-
-    def test_dma_reader_no_fifo(self):
-        data = self.pattern_test_data["32bit_long_sequential"]
-        self.dma_reader_test(data["pattern"], data["expected"], data_width=32,
-                             fifo_depth=1)
-
-    def test_dma_reader_fifo_buffered(self):
-        data = self.pattern_test_data["32bit_long_sequential"]
-        self.dma_reader_test(data["pattern"], data["expected"], data_width=32,
-                             fifo_buffered=True)
+    # FIXME: synchronization between CSRs: `start` and `base`, `done` and `errors`
+    #  def test_bist_csr_cdc(self):
+    #      class DUT(Module):
+    #          def __init__(self):
+    #              port_kwargs = dict(address_width=32, data_width=32, clock_domain="async")
+    #              self.write_port = LiteDRAMNativeWritePort(**port_kwargs)
+    #              self.read_port = LiteDRAMNativeReadPort(**port_kwargs)
+    #              self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
+    #              self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
+    #
+    #      def main_generator(dut, mem):
+    #          generator = GenCheckCSRDriver(dut.generator)
+    #          checker = GenCheckCSRDriver(dut.checker)
+    #          yield from self.bist_test(generator, checker, mem)
+    #
+    #      # dut
+    #      dut = DUT()
+    #      mem = DRAMMemory(32, 48)
+    #
+    #      generators = {
+    #          "sys": [
+    #              main_generator(dut, mem),
+    #          ],
+    #          "async": [
+    #              mem.write_handler(dut.write_port),
+    #              mem.read_handler(dut.read_port)
+    #          ]
+    #      }
+    #      clocks = {
+    #          "sys": 10,
+    #          "async": (7, 3),
+    #      }
+    #      run_simulation(dut, generators, clocks)
