@@ -10,11 +10,134 @@ from litedram.common import *
 from litedram.frontend.ecc import *
 
 from litex.gen.sim import *
+from litex.soc.cores.ecc import *
 
 from test.common import *
 
 
+def bits(value, width=32):
+    # convert int to a string representing binary value
+    # reverse it so that we can index bits easily with s[0] being LSB
+    return f"{value:0{width}b}"[::-1]
+
+def frombits(bits):
+    # reverse of bits()
+    return int(bits[::-1], 2)
+
+def bits_pp(value, width=32):
+    # pretty print binary value, with 0b, groupped by nibbles
+    if isinstance(value, str):
+        value = frombits(value)
+    return f"{value:#0{width}_b}"
+
+
+def extract_ecc_data(data_width, codeword_width, codeword_bits):
+    extracted = ""
+    for i in range(8):
+        word = codeword_bits[codeword_width*i:codeword_width*(i+1)]
+        # remove parity bit
+        word = word[1:]
+        data_pos = compute_data_positions(codeword_width - 1)  # -1 for parity
+        # extract data bits
+        word_ex = list(bits(0, 32))
+        for j, d in enumerate(data_pos):
+            word_ex[j] = word[d-1]
+        word_ex = "".join(word_ex)
+        extracted += word_ex
+    return extracted
+
+
 class TestECC(unittest.TestCase):
+    def test_eccw_connected(self):
+        class DUT(Module):
+            def __init__(self):
+                self.submodules.eccw = LiteDRAMNativePortECCW(32*8, 39*8)
+
+        def main_generator(dut):
+            sink_data = seed_to_data(0, nbits=32*8)
+
+            yield dut.eccw.sink.data.eq(sink_data)
+            yield
+            source_data = (yield dut.eccw.source.data)
+
+            sink_data_bits = bits(sink_data, 32*8)
+            source_data_bits = bits(source_data, 39*8)
+            self.assertNotEqual(sink_data_bits, source_data_bits[:len(sink_data_bits)])
+
+            source_extracted = extract_ecc_data(32, 39, source_data_bits)
+            # assert each word separately for more readable assert messages
+            for i in range(8):
+                word = slice(32*i, 32*(i+1))
+                self.assertEqual(bits_pp(source_extracted[word]), bits_pp(sink_data_bits[word]),
+                                 msg=f"Mismatch at i = {i}")
+
+        dut = DUT()
+        run_simulation(dut, main_generator(dut))
+
+    def test_eccw_we_enabled(self):
+        # currently byte enable is not supported so it should be enabled all the time
+        class DUT(Module):
+            def __init__(self):
+                self.submodules.eccw = LiteDRAMNativePortECCW(32*8, 39*8)
+
+        def main_generator(dut):
+            yield
+            source_we = (yield dut.eccw.source.we)
+
+            self.assertEqual(bits_pp(source_we, 39//8), bits_pp(2**len(dut.eccw.source.we) - 1))
+
+        dut = DUT()
+        run_simulation(dut, main_generator(dut))
+
+    def test_eccr_connected(self):
+        class DUT(Module):
+            def __init__(self):
+                self.submodules.eccr = LiteDRAMNativePortECCR(32*8, 39*8)
+
+        def main_generator(dut):
+            sink_data = seed_to_data(0, nbits=(39*8 // 32 + 1) * 32)
+
+            yield dut.eccr.sink.data.eq(sink_data)
+            yield
+            source_data = (yield dut.eccr.source.data)
+
+            sink_data_bits = bits(sink_data, 39*8)
+            source_data_bits = bits(source_data, 32*8)
+            self.assertNotEqual(sink_data_bits[:len(source_data_bits)], source_data_bits)
+
+            sink_extracted = extract_ecc_data(32, 39, sink_data_bits)
+            self.assertEqual(bits_pp(sink_extracted), bits_pp(source_data_bits))
+            # assert each word separately for more readable assert messages
+            for i in range(8):
+                word = slice(32*i, 32*(i+1))
+                self.assertEqual(bits_pp(sink_extracted[word]), bits_pp(source_data_bits[word]),
+                                 msg=f"Mismatch at i = {i}")
+
+        dut = DUT()
+        run_simulation(dut, main_generator(dut))
+
+    def test_eccr_errors_connected_when_sink_valid(self):
+        class DUT(Module):
+            def __init__(self):
+                self.submodules.eccr = LiteDRAMNativePortECCR(32*8, 39*8)
+
+        def main_generator(dut):
+            yield dut.eccr.enable.eq(1)
+            yield dut.eccr.sink.data.eq(0b10)  # wrong parity bit
+            yield
+
+            # decder sec/ded not connected when valid=0
+            self.assertEqual((yield dut.eccr.sec), 0)
+            self.assertEqual((yield dut.eccr.ded), 0)
+
+            yield dut.eccr.sink.valid.eq(1)
+            yield
+            self.assertEqual((yield dut.eccr.sec), 1)
+            self.assertEqual((yield dut.eccr.ded), 0)
+
+        dut = DUT()
+        run_simulation(dut, main_generator(dut))
+
     def ecc_encode_decode_test(self, from_width, to_width, n, pre=None, post=None, **kwargs):
         class DUT(Module):
             def __init__(self):
