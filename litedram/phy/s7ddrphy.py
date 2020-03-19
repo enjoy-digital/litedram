@@ -382,11 +382,11 @@ class S7DDRPHY(Module, AutoCSR):
                     o_ODATAIN  = dqs_nodelay,
                     o_DATAOUT  = dqs_delayed
                 )
-            self.specials += Instance("OBUFTDS",
-                i_I  = dqs_delayed if with_odelay else dqs_nodelay,
-                i_T  = dqs_t,
-                o_O  = pads.dqs_p[i],
-                o_OB = pads.dqs_n[i],
+            self.specials += Instance("IOBUFDS",
+                i_T    = dqs_t,
+                i_I    = dqs_delayed if with_odelay else dqs_nodelay,
+                io_IO  = pads.dqs_p[i],
+                io_IOB = pads.dqs_n[i],
             )
 
         # DQ ---------------------------------------------------------------------------------------

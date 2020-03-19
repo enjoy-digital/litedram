@@ -218,19 +218,17 @@ class S6HalfRateDDRPHY(Module):
 
             # DQS tristate buffer
             if hasattr(pads, "dqs_n"):
-                self.specials += Instance("OBUFTDS",
-                    i_I=dqs_o[i],
-                    i_T=dqs_t[i],
-
-                    o_O=pads.dqs[i],
-                    o_OB=pads.dqs_n[i],
+                self.specials += Instance("IOBUFDS",
+                    i_T    = dqs_t[i],
+                    i_I    = dqs_o[i],
+                    io_IO  = pads.dqs[i],
+                    io_IOB = pads.dqs_n[i],
                 )
             else:
-                self.specials += Instance("OBUFT",
-                    i_I=dqs_o[i],
-                    i_T=dqs_t[i],
-
-                    o_O=pads.dqs[i]
+                self.specials += Instance("IOBUF",
+                    i_T   = dqs_t[i],
+                    i_I   = dqs_o[i],
+                    io_IO = pads.dqs[i],
                 )
 
         sd_sdram_half += postamble.eq(drive_dqs)
