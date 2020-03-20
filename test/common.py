@@ -248,6 +248,69 @@ class MemoryTestDataMixin:
                     0xdeadc0debaadbeef,  # 0x38
                 ],
             ),
+            "64bit_to_32bit": dict(
+                pattern=[
+                    # address, data
+                    (0x00, 0x0d15ea5e00facade),
+                    (0x05, 0xabadcafe8badf00d),
+                    (0x01, 0xcafefeedbaadf00d),
+                    (0x02, 0xfee1deaddeadc0de),
+                ],
+                expected=[
+                    # data, word, address
+                    0x00facade,  #  0 0x00
+                    0x0d15ea5e,  #  1 0x04
+                    0xbaadf00d,  #  2 0x08
+                    0xcafefeed,  #  3 0x0c
+                    0xdeadc0de,  #  4 0x10
+                    0xfee1dead,  #  5 0x14
+                    0x00000000,  #  6 0x18
+                    0x00000000,  #  7 0x1c
+                    0x00000000,  #  8 0x20
+                    0x00000000,  #  9 0x24
+                    0x8badf00d,  # 10 0x28
+                    0xabadcafe,  # 11 0x2c
+                    0x00000000,  # 12 0x30
+                ]
+            ),
+            "32bit_to_8bit": dict(
+                pattern=[
+                    # address, data
+                    (0x00, 0x00112233),
+                    (0x05, 0x44556677),
+                    (0x01, 0x8899aabb),
+                    (0x02, 0xccddeeff),
+                ],
+                expected=[
+                    # data, address
+                    0x33,  # 0x00
+                    0x22,  # 0x01
+                    0x11,  # 0x02
+                    0x00,  # 0x03
+                    0xbb,  # 0x04
+                    0xaa,  # 0x05
+                    0x99,  # 0x06
+                    0x88,  # 0x07
+                    0xff,  # 0x08
+                    0xee,  # 0x09
+                    0xdd,  # 0x0a
+                    0xcc,  # 0x0b
+                    0x00,  # 0x0c
+                    0x00,  # 0x0d
+                    0x00,  # 0x0e
+                    0x00,  # 0x0f
+                    0x00,  # 0x10
+                    0x00,  # 0x11
+                    0x00,  # 0x12
+                    0x00,  # 0x13
+                    0x77,  # 0x14
+                    0x66,  # 0x15
+                    0x55,  # 0x16
+                    0x44,  # 0x17
+                    0x00,  # 0x18
+                    0x00,  # 0x19
+                ]
+            ),
             "32bit_not_aligned": dict(
                 pattern=[
                     # address, data
