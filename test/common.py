@@ -3,7 +3,9 @@
 # This file is Copyright (c) 2020 Antmicro <www.antmicro.com>
 # License: BSD
 
+import os
 import random
+from operator import or_
 
 from migen import *
 
@@ -32,9 +34,34 @@ class DRAMMemory:
         for _ in range(depth-len(init)):
             self.mem.append(0)
 
+        # "W" enables write msgs, "R" - read msgs and "1" both
+        self._debug = os.environ.get("DRAM_MEM_DEBUG", "0")
+
     def show_content(self):
         for addr in range(self.depth):
-            print("0x{:08x}: 0x{:08x}".format(addr, self.mem[addr]))
+            print("0x{:08x}: 0x{:0{dwidth}x}".format(addr, self.mem[addr], dwidth=self.width//4))
+
+    def _warn(self, address):
+        if address > self.depth * self.width:
+            print("! adr > 0x{:08x}".format(
+                self.depth * self.width))
+
+    def _write(self, address, data, we):
+        mask = reduce(or_, [0xff << (8 * bit) for bit in range(self.width//8)
+                            if (we & (1 << bit)) != 0], 0)
+        data = data & mask
+        self.mem[address%self.depth] = data
+        if self._debug in ["1", "W"]:
+            print("W 0x{:08x}: 0x{:0{dwidth}x}".format(address, self.mem[address%self.depth],
+                                                       dwidth=self.width//4))
+            self._warn(address)
+
+    def _read(self, address):
+        if self._debug in ["1", "R"]:
+            print("R 0x{:08x}: 0x{:0{dwidth}x}".format(address, self.mem[address%self.depth],
+                                                       dwidth=self.width//4))
+            self._warn(address)
+        return self.mem[address%self.depth]
 
     @passive
     def read_handler(self, dram_port, rdata_valid_random=0):
@@ -48,7 +75,7 @@ class DRAMMemory:
                 while prng.randrange(100) < rdata_valid_random:
                     yield
                 yield dram_port.rdata.valid.eq(1)
-                yield dram_port.rdata.data.eq(self.mem[address%self.depth])
+                yield dram_port.rdata.data.eq(self._read(address))
                 yield
                 yield dram_port.rdata.valid.eq(0)
                 yield dram_port.rdata.data.eq(0)
@@ -77,7 +104,7 @@ class DRAMMemory:
                     yield
                 yield dram_port.wdata.ready.eq(1)
                 yield
-                self.mem[address%self.depth] = (yield dram_port.wdata.data) # TODO manage we
+                self._write(address, (yield dram_port.wdata.data), (yield dram_port.wdata.we))
                 yield dram_port.wdata.ready.eq(0)
                 yield
                 pending = 0
