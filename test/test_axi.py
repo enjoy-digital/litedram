@@ -104,6 +104,7 @@ class TestAXI(unittest.TestCase):
                     else:
                         yield axi_port.w.last.eq(0)
                     yield axi_port.w.data.eq(data)
+                    yield axi_port.w.strb.eq(2**axi_port.w.strb.nbits - 1)
                     yield
                     while (yield axi_port.w.ready) == 0:
                         yield
