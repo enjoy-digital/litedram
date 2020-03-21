@@ -25,10 +25,12 @@ def frombits(bits):
     return int(bits[::-1], 2)
 
 def bits_pp(value, width=32):
-    # pretty print binary value, with 0b, groupped by nibbles
+    # pretty print binary value, groupped by bytes
     if isinstance(value, str):
         value = frombits(value)
-    return f"{value:#0{width}_b}"
+    s = f"{value:0{width}b}"
+    byte_chunks = [s[i:i+8] for i in range(0, len(s), 8)]
+    return "0b " + " ".join(byte_chunks)
 
 
 def extract_ecc_data(data_width, codeword_width, codeword_bits):

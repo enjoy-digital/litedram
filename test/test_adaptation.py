@@ -62,6 +62,7 @@ class TestAdaptation(unittest.TestCase):
                 yield
                 yield write_port.wdata.valid.eq(1)
                 yield write_port.wdata.data.eq(write_data[i])
+                yield write_port.wdata.we.eq(0b1111)
                 yield
                 while (yield write_port.wdata.ready) == 0:
                     yield
@@ -113,6 +114,7 @@ class TestAdaptation(unittest.TestCase):
                 yield write_port.cmd.addr.eq(i)
                 yield write_port.wdata.valid.eq(1)
                 yield write_port.wdata.data.eq(write_data[i])
+                yield write_port.wdata.we.eq(0xff)
                 yield
                 while (yield write_port.cmd.ready) == 0:
                     yield
