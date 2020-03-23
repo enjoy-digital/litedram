@@ -5,6 +5,7 @@
 
 import os
 import random
+import itertools
 from operator import or_
 
 from migen import *
@@ -22,6 +23,15 @@ def seed_to_data(seed, random=True, nbits=32):
             data = data << 32
             data |= seed_to_data(seed*nbits//32 + i, random, 32)
         return data
+
+
+@passive
+def timeout_generator(ticks):
+    # raise exception after given timeout effectively stopping simulation
+    # because of @passive, simulation can end even if this generator is still running
+    for _ in range(ticks):
+        yield
+    raise TimeoutError("Timeout after %d ticks" % ticks)
 
 
 class DRAMMemory:
@@ -311,6 +321,118 @@ class MemoryTestDataMixin:
                     0x00,  # 0x19
                 ]
             ),
+            "8bit_to_32bit": dict(
+                pattern=[
+                    # address, data
+                    (0x00, 0x00),
+                    (0x01, 0x11),
+                    (0x02, 0x22),
+                    (0x03, 0x33),
+                    (0x10, 0x44),
+                    (0x11, 0x55),
+                    (0x12, 0x66),
+                    (0x13, 0x77),
+                    (0x08, 0x88),
+                    (0x09, 0x99),
+                    (0x0a, 0xaa),
+                    (0x0b, 0xbb),
+                    (0x0c, 0xcc),
+                    (0x0d, 0xdd),
+                    (0x0e, 0xee),
+                    (0x0f, 0xff),
+                ],
+                expected=[
+                    # data, address
+                    0x33221100,  # 0x00
+                    0x00000000,  # 0x04
+                    0xbbaa9988,  # 0x08
+                    0xffeeddcc,  # 0x0c
+                    0x77665544,  # 0x10
+                    0x00000000,  # 0x14
+                    0x00000000,  # 0x18
+                    0x00000000,  # 0x1c
+                ]
+            ),
+            "8bit_to_32bit_not_aligned": dict(
+                pattern=[
+                    # address, data
+                    (0x00, 0x00),
+                    (0x05, 0x11),
+                    (0x0a, 0x22),
+                    (0x0f, 0x33),
+                    (0x1d, 0x44),
+                    (0x15, 0x55),
+                    (0x13, 0x66),
+                    (0x18, 0x77),
+                ],
+                expected=[
+                    # data, address
+                    0x00000000,  # 0x00
+                    0x00001100,  # 0x04
+                    0x00220000,  # 0x08
+                    0x33000000,  # 0x0c
+                    0x66000000,  # 0x10
+                    0x00005500,  # 0x14
+                    0x00000077,  # 0x18
+                    0x00440000,  # 0x1c
+                ]
+            ),
+            "32bit_to_256bit":  dict(
+                pattern=[
+                    # address, data
+                    (0x00, 0x00000000),
+                    (0x01, 0x11111111),
+                    (0x02, 0x22222222),
+                    (0x03, 0x33333333),
+                    (0x04, 0x44444444),
+                    (0x05, 0x55555555),
+                    (0x06, 0x66666666),
+                    (0x07, 0x77777777),
+                    (0x10, 0x88888888),
+                    (0x11, 0x99999999),
+                    (0x12, 0xaaaaaaaa),
+                    (0x13, 0xbbbbbbbb),
+                    (0x14, 0xcccccccc),
+                    (0x15, 0xdddddddd),
+                    (0x16, 0xeeeeeeee),
+                    (0x17, 0xffffffff),
+                ],
+                expected=[
+                    # data, address
+                    0x7777777766666666555555554444444433333333222222221111111100000000,  # 0x00
+                    0x0000000000000000000000000000000000000000000000000000000000000000,  # 0x20
+                    0xffffffffeeeeeeeeddddddddccccccccbbbbbbbbaaaaaaaa9999999988888888,  # 0x40
+                    0x0000000000000000000000000000000000000000000000000000000000000000,  # 0x60
+                ]
+            ),
+            "32bit_to_256bit_not_aligned":  dict(
+                pattern=[
+                    # address, data
+                    (0x00, 0x00000000),
+                    (0x01, 0x11111111),
+                    (0x02, 0x22222222),
+                    (0x03, 0x33333333),
+                    (0x04, 0x44444444),
+                    (0x05, 0x55555555),
+                    (0x06, 0x66666666),
+                    (0x07, 0x77777777),
+                    (0x14, 0x88888888),
+                    (0x15, 0x99999999),
+                    (0x16, 0xaaaaaaaa),
+                    (0x17, 0xbbbbbbbb),
+                    (0x18, 0xcccccccc),
+                    (0x19, 0xdddddddd),
+                    (0x1a, 0xeeeeeeee),
+                    (0x1b, 0xffffffff),
+                ],
+                expected=[
+                    # data, address
+                    0x7777777766666666555555554444444433333333222222221111111100000000,  # 0x00
+                    0x0000000000000000000000000000000000000000000000000000000000000000,  # 0x20
+                    0xbbbbbbbbaaaaaaaa999999998888888800000000000000000000000000000000,  # 0x40
+                    0x00000000000000000000000000000000ffffffffeeeeeeeeddddddddcccccccc,  # 0x60
+                ]
+            ),
             "32bit_not_aligned": dict(
                 pattern=[
                     # address, data
@@ -373,7 +495,39 @@ class MemoryTestDataMixin:
             ),
             "32bit_long_sequential": dict(pattern=[], expected=[0] * 64),
         }
+
+        # 32bit_long_sequential
         for i in range(32):
             data["32bit_long_sequential"]["pattern"].append((i, 64 + i))
             data["32bit_long_sequential"]["expected"][i] = 64 + i
+
+        def half_width(data, from_width):
+            half_mask = 2**(from_width//2) - 1
+            chunks = [(val & half_mask, (val >> from_width//2) & half_mask) for val in data]
+            return list(itertools.chain.from_iterable(chunks))
+
+        # down conversion
+        data["64bit_to_16bit"] = dict(
+            pattern=data["64bit_to_32bit"]["pattern"].copy(),
+            expected=half_width(data["64bit_to_32bit"]["expected"], from_width=32),
+        )
+        data["64bit_to_8bit"] = dict(
+            pattern=data["64bit_to_16bit"]["pattern"].copy(),
+            expected=half_width(data["64bit_to_16bit"]["expected"], from_width=16),
+        )
+
+        # up conversion
+        data["8bit_to_16bit"] = dict(
+            pattern=data["8bit_to_32bit"]["pattern"].copy(),
+            expected=half_width(data["8bit_to_32bit"]["expected"], from_width=32),
+        )
+        data["32bit_to_128bit"] = dict(
+            pattern=data["32bit_to_256bit"]["pattern"].copy(),
+            expected=half_width(data["32bit_to_256bit"]["expected"], from_width=256),
+        )
+        data["32bit_to_64bit"] = dict(
+            pattern=data["32bit_to_128bit"]["pattern"].copy(),
+            expected=half_width(data["32bit_to_128bit"]["expected"], from_width=128),
+        )
+
         return data
