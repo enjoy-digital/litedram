@@ -8,7 +8,7 @@ from migen import *
 from litex.soc.interconnect.stream import *
 
 from litedram.common import LiteDRAMNativeWritePort, LiteDRAMNativeReadPort
-from litedram.frontend.adaptation import LiteDRAMNativePortConverter
+from litedram.frontend.adaptation import LiteDRAMNativePortConverter, LiteDRAMNativePortCDC
 
 from test.common import *
 
@@ -17,22 +17,19 @@ from litex.gen.sim import *
 
 class ConverterDUT(Module):
     def __init__(self, user_data_width, native_data_width, mem_depth):
-        # write port and converter
         self.write_user_port = LiteDRAMNativeWritePort(address_width=32, data_width=user_data_width)
         self.write_crossbar_port = LiteDRAMNativeWritePort(address_width=32, data_width=native_data_width)
-        write_converter = LiteDRAMNativePortConverter(
-            self.write_user_port, self.write_crossbar_port)
-        self.submodules += write_converter
-
-        # read port and converter
         self.read_user_port = LiteDRAMNativeReadPort(address_width=32, data_width=user_data_width)
         self.read_crossbar_port = LiteDRAMNativeReadPort(address_width=32, data_width=native_data_width)
-        read_converter = LiteDRAMNativePortConverter(
-            self.read_user_port, self.read_crossbar_port)
-        self.submodules += read_converter
 
         # memory
         self.memory = DRAMMemory(native_data_width, mem_depth)
+
+    def do_finalize(self):
+        self.submodules.write_converter = LiteDRAMNativePortConverter(
+            self.write_user_port, self.write_crossbar_port)
+        self.submodules.read_converter = LiteDRAMNativePortConverter(
+            self.read_user_port, self.read_crossbar_port)
 
     def write_up(self, address, data, we=None):
         port = self.write_user_port
@@ -99,15 +96,32 @@ class ConverterDUT(Module):
             return data
 
 
+class CDCDUT(ConverterDUT):
+    def do_finalize(self):
+        # change clock domains
+        self.write_user_port.clock_domain = "user"
+        self.read_user_port.clock_domain = "user"
+        self.write_crossbar_port.clock_domain = "native"
+        self.read_crossbar_port.clock_domain = "native"
+
+        # add CDC
+        self.submodules.write_converter = LiteDRAMNativePortCDC(
+            port_from=self.write_user_port, port_to=self.write_crossbar_port)
+        self.submodules.read_converter = LiteDRAMNativePortCDC(
+            port_from=self.read_user_port, port_to=self.read_crossbar_port)
+
+
 class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
     def test_converter_down_ratio_must_be_integer(self):
         with self.assertRaises(ValueError) as cm:
-            ConverterDUT(user_data_width=64, native_data_width=24, mem_depth=128)
+            dut = ConverterDUT(user_data_width=64, native_data_width=24, mem_depth=128)
+            dut.finalize()
         self.assertIn("ratio must be an int", str(cm.exception).lower())
 
     def test_converter_up_ratio_must_be_integer(self):
         with self.assertRaises(ValueError) as cm:
-            ConverterDUT(user_data_width=32, native_data_width=48, mem_depth=128)
+            dut = ConverterDUT(user_data_width=32, native_data_width=48, mem_depth=128)
+            dut.finalize()
         self.assertIn("ratio must be an int", str(cm.exception).lower())
 
     def converter_readback_test(self, dut, pattern, mem_expected):
@@ -189,3 +203,73 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
     #      data = self.pattern_test_data["8bit_to_32bit_not_aligned"]
     #      dut = ConverterDUT(user_data_width=8, native_data_width=32, mem_depth=len(data["expected"]))
     #      self.converter_readback_test(dut, data["pattern"], data["expected"])
+
+    def cdc_readback_test(self, dut, pattern, mem_expected, clocks):
+        assert len(set(adr for adr, _ in pattern)) == len(pattern), "Pattern has duplicates!"
+        read_data = []
+
+        @passive
+        def read_handler(read_port):
+            yield read_port.rdata.ready.eq(1)
+            while True:
+                if (yield read_port.rdata.valid):
+                    read_data.append((yield read_port.rdata.data))
+                yield
+
+        def main_generator(dut, pattern):
+            if dut.write_user_port.data_width > dut.write_crossbar_port.data_width:
+                write = dut.write_down
+            else:
+                write = dut.write_up
+
+            for adr, data in pattern:
+                yield from write(adr, data)
+
+            for adr, _ in pattern:
+                yield from dut.read(adr, read_data=False)
+
+            # latency delay
+            for _ in range(32):
+                yield
+
+        generators = {
+            "user": [
+                main_generator(dut, pattern),
+                read_handler(dut.read_user_port),
+                timeout_generator(5000),
+            ],
+            "native": [
+                dut.memory.write_handler(dut.write_crossbar_port),
+                dut.memory.read_handler(dut.read_crossbar_port),
+            ],
+        }
+        run_simulation(dut, generators, clocks)
+        self.assertEqual(dut.memory.mem, mem_expected)
+        self.assertEqual(read_data, [data for adr, data in pattern])
+
+    def test_port_cdc_same_clocks(self):
+        data = self.pattern_test_data["32bit"]
+        dut = CDCDUT(user_data_width=32, native_data_width=32, mem_depth=len(data["expected"]))
+        clocks = {
+            "user": 10,
+            "native": (7, 3),
+        }
+        self.cdc_readback_test(dut, data["pattern"], data["expected"], clocks=clocks)
+
+    def test_port_cdc_different_period(self):
+        data = self.pattern_test_data["32bit"]
+        dut = CDCDUT(user_data_width=32, native_data_width=32, mem_depth=len(data["expected"]))
+        clocks = {
+            "user": 10,
+            "native": 7,
+        }
+        self.cdc_readback_test(dut, data["pattern"], data["expected"], clocks=clocks)
+
+    def test_port_cdc_out_of_phase(self):
+        data = self.pattern_test_data["32bit"]
+        dut = CDCDUT(user_data_width=32, native_data_width=32, mem_depth=len(data["expected"]))
+        clocks = {
+            "user": 10,
+            "native": (7, 3),
+        }
+        self.cdc_readback_test(dut, data["pattern"], data["expected"], clocks=clocks)
