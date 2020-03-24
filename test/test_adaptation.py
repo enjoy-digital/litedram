@@ -31,50 +31,6 @@ class ConverterDUT(Module):
         self.submodules.read_converter = LiteDRAMNativePortConverter(
             self.read_user_port, self.read_crossbar_port)
 
-    def write_up(self, address, data, we=None):
-        port = self.write_user_port
-        if we is None:
-            we = 2**port.wdata.we.nbits - 1
-        yield port.cmd.valid.eq(1)
-        yield port.cmd.we.eq(1)
-        yield port.cmd.addr.eq(address)
-        yield
-        while (yield port.cmd.ready) == 0:
-            yield
-        yield port.cmd.valid.eq(0)
-        yield
-        yield port.wdata.valid.eq(1)
-        yield port.wdata.data.eq(data)
-        yield port.wdata.we.eq(we)
-        yield
-        while (yield port.wdata.ready) == 0:
-            yield
-        yield port.wdata.valid.eq(0)
-        yield
-
-    def write_down(self, address, data, we=None):
-        # down converter must have all the data available along with cmd
-        # it will set user_port.cmd.ready only when it sends all input words
-        port = self.write_user_port
-        if we is None:
-            we = 2**port.wdata.we.nbits - 1
-        yield port.cmd.valid.eq(1)
-        yield port.cmd.we.eq(1)
-        yield port.cmd.addr.eq(address)
-        yield port.wdata.valid.eq(1)
-        yield port.wdata.data.eq(data)
-        yield port.wdata.we.eq(we)
-        yield
-        # ready goes up only after StrideConverter copied all words
-        while (yield port.cmd.ready) == 0:
-            yield
-        yield port.cmd.valid.eq(0)
-        yield
-        while (yield port.wdata.ready) == 0:
-            yield
-        yield port.wdata.valid.eq(0)
-        yield
-
     def read(self, address, read_data=True):
         port = self.read_user_port
         yield port.cmd.valid.eq(1)
@@ -95,6 +51,53 @@ class ConverterDUT(Module):
             yield
             return data
 
+    def write(self, address, data, we=None):
+        if we is None:
+            we = 2**self.write_user_port.wdata.we.nbits - 1
+        if self.write_user_port.data_width > self.write_crossbar_port.data_width:
+            yield from self._write_down(address, data, we)
+        else:
+            yield from self._write_up(address, data, we)
+
+    def _write_up(self, address, data, we):
+        port = self.write_user_port
+        yield port.cmd.valid.eq(1)
+        yield port.cmd.we.eq(1)
+        yield port.cmd.addr.eq(address)
+        yield
+        while (yield port.cmd.ready) == 0:
+            yield
+        yield port.cmd.valid.eq(0)
+        yield
+        yield port.wdata.valid.eq(1)
+        yield port.wdata.data.eq(data)
+        yield port.wdata.we.eq(we)
+        yield
+        while (yield port.wdata.ready) == 0:
+            yield
+        yield port.wdata.valid.eq(0)
+        yield
+
+    def _write_down(self, address, data, we):
+        # down converter must have all the data available along with cmd
+        # it will set user_port.cmd.ready only when it sends all input words
+        port = self.write_user_port
+        yield port.cmd.valid.eq(1)
+        yield port.cmd.we.eq(1)
+        yield port.cmd.addr.eq(address)
+        yield port.wdata.valid.eq(1)
+        yield port.wdata.data.eq(data)
+        yield port.wdata.we.eq(we)
+        yield
+        # ready goes up only after StrideConverter copied all words
+        while (yield port.cmd.ready) == 0:
+            yield
+        yield port.cmd.valid.eq(0)
+        yield
+        while (yield port.wdata.ready) == 0:
+            yield
+        yield port.wdata.valid.eq(0)
+        yield
 
 class CDCDUT(ConverterDUT):
     def do_finalize(self):
@@ -137,13 +140,8 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
                 yield
 
         def main_generator(dut, pattern):
-            if dut.write_user_port.data_width > dut.write_crossbar_port.data_width:
-                write = dut.write_down
-            else:
-                write = dut.write_up
-
             for adr, data in pattern:
-                yield from write(adr, data)
+                yield from dut.write(adr, data)
 
             for adr, _ in pattern:
                 yield from dut.read(adr, read_data=False)
@@ -217,13 +215,8 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
                 yield
 
         def main_generator(dut, pattern):
-            if dut.write_user_port.data_width > dut.write_crossbar_port.data_width:
-                write = dut.write_down
-            else:
-                write = dut.write_up
-
             for adr, data in pattern:
-                yield from write(adr, data)
+                yield from dut.write(adr, data)
 
             for adr, _ in pattern:
                 yield from dut.read(adr, read_data=False)
