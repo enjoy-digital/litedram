@@ -196,11 +196,12 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
         dut = ConverterDUT(user_data_width=32, native_data_width=256, mem_depth=len(data["expected"]))
         self.converter_readback_test(dut, data["pattern"], data["expected"])
 
-    #  # TODO: implement case when user does not write all words (LiteDRAMNativeWritePortUpConverter)
-    #  def test_converter_up_not_aligned(self):
-    #      data = self.pattern_test_data["8bit_to_32bit_not_aligned"]
-    #      dut = ConverterDUT(user_data_width=8, native_data_width=32, mem_depth=len(data["expected"]))
-    #      self.converter_readback_test(dut, data["pattern"], data["expected"])
+    # TODO: implement case when user does not write all words (LiteDRAMNativeWritePortUpConverter)
+    @unittest.skip("Only full-burst writes currently supported")
+    def test_converter_up_not_aligned(self):
+        data = self.pattern_test_data["8bit_to_32bit_not_aligned"]
+        dut = ConverterDUT(user_data_width=8, native_data_width=32, mem_depth=len(data["expected"]))
+        self.converter_readback_test(dut, data["pattern"], data["expected"])
 
     def cdc_readback_test(self, dut, pattern, mem_expected, clocks):
         assert len(set(adr for adr, _ in pattern)) == len(pattern), "Pattern has duplicates!"
