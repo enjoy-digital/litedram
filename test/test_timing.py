@@ -75,8 +75,9 @@ class TestTiming(unittest.TestCase):
         self.assertEqual(min(dut.ready_gaps), txxd)
 
     def test_txxd_controller_random(self):
-        for i in range(2, 32):
-            self.txxd_controller_random_test(i, 512)
+        for txxd in range(2, 32):
+            with self.subTest(txxd=txxd):
+                self.txxd_controller_random_test(txxd, 512)
 
 
     def tfaw_controller_test(self, txxd, valids, readys):
@@ -96,19 +97,23 @@ class TestTiming(unittest.TestCase):
         tfaw = 8
         valids = "_----___________"
         readys = "-----______-----"
-        self.tfaw_controller_test(tfaw, valids, readys)
+        with self.subTest(tfaw=tfaw, valids=valids, readys=readys):
+            self.tfaw_controller_test(tfaw, valids, readys)
 
         tfaw = 8
         valids = "_-_-_-_-________"
         readys = "--------___-----"
-        self.tfaw_controller_test(tfaw, valids, readys)
+        with self.subTest(tfaw=tfaw, valids=valids, readys=readys):
+            self.tfaw_controller_test(tfaw, valids, readys)
 
         tfaw = 8
         valids = "_-_-___-_-______"
         readys = "----------_-----"
-        self.tfaw_controller_test(tfaw, valids, readys)
+        with self.subTest(tfaw=tfaw, valids=valids, readys=readys):
+            self.tfaw_controller_test(tfaw, valids, readys)
 
         tfaw = 8
         valids = "_-_-____-_-______"
         readys = "-----------------"
-        self.tfaw_controller_test(tfaw, valids, readys)
+        with self.subTest(tfaw=tfaw, valids=valids, readys=readys):
+            self.tfaw_controller_test(tfaw, valids, readys)
