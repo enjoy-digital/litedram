@@ -19,6 +19,7 @@ from test.common import *
 class TestFIFO(unittest.TestCase):
     @passive
     def fifo_ctrl_flag_checker(self, fifo_ctrl, write_threshold, read_threshold):
+        # checks the combinational logic
         while True:
             level = (yield fifo_ctrl.level)
             self.assertEqual((yield fifo_ctrl.writable), level < write_threshold)
@@ -27,15 +28,14 @@ class TestFIFO(unittest.TestCase):
 
     # _LiteDRAMFIFOCtrl ----------------------------------------------------------------------------
 
-    def test_fifo_ctrl(self):
+    def test_fifo_ctrl_address_changes(self):
+        # we are ignoring thresholds (so readable/writable signals)
         dut = _LiteDRAMFIFOCtrl(base=0, depth=16, read_threshold=0, write_threshold=16)
 
         def main_generator():
-            self.assertEqual((yield dut.level), 0)
             self.assertEqual((yield dut.write_address), 0)
             self.assertEqual((yield dut.read_address), 0)
 
-            # ignore readable/writable
             # write address
             yield dut.write.eq(1)
             yield
@@ -57,6 +57,18 @@ class TestFIFO(unittest.TestCase):
             yield
             self.assertEqual((yield dut.read_address), 24 % 16)
 
+        generators = [
+            main_generator(),
+            self.fifo_ctrl_flag_checker(dut, write_threshold=16, read_threshold=0),
+        ]
+        run_simulation(dut, generators)
+
+    def test_fifo_ctrl_level_changes(self):
+        dut = _LiteDRAMFIFOCtrl(base=0, depth=16, read_threshold=0, write_threshold=16)
+
+        def main_generator():
+            self.assertEqual((yield dut.level), 0)
+
             # level
             def check_level_diff(write, read, diff):
                 level = (yield dut.level)
@@ -69,7 +81,10 @@ class TestFIFO(unittest.TestCase):
                 self.assertEqual((yield dut.level), level + diff)
 
             check_level_diff(write=1, read=0, diff=+1)
+            check_level_diff(write=1, read=0, diff=+1)
             check_level_diff(write=1, read=1, diff=+0)
+            check_level_diff(write=1, read=1, diff=+0)
+            check_level_diff(write=0, read=1, diff=-1)
             check_level_diff(write=0, read=1, diff=-1)
 
         generators = [
