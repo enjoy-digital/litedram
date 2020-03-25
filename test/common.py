@@ -24,6 +24,15 @@ def seed_to_data(seed, random=True, nbits=32):
         return data
 
 
+@passive
+def timeout_generator(ticks):
+    # raise exception after given timeout effectively stopping simulation
+    # because of @passive, simulation can end even if this generator is still running
+    for _ in range(ticks):
+        yield
+    raise TimeoutError("Timeout after %d ticks" % ticks)
+
+
 class DRAMMemory:
     def __init__(self, width, depth, init=[]):
         self.width = width
