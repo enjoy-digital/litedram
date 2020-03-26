@@ -31,9 +31,7 @@ from litex.tools.litex_sim import get_sdram_phy_settings, sdram_module_nphases
 from litedram import modules as litedram_modules
 from litedram.common import Settings as _Settings
 
-from . import benchmark
-from .benchmark import load_access_pattern
-
+from test import benchmark
 
 # Benchmark configuration --------------------------------------------------------------------------
 
@@ -76,7 +74,7 @@ class CustomAccess(Settings):
             if not os.path.isabs(path):
                 benchmark_dir = os.path.dirname(benchmark.__file__)
                 path = os.path.join(benchmark_dir, path)
-            self._pattern = load_access_pattern(path)
+            self._pattern = benchmark.load_access_pattern(path)
         return self._pattern
 
     @property
