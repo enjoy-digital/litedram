@@ -31,6 +31,7 @@ import argparse
 from migen import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
+from litex.build.tools import replace_in_file
 from litex.build.generic_platform import *
 from litex.build.xilinx import XilinxPlatform
 from litex.build.lattice import LatticePlatform
@@ -342,6 +343,7 @@ class LiteDRAMCore(SoCSDRAM):
 
         # DRAM -------------------------------------------------------------------------------------
         platform.add_extension(get_dram_ios(core_config))
+        # ECP5DDRPHY
         if core_config["sdram_phy"] in  [litedram_phys.ECP5DDRPHY]:
             assert core_config["memtype"] in ["DDR3"]
             self.submodules.ddrphy = core_config["sdram_phy"](
@@ -350,6 +352,7 @@ class LiteDRAMCore(SoCSDRAM):
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
             self.add_constant("ECP5DDRPHY", None)
             sdram_module = core_config["sdram_module"](sys_clk_freq, "1:2")
+        # S7DDRPHY
         if core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             assert core_config["memtype"] in ["DDR2", "DDR3"]
             self.submodules.ddrphy = core_config["sdram_phy"](
@@ -575,19 +578,6 @@ def main():
     soc      = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000, integrated_sram_size=0x1000)
     builder  = Builder(soc, **builder_arguments)
     vns      = builder.build(build_name="litedram_core", regular_comb=False)
-
-    # Prepare core (could be improved)
-    def replace_in_file(filename, _from, _to):
-        # Read in the file
-        with open(filename, "r") as file :
-            filedata = file.read()
-
-        # Replace the target string
-        filedata = filedata.replace(_from, _to)
-
-        # Write the file out again
-        with open(filename, 'w') as file:
-            file.write(filedata)
 
     if soc.cpu_type is not None:
         init_filename = "mem.init"
