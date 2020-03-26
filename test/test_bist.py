@@ -390,35 +390,36 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         run_simulation(dut, generators)
 
     # FIXME: synchronization between CSRs: `start` and `base`, `done` and `errors`
-    #  def test_bist_csr_cdc(self):
-    #      class DUT(Module):
-    #          def __init__(self):
-    #              port_kwargs = dict(address_width=32, data_width=32, clock_domain="async")
-    #              self.write_port = LiteDRAMNativeWritePort(**port_kwargs)
-    #              self.read_port = LiteDRAMNativeReadPort(**port_kwargs)
-    #              self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
-    #              self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
-    #
-    #      def main_generator(dut, mem):
-    #          generator = GenCheckCSRDriver(dut.generator)
-    #          checker = GenCheckCSRDriver(dut.checker)
-    #          yield from self.bist_test(generator, checker, mem)
-    #
-    #      # dut
-    #      dut = DUT()
-    #      mem = DRAMMemory(32, 48)
-    #
-    #      generators = {
-    #          "sys": [
-    #              main_generator(dut, mem),
-    #          ],
-    #          "async": [
-    #              mem.write_handler(dut.write_port),
-    #              mem.read_handler(dut.read_port)
-    #          ]
-    #      }
-    #      clocks = {
-    #          "sys": 10,
-    #          "async": (7, 3),
-    #      }
-    #      run_simulation(dut, generators, clocks)
+    @unittest.skip("CSRs CDC synchronization problem (issue #167)")
+    def test_bist_csr_cdc(self):
+        class DUT(Module):
+            def __init__(self):
+                port_kwargs = dict(address_width=32, data_width=32, clock_domain="async")
+                self.write_port = LiteDRAMNativeWritePort(**port_kwargs)
+                self.read_port = LiteDRAMNativeReadPort(**port_kwargs)
+                self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
+                self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
+
+        def main_generator(dut, mem):
+            generator = GenCheckCSRDriver(dut.generator)
+            checker = GenCheckCSRDriver(dut.checker)
+            yield from self.bist_test(generator, checker, mem)
+
+        # dut
+        dut = DUT()
+        mem = DRAMMemory(32, 48)
+
+        generators = {
+            "sys": [
+                main_generator(dut, mem),
+            ],
+            "async": [
+                mem.write_handler(dut.write_port),
+                mem.read_handler(dut.read_port)
+            ]
+        }
+        clocks = {
+            "sys": 10,
+            "async": (7, 3),
+        }
+        run_simulation(dut, generators, clocks)
