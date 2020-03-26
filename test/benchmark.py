@@ -21,13 +21,14 @@ from litex.soc.integration.builder import *
 
 from litex.tools.litex_sim import SimSoC
 
-from litedram.frontend.bist import _LiteDRAMBISTGenerator, _LiteDRAMBISTChecker, \
-    _LiteDRAMPatternGenerator, _LiteDRAMPatternChecker
+from litedram.frontend.bist import _LiteDRAMBISTGenerator, _LiteDRAMBISTChecker
+from litedram.frontend.bist import _LiteDRAMPatternGenerator, _LiteDRAMPatternChecker
 
 # LiteDRAM Benchmark SoC ---------------------------------------------------------------------------
 
 class LiteDRAMBenchmarkSoC(SimSoC):
     def __init__(self,
+        mode             = "bist",
         sdram_module     = "MT48LC16M16",
         sdram_data_width = 32,
         bist_base        = 0x0000000,
@@ -37,8 +38,10 @@ class LiteDRAMBenchmarkSoC(SimSoC):
         bist_alternating = False,
         num_generators   = 1,
         num_checkers     = 1,
-        pattern_init     = None,
+        access_pattern   = None,
         **kwargs):
+        assert mode in ["bist", "pattern"]
+        assert not (mode == "pattern" and access_pattern is None)
 
         # SimSoC -----------------------------------------------------------------------------------
         SimSoC.__init__(self,
@@ -48,35 +51,31 @@ class LiteDRAMBenchmarkSoC(SimSoC):
             **kwargs
         )
 
-        # BIST Generator / Checker -----------------------------------------------------------------
-
-        # make sure that we perform at least one access
-        bist_length = max(bist_length, self.sdram.controller.interface.data_width // 8)
-
-        custom_pattern_mode = pattern_init is not None
-
-        if custom_pattern_mode:
-            make_generator = lambda: _LiteDRAMPatternGenerator(self.sdram.crossbar.get_port(), init=pattern_init)
-            make_checker   = lambda: _LiteDRAMPatternChecker(self.sdram.crossbar.get_port(), init=pattern_init)
-        else:
+        # BIST/Pattern Generator / Checker ---------------------------------------------------------
+        if mode == "pattern":
+            make_generator = lambda: _LiteDRAMPatternGenerator(self.sdram.crossbar.get_port(), init=access_pattern)
+            make_checker   = lambda: _LiteDRAMPatternChecker(self.sdram.crossbar.get_port(),   init=access_pattern)
+        if mode == "bist":
             make_generator = lambda: _LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
             make_checker   = lambda: _LiteDRAMBISTChecker(self.sdram.crossbar.get_port())
 
         generators = [make_generator() for _ in range(num_generators)]
-        checkers = [make_checker() for _ in range(num_checkers)]
+        checkers   = [make_checker()   for _ in range(num_checkers)]
         self.submodules += generators + checkers
 
-        if custom_pattern_mode:
+        if mode == "pattern":
             def bist_config(module):
                 return []
 
             if not bist_alternating:
                 address_set = set()
-                for addr, _ in pattern_init:
+                for addr, _ in access_pattern:
                     assert addr not in address_set, \
-                        'Duplicate address 0x%08x in pattern_init, write will overwrite previous value!' % addr
+                        "Duplicate address 0x%08x in access_pattern, write will overwrite previous value!" % addr
                     address_set.add(addr)
-        else:
+        if mode == "bist":
+            # Make sure that we perform at least one access
+            bist_length = max(bist_length, self.sdram.controller.interface.data_width // 8)
             def bist_config(module):
                 return [
                     module.base.eq(bist_base),
@@ -86,14 +85,14 @@ class LiteDRAMBenchmarkSoC(SimSoC):
                 ]
 
             assert not (bist_random and not bist_alternating), \
-                'Write to random address may overwrite previously written data before reading!'
+                "Write to random address may overwrite previously written data before reading!"
 
-            # check address correctness
+            # Check address correctness
             assert bist_end > bist_base
-            assert bist_end <= 2**(len(generators[0].end)) - 1, 'End address outside of range'
+            assert bist_end <= 2**(len(generators[0].end)) - 1, "End address outside of range"
             bist_addr_range = bist_end - bist_base
             assert bist_addr_range > 0 and bist_addr_range & (bist_addr_range - 1) == 0, \
-                'Length of the address range must be a power of 2'
+                "Length of the address range must be a power of 2"
 
         def combined_read(modules, signal, operator):
             sig = Signal()
@@ -122,36 +121,36 @@ class LiteDRAMBenchmarkSoC(SimSoC):
             )
         )
         if bist_alternating:
-            # force generators to wait for checkers and vice versa
-            # connect them in pairs, with each unpaired connected to the first of the others
+            # Force generators to wait for checkers and vice versa. Connect them in pairs, with each
+            # unpaired connected to the first of the others.
             bist_connections = []
             for generator, checker in zip_longest(generators, checkers):
                 g = generator or generators[0]
-                c = checker or checkers[0]
+                c = checker   or checkers[0]
                 bist_connections += g.run.eq(c.ready), c.run.eq(g.ready)
 
             fsm.act("BIST-GENERATOR",
-                combined_write(generators + checkers, 'start').eq(1),
+                combined_write(generators + checkers, "start").eq(1),
                 *bist_connections,
                 *map(bist_config, generators + checkers),
-                If(combined_read(checkers, 'done', and_),
+                If(combined_read(checkers, "done", and_),
                     NextState("DISPLAY")
                 )
             )
         else:
             fsm.act("BIST-GENERATOR",
-                combined_write(generators, 'start').eq(1),
-                combined_write(generators, 'run').eq(1),
+                combined_write(generators, "start").eq(1),
+                combined_write(generators, "run").eq(1),
                 *map(bist_config, generators),
-                If(combined_read(generators, 'done', and_),
+                If(combined_read(generators, "done", and_),
                     NextState("BIST-CHECKER")
                 )
             )
             fsm.act("BIST-CHECKER",
-                combined_write(checkers, 'start').eq(1),
-                combined_write(checkers, 'run').eq(1),
+                combined_write(checkers, "start").eq(1),
+                combined_write(checkers, "run").eq(1),
                 *map(bist_config, checkers),
-                If(combined_read(checkers, 'done', and_),
+                If(combined_read(checkers, "done", and_),
                     NextState("DISPLAY")
                 )
             )
@@ -166,8 +165,8 @@ class LiteDRAMBenchmarkSoC(SimSoC):
         # Simulation Results -----------------------------------------------------------------------
         def max_signal(signals):
             signals = iter(signals)
-            s = next(signals)
-            out = Signal(len(s))
+            s       = next(signals)
+            out     = Signal(len(s))
             self.comb += out.eq(s)
             for curr in signals:
                 prev = out
@@ -175,9 +174,9 @@ class LiteDRAMBenchmarkSoC(SimSoC):
                 self.comb +=  If(prev > curr, out.eq(prev)).Else(out.eq(curr))
             return out
 
-        generator_ticks = max_signal((g.ticks for g in generators))
+        generator_ticks = max_signal((g.ticks  for g in generators))
         checker_errors  = max_signal((c.errors for c in checkers))
-        checker_ticks   = max_signal((c.ticks for c in checkers))
+        checker_ticks   = max_signal((c.ticks  for c in checkers))
 
         self.sync += [
             If(display,
@@ -196,11 +195,10 @@ class LiteDRAMBenchmarkSoC(SimSoC):
 # Build --------------------------------------------------------------------------------------------
 
 def load_access_pattern(filename):
-    with open(filename, newline='') as f:
+    with open(filename, newline="") as f:
         reader = csv.reader(f)
-        pattern_init = [(int(addr, 0), int(data, 0)) for addr, data in reader]
-    return pattern_init
-
+        access_pattern = [(int(addr, 0), int(data, 0)) for addr, data in reader]
+    return access_pattern
 
 def main():
     parser = argparse.ArgumentParser(description="LiteDRAM Benchmark SoC Simulation")
@@ -222,7 +220,7 @@ def main():
     parser.add_argument("--num-checkers",     default=1,              help="Number of BIST checkers")
     parser.add_argument("--access-pattern",                           help="Load access pattern (address, data) from CSV (ignores --bist-*)")
     parser.add_argument("--log-level",        default="info",         help="Set logging verbosity",
-                        choices=['critical', 'error', 'warning', 'info', 'debug'])
+        choices=["critical", "error", "warning", "info", "debug"])
     args = parser.parse_args()
 
     root_logger = logging.getLogger()
@@ -235,8 +233,7 @@ def main():
     sim_config.add_module("serial2console", "serial")
 
     # Configuration --------------------------------------------------------------------------------
-    soc_kwargs["with_uart"]        = False
-
+    soc_kwargs["uart_name"]        = "sim"
     soc_kwargs["sdram_module"]     = args.sdram_module
     soc_kwargs["sdram_data_width"] = int(args.sdram_data_width)
     soc_kwargs["sdram_verbosity"]  = int(args.sdram_verbosity)
@@ -248,10 +245,10 @@ def main():
     soc_kwargs["num_checkers"]     = int(args.num_checkers)
 
     if args.access_pattern:
-        soc_kwargs["pattern_init"] = load_access_pattern(args.access_pattern)
+        soc_kwargs["access_pattern"] = load_access_pattern(args.access_pattern)
 
     # SoC ------------------------------------------------------------------------------------------
-    soc = LiteDRAMBenchmarkSoC(**soc_kwargs)
+    soc = LiteDRAMBenchmarkSoC(mode="pattern" if args.access_pattern else "bist", **soc_kwargs)
 
     # Build/Run ------------------------------------------------------------------------------------
     builder_kwargs["csr_csv"] = "csr.csv"
