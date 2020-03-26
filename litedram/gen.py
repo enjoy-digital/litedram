@@ -563,7 +563,7 @@ def main():
 
     # Generate core --------------------------------------------------------------------------------
     if core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
-        platform = LatticePlatform("", io=[], toolchain="diamond")
+        platform = LatticePlatform("LFE5UM5G-45F-8BG381C", io=[], toolchain="trellis") # FIXME: allow other devices.
     elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
         platform = XilinxPlatform("", io=[], toolchain="vivado")
     else:
