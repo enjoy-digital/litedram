@@ -238,16 +238,16 @@ class LiteDRAMECP5DDRPHYCRG(Module):
 
         # power on reset
         por_count = Signal(16, reset=2**16-1)
-        por_done = Signal()
+        por_done  = Signal()
         self.comb += self.cd_por.clk.eq(ClockSignal())
         self.comb += por_done.eq(por_count == 0)
         self.sync.por += If(~por_done, por_count.eq(por_count - 1))
 
         # pll
         self.submodules.pll = pll = ECP5PLL()
-        pll.register_clkin(clk, core_config['sys_clk_freq'])
+        pll.register_clkin(clk, core_config["input_clk_freq"])
         pll.create_clkout(self.cd_sys2x_i, 2*core_config["sys_clk_freq"])
-        pll.create_clkout(self.cd_init, core_config['init_clk_freq'])
+        pll.create_clkout(self.cd_init, core_config["init_clk_freq"])
         self.specials += [
             Instance("ECLKSYNCB",
                 i_ECLKI = self.cd_sys2x_i.clk,
@@ -260,7 +260,7 @@ class LiteDRAMECP5DDRPHYCRG(Module):
                 i_RST     = self.cd_sys2x.rst,
                 o_CDIVX   = self.cd_sys.clk),
             AsyncResetSynchronizer(self.cd_init, ~por_done | ~pll.locked | rst),
-            AsyncResetSynchronizer(self.cd_sys, ~por_done | ~pll.locked | rst)
+            AsyncResetSynchronizer(self.cd_sys,  ~por_done | ~pll.locked | rst),
         ]
 
 class LiteDRAMS7DDRPHYCRG(Module):
@@ -350,7 +350,7 @@ class LiteDRAMCore(SoCSDRAM):
                 pads         = platform.request("ddram"),
                 sys_clk_freq = sys_clk_freq)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
-            self.add_constant("ECP5DDRPHY", None)
+            self.add_constant("ECP5DDRPHY")
             sdram_module = core_config["sdram_module"](sys_clk_freq, "1:2")
         # S7DDRPHY
         if core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
@@ -575,7 +575,7 @@ def main():
     builder_arguments = builder_argdict(args)
     builder_arguments["compile_gateware"] = False
 
-    soc      = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000, integrated_sram_size=0x1000)
+    soc      = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000)
     builder  = Builder(soc, **builder_arguments)
     vns      = builder.build(build_name="litedram_core", regular_comb=False)
 
