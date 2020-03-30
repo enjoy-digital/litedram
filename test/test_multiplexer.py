@@ -9,25 +9,33 @@ from litex.gen.sim import run_simulation
 from litex.soc.interconnect import stream
 
 from litedram.common import *
+from litedram.phy import dfi
 from litedram.core.multiplexer import _CommandChooser, _Steerer, Multiplexer
+from litedram.core.multiplexer import STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH
 
 
 class CmdRequestRWDriver:
-    def __init__(self, req):
+    def __init__(self, req, i=0, ep_layout=True, rw_layout=True):
         self.req = req
+        self.rw_layout = rw_layout
+        self.ep_layout = ep_layout
 
-        self.bank = 0
-        self.row  = 0
-        self.col  = 0
+        # used to distinguish commands
+        self.bank = i
+        self.row  = i
+        self.col  = i
 
     def _drive(self, **kwargs):
-        signals = [
-            "valid", "first", "last",
-            "a", "ba", "cas", "ras", "we",
-            "is_cmd", "is_read", "is_write"
-        ]
+        signals = ["a", "ba", "cas", "ras", "we",]
+        if self.rw_layout:
+            signals += ["is_cmd", "is_read", "is_write"]
+        if self.ep_layout:
+            signals += ["valid", "first", "last"]
         for s in signals:
             yield getattr(self.req, s).eq(kwargs.get(s, 0))
+        # drive ba even for nop
+        if "ba" not in kwargs:
+            yield self.req.ba.eq(self.bank)
 
     def activate(self):
         yield from self._drive(valid=1, is_cmd=1, ras=1, a=self.row, ba=self.bank)
@@ -35,6 +43,9 @@ class CmdRequestRWDriver:
     def precharge(self, all_banks=False):
         a = 0 if not all_banks else (1 << 10)
         yield from self._drive(valid=1, is_cmd=1, ras=1, we=1, a=a, ba=self.bank)
+
+    def refresh(self):
+        yield from self._drive(valid=1, is_cmd=1, cas=1, ras=1, ba=self.bank)
 
     def write(self, auto_precharge=False):
         assert not (self.col & (1 << 10))
@@ -49,6 +60,7 @@ class CmdRequestRWDriver:
     def nop(self):
         yield from self._drive()
 
+# _CommandChooser ----------------------------------------------------------------------------------
 
 class CommandChooserDUT(Module):
     def __init__(self, n_requests, addressbits, bankbits):
@@ -56,12 +68,7 @@ class CommandChooserDUT(Module):
                          for _ in range(n_requests)]
         self.submodules.chooser = _CommandChooser(self.requests)
 
-        self.drivers = [CmdRequestRWDriver(req) for req in self.requests]
-        # set known a/ba to easly distinguish currently connected request
-        for i, driver in enumerate(self.drivers):
-            driver.bank = i
-            driver.row  = i
-            driver.col  = i
+        self.drivers = [CmdRequestRWDriver(req, i) for i, req in enumerate(self.requests)]
 
     def set_requests(self, description):
         assert len(description) == len(self.drivers)
@@ -265,3 +272,220 @@ class TestCommandChooser(unittest.TestCase):
         requests = "pr_aa_pw"
         order = "0670670"
         self.selection_test(requests, order, wants=["want_cmds", "want_writes"])
+
+# _Steerer -----------------------------------------------------------------------------------------
+
+class SteererDUT(Module):
+    def __init__(self, nranks, databits, nphases):
+        a, ba = 13, 3
+        nop = Record(cmd_request_layout(a=a, ba=ba))
+        choose_cmd = stream.Endpoint(cmd_request_rw_layout(a=a, ba=ba))
+        choose_req = stream.Endpoint(cmd_request_rw_layout(a=a, ba=ba))
+        refresher_cmd = stream.Endpoint(cmd_request_rw_layout(a=a, ba=ba))
+
+        self.commands = [nop, choose_cmd, choose_req, refresher_cmd]
+        self.dfi = dfi.Interface(addressbits=a, bankbits=ba, nranks=nranks, databits=databits,
+                                 nphases=nphases)
+        self.submodules.steerer = _Steerer(self.commands, self.dfi)
+
+        # nop is not an endpoint and does not have is_* signals
+        self.drivers = [CmdRequestRWDriver(req, i, ep_layout=i != 0, rw_layout=i != 0)
+                        for i, req in enumerate(self.commands)]
+
+class TestSteerer(unittest.TestCase):
+    def test_nop_not_valid(self):
+        def main_generator(dut):
+            # nop on both phases
+            yield dut.steerer.sel[0].eq(STEER_NOP)
+            yield dut.steerer.sel[1].eq(STEER_NOP)
+            yield from dut.drivers[0].nop()
+            yield
+
+            for i in range(2):
+                cas_n = (yield dut.dfi.phases[i].cas_n)
+                ras_n = (yield dut.dfi.phases[i].ras_n)
+                we_n  = (yield dut.dfi.phases[i].we_n)
+                # nop should have cas_n/ras_n/we_n = (1, 1, 1)
+                self.assertEqual((cas_n, ras_n, we_n), (1, 1, 1))
+
+        dut = SteererDUT(nranks=2, databits=16, nphases=2)
+        run_simulation(dut, main_generator(dut))
+
+    def test_connect_only_if_valid_and_ready(self):
+        def main_generator(dut):
+            # set possible requests
+            yield from dut.drivers[STEER_NOP].nop()
+            yield from dut.drivers[STEER_CMD].activate()
+            yield from dut.drivers[STEER_REQ].write()
+            yield from dut.drivers[STEER_REFRESH].refresh()
+            # set how phases are steered
+            yield dut.steerer.sel[0].eq(STEER_CMD)
+            yield dut.steerer.sel[1].eq(STEER_NOP)
+            yield
+            yield
+
+            def check(is_ready):
+                # cmd on phase 0 should be STEER_CMD=activate
+                p = dut.dfi.phases[0]
+                self.assertEqual((yield p.bank),    STEER_CMD)
+                self.assertEqual((yield p.address), STEER_CMD)
+                if is_ready:
+                    self.assertEqual((yield p.cas_n), 1)
+                    self.assertEqual((yield p.ras_n), 0)
+                    self.assertEqual((yield p.we_n),  1)
+                else:  # not steered
+                    self.assertEqual((yield p.cas_n), 1)
+                    self.assertEqual((yield p.ras_n), 1)
+                    self.assertEqual((yield p.we_n),  1)
+
+                # nop on phase 1 should be STEER_NOP
+                p = dut.dfi.phases[1]
+                self.assertEqual((yield p.cas_n), 1)
+                self.assertEqual((yield p.ras_n), 1)
+                self.assertEqual((yield p.we_n),  1)
+
+            yield from check(is_ready=False)
+            yield dut.commands[STEER_CMD].ready.eq(1)
+            yield
+            yield
+            yield from check(is_ready=True)
+
+        dut = SteererDUT(nranks=2, databits=16, nphases=2)
+        run_simulation(dut, main_generator(dut))
+
+    def test_no_decode_ba_signle_rank(self):
+        def main_generator(dut):
+            yield from dut.drivers[STEER_NOP].nop()
+            yield from dut.drivers[STEER_REQ].write()
+            yield from dut.drivers[STEER_REFRESH].refresh()
+            # all the bits are for bank
+            dut.drivers[STEER_CMD].bank = 0b110
+            yield from dut.drivers[STEER_CMD].activate()
+            yield dut.commands[STEER_CMD].ready.eq(1)
+            # set how phases are steered
+            yield dut.steerer.sel[0].eq(STEER_NOP)
+            yield dut.steerer.sel[1].eq(STEER_CMD)
+            yield
+            yield
+
+            p = dut.dfi.phases[1]
+            self.assertEqual((yield p.cas_n),   1)
+            self.assertEqual((yield p.ras_n),   0)
+            self.assertEqual((yield p.we_n),    1)
+            self.assertEqual((yield p.address), STEER_CMD)
+            self.assertEqual((yield p.bank),    0b110)
+            self.assertEqual((yield p.cs_n),    0)
+
+        dut = SteererDUT(nranks=1, databits=16, nphases=2)
+        run_simulation(dut, main_generator(dut))
+
+    def test_decode_ba_multiple_ranks(self):
+        def main_generator(dut):
+            yield from dut.drivers[STEER_NOP].nop()
+            yield from dut.drivers[STEER_REQ].write()
+            yield from dut.drivers[STEER_REFRESH].refresh()
+            # set how phases are steered
+            yield dut.steerer.sel[0].eq(STEER_NOP)
+            yield dut.steerer.sel[1].eq(STEER_CMD)
+
+            variants = [
+                # ba, phase.bank, phase.cs_n
+                (0b110, 0b10, 0b01),  # rank=1 -> cs=0b10 -> cs_n=0b01
+                (0b101, 0b01, 0b01),  # rank=1 -> cs=0b10 -> cs_n=0b01
+                (0b001, 0b01, 0b10),  # rank=0 -> cs=0b01 -> cs_n=0b10
+            ]
+            for ba, phase_bank, phase_cs_n in variants:
+                with self.subTest(ba=ba):
+                    # 1 bit for rank, 2 bits for bank
+                    dut.drivers[STEER_CMD].bank = ba
+                    yield from dut.drivers[STEER_CMD].activate()
+                    yield dut.commands[STEER_CMD].ready.eq(1)
+                    yield
+                    yield
+
+                    p = dut.dfi.phases[1]
+                    self.assertEqual((yield p.cas_n), 1)
+                    self.assertEqual((yield p.ras_n), 0)
+                    self.assertEqual((yield p.we_n),  1)
+                    self.assertEqual((yield p.bank),  phase_bank)
+                    self.assertEqual((yield p.cs_n),  phase_cs_n)
+
+
+        dut = SteererDUT(nranks=2, databits=16, nphases=2)
+        run_simulation(dut, main_generator(dut))
+
+    def test_select_all_ranks_on_refresh(self):
+        def main_generator(dut):
+            yield from dut.drivers[STEER_NOP].nop()
+            yield from dut.drivers[STEER_REQ].write()
+            yield from dut.drivers[STEER_CMD].activate()
+            # set how phases are steered
+            yield dut.steerer.sel[0].eq(STEER_REFRESH)
+            yield dut.steerer.sel[1].eq(STEER_NOP)
+
+            variants = [
+                # ba, phase.bank, phase.cs_n (always all enabled)
+                (0b110, 0b10, 0b00),
+                (0b101, 0b01, 0b00),
+                (0b001, 0b01, 0b00),
+            ]
+            for ba, phase_bank, phase_cs_n in variants:
+                with self.subTest(ba=ba):
+                    # 1 bit for rank, 2 bits for bank
+                    dut.drivers[STEER_REFRESH].bank = ba
+                    yield from dut.drivers[STEER_REFRESH].refresh()
+                    yield dut.commands[STEER_REFRESH].ready.eq(1)
+                    yield
+                    yield
+
+                    p = dut.dfi.phases[0]
+                    self.assertEqual((yield p.cas_n), 0)
+                    self.assertEqual((yield p.ras_n), 0)
+                    self.assertEqual((yield p.we_n),  1)
+                    self.assertEqual((yield p.bank),  phase_bank)
+                    self.assertEqual((yield p.cs_n),  phase_cs_n)
+
+        dut = SteererDUT(nranks=2, databits=16, nphases=2)
+        run_simulation(dut, main_generator(dut))
+
+    def test_reset_n_high(self):
+        def main_generator(dut):
+            yield dut.steerer.sel[0].eq(STEER_CMD)
+            yield dut.steerer.sel[1].eq(STEER_NOP)
+            yield
+
+            self.assertEqual((yield dut.dfi.phases[0].reset_n), 1)
+            self.assertEqual((yield dut.dfi.phases[1].reset_n), 1)
+            self.assertEqual((yield dut.dfi.phases[2].reset_n), 1)
+            self.assertEqual((yield dut.dfi.phases[3].reset_n), 1)
+
+        dut = SteererDUT(nranks=2, databits=16, nphases=4)
+        run_simulation(dut, main_generator(dut))
+
+    def test_cke_high_all_ranks(self):
+        def main_generator(dut):
+            yield dut.steerer.sel[0].eq(STEER_CMD)
+            yield dut.steerer.sel[1].eq(STEER_NOP)
+            yield
+
+            self.assertEqual((yield dut.dfi.phases[0].cke), 0b11)
+            self.assertEqual((yield dut.dfi.phases[1].cke), 0b11)
+            self.assertEqual((yield dut.dfi.phases[2].cke), 0b11)
+            self.assertEqual((yield dut.dfi.phases[3].cke), 0b11)
+
+        dut = SteererDUT(nranks=2, databits=16, nphases=4)
+        run_simulation(dut, main_generator(dut))
+
+    def test_odt_high_all_ranks(self):
+        def main_generator(dut):
+            yield dut.steerer.sel[0].eq(STEER_CMD)
+            yield dut.steerer.sel[1].eq(STEER_NOP)
+            yield
+
+            self.assertEqual((yield dut.dfi.phases[0].odt), 0b11)
+            self.assertEqual((yield dut.dfi.phases[1].odt), 0b11)
+            self.assertEqual((yield dut.dfi.phases[2].odt), 0b11)
+            self.assertEqual((yield dut.dfi.phases[3].odt), 0b11)
+
+        dut = SteererDUT(nranks=2, databits=16, nphases=4)
+        run_simulation(dut, main_generator(dut))
