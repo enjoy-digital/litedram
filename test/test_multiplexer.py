@@ -294,6 +294,8 @@ class SteererDUT(Module):
 
 class TestSteerer(unittest.TestCase):
     def test_nop_not_valid(self):
+        # If NOP is selected then there should be no command selected on cas/ras/we
+
         def main_generator(dut):
             # nop on both phases
             yield dut.steerer.sel[0].eq(STEER_NOP)
@@ -305,13 +307,14 @@ class TestSteerer(unittest.TestCase):
                 cas_n = (yield dut.dfi.phases[i].cas_n)
                 ras_n = (yield dut.dfi.phases[i].ras_n)
                 we_n  = (yield dut.dfi.phases[i].we_n)
-                # nop should have cas_n/ras_n/we_n = (1, 1, 1)
                 self.assertEqual((cas_n, ras_n, we_n), (1, 1, 1))
 
         dut = SteererDUT(nranks=2, databits=16, nphases=2)
         run_simulation(dut, main_generator(dut))
 
     def test_connect_only_if_valid_and_ready(self):
+        # Commands should be connected to phases only if they are valid & ready
+
         def main_generator(dut):
             # set possible requests
             yield from dut.drivers[STEER_NOP].nop()
@@ -354,6 +357,8 @@ class TestSteerer(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_no_decode_ba_signle_rank(self):
+        # With a single rank the whole `ba` signal is bank address
+
         def main_generator(dut):
             yield from dut.drivers[STEER_NOP].nop()
             yield from dut.drivers[STEER_REQ].write()
@@ -380,6 +385,8 @@ class TestSteerer(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_decode_ba_multiple_ranks(self):
+        # With multiple ranks `ba` signal should be split into bank and chip select
+
         def main_generator(dut):
             yield from dut.drivers[STEER_NOP].nop()
             yield from dut.drivers[STEER_REQ].write()
@@ -415,6 +422,8 @@ class TestSteerer(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_select_all_ranks_on_refresh(self):
+        # When refresh command is on first phase, all ranks should be selected
+
         def main_generator(dut):
             yield from dut.drivers[STEER_NOP].nop()
             yield from dut.drivers[STEER_REQ].write()
@@ -449,6 +458,8 @@ class TestSteerer(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_reset_n_high(self):
+        # reset_n should be 1 for all phases at all times
+
         def main_generator(dut):
             yield dut.steerer.sel[0].eq(STEER_CMD)
             yield dut.steerer.sel[1].eq(STEER_NOP)
@@ -463,6 +474,8 @@ class TestSteerer(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_cke_high_all_ranks(self):
+        # cke should be 1 for all phases and ranks at all times
+
         def main_generator(dut):
             yield dut.steerer.sel[0].eq(STEER_CMD)
             yield dut.steerer.sel[1].eq(STEER_NOP)
@@ -477,6 +490,9 @@ class TestSteerer(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_odt_high_all_ranks(self):
+        # odt should be 1 for all phases and ranks at all times
+        # NOTE: until dynamic odt is implemented
+
         def main_generator(dut):
             yield dut.steerer.sel[0].eq(STEER_CMD)
             yield dut.steerer.sel[1].eq(STEER_NOP)
