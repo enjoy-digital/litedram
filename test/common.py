@@ -6,9 +6,11 @@
 import os
 import random
 import itertools
+from functools import partial
 from operator import or_
 
 from migen import *
+
 
 def seed_to_data(seed, random=True, nbits=32):
     if nbits == 32:
@@ -32,6 +34,65 @@ def timeout_generator(ticks):
     for _ in range(ticks):
         yield
     raise TimeoutError("Timeout after %d ticks" % ticks)
+
+
+class CmdRequestRWDriver:
+    """Simple driver for Endpoint(cmd_request_rw_layout())"""
+    def __init__(self, req, i=0, ep_layout=True, rw_layout=True):
+        self.req = req
+        self.rw_layout = rw_layout  # if False, omit is_* signals
+        self.ep_layout = ep_layout  # if False, omit endpoint signals (valid, etc.)
+
+        # used to distinguish commands
+        self.i = self.bank = self.row = self.col = i
+
+    def request(self, char):
+        # convert character to matching command invocation
+        return {
+            "w": self.write,
+            "r": self.read,
+            "W": partial(self.write, auto_precharge=True),
+            "R": partial(self.read, auto_precharge=True),
+            "a": self.activate,
+            "p": self.precharge,
+            "f": self.refresh,
+            "_": self.nop,
+        }[char]()
+
+    def activate(self):
+        yield from self._drive(valid=1, is_cmd=1, ras=1, a=self.row, ba=self.bank)
+
+    def precharge(self, all_banks=False):
+        a = 0 if not all_banks else (1 << 10)
+        yield from self._drive(valid=1, is_cmd=1, ras=1, we=1, a=a, ba=self.bank)
+
+    def refresh(self):
+        yield from self._drive(valid=1, is_cmd=1, cas=1, ras=1, ba=self.bank)
+
+    def write(self, auto_precharge=False):
+        assert not (self.col & (1 << 10))
+        col = self.col | (1 << 10) if auto_precharge else self.col
+        yield from self._drive(valid=1, is_write=1, cas=1, we=1, a=col, ba=self.bank)
+
+    def read(self, auto_precharge=False):
+        assert not (self.col & (1 << 10))
+        col = self.col | (1 << 10) if auto_precharge else self.col
+        yield from self._drive(valid=1, is_read=1, cas=1, a=col, ba=self.bank)
+
+    def nop(self):
+        yield from self._drive()
+
+    def _drive(self, **kwargs):
+        signals = ["a", "ba", "cas", "ras", "we"]
+        if self.rw_layout:
+            signals += ["is_cmd", "is_read", "is_write"]
+        if self.ep_layout:
+            signals += ["valid", "first", "last"]
+        for s in signals:
+            yield getattr(self.req, s).eq(kwargs.get(s, 0))
+        # drive ba even for nop, to be able to distinguish bank machines anyway
+        if "ba" not in kwargs:
+            yield self.req.ba.eq(self.bank)
 
 
 class DRAMMemory:
@@ -127,6 +188,7 @@ class DRAMMemory:
                     yield
                     yield dram_port.cmd.ready.eq(0)
             yield
+
 
 class MemoryTestDataMixin:
     @property
