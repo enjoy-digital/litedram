@@ -174,6 +174,7 @@ class TestCommandChooser(unittest.TestCase):
         dut = CommandChooserDUT(n_requests=8, bankbits=3, addressbits=13)
         run_simulation(dut, main_generator(dut))
 
+    @unittest.skip("Issue #174")
     def test_selects_nothing(self):
         # When want_* = 0, chooser should set cas/ras/we = 0, which means not valid request
         requests = "w_rawpwr"
@@ -190,11 +191,13 @@ class TestCommandChooser(unittest.TestCase):
         order = "0560560"
         self.selection_test(requests, order, wants=["want_reads"])
 
+    @unittest.skip("Issue #174")
     def test_selects_writes_and_reads(self):
         requests = "rp_awrrw"
         order = "04567045670"
         self.selection_test(requests, order, wants=["want_reads", "want_writes"])
 
+    @unittest.skip("Issue #174")
     def test_selects_cmds_without_act(self):
         # When want_cmds = 1, but want_activates = 0, activate commands should not be selected
         requests = "pr_aa_pw"
@@ -207,6 +210,7 @@ class TestCommandChooser(unittest.TestCase):
         order = "034603460"
         self.selection_test(requests, order, wants=["want_cmds", "want_activates"])
 
+    @unittest.skip("Issue #174")
     def test_selects_nothing_when_want_activates_only(self):
         # When only want_activates = 1, nothing will be selected
         requests = "pr_aa_pw"
