@@ -13,7 +13,6 @@ from litex.soc.interconnect import stream
 
 from litedram.common import *
 from litedram.phy import dfi
-from litedram.core.controller import ControllerSettings
 from litedram.core.multiplexer import _CommandChooser, _Steerer, Multiplexer
 from litedram.core.multiplexer import STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH
 
@@ -24,25 +23,27 @@ from test.common import timeout_generator
 
 
 class CmdRequestRWDriver:
+    """Simple driver for Endpoint(cmd_request_rw_layout())"""
     def __init__(self, req, i=0, ep_layout=True, rw_layout=True):
         self.req = req
-        self.rw_layout = rw_layout
-        self.ep_layout = ep_layout
+        self.rw_layout = rw_layout  # if False, omit is_* signals
+        self.ep_layout = ep_layout  # if False, omit endpoint signals (valid, etc.)
 
         # used to distinguish commands
         self.i = self.bank = self.row = self.col = i
 
-    def _drive(self, **kwargs):
-        signals = ["a", "ba", "cas", "ras", "we",]
-        if self.rw_layout:
-            signals += ["is_cmd", "is_read", "is_write"]
-        if self.ep_layout:
-            signals += ["valid", "first", "last"]
-        for s in signals:
-            yield getattr(self.req, s).eq(kwargs.get(s, 0))
-        # drive ba even for nop
-        if "ba" not in kwargs:
-            yield self.req.ba.eq(self.bank)
+    def request(self, char):
+        # convert character to matching command invocation
+        return {
+            "w": self.write,
+            "r": self.read,
+            "W": partial(self.write, auto_precharge=True),
+            "R": partial(self.read, auto_precharge=True),
+            "a": self.activate,
+            "p": self.precharge,
+            "f": self.refresh,
+            "_": self.nop,
+        }[char]()
 
     def activate(self):
         yield from self._drive(valid=1, is_cmd=1, ras=1, a=self.row, ba=self.bank)
@@ -67,20 +68,20 @@ class CmdRequestRWDriver:
     def nop(self):
         yield from self._drive()
 
-    def request(self, char):
-        return {
-            "w": self.write,
-            "r": self.read,
-            "W": partial(self.write, auto_precharge=True),
-            "R": partial(self.read, auto_precharge=True),
-            "a": self.activate,
-            "p": self.precharge,
-            "f": self.refresh,
-            "_": self.nop,
-        }[char]()
+    def _drive(self, **kwargs):
+        signals = ["a", "ba", "cas", "ras", "we"]
+        if self.rw_layout:
+            signals += ["is_cmd", "is_read", "is_write"]
+        if self.ep_layout:
+            signals += ["valid", "first", "last"]
+        for s in signals:
+            yield getattr(self.req, s).eq(kwargs.get(s, 0))
+        # drive ba even for nop, to be able to distinguish bank machines anyway
+        if "ba" not in kwargs:
+            yield self.req.ba.eq(self.bank)
 
 
-def dfi_to_cmd_char(cas_n, ras_n, we_n):
+def dfi_cmd_to_char(cas_n, ras_n, we_n):
     return {
         (1, 1, 1): "_",
         (0, 1, 0): "w",
@@ -157,6 +158,7 @@ class TestCommandChooser(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_selects_next_when_request_not_valid(self):
+        # Verify that arbiter moves to next request when valid goes inactive
         def main_generator(dut):
             yield dut.chooser.want_cmds.eq(1)
             yield from dut.set_requests("pppp")
@@ -174,7 +176,7 @@ class TestCommandChooser(unittest.TestCase):
             yield
             self.assertEqual((yield dut.chooser.cmd.ba), 0)
 
-            # after deactivating valid arbiter should choose next request
+            # after deactivating `valid`, arbiter should choose next request
             yield from invalidate(0)
             self.assertEqual((yield dut.chooser.cmd.ba), 1)
             yield from invalidate(1)
@@ -188,6 +190,7 @@ class TestCommandChooser(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_selects_next_when_cmd_ready(self):
+        # Verify that next request is chosen when the current one becomes ready
         def main_generator(dut):
             yield dut.chooser.want_cmds.eq(1)
             yield from dut.set_requests("pppp")
@@ -315,10 +318,10 @@ class SteererDUT(Module):
         self.drivers = [CmdRequestRWDriver(req, i, ep_layout=i != 0, rw_layout=i != 0)
                         for i, req in enumerate(self.commands)]
 
+
 class TestSteerer(unittest.TestCase):
     def test_nop_not_valid(self):
         # If NOP is selected then there should be no command selected on cas/ras/we
-
         def main_generator(dut):
             # nop on both phases
             yield dut.steerer.sel[0].eq(STEER_NOP)
@@ -337,7 +340,6 @@ class TestSteerer(unittest.TestCase):
 
     def test_connect_only_if_valid_and_ready(self):
         # Commands should be connected to phases only if they are valid & ready
-
         def main_generator(dut):
             # set possible requests
             yield from dut.drivers[STEER_NOP].nop()
@@ -381,7 +383,6 @@ class TestSteerer(unittest.TestCase):
 
     def test_no_decode_ba_signle_rank(self):
         # With a single rank the whole `ba` signal is bank address
-
         def main_generator(dut):
             yield from dut.drivers[STEER_NOP].nop()
             yield from dut.drivers[STEER_REQ].write()
@@ -409,7 +410,6 @@ class TestSteerer(unittest.TestCase):
 
     def test_decode_ba_multiple_ranks(self):
         # With multiple ranks `ba` signal should be split into bank and chip select
-
         def main_generator(dut):
             yield from dut.drivers[STEER_NOP].nop()
             yield from dut.drivers[STEER_REQ].write()
@@ -440,13 +440,11 @@ class TestSteerer(unittest.TestCase):
                     self.assertEqual((yield p.bank),  phase_bank)
                     self.assertEqual((yield p.cs_n),  phase_cs_n)
 
-
         dut = SteererDUT(nranks=2, dfi_databits=16, nphases=2)
         run_simulation(dut, main_generator(dut))
 
     def test_select_all_ranks_on_refresh(self):
         # When refresh command is on first phase, all ranks should be selected
-
         def main_generator(dut):
             yield from dut.drivers[STEER_NOP].nop()
             yield from dut.drivers[STEER_REQ].write()
@@ -482,7 +480,6 @@ class TestSteerer(unittest.TestCase):
 
     def test_reset_n_high(self):
         # reset_n should be 1 for all phases at all times
-
         def main_generator(dut):
             yield dut.steerer.sel[0].eq(STEER_CMD)
             yield dut.steerer.sel[1].eq(STEER_NOP)
@@ -498,7 +495,6 @@ class TestSteerer(unittest.TestCase):
 
     def test_cke_high_all_ranks(self):
         # cke should be 1 for all phases and ranks at all times
-
         def main_generator(dut):
             yield dut.steerer.sel[0].eq(STEER_CMD)
             yield dut.steerer.sel[1].eq(STEER_NOP)
@@ -514,8 +510,7 @@ class TestSteerer(unittest.TestCase):
 
     def test_odt_high_all_ranks(self):
         # odt should be 1 for all phases and ranks at all times
-        # NOTE: until dynamic odt is implemented
-
+        # NOTE: only until dynamic odt is implemented
         def main_generator(dut):
             yield dut.steerer.sel[0].eq(STEER_CMD)
             yield dut.steerer.sel[1].eq(STEER_NOP)
@@ -544,7 +539,8 @@ class RefresherStub:
 
 
 class MultiplexerDUT(Module):
-    # use only the settings that we need
+    # define default settings that can be overwritten in specific tests
+    # use only these settings that we actually need for Multiplexer
     default_controller_settings = dict(
         read_time=32,
         write_time=16,
@@ -576,9 +572,8 @@ class MultiplexerDUT(Module):
         tRRD=None,
     )
 
-    def __init__(self, controller_settings=None, phy_settings=None,
-                 geom_settings=None, timing_settings=None):
-
+    def __init__(self, controller_settings=None, phy_settings=None, geom_settings=None,
+                 timing_settings=None):
         # update settings if provided
         def updated(settings, update):
             copy = settings.copy()
@@ -602,6 +597,7 @@ class MultiplexerDUT(Module):
         settings.geom.addressbits = max(settings.geom.rowbits, settings.geom.colbits)
         self.settings = settings
 
+        # create interfaces and stubs required to instantiate Multiplexer
         abits  = settings.geom.addressbits
         babits = settings.geom.bankbits
         nbanks = 2**babits
@@ -614,13 +610,16 @@ class MultiplexerDUT(Module):
         address_align = log2_int(burst_lengths[settings.phy.memtype])
         self.interface = LiteDRAMInterface(address_align=address_align, settings=settings)
 
+        # add Multiplexer
         self.submodules.multiplexer = Multiplexer(settings, self.bank_machines, self.refresher,
                                                   self.dfi, self.interface)
 
+        # add helpers for driving bank machines/refresher
         self.bm_drivers = [CmdRequestRWDriver(bm.cmd, i) for i, bm in enumerate(self.bank_machines)]
         self.refresh_driver = CmdRequestRWDriver(self.refresher.cmd, i=1)
 
     def fsm_state(self):
+        # return name of current state of Multiplexer's FSM
         return self.multiplexer.fsm.decoding[(yield self.multiplexer.fsm.state)]
 
 
@@ -628,16 +627,10 @@ class TestMultiplexer(unittest.TestCase):
     def test_init(self):
         # Verify that instantiation of Multiplexer in MultiplexerDUT is correct
         # This will fail if Multiplexer starts using any new setting from controller.settings
-        def main_generator(dut):
-            for driver in dut.bm_drivers:
-                yield from driver.nop()
-            yield from dut.refresh_driver.nop()
-
         dut = MultiplexerDUT()
-        run_simulation(dut, main_generator(dut))
 
     def test_fsm_start_at_read(self):
-        # FSM should start at READ state
+        # FSM should start at READ state (assumed in some other tests)
         def main_generator(dut):
             self.assertEqual((yield from dut.fsm_state()), "READ")
 
@@ -679,7 +672,7 @@ class TestMultiplexer(unittest.TestCase):
             expected = "w" + (wtr - 1) * ">" + "r"
             states = ""
 
-            # simulate until we're in WRITE
+            # simulate until we are in WRITE
             yield from dut.bm_drivers[0].write()
             while (yield from dut.fsm_state()) != "WRITE":
                 yield
@@ -758,7 +751,7 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_single_phase_cmd_req(self):
-        # Verify that for single phase commands are sent sequentially
+        # Verify that, for a single phase, commands are sent sequentially
         def main_generator(dut):
             yield from dut.bm_drivers[2].write()
             yield from dut.bm_drivers[3].activate()
@@ -1022,8 +1015,8 @@ class TestMultiplexer(unittest.TestCase):
                 yield
 
         # gather data on DFI
-        DFISnapshot = namedtuple('DFICapture',
-                                 ['cmd', 'bank', 'address', 'wrdata_en', 'rddata_en'])
+        DFISnapshot = namedtuple("DFICapture",
+                                 ["cmd", "bank", "address", "wrdata_en", "rddata_en"])
         dfi_snapshots = []
 
         @passive
@@ -1034,7 +1027,7 @@ class TestMultiplexer(unittest.TestCase):
                 for i, p in enumerate(dfi.phases):
                     # transform cas/ras/we to command name
                     cas_n, ras_n, we_n = (yield p.cas_n), (yield p.ras_n), (yield p.we_n)
-                    captured = {'cmd': dfi_to_cmd_char(cas_n, ras_n, we_n)}
+                    captured = {"cmd": dfi_cmd_to_char(cas_n, ras_n, we_n)}
 
                     # capture rest of fields
                     for field in DFISnapshot._fields:
