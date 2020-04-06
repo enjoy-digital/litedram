@@ -106,8 +106,6 @@ class LiteDRAMCrossbar(Module):
         arbiters = [roundrobin.RoundRobin(nmasters, roundrobin.SP_CE) for n in range(self.nbanks)]
         self.submodules += arbiters
 
-        rbank = Signal(max=self.nbanks)
-        wbank = Signal(max=self.nbanks)
         for nb, arbiter in enumerate(arbiters):
             bank = getattr(controller, "bank"+str(nb))
 
@@ -129,15 +127,6 @@ class LiteDRAMCrossbar(Module):
                 arbiter.ce.eq(~bank.valid & ~bank.lock)
             ]
 
-            # Get rdata source bank ----------------------------------------------------------------
-            self.sync += If((arbiter.grant == nm) & bank.rdata_valid, rbank.eq(nb))
-
-            # Get wdata source bank ----------------------------------------------------------------
-            self.sync += \
-                If((arbiter.grant == nm) & bank.wdata_ready,
-                    wbank.eq(nb)
-                )
-
             # Route requests -----------------------------------------------------------------------
             self.comb += [
                 bank.addr.eq(Array(m_rca)[arbiter.grant]),
@@ -151,19 +140,20 @@ class LiteDRAMCrossbar(Module):
             master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & bank.rdata_valid)
                 for nm, master_rdata_valid in enumerate(master_rdata_valids)]
 
+        # Delay write/read signals based on their latency
         for nm, master_wdata_ready in enumerate(master_wdata_readys):
-                for i in range(self.write_latency):
-                    new_master_wdata_ready = Signal()
-                    self.sync += new_master_wdata_ready.eq(master_wdata_ready)
-                    master_wdata_ready = new_master_wdata_ready
-                master_wdata_readys[nm] = master_wdata_ready
+            for i in range(self.write_latency):
+                new_master_wdata_ready = Signal()
+                self.sync += new_master_wdata_ready.eq(master_wdata_ready)
+                master_wdata_ready = new_master_wdata_ready
+            master_wdata_readys[nm] = master_wdata_ready
 
         for nm, master_rdata_valid in enumerate(master_rdata_valids):
-                for i in range(self.read_latency):
-                    new_master_rdata_valid = Signal()
-                    self.sync += new_master_rdata_valid.eq(master_rdata_valid)
-                    master_rdata_valid = new_master_rdata_valid
-                master_rdata_valids[nm] = master_rdata_valid
+            for i in range(self.read_latency):
+                new_master_rdata_valid = Signal()
+                self.sync += new_master_rdata_valid.eq(master_rdata_valid)
+                master_rdata_valid = new_master_rdata_valid
+            master_rdata_valids[nm] = master_rdata_valid
 
         for master, master_ready in zip(self.masters, master_readys):
             self.comb += master.cmd.ready.eq(master_ready)
