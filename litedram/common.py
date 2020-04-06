@@ -93,7 +93,7 @@ class BitSlip(Module):
 
         # # #
 
-        r = Signal(2*dw)
+        r = Signal(2*dw, reset_less=True)
         self.sync += r.eq(Cat(r[dw:], self.i))
         cases = {}
         for i in range(dw):
