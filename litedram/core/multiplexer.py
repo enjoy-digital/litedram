@@ -22,6 +22,29 @@ from litedram.core.bandwidth import Bandwidth
 # _CommandChooser ----------------------------------------------------------------------------------
 
 class _CommandChooser(Module):
+    """Arbitrates between requests, filtering them based on their type
+
+    Uses RoundRobin to choose current request, filters requests based on
+    `want_*` signals.
+
+    Parameters
+    ----------
+    requests : [Endpoint(cmd_request_rw_layout), ...]
+        Request streams to consider for arbitration
+
+    Attributes
+    ----------
+    want_reads : Signal, in
+        Consider read requests
+    want_writes : Signal, in
+        Consider write requests
+    want_cmds : Signal, in
+        Consider command requests (without ACT)
+    want_activates : Signal, in
+        Also consider ACT commands
+    cmd : Endpoint(cmd_request_rw_layout)
+        Currently selected request stream (when ~cmd.valid, cas/ras/we are 0)
+    """
     def __init__(self, requests):
         self.want_reads     = Signal()
         self.want_writes    = Signal()
@@ -94,6 +117,29 @@ class _CommandChooser(Module):
 (STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH) = range(4)
 
 class _Steerer(Module):
+    """Connects selected request to DFI interface
+
+    cas/ras/we/is_write/is_read are connected only when `cmd.valid & cmd.ready`.
+    Rank bits are decoded and used to drive cs_n in multi-rank systems,
+    STEER_REFRESH always enables all ranks.
+
+    Parameters
+    ----------
+    commands : [Endpoint(cmd_request_rw_layout), ...]
+        Command streams to choose from. Must be of len=4 in the order:
+            NOP, CMD, REQ, REFRESH
+        NOP can be of type Record(cmd_request_rw_layout) instead, so that it is
+        always considered invalid (because of lack of the `valid` attribute).
+    dfi : dfi.Interface
+        DFI interface connected to PHY
+
+    Attributes
+    ----------
+    sel : [Signal(max=len(commands)), ...], in
+        Signals for selecting which request gets connected to the corresponding
+        DFI phase. The signals should take one of the values from STEER_* to
+        select given source.
+    """
     def __init__(self, commands, dfi):
         ncmd = len(commands)
         nph  = len(dfi.phases)
@@ -143,9 +189,29 @@ class _Steerer(Module):
                 phase.wrdata_en.eq(wrdata_ens[sel])
             ]
 
-# Multiplexe ---------------------------------------------------------------------------------------
+# Multiplexer --------------------------------------------------------------------------------------
 
 class Multiplexer(Module, AutoCSR):
+    """Multplexes requets from BankMachines to DFI
+
+    This module multiplexes requests from BankMachines (and Refresher) and
+    connects them to DFI. Refresh commands are coordinated between the Refresher
+    and BankMachines to ensure there are no conflicts. Enforces required timings
+    between commands (some timings are enforced by BankMachines).
+
+    Parameters
+    ----------
+    settings : ControllerSettings
+        Controller settings (with .phy, .geom and .timing settings)
+    bank_machines : [BankMachine, ...]
+        Bank machines that generate command requests to the Multiplexer
+    refresher : Refresher
+        Generates REFRESH command requests
+    dfi : dfi.Interface
+        DFI connected to the PHY
+    interface : LiteDRAMInterface
+        Data interface connected directly to LiteDRAMCrossbar
+    """
     def __init__(self,
             settings,
             bank_machines,

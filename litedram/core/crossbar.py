@@ -20,6 +20,44 @@ from litedram.frontend.adaptation import *
 # LiteDRAMCrossbar ---------------------------------------------------------------------------------
 
 class LiteDRAMCrossbar(Module):
+    """Multiplexes LiteDRAMController (slave) between ports (masters)
+
+    To get a port to LiteDRAM, use the `get_port` method. It handles data width
+    conversion and clock domain crossing, returning LiteDRAMNativePort.
+
+    The crossbar routes requests from masters to the BankMachines
+    (bankN.cmd_layout) and connects data path directly to the Multiplexer
+    (data_layout). It performs address translation based on chosen
+    `controller.settings.address_mapping`.
+    Internally, all masters are multiplexed between controller banks based on
+    the bank address (extracted from the presented address). Each bank has
+    a RoundRobin arbiter, that selects from masters that want to access this
+    bank and are not already locked.
+
+    Locks (cmd_layout.lock) make sure that, when a master starts a transaction
+    with given bank (which may include multiple reads/writes), no other bank
+    will be assigned to it during this time.
+    Arbiter (of a bank) considers given master as a candidate for selection if:
+     - given master's command is valid
+     - given master addresses the arbiter's bank
+     - given master is not locked
+       * i.e. it is not during transaction with another bank
+       * i.e. no other bank's arbiter granted permission for this master (with
+         bank.lock being active)
+
+    Data ready/valid signals for banks are routed from bankmachines with
+    a latency that synchronizes them with the data coming over datapath.
+
+    Parameters
+    ----------
+    controller : LiteDRAMInterface
+        Interface to LiteDRAMController
+
+    Attributes
+    ----------
+    masters : [LiteDRAMNativePort, ...]
+        LiteDRAM memory ports
+    """
     def __init__(self, controller):
         self.controller = controller
 

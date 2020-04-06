@@ -16,6 +16,11 @@ from litedram.core.multiplexer import *
 # AddressSlicer ------------------------------------------------------------------------------------
 
 class _AddressSlicer:
+    """Helper for extracting row/col from address
+
+    Column occupies lower bits of the address, row - higher bits. Address has
+    a forced alignment, so column does not contain alignment bits.
+    """
     def __init__(self, colbits, address_align):
         self.colbits       = colbits
         self.address_align = address_align
@@ -31,6 +36,53 @@ class _AddressSlicer:
 # BankMachine --------------------------------------------------------------------------------------
 
 class BankMachine(Module):
+    """Converts requests from ports into DRAM commands
+
+    BankMachine abstracts single DRAM bank by keeping track of the currently
+    selected row. It converts requests from LiteDRAMCrossbar to targetted
+    to that bank into DRAM commands that go to the Multiplexer, inserting any
+    needed activate/precharge commands (with optional auto-precharge). It also
+    keeps track and enforces some DRAM timings (other timings are enforced in
+    the Multiplexer).
+
+    BankMachines work independently from the data path (which connects
+    LiteDRAMCrossbar with the Multiplexer directly).
+
+    Stream of requests from LiteDRAMCrossbar is being queued, so that reqeust
+    can be "looked ahead", and auto-precharge can be performed (if enabled in
+    settings).
+
+    Lock (cmd_layout.lock) is used to synchronise with LiteDRAMCrossbar. It is
+    being held when:
+     - there is a valid command awaiting in `cmd_buffer_lookahead` - this buffer
+       becomes ready simply when the next data gets fetched to the `cmd_buffer`
+     - there is a valid command in `cmd_buffer` - `cmd_buffer` becomes ready
+       when the BankMachine sends wdata_ready/rdata_valid back to the crossbar
+
+    Parameters
+    ----------
+    n : int
+        Bank number
+    address_width : int
+        LiteDRAMInterface address width
+    address_align : int
+        Address alignment depending on burst length
+    nranks : int
+        Number of separate DRAM chips (width of chip select)
+    settings : ControllerSettings
+        LiteDRAMController settings
+
+    Attributes
+    ----------
+    req : Record(cmd_layout)
+        Stream of requests from LiteDRAMCrossbar
+    refresh_req : Signal(), in
+        Indicates that refresh needs to be done, connects to Refresher.cmd.valid
+    refresh_gnt : Signal(), out
+        Indicates that refresh permission has been granted, satisfying timings
+    cmd : Endpoint(cmd_request_rw_layout)
+        Stream of commands to the Multiplexer
+    """
     def __init__(self, n, address_width, address_align, nranks, settings):
         self.req = req = Record(cmd_layout(address_width))
         self.refresh_req = refresh_req = Signal()
@@ -101,6 +153,7 @@ class BankMachine(Module):
         self.comb += trascon.valid.eq(cmd.valid & cmd.ready & row_open)
 
         # Auto Precharge generation ----------------------------------------------------------------
+        # generate auto precharge when current and next cmds are to different rows
         if settings.with_auto_precharge:
             self.comb += \
                 If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
@@ -132,10 +185,10 @@ class BankMachine(Module):
                         If(cmd.ready & auto_precharge,
                            NextState("AUTOPRECHARGE")
                         )
-                    ).Else(
+                    ).Else(  # row_opened & ~row_hit
                         NextState("PRECHARGE")
                     )
-                ).Else(
+                ).Else(  # ~row_opened
                     NextState("ACTIVATE")
                 )
             )
