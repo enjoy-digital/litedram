@@ -13,9 +13,9 @@ class PhaseInjector(Module, AutoCSR):
     def __init__(self, phase):
         self._command       = CSRStorage(6)  # cs, we, cas, ras, wren, rden
         self._command_issue = CSR()
-        self._address       = CSRStorage(len(phase.address))
-        self._baddress      = CSRStorage(len(phase.bank))
-        self._wrdata        = CSRStorage(len(phase.wrdata))
+        self._address       = CSRStorage(len(phase.address), reset_less=True)
+        self._baddress      = CSRStorage(len(phase.bank),    reset_less=True)
+        self._wrdata        = CSRStorage(len(phase.wrdata),  reset_less=True)
         self._rddata        = CSRStatus(len(phase.rddata))
 
         # # #
