@@ -63,8 +63,9 @@ class TestRefresh(unittest.TestCase):
         self.assertEqual(dut.errors, 0)
 
     def test_refresh_timer(self):
-        for i in range(1, 32):
-            self.refresh_timer_test(i)
+        for trefi in range(1, 32):
+            with self.subTest(trefi=trefi):
+                self.refresh_timer_test(trefi)
 
     def refresher_test(self, postponing):
         class Obj: pass
@@ -104,5 +105,6 @@ class TestRefresh(unittest.TestCase):
         self.assertEqual(dut.errors, 0)
 
     def test_refresher(self):
-        for i in [1, 2, 4, 8]:
-            self.refresher_test(postponing=i)
+        for postponing in [1, 2, 4, 8]:
+            with self.subTest(postponing=postponing):
+                self.refresher_test(postponing)
