@@ -36,6 +36,58 @@ def timeout_generator(ticks):
     raise TimeoutError("Timeout after %d ticks" % ticks)
 
 
+class NativePortDriver:
+    """Generates sequences for reading/writing to LiteDRAMNativePort
+
+    The write/read versions with wait_data=False are a cheap way to perform
+    burst during which the port is being held locked, but this way all the
+    data is being lost (would require separate coroutine to handle data).
+    """
+    def __init__(self, port):
+        self.port = port
+
+    def read(self, address, wait_data=True):
+        yield self.port.cmd.valid.eq(1)
+        yield self.port.cmd.we.eq(0)
+        yield self.port.cmd.addr.eq(address)
+        yield
+        while (yield self.port.cmd.ready) == 0:
+            yield
+        yield self.port.cmd.valid.eq(0)
+        yield
+        if wait_data:
+            while (yield self.port.rdata.valid) == 0:
+                yield
+            data = (yield self.port.rdata.data)
+            yield self.port.rdata.ready.eq(1)
+            yield
+            yield self.port.rdata.ready.eq(0)
+            yield
+            return data
+        else:
+            yield self.port.rdata.ready.eq(1)
+
+    def write(self, address, data, we=None, wait_data=True):
+        if we is None:
+            we = 2**self.port.wdata.we.nbits - 1
+        yield self.port.cmd.valid.eq(1)
+        yield self.port.cmd.we.eq(1)
+        yield self.port.cmd.addr.eq(address)
+        yield
+        while (yield self.port.cmd.ready) == 0:
+            yield
+        yield self.port.cmd.valid.eq(0)
+        yield self.port.wdata.valid.eq(1)
+        yield self.port.wdata.data.eq(data)
+        yield self.port.wdata.we.eq(we)
+        yield
+        if wait_data:
+            while (yield self.port.wdata.ready) == 0:
+                yield
+            yield self.port.wdata.valid.eq(0)
+            yield
+
+
 class CmdRequestRWDriver:
     """Simple driver for Endpoint(cmd_request_rw_layout())"""
     def __init__(self, req, i=0, ep_layout=True, rw_layout=True):
