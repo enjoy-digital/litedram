@@ -7,6 +7,8 @@ from migen import *
 from migen.genlib.record import *
 from migen.fhdl.specials import Tristate
 
+from litex.gen.io import SDRInput, SDROutput
+
 from litedram.common import *
 from litedram.phy.dfi import *
 
@@ -48,35 +50,28 @@ class GENSDRPHY(Module):
             pads.sel_group(pads_group)
 
             # Addresses and Commands ---------------------------------------------------------------
-            self.sync += [
-                pads.a.eq(dfi.p0.address),
-                pads.ba.eq(dfi.p0.bank),
-                pads.cas_n.eq(dfi.p0.cas_n),
-                pads.ras_n.eq(dfi.p0.ras_n),
-                pads.we_n.eq(dfi.p0.we_n)
-            ]
+            self.specials += SDROutput(i=dfi.p0.address, o=pads.a)
+            self.specials += SDROutput(i=dfi.p0.bank,    o=pads.ba)
+            self.specials += SDROutput(i=dfi.p0.cas_n,   o=pads.cas_n)
+            self.specials += SDROutput(i=dfi.p0.ras_n,   o=pads.ras_n)
+            self.specials += SDROutput(i=dfi.p0.we_n,    o=pads.we_n)
             if hasattr(pads, "cke"):
-                self.sync += pads.cke.eq(dfi.p0.cke)
+                self.specials += SDROutput(i=dfi.p0.cke, o=pads.cke)
             if hasattr(pads, "cs_n"):
-                self.sync += pads.cs_n.eq(dfi.p0.cs_n)
+                self.specials += SDROutput(i=dfi.p0.cs_n, o=pads.cs_n)
 
         # DQ/DQS/DM Data ---------------------------------------------------------------------------
         dq_o  = Signal(databits)
         dq_oe = Signal()
         dq_i  = Signal(databits)
-        self.sync += dq_o.eq(dfi.p0.wrdata)
+        self.specials += SDROutput(i=dfi.p0.wrdata, o=dq_o)
         for i in range(len(pads.dq)):
             self.specials += Tristate(pads.dq[i], dq_o[i], dq_oe, dq_i[i])
         if hasattr(pads, "dm"):
             assert len(pads.dm)*8 == databits
             for i in range(len(pads.dm)):
-                self.sync += [
-                    pads.dm[i].eq(0),
-                    If(dfi.p0.wrdata_en,
-                        pads.dm[i].eq(dfi.p0.wrdata_mask)
-                    )
-                ]
-        self.sync += dfi.p0.rddata.eq(dq_i)
+                self.comb += pads.dm[i].eq(0) # FIXME
+        self.specials += SDRInput(i=dq_i, o=dfi.p0.rddata)
 
         # DQ/DM Control ----------------------------------------------------------------------------
         wrdata_en = Signal()
