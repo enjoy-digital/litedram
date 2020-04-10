@@ -4,10 +4,8 @@
 # 1:1 frequency-ratio Generic SDR PHY
 
 from migen import *
-from migen.genlib.record import *
-from migen.fhdl.specials import Tristate
 
-from litex.build.io import SDRInput, SDROutput
+from litex.build.io import SDRInput, SDROutput, SDRTristate
 
 from litedram.common import *
 from litedram.phy.dfi import *
@@ -50,34 +48,29 @@ class GENSDRPHY(Module):
             pads.sel_group(pads_group)
 
             # Addresses and Commands ---------------------------------------------------------------
-            self.specials += SDROutput(i=dfi.p0.address, o=pads.a)
-            self.specials += SDROutput(i=dfi.p0.bank,    o=pads.ba)
-            self.specials += SDROutput(i=dfi.p0.cas_n,   o=pads.cas_n)
-            self.specials += SDROutput(i=dfi.p0.ras_n,   o=pads.ras_n)
-            self.specials += SDROutput(i=dfi.p0.we_n,    o=pads.we_n)
+            self.specials += [SDROutput(i=dfi.p0.address[i], o=pads.a[i])  for i in range(len(pads.a))]
+            self.specials += [SDROutput(i=dfi.p0.bank[i], o=pads.ba[i]) for i in range(len(pads.ba))]
+            self.specials += SDROutput(i=dfi.p0.cas_n, o=pads.cas_n)
+            self.specials += SDROutput(i=dfi.p0.ras_n, o=pads.ras_n)
+            self.specials += SDROutput(i=dfi.p0.we_n, o=pads.we_n)
             if hasattr(pads, "cke"):
                 self.specials += SDROutput(i=dfi.p0.cke, o=pads.cke)
             if hasattr(pads, "cs_n"):
                 self.specials += SDROutput(i=dfi.p0.cs_n, o=pads.cs_n)
 
-        # DQ/DQS/DM Data ---------------------------------------------------------------------------
-        dq_o  = Signal(databits)
-        dq_oe = Signal()
-        dq_i  = Signal(databits)
-        self.specials += SDROutput(i=dfi.p0.wrdata, o=dq_o)
+        # DQ/DM Data Path --------------------------------------------------------------------------
         for i in range(len(pads.dq)):
-            self.specials += Tristate(pads.dq[i], dq_o[i], dq_oe, dq_i[i])
+            self.specials += SDRTristate(
+                io = pads.dq[i],
+                o  = dfi.p0.wrdata[i],
+                oe = dfi.p0.wrdata_en,
+                i  = dfi.p0.rddata[i],
+            )
         if hasattr(pads, "dm"):
-            assert len(pads.dm)*8 == databits
             for i in range(len(pads.dm)):
                 self.comb += pads.dm[i].eq(0) # FIXME
-        self.specials += SDRInput(i=dq_i, o=dfi.p0.rddata)
 
-        # DQ/DM Control ----------------------------------------------------------------------------
-        wrdata_en = Signal()
-        self.sync += wrdata_en.eq(dfi.p0.wrdata_en)
-        self.comb += dq_oe.eq(wrdata_en)
-
+        # DQ/DM Control Path -----------------------------------------------------------------------
         rddata_en = Signal(cl + cmd_latency)
         self.sync += rddata_en.eq(Cat(dfi.p0.rddata_en, rddata_en))
         self.sync += dfi.p0.rddata_valid.eq(rddata_en[-1])
