@@ -256,7 +256,7 @@ class TestBankMachine(unittest.TestCase):
 
     def test_burst_no_request_lost(self):
         # Verify that no request is lost in fast bursts of requests regardless of cmd_buffer_depth
-        for cmd_buffer_depth in [8]:
+        for cmd_buffer_depth in [8, 1, 0]:
             settings = dict(cmd_buffer_depth=cmd_buffer_depth)
             with self.subTest(**settings):
                 dut = BankMachineDUT(1, controller_settings=settings)
