@@ -7,7 +7,7 @@ from migen import *
 from migen.genlib.record import *
 from migen.fhdl.specials import Tristate
 
-from litex.gen.io import SDRInput, SDROutput
+from litex.build.io import SDRInput, SDROutput
 
 from litedram.common import *
 from litedram.phy.dfi import *
