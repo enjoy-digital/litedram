@@ -12,6 +12,33 @@ from litex.soc.interconnect.csr import *
 # Bandwidth ----------------------------------------------------------------------------------------
 
 class Bandwidth(Module, AutoCSR):
+    """Measures LiteDRAM bandwidth
+
+    This module works by counting the number of read/write commands issued by
+    the controller during a fixed time period. To copy the values registered
+    during the last finished period, user must write to the `update` register.
+
+    Parameters
+    ----------
+    cmd : Endpoint(cmd_request_rw_layout)
+        Multiplexer endpoint on which all read/write requests are being sent
+    data_width : int, in
+        Data width that can be read back from CSR
+    period_bits : int, in
+        Defines length of bandwidth measurement period = 2^period_bits
+
+    Attributes
+    ----------
+    update : CSR, in
+        Copy the values from last finished period to the status registers
+    nreads : CSRStatus, out
+        Number of READ commands issued during a period
+    nwrites : CSRStatus, out
+        Number of WRITE commands issued during a period
+    data_width : CSRStatus, out
+        Can be read to calculate bandwidth in bits/sec as:
+            bandwidth = (nreads+nwrites) * data_width / period
+    """
     def __init__(self, cmd, data_width, period_bits=24):
         self.update     = CSR()
         self.nreads     = CSRStatus(period_bits + 1)
