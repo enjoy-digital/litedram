@@ -1,12 +1,16 @@
-         __   _ __      ___  ___  ___   __  ___
-        / /  (_) /____ / _ \/ _ \/ _ | /  |/  /
-       / /__/ / __/ -_) // / , _/ __ |/ /|_/ /
-      /____/_/\__/\__/____/_/|_/_/ |_/_/  /_/
+```
+                                 __   _ __      ___  ___  ___   __  ___
+                                / /  (_) /____ / _ \/ _ \/ _ | /  |/  /
+                               / /__/ / __/ -_) // / , _/ __ |/ /|_/ /
+                              /____/_/\__/\__/____/_/|_/_/ |_/_/  /_/
 
-           Copyright 2015-2020 / EnjoyDigital
+                                   Copyright 2015-2020 / EnjoyDigital
+                               A small footprint and configurable DRAM core
+                                        powered by Migen & LiteX
+```
 
-       A small footprint and configurable DRAM core
-                powered by Migen & LiteX
+[![](https://travis-ci.com/enjoy-digital/litedram.svg?branch=master)](https://travis-ci.com/enjoy-digital/litedram) ![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)
+
 
 [> Intro
 --------
@@ -29,11 +33,13 @@ PHY:
   - Spartan7/Artix7/Kintex7/Virtex7 DDR2/DDR3 PHY (1:2 or 1:4 frequency ratio)
   - Kintex/Virtex Ultrascale (Plus) DDR3/DDR4 PHY (1:4 frequency ratio)
   - ECP5 DDR3 PHY (1:2 frequency ratio)
+
 Core:
   - Fully pipelined, high performance.
   - Configurable commands depth on bankmachines.
   - Auto-Precharge.
   - Periodic refresh/ZQ short calibration (up to 8 postponed refreshes).
+
 Frontend:
   - Configurable crossbar (simply use crossbar.get_port() to add a new port!)
   - Ports arbitration transparent to the user.
@@ -62,23 +68,33 @@ enjoy-digital.fr.
 
 [> Getting started
 ------------------
-0. Install Python 3.5+ and FPGA vendor's development tools.
+1. Install Python 3.6+ and FPGA vendor's development tools.
+2. Install Migen/LiteX and the LiteX's cores:
 
-1. Install Migen/LiteX and the LiteX's cores:
-  wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
-  ./litex_setup.py init install
+```sh
+$ wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
+$ chmod +x litex_setup.py
+$ ./litex_setup.py init install --user (--user to install to user directory)
+```
   Later, if you need to update all repositories:
-  ./litex_setup.py update
+```sh
+$ ./litex_setup.py update
+```
 
-2. TODO: add/describe examples
+3. TODO: add/describe examples
 
 [> Tests
 --------
 Unit tests are available in ./test/.
 To run all the unit tests:
-  ./setup.py test
+```sh
+$ ./setup.py test
+```
+
 Tests can also be run individually:
-  python3 -m unittest test.test_name
+```sh
+$ python3 -m unittest test.test_name
+```
 
 [> License
 ----------
