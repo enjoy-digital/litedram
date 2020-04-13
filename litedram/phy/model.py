@@ -123,12 +123,14 @@ class SDRAMCMD:
         self.enc  = enc
         self.idx  = idx
 
+
 class TimingRule:
     def __init__(self, prev: str, curr: str, delay: int):
-        self.name  = prev+"->"+curr
+        self.name  = prev + "->" + curr
         self.prev  = prev
         self.curr  = curr
         self.delay = delay
+
 
 class DFITimingsChecker(Module):
     CMDS = [
@@ -176,7 +178,6 @@ class DFITimingsChecker(Module):
     def add_rule(self, prev, curr, delay):
         if not isinstance(delay, int):
             delay = self.timings[delay]
-
         self.rules.append(TimingRule(prev, curr, delay))
 
     def add_rules(self):
@@ -186,14 +187,12 @@ class DFITimingsChecker(Module):
 
     # Convert ns to ps
     def ns_to_ps(self, val):
-        return int(val * 1000)
+        return int(val * 1e3)
 
     def ck_ns_to_ps(self, val, tck):
         c, t = val
-
         c = 0 if c is None else c * tck
         t = 0 if t is None else t
-
         return self.ns_to_ps(max(c, t))
 
     def prepare_timings(self, timings, refresh_mode, memtype):
@@ -219,36 +218,35 @@ class DFITimingsChecker(Module):
 
         new_timings["tRC"] = new_timings["tRAS"] + new_timings["tRP"]
 
-        # adjust timings relative to write burst - tWR & tWTR
+        # Adjust timings relative to write burst - tWR & tWTR
         wrburst = burst_lengths[memtype] if memtype == "SDR" else burst_lengths[memtype] // 2
-        wrburst = (new_timings["tCK"] * (wrburst-1))
+        wrburst = (new_timings["tCK"] * (wrburst - 1))
         new_timings["tWR"]  = new_timings["tWR"]  + wrburst
         new_timings["tWTR"] = new_timings["tWTR"] + wrburst
 
         self.timings = new_timings
 
     def __init__(self, dfi, nbanks, nphases, timings, refresh_mode, memtype, verbose=False):
-        ref_limit = {"1x": 9, "2x": 17, "4x": 36}
         self.prepare_timings(timings, refresh_mode, memtype)
         self.add_cmds()
         self.add_rules()
 
         cnt = Signal(64)
-        self.sync += cnt.eq(cnt+nphases)
+        self.sync += cnt.eq(cnt + nphases)
 
-        phases = [getattr(dfi, "p"+str(n)) for n in range(nphases)]
+        phases = [getattr(dfi, "p" + str(n)) for n in range(nphases)]
 
         last_cmd_ps = [[Signal.like(cnt) for _ in range(len(self.cmds))] for _ in range(nbanks)]
-        last_cmd = [Signal(4) for i in range(nbanks)]
+        last_cmd    = [Signal(4) for i in range(nbanks)]
 
-        act_ps = Array([Signal().like(cnt) for i in range(4)])
+        act_ps   = Array([Signal().like(cnt) for i in range(4)])
         act_curr = Signal(max=4)
 
         ref_issued = Signal(nphases)
 
         for np, phase in enumerate(phases):
             ps = Signal().like(cnt)
-            self.comb += ps.eq((cnt+np)*self.timings["tCK"])
+            self.comb += ps.eq((cnt + np)*self.timings["tCK"])
             state = Signal(4)
             self.comb += state.eq(Cat(phase.we_n, phase.cas_n, phase.ras_n, phase.cs_n))
             all_banks = Signal()
@@ -264,9 +262,15 @@ class DFITimingsChecker(Module):
             # Print debug information
             if verbose:
                 for _, cmd in self.cmds.items():
-                    self.sync += If(state == cmd.enc, If(all_banks,
-                        Display("[%016dps] P%0d "+cmd.name, ps, np)).Else(
-                        Display("[%016dps] P%0d B%0d "+cmd.name, ps, np, phase.bank)))
+                    self.sync += [
+                        If(state == cmd.enc,
+                            If(all_banks,
+                                Display("[%016dps] P%0d " + cmd.name, ps, np)
+                            ).Else(
+                                Display("[%016dps] P%0d B%0d " + cmd.name, ps, np, phase.bank)
+                            )
+                        )
+                    ]
 
             # Bank command monitoring
             for i in range(nbanks):
@@ -278,9 +282,12 @@ class DFITimingsChecker(Module):
                     for _, prev in self.cmds.items():
                         for rule in self.rules:
                             if rule.prev == prev.name and rule.curr == curr.name:
-                                self.sync += If(cmd_recv & (last_cmd[i] == prev.enc) &
-                                                (ps < (last_cmd_ps[i][prev.idx] + rule.delay)),
-                                    Display("[%016dps] {} violation on bank %0d".format(rule.name), ps, i))
+                                self.sync += [
+                                    If(cmd_recv & (last_cmd[i] == prev.enc) &
+                                       (ps < (last_cmd_ps[i][prev.idx] + rule.delay)),
+                                        Display("[%016dps] {} violation on bank %0d".format(rule.name), ps, i)
+                                    )
+                                ]
 
                     # Save command timestamp in an array
                     self.sync += If(cmd_recv, last_cmd_ps[i][curr.idx].eq(ps), last_cmd[i].eq(state))
@@ -291,18 +298,24 @@ class DFITimingsChecker(Module):
                         self.comb += act_next.eq(act_curr+1)
 
                         # act_curr points to newest ACT timestamp
-                        self.sync += If(cmd_recv & (ps < (act_ps[act_curr] + self.timings["tRRD"])),
-                            Display("[%016dps] tRRD violation on bank %0d", ps, i))
+                        self.sync += [
+                            If(cmd_recv & (ps < (act_ps[act_curr] + self.timings["tRRD"])),
+                                Display("[%016dps] tRRD violation on bank %0d", ps, i)
+                            )
+                        ]
 
                         # act_next points to the oldest ACT timestamp
-                        self.sync += If(cmd_recv & (ps < (act_ps[act_next] + self.timings["tFAW"])),
-                            Display("[%016dps] tFAW violation on bank %0d", ps, i))
+                        self.sync += [
+                            If(cmd_recv & (ps < (act_ps[act_next] + self.timings["tFAW"])),
+                                Display("[%016dps] tFAW violation on bank %0d", ps, i)
+                            )
+                        ]
 
                         # Save ACT timestamp in a circular buffer
                         self.sync += If(cmd_recv, act_ps[act_next].eq(ps), act_curr.eq(act_next))
 
         # tREFI
-        ref_ps = Signal().like(cnt)
+        ref_ps      = Signal().like(cnt)
         ref_ps_mod  = Signal().like(cnt)
         ref_ps_diff = Signal(min=-2**63, max=2**63)
         curr_diff   = Signal().like(ref_ps_diff)
@@ -310,31 +323,55 @@ class DFITimingsChecker(Module):
         self.comb += curr_diff.eq(ps - (ref_ps + self.timings["tREFI"]))
 
         # Work in 64ms periods
-        self.sync += If(ref_ps_mod < int(64e9),
-            ref_ps_mod.eq(ref_ps_mod + nphases * self.timings["tCK"])).Else(ref_ps_mod.eq(0))
+        self.sync += [
+            If(ref_ps_mod < int(64e9),
+                ref_ps_mod.eq(ref_ps_mod + nphases * self.timings["tCK"])
+            ).Else(
+                ref_ps_mod.eq(0)
+            )
+        ]
 
         # Update timestamp and difference
         self.sync += If(ref_issued != 0, ref_ps.eq(ps), ref_ps_diff.eq(ref_ps_diff - curr_diff))
 
-        self.sync += If((ref_ps_mod == 0) & (ref_ps_diff > 0),
-            Display("[%016dps] tREFI violation (64ms period): %0d", ps, ref_ps_diff))
+        self.sync += [
+            If((ref_ps_mod == 0) & (ref_ps_diff > 0),
+                Display("[%016dps] tREFI violation (64ms period): %0d", ps, ref_ps_diff)
+            )
+        ]
 
         # Report any refresh periods longer than tREFI
         if verbose:
             ref_done = Signal()
-            self.sync += If(ref_issued != 0, ref_done.eq(1),
-                If(~ref_done, Display("[%016dps] Late refresh", ps)))
+            self.sync += [
+                If(ref_issued != 0,
+                    ref_done.eq(1),
+                    If(~ref_done,
+                        Display("[%016dps] Late refresh", ps)
+                    )
+                )
+            ]
 
-            self.sync += If((curr_diff > 0) & ref_done & (ref_issued == 0),
-                Display("[%016dps] tREFI violation", ps), ref_done.eq(0))
+            self.sync += [
+                If((curr_diff > 0) & ref_done & (ref_issued == 0),
+                    Display("[%016dps] tREFI violation", ps),
+                    ref_done.eq(0)
+                )
+            ]
 
         # There is a maximum delay between refreshes on >=DDR
+        ref_limit = {"1x": 9, "2x": 17, "4x": 36}
         if memtype != "SDR":
             refresh_mode = "1x" if refresh_mode is None else refresh_mode
             ref_done = Signal()
             self.sync += If(ref_issued != 0, ref_done.eq(1))
-            self.sync += If((ref_issued == 0) & ref_done & (ref_ps > (ps + ref_limit[refresh_mode] * self.timings['tREFI'])),
-                Display("[%016dps] tREFI violation (too many postponed refreshes)", ps), ref_done.eq(0))
+            self.sync += [
+                If((ref_issued == 0) & ref_done &
+                   (ref_ps > (ps + ref_limit[refresh_mode] * self.timings['tREFI'])),
+                    Display("[%016dps] tREFI violation (too many postponed refreshes)", ps),
+                    ref_done.eq(0)
+                )
+            ]
 
 # SDRAM PHY Model ----------------------------------------------------------------------------------
 
