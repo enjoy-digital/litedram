@@ -176,7 +176,7 @@ class BenchmarkResult:
     def find(pattern, output):
         result = pattern.search(output)
         assert result is not None, \
-            "Could not find pattern "%s" in output" % (pattern)
+            "Could not find pattern {} in output".format(pattern)
         return int(result.group("value"))
 
     def __init__(self, output):
