@@ -1,4 +1,5 @@
 # This file is Copyright (c) 2017-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2020 Antmicro <www.antmicro.com>
 # License: BSD
 
 import unittest
@@ -17,10 +18,10 @@ from litex.gen.sim import *
 
 class ConverterDUT(Module):
     def __init__(self, user_data_width, native_data_width, mem_depth):
-        self.write_user_port = LiteDRAMNativeWritePort(address_width=32, data_width=user_data_width)
+        self.write_user_port     = LiteDRAMNativeWritePort(address_width=32, data_width=user_data_width)
         self.write_crossbar_port = LiteDRAMNativeWritePort(address_width=32, data_width=native_data_width)
-        self.read_user_port = LiteDRAMNativeReadPort(address_width=32, data_width=user_data_width)
-        self.read_crossbar_port = LiteDRAMNativeReadPort(address_width=32, data_width=native_data_width)
+        self.read_user_port      = LiteDRAMNativeReadPort( address_width=32, data_width=user_data_width)
+        self.read_crossbar_port  = LiteDRAMNativeReadPort( address_width=32, data_width=native_data_width)
 
         # memory
         self.memory = DRAMMemory(native_data_width, mem_depth)
@@ -79,8 +80,8 @@ class ConverterDUT(Module):
         yield
 
     def _write_down(self, address, data, we):
-        # down converter must have all the data available along with cmd
-        # it will set user_port.cmd.ready only when it sends all input words
+        # Down converter must have all the data available along with cmd, it will set
+        # user_port.cmd.ready only when it sends all input words.
         port = self.write_user_port
         yield port.cmd.valid.eq(1)
         yield port.cmd.we.eq(1)
@@ -89,7 +90,7 @@ class ConverterDUT(Module):
         yield port.wdata.data.eq(data)
         yield port.wdata.we.eq(we)
         yield
-        # ready goes up only after StrideConverter copied all words
+        # Ready goes up only after StrideConverter copied all words
         while (yield port.cmd.ready) == 0:
             yield
         yield port.cmd.valid.eq(0)
@@ -99,19 +100,22 @@ class ConverterDUT(Module):
         yield port.wdata.valid.eq(0)
         yield
 
+
 class CDCDUT(ConverterDUT):
     def do_finalize(self):
-        # change clock domains
-        self.write_user_port.clock_domain = "user"
-        self.read_user_port.clock_domain = "user"
+        # Change clock domains
+        self.write_user_port.clock_domain     = "user"
+        self.read_user_port.clock_domain      = "user"
         self.write_crossbar_port.clock_domain = "native"
-        self.read_crossbar_port.clock_domain = "native"
+        self.read_crossbar_port.clock_domain  = "native"
 
-        # add CDC
+        # Add CDC
         self.submodules.write_converter = LiteDRAMNativePortCDC(
-            port_from=self.write_user_port, port_to=self.write_crossbar_port)
+            port_from = self.write_user_port,
+            port_to   = self.write_crossbar_port)
         self.submodules.read_converter = LiteDRAMNativePortCDC(
-            port_from=self.read_user_port, port_to=self.read_crossbar_port)
+            port_from = self.read_user_port,
+            port_to   = self.read_crossbar_port)
 
 
 class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
@@ -162,45 +166,52 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
         self.assertEqual(read_data, [data for adr, data in pattern])
 
     def test_converter_1to1(self):
+        # Verify 64-bit to 64-bit identify-conversion.
         data = self.pattern_test_data["64bit"]
-        dut = ConverterDUT(user_data_width=64, native_data_width=64, mem_depth=len(data["expected"]))
+        dut  = ConverterDUT(user_data_width=64, native_data_width=64, mem_depth=len(data["expected"]))
         self.converter_readback_test(dut, data["pattern"], data["expected"])
 
     def test_converter_2to1(self):
+        # Verify 64-bit to 32-bit down-conversion.
         data = self.pattern_test_data["64bit_to_32bit"]
-        dut = ConverterDUT(user_data_width=64, native_data_width=32, mem_depth=len(data["expected"]))
+        dut  = ConverterDUT(user_data_width=64, native_data_width=32, mem_depth=len(data["expected"]))
         self.converter_readback_test(dut, data["pattern"], data["expected"])
 
     def test_converter_4to1(self):
+        # Verify 32-bit to 8-bit down-conversion.
         data = self.pattern_test_data["32bit_to_8bit"]
-        dut = ConverterDUT(user_data_width=32, native_data_width=8, mem_depth=len(data["expected"]))
+        dut  = ConverterDUT(user_data_width=32, native_data_width=8, mem_depth=len(data["expected"]))
         self.converter_readback_test(dut, data["pattern"], data["expected"])
 
     def test_converter_8to1(self):
+        # Verify 64-bit to 8-bit down-conversion.
         data = self.pattern_test_data["64bit_to_8bit"]
-        dut = ConverterDUT(user_data_width=64, native_data_width=8, mem_depth=len(data["expected"]))
+        dut  = ConverterDUT(user_data_width=64, native_data_width=8, mem_depth=len(data["expected"]))
         self.converter_readback_test(dut, data["pattern"], data["expected"])
 
     def test_converter_1to2(self):
+        # Verify 8-bit to 16-bit up-conversion.
         data = self.pattern_test_data["8bit_to_16bit"]
-        dut = ConverterDUT(user_data_width=8, native_data_width=16, mem_depth=len(data["expected"]))
+        dut  = ConverterDUT(user_data_width=8, native_data_width=16, mem_depth=len(data["expected"]))
         self.converter_readback_test(dut, data["pattern"], data["expected"])
 
     def test_converter_1to4(self):
+        # Verify 32-bit to 128-bit up-conversion.
         data = self.pattern_test_data["32bit_to_128bit"]
-        dut = ConverterDUT(user_data_width=32, native_data_width=128, mem_depth=len(data["expected"]))
+        dut  = ConverterDUT(user_data_width=32, native_data_width=128, mem_depth=len(data["expected"]))
         self.converter_readback_test(dut, data["pattern"], data["expected"])
 
     def test_converter_1to8(self):
+        # Verify 32-bit to 256-bit up-conversion.
         data = self.pattern_test_data["32bit_to_256bit"]
-        dut = ConverterDUT(user_data_width=32, native_data_width=256, mem_depth=len(data["expected"]))
+        dut  = ConverterDUT(user_data_width=32, native_data_width=256, mem_depth=len(data["expected"]))
         self.converter_readback_test(dut, data["pattern"], data["expected"])
 
     # TODO: implement case when user does not write all words (LiteDRAMNativeWritePortUpConverter)
     @unittest.skip("Only full-burst writes currently supported")
     def test_converter_up_not_aligned(self):
         data = self.pattern_test_data["8bit_to_32bit_not_aligned"]
-        dut = ConverterDUT(user_data_width=8, native_data_width=32, mem_depth=len(data["expected"]))
+        dut  = ConverterDUT(user_data_width=8, native_data_width=32, mem_depth=len(data["expected"]))
         self.converter_readback_test(dut, data["pattern"], data["expected"])
 
     def cdc_readback_test(self, dut, pattern, mem_expected, clocks):
@@ -242,8 +253,9 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
         self.assertEqual(read_data, [data for adr, data in pattern])
 
     def test_port_cdc_same_clocks(self):
+        # Verify CDC with same clocks (frequency and phase).
         data = self.pattern_test_data["32bit"]
-        dut = CDCDUT(user_data_width=32, native_data_width=32, mem_depth=len(data["expected"]))
+        dut  = CDCDUT(user_data_width=32, native_data_width=32, mem_depth=len(data["expected"]))
         clocks = {
             "user": 10,
             "native": (7, 3),
@@ -251,8 +263,9 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
         self.cdc_readback_test(dut, data["pattern"], data["expected"], clocks=clocks)
 
     def test_port_cdc_different_period(self):
+        # Verify CDC with different clock frequencies.
         data = self.pattern_test_data["32bit"]
-        dut = CDCDUT(user_data_width=32, native_data_width=32, mem_depth=len(data["expected"]))
+        dut  = CDCDUT(user_data_width=32, native_data_width=32, mem_depth=len(data["expected"]))
         clocks = {
             "user": 10,
             "native": 7,
@@ -260,8 +273,9 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
         self.cdc_readback_test(dut, data["pattern"], data["expected"], clocks=clocks)
 
     def test_port_cdc_out_of_phase(self):
+        # Verify CDC with different clock phases.
         data = self.pattern_test_data["32bit"]
-        dut = CDCDUT(user_data_width=32, native_data_width=32, mem_depth=len(data["expected"]))
+        dut  = CDCDUT(user_data_width=32, native_data_width=32, mem_depth=len(data["expected"]))
         clocks = {
             "user": 10,
             "native": (7, 3),
