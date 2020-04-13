@@ -6,8 +6,6 @@ import unittest
 
 from migen import *
 
-#  from litex.soc.interconnect import stream
-
 from litedram.common import *
 from litedram.core.bankmachine import BankMachine
 
@@ -15,37 +13,40 @@ from test.common import timeout_generator
 
 
 class BankMachineDUT(Module):
-    # fill only settings needed by BankMachine
+    # Fill only settings needed by BankMachine
     default_controller_settings = dict(
-        cmd_buffer_depth=8,
-        cmd_buffer_buffered=False,
-        with_auto_precharge=True,
+        cmd_buffer_depth    = 8,
+        cmd_buffer_buffered = False,
+        with_auto_precharge = True,
     )
     default_phy_settings = dict(
-        cwl=2,
-        nphases=2,
-        nranks=1,
-        # indirectyl
-        memtype="DDR2",
-        dfi_databits=2*16,
+        cwl          = 2,
+        nphases      = 2,
+        nranks       = 1,
+        # indirectly
+        memtype      = "DDR2",
+        dfi_databits = 2*16,
     )
     default_geom_settings = dict(
-        bankbits=3,
-        rowbits=13,
-        colbits=10,
+        bankbits = 3,
+        rowbits  = 13,
+        colbits  = 10,
     )
     default_timing_settings = dict(
-        tRAS=None,
-        tRC=None,
-        tCCD=1,
-        tRCD=2,
-        tRP=2,
-        tWR=2,
+        tRAS = None,
+        tRC  = None,
+        tCCD = 1,
+        tRCD = 2,
+        tRP  = 2,
+        tWR  = 2,
     )
 
-    def __init__(self, n, controller_settings=None, phy_settings=None, geom_settings=None,
-                 timing_settings=None):
-        # update settings if provided
+    def __init__(self, n,
+        controller_settings = None,
+        phy_settings        = None,
+        geom_settings       = None,
+        timing_settings     = None):
+        # Update settings if provided
         def updated(settings, update):
             copy = settings.copy()
             copy.update(update or {})
@@ -70,15 +71,18 @@ class BankMachineDUT(Module):
         self.address_align = log2_int(burst_lengths[settings.phy.memtype])
         self.address_width = LiteDRAMInterface(self.address_align, settings).address_width
 
-        bankmachine = BankMachine(n=n, address_width=self.address_width,
-                                  address_align=self.address_align,
-                                  nranks=settings.phy.nranks, settings=settings)
+        bankmachine = BankMachine(n=n,
+            address_width = self.address_width,
+            address_align = self.address_align,
+            nranks        = settings.phy.nranks,
+            settings      = settings)
         self.submodules.bankmachine = bankmachine
 
     def get_cmd(self):
         # cmd_request_rw_layout -> name
-        layout = [name for name, _ in cmd_request_rw_layout(a=self.settings.geom.addressbits,
-                                                            ba=self.settings.geom.bankbits)]
+        layout = [name for name, _ in cmd_request_rw_layout(
+            a  = self.settings.geom.addressbits,
+            ba = self.settings.geom.bankbits)]
         request = {}
         for name in layout + ["valid", "ready", "first", "last"]:
             request[name] = (yield getattr(self.bankmachine.cmd, name))
@@ -104,7 +108,7 @@ class TestBankMachine(unittest.TestCase):
         BankMachineDUT(1)
 
     def bankmachine_commands_test(self, dut, requests, generators=None):
-        # perform a test by simulating requests producer and return registered commands
+        # Perform a test by simulating requests producer and return registered commands
         commands = []
 
         def producer(dut):
@@ -152,21 +156,21 @@ class TestBankMachine(unittest.TestCase):
         return commands
 
     def test_opens_correct_row(self):
-        # Verify that the correct row is activated before read/write commands
+        # Verify that the correct row is activated before read/write commands.
         dut = BankMachineDUT(3)
         requests = [
             dict(addr=dut.req_address(row=0xf0, col=0x0d), we=0),
             dict(addr=dut.req_address(row=0xd0, col=0x0d), we=1),
         ]
         commands = self.bankmachine_commands_test(dut=dut, requests=requests)
-        # commands: activate, read (auto-precharge), activate, write
+        # Commands: activate, read (auto-precharge), activate, write
         self.assertEqual(commands[0]["type"], "activate")
         self.assertEqual(commands[0]["a"], 0xf0)
         self.assertEqual(commands[2]["type"], "activate")
         self.assertEqual(commands[2]["a"], 0xd0)
 
     def test_correct_bank_address(self):
-        # Verify that `ba` always corresponds to the BankMachine number
+        # Verify that `ba` always corresponds to the BankMachine number.
         for bn in [0, 2, 7]:
             with self.subTest(bn=bn):
                 dut = BankMachineDUT(bn, geom_settings=dict(bankbits=3))
@@ -176,7 +180,7 @@ class TestBankMachine(unittest.TestCase):
                     self.assertEqual(cmd["ba"], bn)
 
     def test_read_write_same_row(self):
-        # Verify that there is only one activate when working on single row
+        # Verify that there is only one activate when working on single row.
         dut = BankMachineDUT(1)
         requests = [
             dict(addr=dut.req_address(row=0xba, col=0xad), we=0),
@@ -196,12 +200,11 @@ class TestBankMachine(unittest.TestCase):
         self.assertEqual(commands, expected)
 
     def test_write_different_rows_with_delay(self):
-        # Verify that precharge is used when changing row with a delay
-        # this is independent form auto-precharge
+        # Verify that precharge is used when changing row with a delay this is independent form auto-precharge.
         for auto_precharge in [False, True]:
             with self.subTest(auto_precharge=auto_precharge):
                 settings = dict(with_auto_precharge=auto_precharge)
-                dut = BankMachineDUT(1, controller_settings=settings)
+                dut      = BankMachineDUT(1, controller_settings=settings)
                 requests = [
                     dict(addr=dut.req_address(row=0xba, col=0xad), we=1, delay=8),
                     dict(addr=dut.req_address(row=0xda, col=0xad), we=1),
@@ -218,9 +221,9 @@ class TestBankMachine(unittest.TestCase):
                 self.assertEqual(commands, expected)
 
     def test_write_different_rows_with_auto_precharge(self):
-        # Verify that auto-precharge is used when changing row without delay
+        # Verify that auto-precharge is used when changing row without delay.
         settings = dict(with_auto_precharge=True)
-        dut = BankMachineDUT(1, controller_settings=settings)
+        dut      = BankMachineDUT(1, controller_settings=settings)
         requests = [
             dict(addr=dut.req_address(row=0xba, col=0xad), we=1),
             dict(addr=dut.req_address(row=0xda, col=0xad), we=1),
@@ -236,7 +239,7 @@ class TestBankMachine(unittest.TestCase):
         self.assertEqual(commands, expected)
 
     def test_write_different_rows_without_auto_precharge(self):
-        # Verify that auto-precharge is used when changing row without delay
+        # Verify that auto-precharge is used when changing row without delay.
         settings = dict(with_auto_precharge=False)
         dut = BankMachineDUT(1, controller_settings=settings)
         requests = [
@@ -255,12 +258,12 @@ class TestBankMachine(unittest.TestCase):
         self.assertEqual(commands, expected)
 
     def test_burst_no_request_lost(self):
-        # Verify that no request is lost in fast bursts of requests regardless of cmd_buffer_depth
+        # Verify that no request is lost in fast bursts of requests regardless of cmd_buffer_depth.
         for cmd_buffer_depth in [8, 1, 0]:
             settings = dict(cmd_buffer_depth=cmd_buffer_depth)
             with self.subTest(**settings):
                 dut = BankMachineDUT(1, controller_settings=settings)
-                # long sequence of writes to the same row
+                # Long sequence of writes to the same row
                 requests = [dict(addr=dut.req_address(row=0xba, col=i), we=1) for i in range(32)]
                 expected = ([("activate", 0xba)] +
                             [("write", i << dut.address_align) for i in range(32)])
@@ -269,17 +272,17 @@ class TestBankMachine(unittest.TestCase):
                 self.assertEqual(commands, expected)
 
     def test_lock_until_requests_finished(self):
-        # Verify that lock is being held until all requests in FIFO are processed
+        # Verify that lock is being held until all requests in FIFO are processed.
         @passive
         def lock_checker(dut):
             req = dut.bankmachine.req
             self.assertEqual((yield req.lock), 0)
 
-            # wait until first request becomes locked
+            # Wait until first request becomes locked
             while not (yield req.valid):
                 yield
 
-            # wait until lock should be released (all requests in queue gets processed)
+            # Wait until lock should be released (all requests in queue gets processed)
             # here it happens when the final wdata_ready ends
             for _ in range(3):
                 while not (yield req.wdata_ready):
@@ -291,7 +294,7 @@ class TestBankMachine(unittest.TestCase):
             self.assertEqual((yield req.lock), 0)
 
         dut = BankMachineDUT(1)
-        # simple sequence with row change
+        # Simple sequence with row change
         requests = [
             dict(addr=dut.req_address(row=0x1a, col=0x01), we=1),
             dict(addr=dut.req_address(row=0x1b, col=0x02), we=1),
@@ -307,10 +310,10 @@ class TestBankMachine(unittest.TestCase):
                 ready = cmd["ready"] if test_ready else True
                 return cmd["valid"] and ready and cmd["type"] == cmd_type
 
-            # time between WRITE ends (ready and valid) and PRECHARGE becomes valid
+            # Time between WRITE ends (ready and valid) and PRECHARGE becomes valid
             while not (yield from is_cmd(from_cmd, test_ready=True)):
                 yield
-            yield  # wait until cmd deactivates in case the second cmd is the same as first
+            yield  # Wait until cmd deactivates in case the second cmd is the same as first
             time = 1
             while not (yield from is_cmd(to_cmd, test_ready=False)):
                 yield
@@ -319,7 +322,7 @@ class TestBankMachine(unittest.TestCase):
             self.assertEqual(time, time_expected)
 
         dut = BankMachineDUT(1, **dut_kwargs)
-        # simple sequence with row change
+        # Simple sequence with row change
         requests = [
             dict(addr=dut.req_address(row=0xba, col=0xad), we=1),
             dict(addr=dut.req_address(row=0xda, col=0xad), we=1),
@@ -333,40 +336,42 @@ class TestBankMachine(unittest.TestCase):
         write_latency = math.ceil(phy_settings["cwl"] / phy_settings["nphases"])
         precharge_time = write_latency + timing_settings["tWR"] + timing_settings["tCCD"]
         self.timing_test("write", "precharge", precharge_time,
-                         controller_settings=controller_settings,
-                         phy_settings=phy_settings,
-                         timing_settings=timing_settings)
+            controller_settings = controller_settings,
+            phy_settings        = phy_settings,
+            timing_settings     = timing_settings)
 
     def test_timing_activate_to_activate(self):
         timing_settings = dict(tRC=16)
-        self.timing_test("activate", "activate", time_expected=16,
-                         timing_settings=timing_settings)
+        self.timing_test("activate", "activate",
+            time_expected   = 16,
+            timing_settings = timing_settings)
 
     def test_timing_activate_to_precharge(self):
         timing_settings = dict(tRAS=32)
-        self.timing_test("activate", "precharge", time_expected=32,
-                         timing_settings=timing_settings)
+        self.timing_test("activate", "precharge",
+            time_expected   = 32,
+            timing_settings = timing_settings)
 
     def test_refresh(self):
-        # Verify that no commands are issued during refresh and after it the row is re-activated
+        # Verify that no commands are issued during refresh and after it the row is re-activated.
         @passive
         def refresh_generator(dut):
-            # wait some time for the bankmachine to start
+            # Wait some time for the bankmachine to start
             for _ in range(16):
                 yield
 
-            # request a refresh
+            # Request a refresh
             yield dut.bankmachine.refresh_req.eq(1)
             while not (yield dut.bankmachine.refresh_gnt):
                 yield
 
-            # wait when refresh is being performed
-            # make sure no command is issued during refresh
+            # Wait when refresh is being performed
+            # Make sure no command is issued during refresh
             for _ in range(32):
                 self.assertEqual((yield dut.bankmachine.cmd.valid), 0)
                 yield
 
-            # signalize refresh is ready
+            # Signalize refresh is ready
             yield dut.bankmachine.refresh_req.eq(0)
 
         dut = BankMachineDUT(1)
@@ -374,15 +379,15 @@ class TestBankMachine(unittest.TestCase):
         commands = self.bankmachine_commands_test(dut=dut, requests=requests,
                                                   generators=[refresh_generator])
         commands = [(cmd["type"], cmd["a"]) for cmd in commands]
-        # refresh will close row, so bankmachine should re-activate it after refresh
+        # Refresh will close row, so bankmachine should re-activate it after refresh
         self.assertEqual(commands.count(("activate", 0xba)), 2)
-        # verify that the write commands are correct
+        # Verify that the write commands are correct
         write_commands = [cmd for cmd in commands if cmd[0] == "write"]
         expected_writes = [("write", i << dut.address_align) for i in range(16)]
         self.assertEqual(write_commands, expected_writes)
 
     def test_output_annotations(self):
-        # Verify that all commands are annotated correctly using is_* signals
+        # Verify that all commands are annotated correctly using is_* signals.
         checked = set()
 
         @passive
@@ -412,11 +417,11 @@ class TestBankMachine(unittest.TestCase):
             dict(addr=dut.req_address(row=0xba, col=0xad), we=0),
             dict(addr=dut.req_address(row=0xba, col=0xad), we=1),
             dict(addr=dut.req_address(row=0xda, col=0xad), we=0),
-            # wait enough time for regular (not auto) precharge to be used
+            # Wait enough time for regular (not auto) precharge to be used
             dict(addr=dut.req_address(row=0xda, col=0xad), we=1, delay=32),
             dict(addr=dut.req_address(row=0xba, col=0xad), we=0),
             dict(addr=dut.req_address(row=0xba, col=0xad), we=1),
         ]
         self.bankmachine_commands_test(dut=dut, requests=requests, generators=[cmd_checker])
-        # bankmachine does not produce refresh commands
+        # Bankmachine does not produce refresh commands
         self.assertEqual(checked, {"activate", "precharge", "write", "read"})

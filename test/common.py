@@ -247,17 +247,17 @@ class MemoryTestDataMixin:
     def bist_test_data(self):
         data = {
             "8bit": dict(
-                base=2,
-                end=2 + 8,  # (end - base) must be pow of 2
-                length=5,
+                base     = 2,
+                end      = 2 + 8,  # (end - base) must be pow of 2
+                length   = 5,
                 #                       2     3     4     5     6     7=2+5
-                expected=[0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x00],
+                expected = [0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x00],
             ),
             "32bit": dict(
-                base=0x04,
-                end=0x04 + 8,
-                length=5 * 4,
-                expected=[
+                base     = 0x04,
+                end      = 0x04 + 8,
+                length   = 5 * 4,
+                expected = [
                     0x00000000,  # 0x00
                     0x00000000,  # 0x04
                     0x00000001,  # 0x08
@@ -269,10 +269,10 @@ class MemoryTestDataMixin:
                 ],
             ),
             "64bit": dict(
-                base=0x10,
-                end=0x10 + 8,
-                length=5 * 8,
-                expected=[
+                base     = 0x10,
+                end      = 0x10 + 8,
+                length   = 5 * 8,
+                expected = [
                     0x0000000000000000,  # 0x00
                     0x0000000000000000,  # 0x08
                     0x0000000000000000,  # 0x10
@@ -284,10 +284,10 @@ class MemoryTestDataMixin:
                 ],
             ),
             "32bit_masked": dict(
-                base=0x04,
-                end=0x04 + 0x04,  # TODO: fix address masking to be consistent
-                length=6 * 4,
-                expected=[  # due to masking
+                base     = 0x04,
+                end      = 0x04 + 0x04,  # TODO: fix address masking to be consistent
+                length   = 6 * 4,
+                expected = [  # due to masking
                     0x00000000,  # 0x00
                     0x00000004,  # 0x04
                     0x00000005,  # 0x08
@@ -300,10 +300,10 @@ class MemoryTestDataMixin:
             ),
         }
         data["32bit_long_sequential"] = dict(
-            base=16,
-            end=16 + 128,
-            length=64,
-            expected=[0x00000000] * 128
+            base     = 16,
+            end      = 16 + 128,
+            length   = 64,
+            expected = [0x00000000] * 128
         )
         expected = data["32bit_long_sequential"]["expected"]
         expected[16//4:(16 + 64)//4] = list(range(64//4))
@@ -622,26 +622,26 @@ class MemoryTestDataMixin:
 
         # down conversion
         data["64bit_to_16bit"] = dict(
-            pattern=data["64bit_to_32bit"]["pattern"].copy(),
-            expected=half_width(data["64bit_to_32bit"]["expected"], from_width=32),
+            pattern  = data["64bit_to_32bit"]["pattern"].copy(),
+            expected = half_width(data["64bit_to_32bit"]["expected"], from_width=32),
         )
         data["64bit_to_8bit"] = dict(
-            pattern=data["64bit_to_16bit"]["pattern"].copy(),
-            expected=half_width(data["64bit_to_16bit"]["expected"], from_width=16),
+            pattern  = data["64bit_to_16bit"]["pattern"].copy(),
+            expected = half_width(data["64bit_to_16bit"]["expected"], from_width=16),
         )
 
         # up conversion
         data["8bit_to_16bit"] = dict(
-            pattern=data["8bit_to_32bit"]["pattern"].copy(),
-            expected=half_width(data["8bit_to_32bit"]["expected"], from_width=32),
+            pattern  = data["8bit_to_32bit"]["pattern"].copy(),
+            expected = half_width(data["8bit_to_32bit"]["expected"], from_width=32),
         )
         data["32bit_to_128bit"] = dict(
-            pattern=data["32bit_to_256bit"]["pattern"].copy(),
-            expected=half_width(data["32bit_to_256bit"]["expected"], from_width=256),
+            pattern  = data["32bit_to_256bit"]["pattern"].copy(),
+            expected = half_width(data["32bit_to_256bit"]["expected"], from_width=256),
         )
         data["32bit_to_64bit"] = dict(
-            pattern=data["32bit_to_128bit"]["pattern"].copy(),
-            expected=half_width(data["32bit_to_128bit"]["expected"], from_width=128),
+            pattern  = data["32bit_to_128bit"]["pattern"].copy(),
+            expected = half_width(data["32bit_to_128bit"]["expected"], from_width=128),
         )
 
         return data

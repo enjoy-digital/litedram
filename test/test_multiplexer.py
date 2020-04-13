@@ -44,42 +44,45 @@ class RefresherStub:
 
 
 class MultiplexerDUT(Module):
-    # define default settings that can be overwritten in specific tests
-    # use only these settings that we actually need for Multiplexer
+    # Define default settings that can be overwritten in specific tests use only these settings
+    # that we actually need for Multiplexer.
     default_controller_settings = dict(
-        read_time=32,
-        write_time=16,
-        with_bandwidth=False,
+        read_time      = 32,
+        write_time     = 16,
+        with_bandwidth = False,
     )
     default_phy_settings = dict(
-        nphases=2,
-        rdphase=0,
-        wrphase=1,
-        rdcmdphase=1,
-        wrcmdphase=0,
-        read_latency=5,
-        cwl=3,
-        # indirectly
-        nranks=1,
-        databits=16,
-        dfi_databits=2*16,
-        memtype="DDR2",
+        nphases      = 2,
+        rdphase      = 0,
+        wrphase      = 1,
+        rdcmdphase   = 1,
+        wrcmdphase   = 0,
+        read_latency = 5,
+        cwl          = 3,
+        # Indirectly
+        nranks       = 1,
+        databits     = 16,
+        dfi_databits = 2*16,
+        memtype      = "DDR2",
     )
     default_geom_settings = dict(
-        bankbits=3,
-        rowbits=13,
-        colbits=10,
+        bankbits = 3,
+        rowbits  = 13,
+        colbits  = 10,
     )
     default_timing_settings = dict(
-        tWTR=2,
-        tFAW=None,
-        tCCD=1,
-        tRRD=None,
+        tWTR = 2,
+        tFAW = None,
+        tCCD = 1,
+        tRRD = None,
     )
 
-    def __init__(self, controller_settings=None, phy_settings=None, geom_settings=None,
-                 timing_settings=None):
-        # update settings if provided
+    def __init__(self,
+        controller_settings = None,
+        phy_settings        = None,
+        geom_settings       = None,
+        timing_settings     = None):
+        # Update settings if provided
         def updated(settings, update):
             copy = settings.copy()
             copy.update(update or {})
@@ -90,7 +93,7 @@ class MultiplexerDUT(Module):
         geom_settings       = updated(self.default_geom_settings, geom_settings)
         timing_settings     = updated(self.default_timing_settings, timing_settings)
 
-        # use simpler settigns to include only Multiplexer-specific members
+        # Use simpler settigns to include only Multiplexer-specific members
         class SimpleSettings(Settings):
             def __init__(self, **kwargs):
                 self.set_attributes(kwargs)
@@ -102,7 +105,7 @@ class MultiplexerDUT(Module):
         settings.geom.addressbits = max(settings.geom.rowbits, settings.geom.colbits)
         self.settings = settings
 
-        # create interfaces and stubs required to instantiate Multiplexer
+        # Create interfaces and stubs required to instantiate Multiplexer
         abits  = settings.geom.addressbits
         babits = settings.geom.bankbits
         nbanks = 2**babits
@@ -110,32 +113,36 @@ class MultiplexerDUT(Module):
         self.bank_machines = [BankMachineStub(abits=abits, babits=babits)
                               for _ in range(nbanks*nranks)]
         self.refresher = RefresherStub(abits=abits, babits=babits)
-        self.dfi = dfi.Interface(addressbits=abits, bankbits=babits, nranks=settings.phy.nranks,
-                                 databits=settings.phy.dfi_databits, nphases=settings.phy.nphases)
+        self.dfi = dfi.Interface(
+            addressbits = abits,
+            bankbits    = babits,
+            nranks      = settings.phy.nranks,
+            databits    = settings.phy.dfi_databits,
+            nphases     = settings.phy.nphases)
         address_align = log2_int(burst_lengths[settings.phy.memtype])
         self.interface = LiteDRAMInterface(address_align=address_align, settings=settings)
 
-        # add Multiplexer
+        # Add Multiplexer
         self.submodules.multiplexer = Multiplexer(settings, self.bank_machines, self.refresher,
-                                                  self.dfi, self.interface)
+            self.dfi, self.interface)
 
-        # add helpers for driving bank machines/refresher
+        # Add helpers for driving bank machines/refresher
         self.bm_drivers = [CmdRequestRWDriver(bm.cmd, i) for i, bm in enumerate(self.bank_machines)]
         self.refresh_driver = CmdRequestRWDriver(self.refresher.cmd, i=1)
 
     def fsm_state(self):
-        # return name of current state of Multiplexer's FSM
+        # Return name of current state of Multiplexer's FSM
         return self.multiplexer.fsm.decoding[(yield self.multiplexer.fsm.state)]
 
 
 class TestMultiplexer(unittest.TestCase):
     def test_init(self):
-        # Verify that instantiation of Multiplexer in MultiplexerDUT is correct
-        # This will fail if Multiplexer starts using any new setting from controller.settings
+        # Verify that instantiation of Multiplexer in MultiplexerDUT is correct. This will fail if
+        # Multiplexer starts using any new setting from controller.settings.
         MultiplexerDUT()
 
     def test_fsm_start_at_read(self):
-        # FSM should start at READ state (assumed in some other tests)
+        # FSM should start at READ state (assumed in some other tests).
         def main_generator(dut):
             self.assertEqual((yield from dut.fsm_state()), "READ")
 
@@ -143,20 +150,20 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_fsm_read_to_write_latency(self):
-        # Verify the timing of READ to WRITE transition
+        # Verify the timing of READ to WRITE transition.
         def main_generator(dut):
             rtw = dut.settings.phy.read_latency
             expected = "r" + (rtw - 1) * ">" + "w"
             states = ""
 
-            # set write_available=1
+            # Set write_available=1
             yield from dut.bm_drivers[0].write()
             yield
 
             for _ in range(len(expected)):
                 state = (yield from dut.fsm_state())
-                # use ">" for all other states, as FSM.delayed_enter uses
-                # anonymous states instead of staying in RTW
+                # Use ">" for all other states, as FSM.delayed_enter uses anonymous states instead
+                # of staying in RTW
                 states += {
                     "READ": "r",
                     "WRITE": "w",
@@ -169,20 +176,20 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_fsm_write_to_read_latency(self):
-        # Verify the timing of WRITE to READ transition
+        # Verify the timing of WRITE to READ transition.
         def main_generator(dut):
             write_latency = math.ceil(dut.settings.phy.cwl / dut.settings.phy.nphases)
             wtr = dut.settings.timing.tWTR + write_latency + dut.settings.timing.tCCD or 0
 
             expected = "w" + (wtr - 1) * ">" + "r"
-            states = ""
+            states   = ""
 
-            # simulate until we are in WRITE
+            # Simulate until we are in WRITE
             yield from dut.bm_drivers[0].write()
             while (yield from dut.fsm_state()) != "WRITE":
                 yield
 
-            # set read_available=1
+            # Set read_available=1
             yield from dut.bm_drivers[0].read()
             yield
 
@@ -204,7 +211,7 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_steer_read_correct_phases(self):
-        # Check that correct phases are being used during READ
+        # Check that correct phases are being used during READ.
         def main_generator(dut):
             yield from dut.bm_drivers[2].read()
             yield from dut.bm_drivers[3].activate()
@@ -222,7 +229,7 @@ class TestMultiplexer(unittest.TestCase):
                 else:
                     self.assertEqual((yield dut.dfi.phases[phase].bank), 0)
 
-        dut = MultiplexerDUT()
+        dut        = MultiplexerDUT()
         generators = [
             main_generator(dut),
             timeout_generator(50),
@@ -230,7 +237,7 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_steer_write_correct_phases(self):
-        # Check that correct phases are being used during WRITE
+        # Check that correct phases are being used during WRITE.
         def main_generator(dut):
             yield from dut.bm_drivers[2].write()
             yield from dut.bm_drivers[3].activate()
@@ -256,20 +263,20 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_single_phase_cmd_req(self):
-        # Verify that, for a single phase, commands are sent sequentially
+        # Verify that, for a single phase, commands are sent sequentially.
         def main_generator(dut):
             yield from dut.bm_drivers[2].write()
             yield from dut.bm_drivers[3].activate()
             ready = {2: dut.bank_machines[2].cmd.ready, 3: dut.bank_machines[3].cmd.ready}
 
-            # activate should appear first
+            # Activate should appear first
             while not ((yield ready[2]) or (yield ready[3])):
                 yield
             yield from dut.bm_drivers[3].nop()
             yield
             self.assertEqual((yield dut.dfi.phases[0].bank), 3)
 
-            # than write
+            # Then write
             while not (yield ready[2]):
                 yield
             yield from dut.bm_drivers[2].nop()
@@ -284,23 +291,23 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_ras_trrd(self):
-        # Verify tRRD
+        # Verify tRRD.
         def main_generator(dut):
             yield from dut.bm_drivers[2].activate()
             yield from dut.bm_drivers[3].activate()
             ready = {2: dut.bank_machines[2].cmd.ready, 3: dut.bank_machines[3].cmd.ready}
 
-            # wait for activate
+            # Wait for activate
             while not ((yield ready[2]) or (yield ready[3])):
                 yield
-            # invalidate command that was ready
+            # Invalidate command that was ready
             if (yield ready[2]):
                 yield from dut.bm_drivers[2].nop()
             else:
                 yield from dut.bm_drivers[3].nop()
             yield
 
-            # wait for the second activate; start from 1 for the previous cycle
+            # Wait for the second activate; start from 1 for the previous cycle
             ras_time = 1
             while not ((yield ready[2]) or (yield ready[3])):
                 ras_time += 1
@@ -316,23 +323,23 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_cas_tccd(self):
-        # Verify tCCD
+        # Verify tCCD.
         def main_generator(dut):
             yield from dut.bm_drivers[2].read()
             yield from dut.bm_drivers[3].read()
             ready = {2: dut.bank_machines[2].cmd.ready, 3: dut.bank_machines[3].cmd.ready}
 
-            # wait for activate
+            # Wait for activate
             while not ((yield ready[2]) or (yield ready[3])):
                 yield
-            # invalidate command that was ready
+            # Invalidate command that was ready
             if (yield ready[2]):
                 yield from dut.bm_drivers[2].nop()
             else:
                 yield from dut.bm_drivers[3].nop()
             yield
 
-            # wait for the second activate; start from 1 for the previous cycle
+            # Wait for the second activate; start from 1 for the previous cycle
             cas_time = 1
             while not ((yield ready[2]) or (yield ready[3])):
                 cas_time += 1
@@ -348,12 +355,12 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_fsm_anti_starvation(self):
-        # Check that anti-starvation works according to controller settings
+        # Check that anti-starvation works according to controller settings.
         def main_generator(dut):
             yield from dut.bm_drivers[2].read()
             yield from dut.bm_drivers[3].write()
 
-            # go to WRITE
+            # Go to WRITE
             # anti starvation does not work for 1st read, as read_time_en already starts as 1
             # READ -> RTW -> WRITE
             while (yield from dut.fsm_state()) != "WRITE":
@@ -369,7 +376,7 @@ class TestMultiplexer(unittest.TestCase):
             while (yield from dut.fsm_state()) != "READ":
                 yield
 
-            # wait for read anti starvation
+            # Wait for read anti starvation
             for _ in range(dut.settings.read_time):
                 self.assertEqual((yield from dut.fsm_state()), "READ")
                 yield
@@ -383,7 +390,7 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_write_datapath(self):
-        # Verify that data is transmitted from native interface to DFI
+        # Verify that data is transmitted from native interface to DFI.
         def main_generator(dut):
             yield from dut.bm_drivers[2].write()
             # 16bits * 2 (DDR) * 1 (phases)
@@ -407,7 +414,7 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_read_datapath(self):
-        # Verify that data is transmitted from DFI to native interface
+        # Verify that data is transmitted from DFI to native interface.
         def main_generator(dut):
             yield from dut.bm_drivers[2].write()
             # 16bits * 2 (DDR) * 1 (phases)
@@ -432,7 +439,7 @@ class TestMultiplexer(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_refresh_requires_gnt(self):
-        # After refresher command request, multiplexer waits for permission from all bank machines
+        # After refresher command request, multiplexer waits for permission from all bank machines.
         def main_generator(dut):
             def assert_dfi_cmd(cas, ras, we):
                 p = dut.dfi.phases[0]
@@ -445,28 +452,28 @@ class TestMultiplexer(unittest.TestCase):
             yield from dut.refresh_driver.refresh()
             yield
 
-            # bank machines get the request
+            # Bank machines get the request
             for bm in dut.bank_machines:
                 self.assertEqual((yield bm.refresh_req), 1)
-            # no command yet
+            # No command yet
             yield from assert_dfi_cmd(cas=0, ras=0, we=0)
 
-            # grant permission for refresh
+            # Grant permission for refresh
             prng = random.Random(42)
             delays = [prng.randrange(100) for _ in dut.bank_machines]
             for t in range(max(delays) + 1):
-                # grant permission
+                # Grant permission
                 for delay, bm in zip(delays, dut.bank_machines):
                     if delay == t:
                         yield bm.refresh_gnt.eq(1)
                 yield
 
-                # make sure thare is no command yet
+                # Make sure thare is no command yet
                 yield from assert_dfi_cmd(cas=0, ras=0, we=0)
             yield
             yield
 
-            # refresh command
+            # Refresh command
             yield from assert_dfi_cmd(cas=1, ras=1, we=0)
 
         dut = MultiplexerDUT()
@@ -474,12 +481,12 @@ class TestMultiplexer(unittest.TestCase):
 
     def test_requests_from_multiple_bankmachines(self):
         # Check complex communication scenario with requests from multiple bank machines
-        # The communication is greatly simplified - data path is completely ignored,
-        # no responses from PHY are simulated. Each bank machine performs a sequence of
-        # requests, bank machines are ordered randomly and the DFI command data is
-        # checked to verify if all the commands have been sent if correct per-bank order.
+        # The communication is greatly simplified - data path is completely ignored, no responses
+        # from PHY are simulated. Each bank machine performs a sequence of requests, bank machines
+        # are ordered randomly and the DFI command data is checked to verify if all the commands
+        # have been sent if correct per-bank order.
 
-        # requests sequence on given bank machines
+        # Tequests sequence on given bank machines
         bm_sequences = {
             0: "awwwwwwp",
             1: "arrrrrrp",
@@ -498,28 +505,28 @@ class TestMultiplexer(unittest.TestCase):
             def non_empty():
                 return list(filter(lambda n: len(bm_seq[n]) > 0, bm_seq.keys()))
 
-            # artificially perform the work of LiteDRAMCrossbar by always picking only one request
+            # Artificially perform the work of LiteDRAMCrossbar by always picking only one request
             prng = random.Random(42)
             while len(non_empty()) > 0:
-                # pick random bank machine
+                # Pick random bank machine
                 bm_num = prng.choice(non_empty())
 
-                # set given request
+                # Set given request
                 request_char = bm_seq[bm_num].pop(0)
                 yield from drivers[bm_num].request(request_char)
                 yield
 
-                # wait for ready
+                # Wait for ready
                 while not (yield bank_machines[bm_num].cmd.ready):
                     yield
 
-                # disable it
+                # Disable it
                 yield from drivers[bm_num].nop()
 
             for _ in range(16):
                 yield
 
-        # gather data on DFI
+        # Gather data on DFI
         DFISnapshot = namedtuple("DFICapture",
                                  ["cmd", "bank", "address", "wrdata_en", "rddata_en"])
         dfi_snapshots = []
@@ -527,14 +534,14 @@ class TestMultiplexer(unittest.TestCase):
         @passive
         def dfi_monitor(dfi):
             while True:
-                # capture current state of DFI lines
+                # Capture current state of DFI lines
                 phases = []
                 for i, p in enumerate(dfi.phases):
-                    # transform cas/ras/we to command name
+                    # Transform cas/ras/we to command name
                     cas_n, ras_n, we_n = (yield p.cas_n), (yield p.ras_n), (yield p.we_n)
                     captured = {"cmd": dfi_cmd_to_char(cas_n, ras_n, we_n)}
 
-                    # capture rest of fields
+                    # Capture rest of fields
                     for field in DFISnapshot._fields:
                         if field != "cmd":
                             captured[field] = (yield getattr(p, field))
@@ -551,21 +558,21 @@ class TestMultiplexer(unittest.TestCase):
         ]
         run_simulation(dut, generators)
 
-        # check captured DFI data with the description
+        # Check captured DFI data with the description
         for snap in dfi_snapshots:
             for i, phase_snap in enumerate(snap):
                 if phase_snap.cmd == "_":
                     continue
 
-                # distinguish bank machines by the bank number
+                # Distinguish bank machines by the bank number
                 bank = phase_snap.bank
-                # find next command for the given bank
+                # Find next command for the given bank
                 cmd = bm_sequences[bank].pop(0)
 
-                # check if the captured data is correct
+                # Check if the captured data is correct
                 self.assertEqual(phase_snap.cmd, cmd)
                 if cmd in ["w", "r"]:
-                    # addresses are artificially forced to bank numbers in drivers
+                    # Addresses are artificially forced to bank numbers in drivers
                     self.assertEqual(phase_snap.address, bank)
                     if cmd == "w":
                         self.assertEqual(phase_snap.wrdata_en, 1)

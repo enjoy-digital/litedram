@@ -28,7 +28,7 @@ class CommandChooserDUT(Module):
 
 class TestCommandChooser(unittest.TestCase):
     def test_helper_methods_correct(self):
-        # Verify that helper methods return correct values
+        # Verify that helper methods return correct values.
         def main_generator(dut):
             possible_cmds     = "_rwap"
             expected_read     = "01000"
@@ -40,7 +40,7 @@ class TestCommandChooser(unittest.TestCase):
                 "activate": expected_activate,
             }
 
-            # create a subTest for each method
+            # Create a subTest for each method
             for method, expected_values in helper_methods.items():
                 with self.subTest(method=method):
                     # Set each available command as the first request and verify
@@ -53,7 +53,7 @@ class TestCommandChooser(unittest.TestCase):
                         method_value = (yield getattr(dut.chooser, method)())
                         self.assertEqual(method_value, int(expected))
 
-            # test accept helper
+            # Test accept helper
             with self.subTest(method="accept"):
                 yield dut.chooser.want_writes.eq(1)
                 yield
@@ -62,13 +62,13 @@ class TestCommandChooser(unittest.TestCase):
                 yield
                 self.assertEqual((yield dut.chooser.accept()), 0)
 
-                # set write request, this sets request.valid=1
+                # Set write request, this sets request.valid=1
                 yield from dut.set_requests("w___")
                 yield
                 self.assertEqual((yield dut.chooser.accept()), 0)
                 self.assertEqual((yield dut.chooser.cmd.valid), 1)
 
-                # accept() is only on after we set cmd.ready=1
+                # Accept() is only on after we set cmd.ready=1
                 yield dut.chooser.cmd.ready.eq(1)
                 yield
                 self.assertEqual((yield dut.chooser.accept()), 1)
@@ -77,25 +77,25 @@ class TestCommandChooser(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_selects_next_when_request_not_valid(self):
-        # Verify that arbiter moves to next request when valid goes inactive
+        # Verify that arbiter moves to next request when valid goes inactive.
         def main_generator(dut):
             yield dut.chooser.want_cmds.eq(1)
             yield from dut.set_requests("pppp")
             yield
 
-            # advance to next request
+            # Advance to next request
             def invalidate(i):
                 yield dut.requests[i].valid.eq(0)
                 yield
                 yield dut.requests[i].valid.eq(1)
                 yield
 
-            # first request is selected as it is valid and ~ready
+            # First request is selected as it is valid and ~ready
             self.assertEqual((yield dut.chooser.cmd.ba), 0)
             yield
             self.assertEqual((yield dut.chooser.cmd.ba), 0)
 
-            # after deactivating `valid`, arbiter should choose next request
+            # After deactivating `valid`, arbiter should choose next request
             yield from invalidate(0)
             self.assertEqual((yield dut.chooser.cmd.ba), 1)
             yield from invalidate(1)
@@ -109,25 +109,25 @@ class TestCommandChooser(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_selects_next_when_cmd_ready(self):
-        # Verify that next request is chosen when the current one becomes ready
+        # Verify that next request is chosen when the current one becomes ready.
         def main_generator(dut):
             yield dut.chooser.want_cmds.eq(1)
             yield from dut.set_requests("pppp")
             yield
 
-            # advance to next request
+            # Advance to next request
             def cmd_ready():
                 yield dut.chooser.cmd.ready.eq(1)
                 yield
                 yield dut.chooser.cmd.ready.eq(0)
                 yield
 
-            # first request is selected as it is valid and ~ready
+            # First request is selected as it is valid and ~ready
             self.assertEqual((yield dut.chooser.cmd.ba), 0)
             yield
             self.assertEqual((yield dut.chooser.cmd.ba), 0)
 
-            # after deactivating valid arbiter should choose next request
+            # After deactivating valid arbiter should choose next request
             yield from cmd_ready()
             self.assertEqual((yield dut.chooser.cmd.ba), 1)
             yield from cmd_ready()
@@ -160,11 +160,11 @@ class TestCommandChooser(unittest.TestCase):
                     we = (yield dut.chooser.cmd.we)
                     self.assertEqual((cas, ras, we), (0, 0, 0), msg=error_msg)
                 else:
-                    # check that ba is as expected
+                    # Check that ba is as expected
                     selected_request_index = (yield dut.chooser.cmd.ba)
                     self.assertEqual(selected_request_index, int(expected_index), msg=error_msg)
 
-                # advance to next request
+                # Advance to next request
                 yield dut.chooser.cmd.ready.eq(1)
                 yield
                 yield dut.chooser.cmd.ready.eq(0)
@@ -178,46 +178,46 @@ class TestCommandChooser(unittest.TestCase):
     def test_selects_nothing(self):
         # When want_* = 0, chooser should set cas/ras/we = 0, which means not valid request
         requests = "w_rawpwr"
-        order = "____"  # cas/ras/we are never set
+        order    = "____"  # cas/ras/we are never set
         self.selection_test(requests, order, wants=[])
 
     def test_selects_writes(self):
         requests = "w_rawpwr"
-        order = "0460460"
+        order    = "0460460"
         self.selection_test(requests, order, wants=["want_writes"])
 
     def test_selects_reads(self):
         requests = "rp_awrrw"
-        order = "0560560"
+        order    = "0560560"
         self.selection_test(requests, order, wants=["want_reads"])
 
     @unittest.skip("Issue #174")
     def test_selects_writes_and_reads(self):
         requests = "rp_awrrw"
-        order = "04567045670"
+        order    = "04567045670"
         self.selection_test(requests, order, wants=["want_reads", "want_writes"])
 
     @unittest.skip("Issue #174")
     def test_selects_cmds_without_act(self):
         # When want_cmds = 1, but want_activates = 0, activate commands should not be selected
         requests = "pr_aa_pw"
-        order = "06060"
+        order    = "06060"
         self.selection_test(requests, order, wants=["want_cmds"])
 
     def test_selects_cmds_with_act(self):
         # When want_cmds/activates = 1, both activate and precharge should be selected
         requests = "pr_aa_pw"
-        order = "034603460"
+        order    = "034603460"
         self.selection_test(requests, order, wants=["want_cmds", "want_activates"])
 
     @unittest.skip("Issue #174")
     def test_selects_nothing_when_want_activates_only(self):
         # When only want_activates = 1, nothing will be selected
         requests = "pr_aa_pw"
-        order = "____"
+        order    = "____"
         self.selection_test(requests, order, wants=["want_activates"])
 
     def test_selects_cmds_and_writes(self):
         requests = "pr_aa_pw"
-        order = "0670670"
+        order    = "0670670"
         self.selection_test(requests, order, wants=["want_cmds", "want_writes"])

@@ -35,45 +35,45 @@ class CommandDriver:
         prng = random.Random(42)
 
         while True:
-            # generate random command
+            # Generate random command
             command = prng.choice(commands)
             yield from getattr(self.driver, command)()
             yield
-            # wait some times before it becomes ready
+            # Wait some times before it becomes ready
             for _ in range(prng.randint(0, random_ready_max)):
                 yield
             yield self.cmd.ready.eq(1)
             yield
             self.cmd_counts[command] += 1
             yield self.cmd.ready.eq(0)
-            # disable command
+            # Disable command
             yield from self.driver.nop()
             yield
 
     @passive
     def timeline_generator(self, timeline):
-        # timeline: an iterator of tuples (cycle, command)
+        # Timeline: an iterator of tuples (cycle, command)
         sim_cycle = 0
         for cycle, command in timeline:
             assert cycle >= sim_cycle
             while sim_cycle != cycle:
                 sim_cycle += 1
                 yield
-            # set the command
+            # Set the command
             yield from getattr(self.driver, command)()
             yield self.cmd.ready.eq(1)
             self.cmd_counts[command] += 1
-            # advance 1 cycle
+            # Advance 1 cycle
             yield
             sim_cycle += 1
-            # clear state
+            # Clear state
             yield self.cmd.ready.eq(0)
             yield from self.driver.nop()
 
 
 class TestBandwidth(unittest.TestCase):
     def test_can_read_status_data_width(self):
-        # Verify that data width can be read from a CSR
+        # Verify that data width can be read from a CSR.
         def test(data_width):
             def main_generator(dut):
                 yield
@@ -87,14 +87,14 @@ class TestBandwidth(unittest.TestCase):
                 test(data_width)
 
     def test_requires_update_to_copy_the_data(self):
-        # Verify that command counts are copied to CSRs only after `update`
+        # Verify that command counts are copied to CSRs only after `update`.
         def main_generator(dut):
             nreads = (yield from dut.bandwidth.nreads.read())
             nwrites = (yield from dut.bandwidth.nwrites.read())
             self.assertEqual(nreads, 0)
             self.assertEqual(nwrites, 0)
 
-            # wait enough for the period to end
+            # Wait enough for the period to end
             for _ in range(2**6):
                 yield
 
@@ -103,7 +103,7 @@ class TestBandwidth(unittest.TestCase):
             self.assertEqual(nreads, 0)
             self.assertEqual(nwrites, 0)
 
-            # update register values
+            # Update register values
             yield from dut.bandwidth.update.write(1)
 
             nreads = (yield from dut.bandwidth.nreads.read())
@@ -119,11 +119,11 @@ class TestBandwidth(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_correct_read_write_counts(self):
-        # Verify that the number of registered READ/WRITE commands is correct
+        # Verify that the number of registered READ/WRITE commands is correct.
         results = {}
 
         def main_generator(dut):
-            # wait for the first period to end
+            # Wait for the first period to end
             for _ in range(2**8):
                 yield
             yield from dut.bandwidth.update.write(1)
@@ -142,11 +142,11 @@ class TestBandwidth(unittest.TestCase):
         self.assertEqual(results["nreads"], cmd_driver.cmd_counts["read"])
 
     def test_counts_read_write_only(self):
-        # Verify that only READ and WRITE commands are registered
+        # Verify that only READ and WRITE commands are registered.
         results = {}
 
         def main_generator(dut):
-            # wait for the first period to end
+            # Wait for the first period to end
             for _ in range(2**8):
                 yield
             yield from dut.bandwidth.update.write(1)
@@ -166,7 +166,7 @@ class TestBandwidth(unittest.TestCase):
         self.assertEqual(results["nreads"], cmd_driver.cmd_counts["read"])
 
     def test_correct_period_length(self):
-        # Verify that period length is correct by measuring time betwee CSR changes
+        # Verify that period length is correct by measuring time betwee CSR changes.
         period_bits = 5
         period = 2**period_bits
 
@@ -178,14 +178,14 @@ class TestBandwidth(unittest.TestCase):
                 timeline[period*p + margin + i] = "write"
 
         def main_generator(dut):
-            # keep the values always up to date
+            # Keep the values always up to date
             yield dut.bandwidth.update.re.eq(1)
 
-            # wait until we have the data from 1st period
+            # Wait until we have the data from 1st period
             while (yield dut.bandwidth.nwrites.status) != 3:
                 yield
 
-            # count time to next period
+            # Count time to next period
             cycles = 0
             while (yield dut.bandwidth.nwrites.status) != 6:
                 cycles += 1
@@ -203,30 +203,30 @@ class TestBandwidth(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_not_missing_commands_on_period_boundary(self):
-        # Verify that no data is lost in the cycle when new period starts
+        # Verify that no data is lost in the cycle when new period starts.
         period_bits = 5
         period = 2**period_bits
 
-        # start 10 cycles before period ends, end 10 cycles after it ends
+        # Start 10 cycles before period ends, end 10 cycles after it ends
         base = period - 10
         nwrites = 20
         timeline = {base + i: "write" for i in range(nwrites)}
 
         def main_generator(dut):
-            # wait until 1st period ends (+ some margin)
+            # Wait until 1st period ends (+ some margin)
             for _ in range(period + 10):
                 yield
 
-            # read the count from 1st period
+            # Read the count from 1st period
             yield from dut.bandwidth.update.write(1)
             yield
             nwrites_registered = (yield from dut.bandwidth.nwrites.read())
 
-            # wait until 2nd period ends
+            # Wait until 2nd period ends
             for _ in range(period):
                 yield
 
-            # read the count from 1st period
+            # Read the count from 1st period
             yield from dut.bandwidth.update.write(1)
             yield
             nwrites_registered += (yield from dut.bandwidth.nwrites.read())

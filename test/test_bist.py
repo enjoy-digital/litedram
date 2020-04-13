@@ -28,7 +28,7 @@ class GenCheckDriver:
         yield
 
     def configure(self, base, length, end=None, random_addr=None, random_data=None):
-        # for non-pattern generators/checkers
+        # For non-pattern generators/checkers
         if end is None:
             end = base + 0x100000
         yield self.module.base.eq(base)
@@ -60,7 +60,7 @@ class GenCheckCSRDriver:
         yield from self.module.reset.write(0)
 
     def configure(self, base, length, end=None, random_addr=None, random_data=None):
-        # for non-pattern generators/checkers
+        # For non-pattern generators/checkers
         if end is None:
             end = base + 0x100000
         yield from self.module.base.write(base)
@@ -91,7 +91,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         def main_generator(dut):
             self.errors = 0
 
-            # test incr
+            # Test incr
             yield dut.ce.eq(1)
             yield dut.random_enable.eq(0)
             yield
@@ -101,7 +101,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
                     self.errors += 1
                 yield
 
-            # test random
+            # Test random
             datas = []
             yield dut.ce.eq(1)
             yield dut.random_enable.eq(1)
@@ -112,10 +112,10 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
                 datas.append(data)
                 yield
 
-        # dut
+        # DUT
         dut = Generator(23, n_state=23, taps=[17, 22])
 
-        # simulation
+        # Simulation
         generators = [main_generator(dut)]
         run_simulation(dut, generators)
         self.assertEqual(self.errors, 0)
@@ -190,7 +190,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         data["random_data"] = True
         dut = self.generator_test(data.pop("expected"), data_width=32, config_args=data,
                                   check_mem=False)
-        # only check that there are no duplicates and that data is not a simple sequence
+        # Only check that there are no duplicates and that data is not a simple sequence
         mem = [val for val in dut.mem.mem if val != 0]
         self.assertEqual(len(set(mem)), len(mem), msg="Duplicate values in memory")
         self.assertNotEqual(mem, list(range(len(mem))), msg="Values are a sequence")
@@ -200,7 +200,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         data["random_addr"] = True
         dut = self.generator_test(data.pop("expected"), data_width=32, config_args=data,
                                   check_mem=False)
-        # with random address and address wrapping (generator.end) we _can_ have duplicates
+        # With random address and address wrapping (generator.end) we _can_ have duplicates
         # we can at least check that the values written are not an ordered sequence
         mem = [val for val in dut.mem.mem if val != 0]
         self.assertNotEqual(mem, list(range(len(mem))), msg="Values are a sequence")
@@ -313,27 +313,27 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         yield from generator.configure(16, 64)
         yield from generator.run()
 
-        # read (no errors)
+        # Read (no errors)
         yield from checker.reset()
         yield from checker.configure(16, 64)
         yield from checker.run()
         self.assertEqual(checker.errors, 0)
 
-        # corrupt memory (using generator)
+        # Corrupt memory (using generator)
         yield from generator.reset()
         yield from generator.configure(16 + 48, 64)
         yield from generator.run()
 
-        # read (errors)
+        # Read (errors)
         yield from checker.reset()
         yield from checker.configure(16, 64)
         yield from checker.run()
-        # errors for words:
+        # Errors for words:
         # from (16 + 48) / 4 = 16  (corrupting generator start)
         # to   (16 + 64) / 4 = 20  (first generator end)
         self.assertEqual(checker.errors, 4)
 
-        # read (no errors)
+        # Read (no errors)
         yield from checker.reset()
         yield from checker.configure(16 + 48, 64)
         yield from checker.run()
@@ -343,20 +343,20 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         class DUT(Module):
             def __init__(self):
                 self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
-                self.read_port = LiteDRAMNativeReadPort(address_width=32, data_width=32)
+                self.read_port  = LiteDRAMNativeReadPort(address_width=32, data_width=32)
                 self.submodules.generator = _LiteDRAMBISTGenerator(self.write_port)
-                self.submodules.checker = _LiteDRAMBISTChecker(self.read_port)
+                self.submodules.checker   = _LiteDRAMBISTChecker(self.read_port)
 
         def main_generator(dut, mem):
             generator = GenCheckDriver(dut.generator)
-            checker = GenCheckDriver(dut.checker)
+            checker   = GenCheckDriver(dut.checker)
             yield from self.bist_test(generator, checker, mem)
 
-        # dut
+        # DUT
         dut = DUT()
         mem = DRAMMemory(32, 48)
 
-        # simulation
+        # Simulation
         generators = [
             main_generator(dut, mem),
             mem.write_handler(dut.write_port),
@@ -368,20 +368,20 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         class DUT(Module):
             def __init__(self):
                 self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
-                self.read_port = LiteDRAMNativeReadPort(address_width=32, data_width=32)
+                self.read_port  = LiteDRAMNativeReadPort(address_width=32, data_width=32)
                 self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
-                self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
+                self.submodules.checker   = LiteDRAMBISTChecker(self.read_port)
 
         def main_generator(dut, mem):
             generator = GenCheckCSRDriver(dut.generator)
-            checker = GenCheckCSRDriver(dut.checker)
+            checker   = GenCheckCSRDriver(dut.checker)
             yield from self.bist_test(generator, checker, mem)
 
-        # dut
+        # DUT
         dut = DUT()
         mem = DRAMMemory(32, 48)
 
-        # simulation
+        # Simulation
         generators = [
             main_generator(dut, mem),
             mem.write_handler(dut.write_port),
@@ -394,18 +394,18 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
     def test_bist_csr_cdc(self):
         class DUT(Module):
             def __init__(self):
-                port_kwargs = dict(address_width=32, data_width=32, clock_domain="async")
+                port_kwargs     = dict(address_width=32, data_width=32, clock_domain="async")
                 self.write_port = LiteDRAMNativeWritePort(**port_kwargs)
-                self.read_port = LiteDRAMNativeReadPort(**port_kwargs)
+                self.read_port  = LiteDRAMNativeReadPort(**port_kwargs)
                 self.submodules.generator = LiteDRAMBISTGenerator(self.write_port)
-                self.submodules.checker = LiteDRAMBISTChecker(self.read_port)
+                self.submodules.checker   = LiteDRAMBISTChecker(self.read_port)
 
         def main_generator(dut, mem):
             generator = GenCheckCSRDriver(dut.generator)
-            checker = GenCheckCSRDriver(dut.checker)
+            checker   = GenCheckCSRDriver(dut.checker)
             yield from self.bist_test(generator, checker, mem)
 
-        # dut
+        # DUT
         dut = DUT()
         mem = DRAMMemory(32, 48)
 

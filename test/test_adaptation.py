@@ -23,7 +23,7 @@ class ConverterDUT(Module):
         self.read_user_port      = LiteDRAMNativeReadPort( address_width=32, data_width=user_data_width)
         self.read_crossbar_port  = LiteDRAMNativeReadPort( address_width=32, data_width=native_data_width)
 
-        # memory
+        # Memory
         self.memory = DRAMMemory(native_data_width, mem_depth)
 
     def do_finalize(self):
@@ -150,7 +150,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
             for adr, _ in pattern:
                 yield from dut.read(adr, read_data=False)
 
-            # latency delay
+            # Latency delay
             for _ in range(32):
                 yield
 
@@ -233,7 +233,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
             for adr, _ in pattern:
                 yield from dut.read(adr, read_data=False)
 
-            # latency delay
+            # Latency delay
             for _ in range(32):
                 yield
 

@@ -37,7 +37,7 @@ class DMAWriterDriver:
 
 class DMAReaderDriver:
     def __init__(self, dma):
-        self.dma = dma
+        self.dma  = dma
         self.data = []
 
     def read(self, address_list):
@@ -85,8 +85,8 @@ class TestDMA(MemoryTestDataMixin, unittest.TestCase):
         self.assertEqual(mem.mem, mem_expected)
 
     def test_dma_writer_single(self):
-        pattern = [(0x04, 0xdeadc0de)]
-        mem_expected = [0] * 32
+        pattern            = [(0x04, 0xdeadc0de)]
+        mem_expected       = [0] * 32
         mem_expected[0x04] = 0xdeadc0de
         self.dma_writer_test(pattern, mem_expected, data_width=32)
 
@@ -124,9 +124,9 @@ class TestDMA(MemoryTestDataMixin, unittest.TestCase):
                 self.port = LiteDRAMNativeReadPort(address_width=32, data_width=data_width)
                 self.submodules.dma = LiteDRAMDMAReader(self.port, **kwargs)
 
-        dut = DUT()
+        dut    = DUT()
         driver = DMAReaderDriver(dut.dma)
-        mem = DRAMMemory(data_width, len(mem_expected), init=mem_expected)
+        mem    = DRAMMemory(data_width, len(mem_expected), init=mem_expected)
 
         generators = [
             driver.read([adr for adr, data in pattern]),
@@ -137,8 +137,8 @@ class TestDMA(MemoryTestDataMixin, unittest.TestCase):
         self.assertEqual(driver.data, [data for adr, data in pattern])
 
     def test_dma_reader_single(self):
-        pattern = [(0x04, 0xdeadc0de)]
-        mem_expected = [0] * 32
+        pattern            = [(0x04, 0xdeadc0de)]
+        mem_expected       = [0] * 32
         mem_expected[0x04] = 0xdeadc0de
         self.dma_reader_test(pattern, mem_expected, data_width=32)
 
@@ -162,4 +162,4 @@ class TestDMA(MemoryTestDataMixin, unittest.TestCase):
     def test_dma_reader_fifo_buffered(self):
         data = self.pattern_test_data["32bit_long_sequential"]
         self.dma_reader_test(data["pattern"], data["expected"], data_width=32,
-                             fifo_buffered=True)
+            fifo_buffered=True)

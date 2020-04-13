@@ -1,4 +1,5 @@
 # This file is Copyright (c) 2018-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2020 Antmicro <www.antmicro.com>
 # License: BSD
 
 import unittest
@@ -52,7 +53,7 @@ def extract_ecc_data(data_width, codeword_width, codeword_bits):
 
 class TestECC(unittest.TestCase):
     def test_eccw_connected(self):
-        """Verify LiteDRAMNativePortECCW ECC encoding."""
+        # Verify LiteDRAMNativePortECCW ECC encoding.
         class DUT(Module):
             def __init__(self):
                 eccw = LiteDRAMNativePortECCW(data_width_from=32*8, data_width_to=39*8)
@@ -79,7 +80,7 @@ class TestECC(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_eccw_we_enabled(self):
-        """Verify LiteDRAMNativePortECCW always set bytes enable."""
+        # Verify LiteDRAMNativePortECCW always set bytes enable.
         class DUT(Module):
             def __init__(self):
                 eccw = LiteDRAMNativePortECCW(data_width_from=32*8, data_width_to=39*8)
@@ -95,7 +96,7 @@ class TestECC(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_eccr_connected(self):
-        """Verify LiteDRAMNativePortECCR ECC decoding."""
+        # Verify LiteDRAMNativePortECCR ECC decoding.
         class DUT(Module):
             def __init__(self):
                 eccr = LiteDRAMNativePortECCR(data_width_from=32*8, data_width_to=39*8)
@@ -124,7 +125,7 @@ class TestECC(unittest.TestCase):
         run_simulation(dut, main_generator(dut))
 
     def test_eccr_errors_connected_when_sink_valid(self):
-        """Verify LiteDRAMNativePortECCR Error detection."""
+        # Verify LiteDRAMNativePortECCR Error detection.
         class DUT(Module):
             def __init__(self):
                 eccr = LiteDRAMNativePortECCR(data_width_from=32*8, data_width_to=39*8)
@@ -213,17 +214,17 @@ class TestECC(unittest.TestCase):
         return dut
 
     def test_ecc_32_7(self):
-        """Verify encoding/decoding on 32 data bits + 6 code bits + parity bit."""
+        # Verify encoding/decoding on 32 data bits + 6 code bits + parity bit.
         dut = self.ecc_encode_decode_test(32*8, 39*8, 2)
         self.assertEqual(dut.wdata, dut.rdata)
 
     def test_ecc_64_8(self):
-        """Verify encoding/decoding on 64 data bits + 7 code bits + parity bit."""
+        # Verify encoding/decoding on 64 data bits + 7 code bits + parity bit.
         dut = self.ecc_encode_decode_test(64*8, 72*8, 2)
         self.assertEqual(dut.wdata, dut.rdata)
 
     def test_ecc_sec_errors(self):
-        # Verify SEC errors detection/correction with 1-bit flip."""
+        # Verify SEC errors detection/correction with 1-bit flip.
         def pre(dut):
             yield from dut.ecc.flip.write(0b00000100)
 
@@ -237,7 +238,7 @@ class TestECC(unittest.TestCase):
         self.assertEqual(dut.ded_errors, 0)
 
     def test_ecc_ded_errors(self):
-        # Verify DED errors detection with 2-bit flip."""
+        # Verify DED errors detection with 2-bit flip.
         def pre(dut):
             yield from dut.ecc.flip.write(0b00001100)
 
@@ -251,7 +252,7 @@ class TestECC(unittest.TestCase):
         self.assertEqual(dut.ded_errors, 4)
 
     def test_ecc_decoder_disable(self):
-        # Verify enable control."""
+        # Verify enable control.
         def pre(dut):
             yield from dut.ecc.flip.write(0b10101100)
             yield from dut.ecc.enable.write(0)
@@ -266,7 +267,7 @@ class TestECC(unittest.TestCase):
         self.assertEqual(dut.ded_errors, 0)
 
     def test_ecc_clear_sec_errors(self):
-        # Verify SEC errors clear."""
+        # Verify SEC errors clear.
         def pre(dut):
             yield from dut.ecc.flip.write(0b00000100)
 
@@ -291,7 +292,7 @@ class TestECC(unittest.TestCase):
         self.assertEqual(dut.ded_errors_c, 0)
 
     def test_ecc_clear_ded_errors(self):
-        # Verify DED errors clear."""
+        # Verify DED errors clear.
         def pre(dut):
             yield from dut.ecc.flip.write(0b10101100)
 
