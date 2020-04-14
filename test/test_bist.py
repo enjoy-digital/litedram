@@ -86,6 +86,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
     # Generator ------------------------------------------------------------------------------------
 
     def test_generator(self):
+        # Verify Generator is behaving correctly in the incr/random modes.
         def main_generator(dut):
             self.errors = 0
 
@@ -152,6 +153,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
     # _LiteDRAMBISTGenerator -----------------------------------------------------------------------
 
     def test_bist_generator_8bit(self):
+        # Verify BISTGenerator with a 8-bit datapath.
         data = self.bist_test_data["8bit"]
         self.generator_test(data.pop("expected"), data_width=8, config_args=data)
 
@@ -168,22 +170,27 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         self.assertNotEqual(dut.mem.mem, reference)
 
     def test_bist_generator_32bit(self):
+        # Verify BISTGenerator with a 32-bit datapath.
         data = self.bist_test_data["32bit"]
         self.generator_test(data.pop("expected"), data_width=32, config_args=data)
 
     def test_bist_generator_64bit(self):
+        # Verify BISTGenerator with a 64-bit datapath.
         data = self.bist_test_data["64bit"]
         self.generator_test(data.pop("expected"), data_width=64, config_args=data)
 
     def test_bist_generator_32bit_address_masked(self):
+        # Verify BISTGenerator with a 32-bit datapath and masked address.
         data = self.bist_test_data["32bit_masked"]
         self.generator_test(data.pop("expected"), data_width=32, config_args=data)
 
     def test_bist_generator_32bit_long_sequential(self):
+        # Verify BISTGenerator with a 32-bit datapath and long sequential pattern.
         data = self.bist_test_data["32bit_long_sequential"]
         self.generator_test(data.pop("expected"), data_width=32, config_args=data)
 
     def test_bist_generator_random_data(self):
+        # Verify BISTGenerator with a 32-bit datapath and random pattern.
         data = self.bist_test_data["32bit"]
         data["random_data"] = True
         dut = self.generator_test(data.pop("expected"), data_width=32, config_args=data,
@@ -194,6 +201,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         self.assertNotEqual(mem, list(range(len(mem))), msg="Values are a sequence")
 
     def test_bist_generator_random_addr(self):
+        # Verify BISTGenerator with a 32-bit datapath and random address.
         data = self.bist_test_data["32bit"]
         data["random_addr"] = True
         dut = self.generator_test(data.pop("expected"), data_width=32, config_args=data,
@@ -207,26 +215,32 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
     # _LiteDRAMPatternGenerator --------------------------------------------------------------------
 
     def test_pattern_generator_8bit(self):
+        # Verify PatternGenerator with a 8-bit datapath.
         data = self.pattern_test_data["8bit"]
         self.generator_test(data["expected"], data_width=8, pattern=data["pattern"])
 
     def test_pattern_generator_32bit(self):
+        # Verify PatternGenerator with a 32-bit datapath.
         data = self.pattern_test_data["32bit"]
         self.generator_test(data["expected"], data_width=32, pattern=data["pattern"])
 
     def test_pattern_generator_64bit(self):
+        # Verify PatternGenerator with a 64-bit datapath.
         data = self.pattern_test_data["64bit"]
         self.generator_test(data["expected"], data_width=64, pattern=data["pattern"])
 
     def test_pattern_generator_32bit_not_aligned(self):
+        # Verify PatternGenerator with a 32-bit datapath and un-aligned addresses.
         data = self.pattern_test_data["32bit_not_aligned"]
         self.generator_test(data["expected"], data_width=32, pattern=data["pattern"])
 
     def test_pattern_generator_32bit_duplicates(self):
+        # Verify PatternGenerator with a 32-bit datapath and duplicate addresses.
         data = self.pattern_test_data["32bit_duplicates"]
         self.generator_test(data["expected"], data_width=32, pattern=data["pattern"])
 
     def test_pattern_generator_32bit_sequential(self):
+        # Verify PatternGenerator with a 32-bit datapath and sequential pattern.
         data = self.pattern_test_data["32bit_sequential"]
         self.generator_test(data["expected"], data_width=32, pattern=data["pattern"])
 
@@ -264,39 +278,47 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         return dut, checker
 
     def test_bist_checker_8bit(self):
+        # Verify BISTChecker with a 8-bit datapath.
         data = self.bist_test_data["8bit"]
         memory = data.pop("expected")
         self.checker_test(memory, data_width=8, config_args=data)
 
     def test_bist_checker_32bit(self):
+        # Verify BISTChecker with a 32-bit datapath.
         data = self.bist_test_data["32bit"]
         memory = data.pop("expected")
         self.checker_test(memory, data_width=32, config_args=data)
 
     def test_bist_checker_64bit(self):
-        data = self.bist_test_data["32bit"]
+        # Verify BISTChecker with a 64-bit datapath.
+        data = self.bist_test_data["64bit"]
         memory = data.pop("expected")
-        self.checker_test(memory, data_width=32, config_args=data)
+        self.checker_test(memory, data_width=64, config_args=data)
 
     # _LiteDRAMPatternChecker ----------------------------------------------------------------------
 
     def test_pattern_checker_8bit(self):
+        # Verify PatternChecker with a 8-bit datapath.
         data = self.pattern_test_data["8bit"]
         self.checker_test(memory=data["expected"], data_width=8, pattern=data["pattern"])
 
     def test_pattern_checker_32bit(self):
+        # Verify PatternChecker with a 32-bit datapath.
         data = self.pattern_test_data["32bit"]
         self.checker_test(memory=data["expected"], data_width=32, pattern=data["pattern"])
 
     def test_pattern_checker_64bit(self):
+        # Verify PatternChecker with a 64-bit datapath.
         data = self.pattern_test_data["64bit"]
         self.checker_test(memory=data["expected"], data_width=64, pattern=data["pattern"])
 
     def test_pattern_checker_32bit_not_aligned(self):
+        # Verify PatternChecker with a 32-bit datapath and un-aligned addresses.
         data = self.pattern_test_data["32bit_not_aligned"]
         self.checker_test(memory=data["expected"], data_width=32, pattern=data["pattern"])
 
     def test_pattern_checker_32bit_duplicates(self):
+        # Verify PatternChecker with a 32-bit datapath and duplicate addresses.
         data = self.pattern_test_data["32bit_duplicates"]
         num_duplicates = len(data["pattern"]) - len(set(adr for adr, _ in data["pattern"]))
         dut, checker = self.checker_test(
@@ -338,6 +360,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         self.assertEqual(checker.errors, 0)
 
     def test_bist_base(self):
+        # Verify BIST (Generator and Checker) with control from the logic.
         class DUT(Module):
             def __init__(self):
                 self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
@@ -363,6 +386,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_bist_csr(self):
+        # Verify BIST (Generator and Checker) with control from CSRs.
         class DUT(Module):
             def __init__(self):
                 self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
@@ -388,6 +412,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_bist_csr_cdc(self):
+	    # Verify BIST (Generator and Checker) with control from CSRs in a different clock domain.
         class DUT(Module):
             def __init__(self):
                 port_kwargs     = dict(address_width=32, data_width=32, clock_domain="async")
