@@ -8,10 +8,8 @@ from functools import reduce
 from operator import xor
 
 from migen import *
-from migen.genlib.cdc import MultiReg
-from migen.genlib.cdc import PulseSynchronizer
-from migen.genlib.cdc import BusSynchronizer
 
+from litex.soc.interconnect import stream
 from litex.soc.interconnect.csr import *
 
 from litedram.common import LiteDRAMNativePort
@@ -339,49 +337,63 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         self.submodules += core
 
         if clock_domain != "sys":
-            reset_sync = PulseSynchronizer("sys", clock_domain)
-            start_sync = PulseSynchronizer("sys", clock_domain)
-            self.submodules += reset_sync, start_sync
-            self.comb += [
-                reset_sync.i.eq(self.reset.re),
-                core.reset.eq(reset_sync.o),
-
-                start_sync.i.eq(self.start.re),
-                core.start.eq(start_sync.o)
+            control_layout = [
+                ("reset", 1),
+                ("start", 1),
+                ("base",   awidth),
+                ("end",    awidth),
+                ("length", awidth),
+                ("random_data", 1),
+                ("random_addr", 1),
             ]
-
-            done_sync = BusSynchronizer(1, clock_domain, "sys")
-            self.submodules += done_sync
-            self.comb += [
-                done_sync.i.eq(core.done),
-                self.done.status.eq(done_sync.o)
+            status_layout = [
+                ("done",  1),
+                ("ticks", 32),
             ]
-
-            base_sync   = BusSynchronizer(awidth, "sys", clock_domain)
-            end_sync    = BusSynchronizer(awidth, "sys", clock_domain)
-            length_sync = BusSynchronizer(awidth, "sys", clock_domain)
-            self.submodules += base_sync, end_sync, length_sync
+            control_cdc = stream.AsyncFIFO(control_layout)
+            control_cdc = ClockDomainsRenamer({"write" : "sys", "read": clock_domain})(control_cdc)
+            status_cdc  = stream.AsyncFIFO(status_layout)
+            status_cdc  = ClockDomainsRenamer({"write" : clock_domain, "read": "sys"})(status_cdc)
+            self.submodules += control_cdc, status_cdc
+            # Control CDC In
             self.comb += [
-                base_sync.i.eq(self.base.storage),
-                core.base.eq(base_sync.o),
-
-                end_sync.i.eq(self.end.storage),
-                core.end.eq(end_sync.o),
-
-                length_sync.i.eq(self.length.storage),
-                core.length.eq(length_sync.o)
+                control_cdc.sink.valid.eq(self.reset.re | self.start.re),
+                control_cdc.sink.reset.eq(self.reset.re),
+                control_cdc.sink.start.eq(self.start.re),
+                control_cdc.sink.base.eq(self.base.storage),
+                control_cdc.sink.end.eq(self.end.storage),
+                control_cdc.sink.length.eq(self.length.storage),
+                control_cdc.sink.random_data.eq(self.random.fields.data),
+                control_cdc.sink.random_addr.eq(self.random.fields.addr),
             ]
-
-            self.specials += [
-                MultiReg(self.random.fields.data, core.random_data, clock_domain),
-                MultiReg(self.random.fields.addr, core.random_addr, clock_domain),
-            ]
-
-            ticks_sync = BusSynchronizer(32, clock_domain, "sys")
-            self.submodules += ticks_sync
+            # Control CDC Out
             self.comb += [
-                ticks_sync.i.eq(core.ticks),
-                self.ticks.status.eq(ticks_sync.o)
+                control_cdc.source.ready.eq(1),
+                core.reset.eq(control_cdc.source.valid & control_cdc.source.reset),
+                core.start.eq(control_cdc.source.valid & control_cdc.source.start),
+            ]
+            self.sync += [
+                If(control_cdc.source.valid,
+                    core.base.eq(control_cdc.source.base),
+                    core.end.eq(control_cdc.source.end),
+                    core.length.eq(control_cdc.source.length),
+                    core.random_data.eq(control_cdc.source.random_data),
+                    core.random_addr.eq(control_cdc.source.random_addr),
+                )
+            ]
+            # Status CDC In
+            self.comb += [
+                status_cdc.sink.valid.eq(1),
+                status_cdc.sink.done.eq(core.done),
+                status_cdc.sink.ticks.eq(core.ticks),
+            ]
+            # Status CDC Out
+            self.comb += status_cdc.source.ready.eq(1)
+            self.sync += [
+                If(status_cdc.source.valid,
+                    self.done.status.eq(status_cdc.source.done),
+                    self.ticks.status.eq(status_cdc.source.ticks),
+                )
             ]
         else:
             self.comb += [
@@ -671,56 +683,66 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         self.submodules += core
 
         if clock_domain != "sys":
-            reset_sync = PulseSynchronizer("sys", clock_domain)
-            start_sync = PulseSynchronizer("sys", clock_domain)
-            self.submodules += reset_sync, start_sync
-            self.comb += [
-                reset_sync.i.eq(self.reset.re),
-                core.reset.eq(reset_sync.o),
-
-                start_sync.i.eq(self.start.re),
-                core.start.eq(start_sync.o)
+            control_layout = [
+                ("reset", 1),
+                ("start", 1),
+                ("base",   awidth),
+                ("end",    awidth),
+                ("length", awidth),
+                ("random_data", 1),
+                ("random_addr", 1),
             ]
-
-            done_sync = BusSynchronizer(1, clock_domain, "sys")
-            self.submodules += done_sync
-            self.comb += [
-                done_sync.i.eq(core.done),
-                self.done.status.eq(done_sync.o)
+            status_layout = [
+                ("done",    1),
+                ("ticks",  32),
+                ("errors", 32),
             ]
-
-            base_sync = BusSynchronizer(awidth, "sys", clock_domain)
-            end_sync = BusSynchronizer(awidth, "sys", clock_domain)
-            length_sync = BusSynchronizer(awidth, "sys", clock_domain)
-            self.submodules += base_sync, end_sync, length_sync
+            control_cdc = stream.AsyncFIFO(control_layout)
+            control_cdc = ClockDomainsRenamer({"write" : "sys", "read": clock_domain})(control_cdc)
+            status_cdc  = stream.AsyncFIFO(status_layout)
+            status_cdc  = ClockDomainsRenamer({"write" : clock_domain, "read": "sys"})(status_cdc)
+            self.submodules += control_cdc, status_cdc
+            # Control CDC In
             self.comb += [
-                base_sync.i.eq(self.base.storage),
-                core.base.eq(base_sync.o),
-
-                end_sync.i.eq(self.end.storage),
-                core.end.eq(end_sync.o),
-
-                length_sync.i.eq(self.length.storage),
-                core.length.eq(length_sync.o)
+                control_cdc.sink.valid.eq(self.reset.re | self.start.re),
+                control_cdc.sink.reset.eq(self.reset.re),
+                control_cdc.sink.start.eq(self.start.re),
+                control_cdc.sink.base.eq(self.base.storage),
+                control_cdc.sink.end.eq(self.end.storage),
+                control_cdc.sink.length.eq(self.length.storage),
+                control_cdc.sink.random_data.eq(self.random.fields.data),
+                control_cdc.sink.random_addr.eq(self.random.fields.addr),
             ]
-
-            self.specials += [
-                MultiReg(self.random.fields.data, core.random_data, clock_domain),
-                MultiReg(self.random.fields.addr, core.random_addr, clock_domain),
-            ]
-
-            ticks_sync = BusSynchronizer(32, clock_domain, "sys")
-            self.submodules += ticks_sync
+            # Control CDC Out
             self.comb += [
-                ticks_sync.i.eq(core.ticks),
-                self.ticks.status.eq(ticks_sync.o)
+                control_cdc.source.ready.eq(1),
+                core.reset.eq(control_cdc.source.valid & control_cdc.source.reset),
+                core.start.eq(control_cdc.source.valid & control_cdc.source.start),
             ]
-
-            errors_sync = BusSynchronizer(32, clock_domain, "sys")
-            self.submodules += errors_sync
+            self.sync += [
+                If(control_cdc.source.valid,
+                    core.base.eq(control_cdc.source.base),
+                    core.end.eq(control_cdc.source.end),
+                    core.length.eq(control_cdc.source.length),
+                    core.random_data.eq(control_cdc.source.random_data),
+                    core.random_addr.eq(control_cdc.source.random_addr),
+                )
+            ]
+            # Status CDC In
             self.comb += [
-                errors_sync.i.eq(core.errors),
-                self.errors.status.eq(errors_sync.o)
+                status_cdc.sink.valid.eq(1),
+                status_cdc.sink.done.eq(core.done),
+                status_cdc.sink.ticks.eq(core.ticks),
+                status_cdc.sink.errors.eq(core.errors),
+            ]
+            # Status CDC Out
+            self.comb += status_cdc.source.ready.eq(1)
+            self.sync += [
+                If(status_cdc.source.valid,
+                    self.done.status.eq(status_cdc.source.done),
+                    self.ticks.status.eq(status_cdc.source.ticks),
+                    self.errors.status.eq(status_cdc.source.errors),
+                )
             ]
         else:
             self.comb += [
@@ -733,5 +755,5 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
                 core.random_data.eq(self.random.fields.data),
                 core.random_addr.eq(self.random.fields.addr),
                 self.ticks.status.eq(core.ticks),
-                self.errors.status.eq(core.errors)
+                self.errors.status.eq(core.errors),
             ]
