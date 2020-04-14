@@ -85,34 +85,39 @@ class TestDMA(MemoryTestDataMixin, unittest.TestCase):
         self.assertEqual(mem.mem, mem_expected)
 
     def test_dma_writer_single(self):
+        # Verify DMAWriter with a single 32-bit data.
         pattern            = [(0x04, 0xdeadc0de)]
         mem_expected       = [0] * 32
         mem_expected[0x04] = 0xdeadc0de
         self.dma_writer_test(pattern, mem_expected, data_width=32)
 
     def test_dma_writer_multiple(self):
+        # Verify DMAWriter with multiple 32-bit datas.
         data = self.pattern_test_data["32bit"]
         self.dma_writer_test(data["pattern"], data["expected"], data_width=32)
 
     def test_dma_writer_sequential(self):
+        # Verify DMAWriter with sequential 32-bit datas.
         data = self.pattern_test_data["32bit_sequential"]
         self.dma_writer_test(data["pattern"], data["expected"], data_width=32)
 
     def test_dma_writer_long_sequential(self):
+        # Verify DMAWriter with long sequential 32-bit datas.
         data = self.pattern_test_data["32bit_long_sequential"]
         self.dma_writer_test(data["pattern"], data["expected"], data_width=32)
 
     def test_dma_writer_no_fifo(self):
+        # Verify DMAWriter without FIFO.
         data = self.pattern_test_data["32bit_long_sequential"]
-        self.dma_writer_test(data["pattern"], data["expected"], data_width=32,
-                             fifo_depth=1)
+        self.dma_writer_test(data["pattern"], data["expected"], data_width=32, fifo_depth=1)
 
     def test_dma_writer_fifo_buffered(self):
+        # Verify DMAWriter with a buffered FIFO.
         data = self.pattern_test_data["32bit_long_sequential"]
-        self.dma_writer_test(data["pattern"], data["expected"], data_width=32,
-                             fifo_buffered=True)
+        self.dma_writer_test(data["pattern"], data["expected"], data_width=32, fifo_buffered=True)
 
     def test_dma_writer_duplicates(self):
+        # Verify DMAWriter with a duplicate addresses.
         data = self.pattern_test_data["32bit_duplicates"]
         self.dma_writer_test(data["pattern"], data["expected"], data_width=32)
 
@@ -137,29 +142,33 @@ class TestDMA(MemoryTestDataMixin, unittest.TestCase):
         self.assertEqual(driver.data, [data for adr, data in pattern])
 
     def test_dma_reader_single(self):
+        # Verify DMAReader with a single 32-bit data.
         pattern            = [(0x04, 0xdeadc0de)]
         mem_expected       = [0] * 32
         mem_expected[0x04] = 0xdeadc0de
         self.dma_reader_test(pattern, mem_expected, data_width=32)
 
     def test_dma_reader_multiple(self):
+        # Verify DMAReader with multiple 32-bit datas.
         data = self.pattern_test_data["32bit"]
         self.dma_reader_test(data["pattern"], data["expected"], data_width=32)
 
     def test_dma_reader_sequential(self):
+        # Verify DMAReader with sequential 32-bit datas.
         data = self.pattern_test_data["32bit_sequential"]
         self.dma_reader_test(data["pattern"], data["expected"], data_width=32)
 
     def test_dma_reader_long_sequential(self):
+        # Verify DMAReader with long sequential 32-bit datas.
         data = self.pattern_test_data["32bit_long_sequential"]
         self.dma_reader_test(data["pattern"], data["expected"], data_width=32)
 
     def test_dma_reader_no_fifo(self):
+        # Verify DMAReader without FIFO.
         data = self.pattern_test_data["32bit_long_sequential"]
-        self.dma_reader_test(data["pattern"], data["expected"], data_width=32,
-                             fifo_depth=1)
+        self.dma_reader_test(data["pattern"], data["expected"], data_width=32, fifo_depth=1)
 
     def test_dma_reader_fifo_buffered(self):
+        # Verify DMAReader with a buffered FIFO.
         data = self.pattern_test_data["32bit_long_sequential"]
-        self.dma_reader_test(data["pattern"], data["expected"], data_width=32,
-            fifo_buffered=True)
+        self.dma_reader_test(data["pattern"], data["expected"], data_width=32, fifo_buffered=True)
