@@ -133,14 +133,15 @@ class _LiteDRAMBISTGenerator(Module):
         ashift, awidth = get_ashift_awidth(dram_port)
         self.start       = Signal()
         self.done        = Signal()
-        self.run         = Signal(reset=1)
-        self.ready       = Signal()
         self.base        = Signal(awidth)
         self.end         = Signal(awidth)
         self.length      = Signal(awidth)
         self.random_data = Signal()
         self.random_addr = Signal()
         self.ticks       = Signal(32)
+
+        self.run_cascade_in  = Signal(reset=1)
+        self.run_cascade_out = Signal()
 
         # # #
 
@@ -172,27 +173,27 @@ class _LiteDRAMBISTGenerator(Module):
             NextValue(self.ticks, 0)
         )
         fsm.act("WAIT",
-            If(self.run,
+            If(self.run_cascade_in,
                 NextState("RUN")
             )
         )
         fsm.act("RUN",
             dma.sink.valid.eq(1),
             If(dma.sink.ready,
-                self.ready.eq(1),
+                self.run_cascade_out.eq(1),
                 data_gen.ce.eq(1),
                 addr_gen.ce.eq(1),
                 NextValue(cmd_counter, cmd_counter + 1),
                 If(cmd_counter == (self.length[ashift:] - 1),
                     NextState("DONE")
-                ).Elif(~self.run,
+                ).Elif(~self.run_cascade_in,
                     NextState("WAIT")
                 )
             ),
             NextValue(self.ticks, self.ticks + 1)
         )
         fsm.act("DONE",
-            self.ready.eq(1),
+            self.run_cascade_out.eq(1),
             self.done.eq(1)
         )
 
@@ -213,9 +214,10 @@ class _LiteDRAMPatternGenerator(Module):
         ashift, awidth = get_ashift_awidth(dram_port)
         self.start  = Signal()
         self.done   = Signal()
-        self.run    = Signal(reset=1)
-        self.ready  = Signal()
         self.ticks  = Signal(32)
+
+        self.run_cascade_in  = Signal(reset=1)
+        self.run_cascade_out = Signal()
 
         # # #
 
@@ -244,25 +246,25 @@ class _LiteDRAMPatternGenerator(Module):
             NextValue(self.ticks, 0)
         )
         fsm.act("WAIT",
-            If(self.run,
+            If(self.run_cascade_in,
                 NextState("RUN")
             )
         )
         fsm.act("RUN",
             dma.sink.valid.eq(1),
             If(dma.sink.ready,
-                self.ready.eq(1),
+                self.run_cascade_out.eq(1),
                 NextValue(cmd_counter, cmd_counter + 1),
                 If(cmd_counter == (len(init) - 1),
                     NextState("DONE")
-                ).Elif(~self.run,
+                ).Elif(~self.run_cascade_in,
                     NextState("WAIT")
                 )
             ),
             NextValue(self.ticks, self.ticks + 1)
         )
         fsm.act("DONE",
-            self.ready.eq(1),
+            self.run_cascade_out.eq(1),
             self.done.eq(1)
         )
 
@@ -402,8 +404,6 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         ashift, awidth = get_ashift_awidth(dram_port)
         self.start       = Signal()
         self.done        = Signal()
-        self.run         = Signal(reset=1)
-        self.ready       = Signal()
         self.base        = Signal(awidth)
         self.end         = Signal(awidth)
         self.length      = Signal(awidth)
@@ -411,6 +411,9 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.random_addr = Signal()
         self.ticks       = Signal(32)
         self.errors      = Signal(32)
+
+        self.run_cascade_in  = Signal(reset=1)
+        self.run_cascade_out = Signal()
 
         # # #
 
@@ -441,19 +444,19 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             )
         )
         cmd_fsm.act("WAIT",
-            If(self.run,
+            If(self.run_cascade_in,
                 NextState("RUN")
             )
         )
         cmd_fsm.act("RUN",
             dma.sink.valid.eq(1),
             If(dma.sink.ready,
-                self.ready.eq(1),
+                self.run_cascade_out.eq(1),
                 addr_gen.ce.eq(1),
                 NextValue(cmd_counter, cmd_counter + 1),
                 If(cmd_counter == (self.length[ashift:] - 1),
                     NextState("DONE")
-                ).Elif(~self.run,
+                ).Elif(~self.run_cascade_in,
                     NextState("WAIT")
                 )
             )
@@ -507,10 +510,11 @@ class _LiteDRAMPatternChecker(Module, AutoCSR):
         ashift, awidth = get_ashift_awidth(dram_port)
         self.start  = Signal()
         self.done   = Signal()
-        self.run    = Signal(reset=1)
-        self.ready  = Signal()
         self.ticks  = Signal(32)
         self.errors = Signal(32)
+
+        self.run_cascade_in  = Signal(reset=1)
+        self.run_cascade_out = Signal()
 
         # # #
 
@@ -534,7 +538,7 @@ class _LiteDRAMPatternChecker(Module, AutoCSR):
         cmd_fsm.act("IDLE",
             If(self.start,
                 NextValue(cmd_counter, 0),
-                If(self.run,
+                If(self.run_cascade_in,
                     NextState("RUN")
                 ).Else(
                     NextState("WAIT")
@@ -542,7 +546,7 @@ class _LiteDRAMPatternChecker(Module, AutoCSR):
             )
         )
         cmd_fsm.act("WAIT",
-            If(self.run,
+            If(self.run_cascade_in,
                 NextState("RUN")
             ),
             NextValue(self.ticks, self.ticks + 1)
@@ -550,11 +554,11 @@ class _LiteDRAMPatternChecker(Module, AutoCSR):
         cmd_fsm.act("RUN",
             dma.sink.valid.eq(1),
             If(dma.sink.ready,
-                self.ready.eq(1),
+                self.run_cascade_out.eq(1),
                 NextValue(cmd_counter, cmd_counter + 1),
                 If(cmd_counter == (len(init) - 1),
                     NextState("DONE")
-                ).Elif(~self.run,
+                ).Elif(~self.run_cascade_in,
                     NextState("WAIT")
                 )
             )

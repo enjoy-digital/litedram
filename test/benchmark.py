@@ -127,7 +127,10 @@ class LiteDRAMBenchmarkSoC(SimSoC):
             for generator, checker in zip_longest(generators, checkers):
                 g = generator or generators[0]
                 c = checker   or checkers[0]
-                bist_connections += g.run.eq(c.ready), c.run.eq(g.ready)
+                bist_connections += [
+                    g.run_cascade_in.eq(c.run_cascade_out),
+                    c.run_cascade_in.eq(g.run_cascade_out),
+                ]
 
             fsm.act("BIST-GENERATOR",
                 combined_write(generators + checkers, "start").eq(1),
