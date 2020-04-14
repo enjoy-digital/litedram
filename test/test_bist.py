@@ -40,7 +40,6 @@ class GenCheckDriver:
             yield self.module.random_data.eq(random_data)
 
     def run(self):
-        yield self.module.run.eq(1)
         yield self.module.start.eq(1)
         yield
         yield self.module.start.eq(0)
@@ -72,7 +71,6 @@ class GenCheckCSRDriver:
             yield from self.module.random.data.write(random_data)
 
     def run(self):
-        yield from self.module.run.write(1)
         yield from self.module.start.write(1)
         yield
         yield from self.module.start.write(0)

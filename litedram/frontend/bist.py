@@ -296,12 +296,6 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
     done : out
         The module has completed writing the pattern.
 
-    run : in
-        Continue generation of new write commands.
-
-    ready : out
-        Enabled for one cycle after write command has been sent.
-
     base : in
         DRAM address to start from.
 
@@ -325,8 +319,6 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         self.reset       = CSR()
         self.start       = CSR()
         self.done        = CSRStatus()
-        self.run         = CSRStorage(reset=1)
-        self.ready       = CSRStatus()
         self.base        = CSRStorage(awidth)
         self.end         = CSRStorage(awidth)
         self.length      = CSRStorage(awidth)
@@ -363,17 +355,6 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
                 self.done.status.eq(done_sync.o)
             ]
 
-            run_sync = BusSynchronizer(1, clock_domain, "sys")
-            ready_sync = BusSynchronizer(1, clock_domain, "sys")
-            self.submodules += run_sync, ready_sync
-            self.comb += [
-                run_sync.i.eq(self.run.storage),
-                core.run.eq(run_sync.o),
-
-                ready_sync.i.eq(core.ready),
-                self.ready.status.eq(ready_sync.o),
-            ]
-
             base_sync   = BusSynchronizer(awidth, "sys", clock_domain)
             end_sync    = BusSynchronizer(awidth, "sys", clock_domain)
             length_sync = BusSynchronizer(awidth, "sys", clock_domain)
@@ -405,8 +386,6 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
                 core.reset.eq(self.reset.re),
                 core.start.eq(self.start.re),
                 self.done.status.eq(core.done),
-                core.run.eq(self.run.storage),
-                self.ready.status.eq(core.ready),
                 core.base.eq(self.base.storage),
                 core.end.eq(self.end.storage),
                 core.length.eq(self.length.storage),
@@ -458,11 +437,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         cmd_fsm.act("IDLE",
             If(self.start,
                 NextValue(cmd_counter, 0),
-                If(self.run,
-                    NextState("RUN")
-                ).Else(
-                    NextState("WAIT")
-                )
+                NextState("WAIT")
             )
         )
         cmd_fsm.act("WAIT",
@@ -650,11 +625,6 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
     done : out
         The module has completed checking
 
-    run : in
-        Continue reading of subsequent locations.
-    ready : out
-        Enabled for one cycle after read command has been sent.
-
     base : in
         DRAM address to start from.
     end : in
@@ -678,8 +648,6 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         self.reset       = CSR()
         self.start       = CSR()
         self.done        = CSRStatus()
-        self.run         = CSRStorage(reset=1)
-        self.ready       = CSRStatus()
         self.base        = CSRStorage(awidth)
         self.end         = CSRStorage(awidth)
         self.length      = CSRStorage(awidth)
@@ -715,17 +683,6 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             self.comb += [
                 done_sync.i.eq(core.done),
                 self.done.status.eq(done_sync.o)
-            ]
-
-            run_sync = BusSynchronizer(1, clock_domain, "sys")
-            ready_sync = BusSynchronizer(1, clock_domain, "sys")
-            self.submodules += run_sync, ready_sync
-            self.comb += [
-                run_sync.i.eq(self.run.storage),
-                core.run.eq(run_sync.o),
-
-                ready_sync.i.eq(core.ready),
-                self.ready.status.eq(ready_sync.o),
             ]
 
             base_sync = BusSynchronizer(awidth, "sys", clock_domain)
@@ -766,8 +723,6 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
                 core.reset.eq(self.reset.re),
                 core.start.eq(self.start.re),
                 self.done.status.eq(core.done),
-                core.run.eq(self.run.storage),
-                self.ready.status.eq(core.ready),
                 core.base.eq(self.base.storage),
                 core.end.eq(self.end.storage),
                 core.length.eq(self.length.storage),
