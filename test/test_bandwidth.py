@@ -89,7 +89,7 @@ class TestBandwidth(unittest.TestCase):
     def test_requires_update_to_copy_the_data(self):
         # Verify that command counts are copied to CSRs only after `update`.
         def main_generator(dut):
-            nreads = (yield from dut.bandwidth.nreads.read())
+            nreads  = (yield from dut.bandwidth.nreads.read())
             nwrites = (yield from dut.bandwidth.nwrites.read())
             self.assertEqual(nreads, 0)
             self.assertEqual(nwrites, 0)
@@ -98,7 +98,7 @@ class TestBandwidth(unittest.TestCase):
             for _ in range(2**6):
                 yield
 
-            nreads = (yield from dut.bandwidth.nreads.read())
+            nreads  = (yield from dut.bandwidth.nreads.read())
             nwrites = (yield from dut.bandwidth.nwrites.read())
             self.assertEqual(nreads, 0)
             self.assertEqual(nwrites, 0)
@@ -106,7 +106,7 @@ class TestBandwidth(unittest.TestCase):
             # Update register values
             yield from dut.bandwidth.update.write(1)
 
-            nreads = (yield from dut.bandwidth.nreads.read())
+            nreads  = (yield from dut.bandwidth.nreads.read())
             nwrites = (yield from dut.bandwidth.nwrites.read())
             self.assertNotEqual((nreads, nwrites), (0, 0))
 
@@ -128,7 +128,7 @@ class TestBandwidth(unittest.TestCase):
                 yield
             yield from dut.bandwidth.update.write(1)
             yield
-            results["nreads"] = (yield from dut.bandwidth.nreads.read())
+            results["nreads"]  = (yield from dut.bandwidth.nreads.read())
             results["nwrites"] = (yield from dut.bandwidth.nwrites.read())
 
         dut = BandwidthDUT(period_bits=8)
@@ -156,7 +156,7 @@ class TestBandwidth(unittest.TestCase):
 
         dut = BandwidthDUT(period_bits=8)
         cmd_driver = CommandDriver(dut.cmd)
-        commands = ["read", "write", "activate", "precharge", "refresh"]
+        commands   = ["read", "write", "activate", "precharge", "refresh"]
         generators = [
             main_generator(dut),
             cmd_driver.random_generator(commands=commands),
@@ -166,7 +166,7 @@ class TestBandwidth(unittest.TestCase):
         self.assertEqual(results["nreads"], cmd_driver.cmd_counts["read"])
 
     def test_correct_period_length(self):
-        # Verify that period length is correct by measuring time betwee CSR changes.
+        # Verify that period length is correct by measuring time between CSR changes.
         period_bits = 5
         period = 2**period_bits
 
