@@ -167,15 +167,14 @@ class _LiteDRAMBISTGenerator(Module):
         fsm.act("IDLE",
             If(self.start,
                 NextValue(cmd_counter, 0),
-                NextState("RUN")  # always send first data on `start` even without `run` signal
+                NextState("RUN")
             ),
             NextValue(self.ticks, 0)
         )
         fsm.act("WAIT",
             If(self.run,
                 NextState("RUN")
-            ),
-            NextValue(self.ticks, self.ticks + 1)
+            )
         )
         fsm.act("RUN",
             dma.sink.valid.eq(1),
@@ -247,8 +246,7 @@ class _LiteDRAMPatternGenerator(Module):
         fsm.act("WAIT",
             If(self.run,
                 NextState("RUN")
-            ),
-            NextValue(self.ticks, self.ticks + 1)
+            )
         )
         fsm.act("RUN",
             dma.sink.valid.eq(1),
