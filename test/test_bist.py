@@ -308,23 +308,23 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
     def bist_test(self, generator, checker, mem):
         # write
         yield from generator.reset()
-        yield from generator.configure(16, 64)
+        yield from generator.configure(base=16, length=64)
         yield from generator.run()
 
         # Read (no errors)
         yield from checker.reset()
-        yield from checker.configure(16, 64)
+        yield from checker.configure(base=16, length=64)
         yield from checker.run()
         self.assertEqual(checker.errors, 0)
 
         # Corrupt memory (using generator)
         yield from generator.reset()
-        yield from generator.configure(16 + 48, 64)
+        yield from generator.configure(base=16 + 48, length=64)
         yield from generator.run()
 
         # Read (errors)
         yield from checker.reset()
-        yield from checker.configure(16, 64)
+        yield from checker.configure(base=16, length=64)
         yield from checker.run()
         # Errors for words:
         # from (16 + 48) / 4 = 16  (corrupting generator start)
@@ -333,7 +333,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
 
         # Read (no errors)
         yield from checker.reset()
-        yield from checker.configure(16 + 48, 64)
+        yield from checker.configure(base=16 + 48, length=64)
         yield from checker.run()
         self.assertEqual(checker.errors, 0)
 
@@ -387,8 +387,6 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         ]
         run_simulation(dut, generators)
 
-    # FIXME: synchronization between CSRs: `start` and `base`, `done` and `errors`
-    @unittest.skip("CSRs CDC synchronization problem (issue #167)")
     def test_bist_csr_cdc(self):
         class DUT(Module):
             def __init__(self):
