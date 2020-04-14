@@ -9,6 +9,7 @@
 # This file is Copyright (c) 2018 Tim 'mithro' Ansell <me@mith.ro>
 # This file is Copyright (c) 2018 Daniel Kucera <daniel.kucera@gmail.com>
 # This file is Copyright (c) 2018 Mikołaj Sowiński <mikolaj.sowinski@gmail.com>
+# This file is Copyright (c) 2020 Antmicro <www.antmicro.com>
 # License: BSD
 
 from math import ceil
@@ -32,6 +33,117 @@ _speedgrade_timings = ["tRP", "tRCD", "tWR", "tRFC", "tFAW", "tRAS"]
 class _SpeedgradeTimings(Settings):
     def __init__(self, tRP, tRCD, tWR, tRFC, tFAW, tRAS):
         self.set_attributes(locals())
+
+# SPD ----------------------------------------------------------------------------------------------
+
+def _read_field(byte, nbits, shift):
+    mask = 2**nbits - 1
+    return (byte & (mask << shift)) >> shift
+
+def _twos_complement(value, nbits):
+    if value & (1 << (nbits - 1)):
+        value -= (1 << nbits)
+    return value
+
+def _word(msb, lsb):
+    return (msb << 8) | lsb
+
+
+class DDR3SPDData:
+    memtype = "DDR3"
+
+    def __init__(self, spd_data):
+        # Geometry ---------------------------------------------------------------------------------
+        bankbits = {
+            0b000: 3,
+            0b001: 4,
+            0b010: 5,
+            0b011: 6,
+        }[_read_field(spd_data[4], nbits=3, shift=4)]
+        rowbits = {
+            0b000: 12,
+            0b001: 13,
+            0b010: 14,
+            0b011: 15,
+            0b100: 16,
+        }[_read_field(spd_data[5], nbits=3, shift=3)]
+        colbits = {
+            0b000:  9,
+            0b001: 10,
+            0b010: 11,
+            0b011: 12,
+        }[_read_field(spd_data[5], nbits=3, shift=0)]
+
+        self.nbanks = 2**bankbits
+        self.nrows = 2**rowbits
+        self.ncols = 2**colbits
+
+        # Timings ----------------------------------------------------------------------------------
+        self.init_timebase(spd_data)
+
+        # most signifficant (upper) / least signifficant (lower) nibble
+        def msn(byte):
+            return _read_field(byte, nbits=4, shift=4)
+
+        def lsn(byte):
+            return _read_field(byte, nbits=4, shift=0)
+
+        b = spd_data
+        tck_min  = self.txx_ns(mtb=b[12], ftb=b[34])
+        taa_min  = self.txx_ns(mtb=b[16], ftb=b[35])
+        twr_min  = self.txx_ns(mtb=b[17])
+        trcd_min = self.txx_ns(mtb=b[18], ftb=b[36])
+        trrd_min = self.txx_ns(mtb=b[19])
+        trp_min  = self.txx_ns(mtb=b[20], ftb=b[37])
+        tras_min = self.txx_ns(mtb=_word(lsn(b[21]), b[22]))
+        trc_min  = self.txx_ns(mtb=_word(msn(b[21]), b[23]), ftb=b[38])
+        trfc_min = self.txx_ns(mtb=_word(b[25], b[24]))
+        twtr_min = self.txx_ns(mtb=b[26])
+        trtp_min = self.txx_ns(mtb=b[27])
+        tfaw_min = self.txx_ns(mtb=_word(lsn(b[28]), b[29]))
+
+        # calculate speedgrade
+        freq_mhz = (1 / (tck_min * 1e-9)) / 1e6
+        speedgrade = str(int(freq_mhz * 2))
+
+        technology_timings = _TechnologyTimings(
+            tREFI = 64e6/8192,      # 64ms/8192ops
+            tWTR  = (4, twtr_min),  # min 4 cycles
+            tCCD  = (4, None),      # min 4 cycles
+            tRRD  = (4, trrd_min),  # min 4 cycles
+            tZQCS = (64, 80),
+        )
+        speedgrade_timings = _SpeedgradeTimings(
+            tRP  = trp_min,
+            tRCD = trcd_min,
+            tWR  = twr_min,
+            tRFC = (None, trfc_min),
+            tFAW = (None, tfaw_min),
+            tRAS = tras_min,
+        )
+
+        self.technology_timings = technology_timings
+        self.speedgrade_timings = {
+            speedgrade: speedgrade_timings,
+            "default": speedgrade_timings,
+        }
+
+    def init_timebase(self, data):
+        # All the DDR3 timings are defined in the units of "timebase", which
+        # consists of medium timebase (nanosec) and fine timebase (picosec).
+        fine_timebase_dividend = _read_field(data[9], nbits=4, shift=4)
+        fine_timebase_divisor  = _read_field(data[9], nbits=4, shift=0)
+        fine_timebase_ps = fine_timebase_dividend / fine_timebase_divisor
+        self.fine_timebase_ns = fine_timebase_ps * 1e-3
+        medium_timebase_dividend = data[10]
+        medium_timebase_divisor  = data[11]
+        self.medium_timebase_ns = medium_timebase_dividend / medium_timebase_divisor
+
+    def txx_ns(self, mtb, ftb=0):
+        """Get tXX in nanoseconds from medium and (optional) fine timebase."""
+        # decode FTB encoded in 8-bit two's complement
+        ftb = _twos_complement(ftb, 8)
+        return mtb * self.medium_timebase_ns + ftb * self.fine_timebase_ns
 
 # SDRAMModule --------------------------------------------------------------------------------------
 
@@ -122,6 +234,25 @@ class SDRAMModule:
         c = 0 if c is None else c
         t = 0 if t is None else t
         return max(self.ck_to_cycles(c), self.ns_to_cycles(t))
+
+    @classmethod
+    def from_spd_data(cls, spd_data, *args, **kwargs):
+        # set parameters from SPD data based on memory type
+        spd_cls = {
+            0x0b: DDR3SPDData,
+        }[spd_data[2]]
+        spd = spd_cls(spd_data)
+
+        # Create a deriving class to avoid modifying this one
+        class _SDRAMModule(cls):
+            memtype = spd.memtype
+            nbanks = spd.nbanks
+            nrows = spd.nrows
+            ncols = spd.ncols
+            technology_timings = spd.technology_timings
+            speedgrade_timings = spd.speedgrade_timings
+
+        return _SDRAMModule(*args, **kwargs)
 
 # SDR ----------------------------------------------------------------------------------------------
 
