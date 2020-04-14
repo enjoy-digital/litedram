@@ -140,7 +140,6 @@ class LiteDRAMBenchmarkSoC(SimSoC):
         else:
             fsm.act("BIST-GENERATOR",
                 combined_write(generators, "start").eq(1),
-                combined_write(generators, "run").eq(1),
                 *map(bist_config, generators),
                 If(combined_read(generators, "done", and_),
                     NextState("BIST-CHECKER")
@@ -148,7 +147,6 @@ class LiteDRAMBenchmarkSoC(SimSoC):
             )
             fsm.act("BIST-CHECKER",
                 combined_write(checkers, "start").eq(1),
-                combined_write(checkers, "run").eq(1),
                 *map(bist_config, checkers),
                 If(combined_read(checkers, "done", and_),
                     NextState("DISPLAY")
