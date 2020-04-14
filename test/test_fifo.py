@@ -29,6 +29,7 @@ class TestFIFO(unittest.TestCase):
     # _LiteDRAMFIFOCtrl ----------------------------------------------------------------------------
 
     def test_fifo_ctrl_address_changes(self):
+        # Verify FIFOCtrl address changes.
         # We are ignoring thresholds (so readable/writable signals)
         dut = _LiteDRAMFIFOCtrl(base=0, depth=16, read_threshold=0, write_threshold=16)
 
@@ -64,6 +65,7 @@ class TestFIFO(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_fifo_ctrl_level_changes(self):
+        # Verify FIFOCtrl level changes.
         dut = _LiteDRAMFIFOCtrl(base=0, depth=16, read_threshold=0, write_threshold=16)
 
         def main_generator():
@@ -140,12 +142,15 @@ class TestFIFO(unittest.TestCase):
         self.assertEqual(dut.memory.mem, mem_expected)
 
     def test_fifo_writer_sequence(self):
+        # Verify simple FIFOWriter sequence.
         self.fifo_writer_test(sequence_len=48, depth=64, write_threshold=64)
 
     def test_fifo_writer_address_wraps(self):
+        # Verify FIFOWriter sequence with address wraps.
         self.fifo_writer_test(sequence_len=48, depth=32, write_threshold=64)
 
     def test_fifo_writer_stops_after_threshold(self):
+        # Verify FIFOWriter sequence with stop after threshold is reached.
         with self.assertRaises(TimeoutError):
             self.fifo_writer_test(sequence_len=48, depth=32, write_threshold=32)
 
@@ -205,12 +210,15 @@ class TestFIFO(unittest.TestCase):
         self.assertEqual(read_data, read_data_expected)
 
     def test_fifo_reader_sequence(self):
+        # Verify simple FIFOReader sequence.
         self.fifo_reader_test(sequence_len=48, depth=64, read_threshold=0)
 
     def test_fifo_reader_address_wraps(self):
+        # Verify FIFOReader sequence with address wraps.
         self.fifo_reader_test(sequence_len=48, depth=32, read_threshold=0)
 
     def test_fifo_reader_requires_threshold(self):
+        # Verify FIFOReader sequence with start after threshold is reached.
         with self.assertRaises(TimeoutError):
             self.fifo_reader_test(sequence_len=48, depth=32, read_threshold=8)
         # Will work after we perform the initial writes
@@ -219,10 +227,11 @@ class TestFIFO(unittest.TestCase):
     # LiteDRAMFIFO ---------------------------------------------------------------------------------
 
     def test_fifo_default_thresholds(self):
+        # Verify FIFO with default threshold.
         # Defaults: read_threshold=0, write_threshold=depth
         read_threshold, write_threshold = (0, 128)
         write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
-        read_port = LiteDRAMNativeReadPort(address_width=32,  data_width=32)
+        read_port  = LiteDRAMNativeReadPort(address_width=32,  data_width=32)
         fifo = LiteDRAMFIFO(data_width=32, base=0, depth=write_threshold,
             write_port = write_port,
             read_port  = read_port)
@@ -242,10 +251,11 @@ class TestFIFO(unittest.TestCase):
         run_simulation(fifo, [generator(), checker])
 
     def test_fifo(self):
+        # Verify FIFO.
         class DUT(Module):
             def __init__(self):
                 self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
-                self.read_port = LiteDRAMNativeReadPort(address_width=32,  data_width=32)
+                self.read_port  = LiteDRAMNativeReadPort(address_width=32,  data_width=32)
                 self.submodules.fifo = LiteDRAMFIFO(
                     data_width          = 32,
                     depth               = 32,
