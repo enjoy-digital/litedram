@@ -143,7 +143,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         for pads_group in range(len(pads.groups)):
             pads.sel_group(pads_group)
 
-            # Clock ------------------------------------------------------------------------------------
+            # Clock --------------------------------------------------------------------------------
             for i in range(len(pads.clk_p)):
                 sd_clk_se = Signal()
                 self.specials += Instance("ODDRX2F",
@@ -157,7 +157,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                     o_Q    = pads.clk_p[i]
                 )
 
-            # Addresses and Commands -------------------------------------------------------------------
+            # Addresses and Commands ---------------------------------------------------------------
             for i in range(addressbits):
                 self.specials += Instance("ODDRX2F",
                     i_RST  = ResetSignal("sys2x"),
@@ -281,10 +281,15 @@ class ECP5DDRPHY(Module, AutoCSR):
             dm_o_data_d        = Signal(8)
             dm_o_data_muxed    = Signal(4)
             self.comb += dm_o_data.eq(Cat(
-                dfi.phases[0].wrdata_mask[0*databits//8+i], dfi.phases[0].wrdata_mask[1*databits//8+i],
-                dfi.phases[0].wrdata_mask[2*databits//8+i], dfi.phases[0].wrdata_mask[3*databits//8+i],
-                dfi.phases[1].wrdata_mask[0*databits//8+i], dfi.phases[1].wrdata_mask[1*databits//8+i],
-                dfi.phases[1].wrdata_mask[2*databits//8+i], dfi.phases[1].wrdata_mask[3*databits//8+i]),
+                dfi.phases[0].wrdata_mask[0*databits//8+i],
+                dfi.phases[0].wrdata_mask[1*databits//8+i],
+                dfi.phases[0].wrdata_mask[2*databits//8+i],
+                dfi.phases[0].wrdata_mask[3*databits//8+i],
+
+                dfi.phases[1].wrdata_mask[0*databits//8+i],
+                dfi.phases[1].wrdata_mask[1*databits//8+i],
+                dfi.phases[1].wrdata_mask[2*databits//8+i],
+                dfi.phases[1].wrdata_mask[3*databits//8+i]),
             )
             self.sync += dm_o_data_d.eq(dm_o_data)
             self.sync += \
@@ -341,10 +346,15 @@ class ECP5DDRPHY(Module, AutoCSR):
                 dq_o_data_d     = Signal(8)
                 dq_o_data_muxed = Signal(4)
                 self.comb += dq_o_data.eq(Cat(
-                    dfi.phases[0].wrdata[0*databits+j], dfi.phases[0].wrdata[1*databits+j],
-                    dfi.phases[0].wrdata[2*databits+j], dfi.phases[0].wrdata[3*databits+j],
-                    dfi.phases[1].wrdata[0*databits+j], dfi.phases[1].wrdata[1*databits+j],
-                    dfi.phases[1].wrdata[2*databits+j], dfi.phases[1].wrdata[3*databits+j])
+                    dfi.phases[0].wrdata[0*databits+j],
+                    dfi.phases[0].wrdata[1*databits+j],
+                    dfi.phases[0].wrdata[2*databits+j],
+                    dfi.phases[0].wrdata[3*databits+j],
+
+                    dfi.phases[1].wrdata[0*databits+j],
+                    dfi.phases[1].wrdata[1*databits+j],
+                    dfi.phases[1].wrdata[2*databits+j],
+                    dfi.phases[1].wrdata[3*databits+j])
                 )
                 self.sync += dq_o_data_d.eq(dq_o_data)
                 self.sync += \
