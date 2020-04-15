@@ -575,7 +575,7 @@ class MT8KTF51264(SDRAMModule):
     memtype = "DDR3"
     # geometry
     nbanks = 8
-    nrows  = 16384
+    nrows  = 65536
     ncols  = 1024
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10), tZQCS=(64, 80))
