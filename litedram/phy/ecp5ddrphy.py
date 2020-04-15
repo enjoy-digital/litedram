@@ -128,7 +128,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             wrcmdphase    = wrcmdphase,
             cl            = cl,
             cwl           = cwl,
-            read_latency  = 2 + cl_sys_latency + 2 + log2_int(4//nphases) + 5,
+            read_latency  = 2 + cl_sys_latency + 2 + log2_int(4//nphases) + 4,
             write_latency = cwl_sys_latency
         )
 
@@ -137,7 +137,9 @@ class ECP5DDRPHY(Module, AutoCSR):
 
         # # #
 
-        bl8_sel = Signal()
+        bl8_sel   = Signal()
+        rddata_en = Signal(self.settings.read_latency)
+        wrdata_en = Signal(cwl_sys_latency + 4)
 
         # Iterate on pads groups -------------------------------------------------------------------
         for pads_group in range(len(pads.groups)):
@@ -203,7 +205,6 @@ class ECP5DDRPHY(Module, AutoCSR):
         oe_dqs        = Signal()
         dqs_postamble = Signal()
         dqs_preamble  = Signal()
-        dqs_read      = Signal()
         for i in range(databits//8):
             # DQSBUFM
             dqs_i   = Signal()
@@ -221,8 +222,23 @@ class ECP5DDRPHY(Module, AutoCSR):
                         rdly.eq(rdly + 1),
                     )
                 )
-            datavalid = Signal()
-            burstdet  = Signal()
+            datavalid   = Signal()
+            burstdet    = Signal()
+            dqs_read    = Signal()
+            dqs_bitslip = Signal(2)
+            self.sync += [
+                If(self._dly_sel.storage[i],
+                    If(self._rdly_dq_bitslip_rst.re,
+                        dqs_bitslip.eq(0)
+                    ).Elif(self._rdly_dq_bitslip.re,
+                        dqs_bitslip.eq(dqs_bitslip + 1)
+                    )
+                )
+            ]
+            dqs_cases = {}
+            for j, b in enumerate(range(-2, 2)):
+                dqs_cases[j] = dqs_read.eq(rddata_en[cl_sys_latency + b:cl_sys_latency + b + 2] != 0)
+            self.sync += Case(dqs_bitslip, dqs_cases)
             self.specials += Instance("DQSBUFM",
                 p_DQS_LI_DEL_ADJ = "MINUS",
                 p_DQS_LI_DEL_VAL = 1,
@@ -341,7 +357,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                 dq_i            = Signal()
                 dq_oe_n         = Signal()
                 dq_i_delayed    = Signal()
-                dq_i_data       = Signal(4)
+                dq_i_data       = Signal(8)
                 dq_o_data       = Signal(8)
                 dq_o_data_d     = Signal(8)
                 dq_o_data_muxed = Signal(4)
@@ -363,6 +379,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                     ).Else(
                         dq_o_data_muxed.eq(dq_o_data[:4])
                     )
+                _dq_i_data = Signal(4)
                 self.specials += [
                     Instance("ODDRX2DQA",
                         i_RST     = ResetSignal("sys2x"),
@@ -395,35 +412,25 @@ class ECP5DDRPHY(Module, AutoCSR):
                         i_WRPNTR1 = wrpntr[1],
                         i_WRPNTR2 = wrpntr[2],
                         i_D       = dq_i_delayed,
-                        o_Q0      = dq_i_data[0],
-                        o_Q1      = dq_i_data[1],
-                        o_Q2      = dq_i_data[2],
-                        o_Q3      = dq_i_data[3],
+                        o_Q0      = _dq_i_data[0],
+                        o_Q1      = _dq_i_data[1],
+                        o_Q2      = _dq_i_data[2],
+                        o_Q3      = _dq_i_data[3],
                     )
                 ]
-                dq_bitslip = BitSlip(4)
-                self.comb += dq_bitslip.i.eq(dq_i_data)
-                self.sync += \
-                    If(self._dly_sel.storage[i],
-                        If(self._rdly_dq_bitslip_rst.re,
-                            dq_bitslip.value.eq(0)
-                        ).Elif(self._rdly_dq_bitslip.re,
-                            dq_bitslip.value.eq(dq_bitslip.value + 1)
-                        )
-                    )
-                self.submodules += dq_bitslip
-                dq_bitslip_o_d = Signal(4)
-                self.sync += dq_bitslip_o_d.eq(dq_bitslip.o)
+                self.sync += [
+                    dq_i_data[:4].eq(dq_i_data[4:]),
+                    dq_i_data[4:].eq(_dq_i_data),
+                ]
                 self.comb += [
-                    dfi.phases[0].rddata[0*databits+j].eq(dq_bitslip_o_d[0]),
-                    dfi.phases[0].rddata[1*databits+j].eq(dq_bitslip_o_d[1]),
-                    dfi.phases[0].rddata[2*databits+j].eq(dq_bitslip_o_d[2]),
-                    dfi.phases[0].rddata[3*databits+j].eq(dq_bitslip_o_d[3]),
-
-                    dfi.phases[1].rddata[0*databits+j].eq(dq_bitslip.o[0]),
-                    dfi.phases[1].rddata[1*databits+j].eq(dq_bitslip.o[1]),
-                    dfi.phases[1].rddata[2*databits+j].eq(dq_bitslip.o[2]),
-                    dfi.phases[1].rddata[3*databits+j].eq(dq_bitslip.o[3]),
+                    dfi.phases[0].rddata[0*databits+j].eq(dq_i_data[0]),
+                    dfi.phases[0].rddata[1*databits+j].eq(dq_i_data[1]),
+                    dfi.phases[0].rddata[2*databits+j].eq(dq_i_data[2]),
+                    dfi.phases[0].rddata[3*databits+j].eq(dq_i_data[3]),
+                    dfi.phases[1].rddata[0*databits+j].eq(dq_i_data[4]),
+                    dfi.phases[1].rddata[1*databits+j].eq(dq_i_data[5]),
+                    dfi.phases[1].rddata[2*databits+j].eq(dq_i_data[6]),
+                    dfi.phases[1].rddata[3*databits+j].eq(dq_i_data[7]),
                 ]
                 self.specials += [
                     Instance("TSHX2DQA",
@@ -448,11 +455,9 @@ class ECP5DDRPHY(Module, AutoCSR):
         #
         # The read data valid is asserted for 1 sys_clk cycle when the data is available on the DFI
         # interface, the latency is the sum of the ODDRX2DQA, CAS, IDDRX2DQA and Bitslip latencies.
-        rddata_en      = Signal(self.settings.read_latency)
         rddata_en_last = Signal.like(rddata_en)
         self.comb += rddata_en.eq(Cat(dfi.phases[self.settings.rdphase].rddata_en, rddata_en_last))
         self.sync += rddata_en_last.eq(rddata_en)
-        self.sync += dqs_read.eq(rddata_en[cl_sys_latency:cl_sys_latency + 2] != 0b00)
         self.sync += [phase.rddata_valid.eq(rddata_en[-1]) for phase in dfi.phases]
 
         # Write Control Path -----------------------------------------------------------------------
@@ -462,7 +467,6 @@ class ECP5DDRPHY(Module, AutoCSR):
         # 2x for DDR, 2x for halfrate) but DDR3 requires a burst of 8 datas (BL8) for best efficiency.
         # Writes are then performed in 2 sys_clk cycles and data needs to be selected for each cycle.
         # The DQ/DQS tristates are controlled for 4 sys_clk cycles: Write (2) + Pre/Postamble (2).
-        wrdata_en      = Signal(cwl_sys_latency + 4)
         wrdata_en_last = Signal.like(wrdata_en)
         self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
         self.sync += wrdata_en_last.eq(wrdata_en)
