@@ -423,12 +423,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                     Tristate(pads.dq[j], dq_o, ~dq_oe_n, dq_i)
                 ]
 
-        # Flow control -----------------------------------------------------------------------------
-        #
-        # total read latency:
-        #  ODDRX2DQA latency
-        #  cl_sys_latency
-        #  IDDRX2DQA latency
+        # Read Control Path ------------------------------------------------------------------------
+        # Read latency = ODDRX2DQA latency + cl_sys_latency + IDDRX2DQA latency + Bitslip latency.
         rddata_en  = dfi.phases[self.settings.rdphase].rddata_en
         rddata_ens = Array([Signal() for i in range(self.settings.read_latency-1)])
         for i in range(self.settings.read_latency-1):
@@ -439,6 +435,8 @@ class ECP5DDRPHY(Module, AutoCSR):
         self.sync += [phase.rddata_valid.eq(rddata_en)
             for phase in dfi.phases]
         self.comb += dqs_read.eq(rddata_ens[cl_sys_latency+1] | rddata_ens[cl_sys_latency+2])
+
+        # Write Control Path -----------------------------------------------------------------------
         oe = Signal()
         last_wrdata_en = Signal(cwl_sys_latency+3)
         wrphase = dfi.phases[self.settings.wrphase]
@@ -450,5 +448,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             last_wrdata_en[cwl_sys_latency+2])
         self.sync += oe_dqs.eq(oe), oe_dq.eq(oe)
         self.sync += bl8_sel.eq(last_wrdata_en[cwl_sys_latency-1])
+
+        # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         self.sync += dqs_preamble.eq(last_wrdata_en[cwl_sys_latency-2])
         self.sync += dqs_postamble.eq(oe_dqs)

@@ -492,14 +492,8 @@ class USDDRPHY(Module, AutoCSR):
                 dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
                 dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7]),
             ]
-
-        # Flow control -----------------------------------------------------------------------------
-        #
-        # total read latency:
-        #  2 cycles through OSERDESE2
-        #  cl_sys_latency cycles CAS
-        #  2 cycles through ISERDESE2
-        #  2 cycles through Bitslip
+        # Read Control Path ------------------------------------------------------------------------
+        # Read latency = OSERDESE3 latency + cl_sys_latency + ISERDESE3 latency + Bitslip latency.
         rddata_en = dfi.phases[self.settings.rdphase].rddata_en
         for i in range(self.settings.read_latency-1):
             n_rddata_en = Signal()
@@ -510,20 +504,22 @@ class USDDRPHY(Module, AutoCSR):
             self.sync += phase_rddata_valid.eq(rddata_en | self._wlevel_en.storage)
             self.comb += phase.rddata_valid.eq(phase_rddata_valid)
 
+        # Write Control Path -----------------------------------------------------------------------
         oe = Signal()
         last_wrdata_en = Signal(cwl_sys_latency+2)
         wrphase = dfi.phases[self.settings.wrphase]
         self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en[:-1]))
         self.comb += oe.eq(
-            last_wrdata_en[cwl_sys_latency-1] |
-            last_wrdata_en[cwl_sys_latency] |
-            last_wrdata_en[cwl_sys_latency+1])
-        self.sync += \
+            last_wrdata_en[cwl_sys_latency + -1] |
+            last_wrdata_en[cwl_sys_latency +  0] |
+            last_wrdata_en[cwl_sys_latency +  1])
+        self.sync += [
             If(self._wlevel_en.storage,
                 oe_dqs.eq(1), oe_dq.eq(0)
             ).Else(
                 oe_dqs.eq(oe), oe_dq.eq(oe)
             )
+        ]
 
 # Xilinx Ultrascale Plus DDR3/DDR4 PHY -------------------------------------------------------------
 

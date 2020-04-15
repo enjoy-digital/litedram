@@ -566,13 +566,8 @@ class S7DDRPHY(Module, AutoCSR):
                 )
             ]
 
-        # Flow control -----------------------------------------------------------------------------
-        #
-        # total read latency:
-        #  2 cycles through OSERDESE2
-        #  cl_sys_latency cycles CAS
-        #  2 cycles through ISERDESE2
-        #  2 cycles through Bitslip
+        # Read Control Path ------------------------------------------------------------------------
+        # Read latency = OSERDESE2 latency + cl_sys_latency + ISERDESE2 latency + Bitslip latency.
         rddata_en = dfi.phases[self.settings.rdphase].rddata_en
         for i in range(self.settings.read_latency-1):
             n_rddata_en = Signal()
@@ -585,14 +580,15 @@ class S7DDRPHY(Module, AutoCSR):
             self.sync += [phase.rddata_valid.eq(rddata_en)
                 for phase in dfi.phases]
 
+        # Write Control Path -----------------------------------------------------------------------
         oe = Signal()
         last_wrdata_en = Signal(cwl_sys_latency+2)
         wrphase = dfi.phases[self.settings.wrphase]
         self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en[:-1]))
         self.comb += oe.eq(
-            last_wrdata_en[cwl_sys_latency-1] |
-            last_wrdata_en[cwl_sys_latency] |
-            last_wrdata_en[cwl_sys_latency+1])
+            last_wrdata_en[cwl_sys_latency + -1] |
+            last_wrdata_en[cwl_sys_latency +  0] |
+            last_wrdata_en[cwl_sys_latency +  1])
         if with_odelay:
             self.sync += [
                 If(self._wlevel_en.storage,
@@ -607,7 +603,7 @@ class S7DDRPHY(Module, AutoCSR):
                 oe_dq.eq(oe)
             ]
 
-        # dqs preamble/postamble
+        # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         if memtype == "DDR2":
             dqs_sys_latency = cwl_sys_latency-1
         elif memtype == "DDR3":
