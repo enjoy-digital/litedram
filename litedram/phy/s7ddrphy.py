@@ -569,7 +569,7 @@ class S7DDRPHY(Module, AutoCSR):
         # Read Control Path ------------------------------------------------------------------------
         # Read latency = OSERDESE2 latency + cl_sys_latency + ISERDESE2 latency + Bitslip latency.
         rddata_en = dfi.phases[self.settings.rdphase].rddata_en
-        for i in range(self.settings.read_latency-1):
+        for i in range(self.settings.read_latency - 1):
             n_rddata_en = Signal()
             self.sync += n_rddata_en.eq(rddata_en)
             rddata_en = n_rddata_en
@@ -582,9 +582,9 @@ class S7DDRPHY(Module, AutoCSR):
 
         # Write Control Path -----------------------------------------------------------------------
         oe = Signal()
-        last_wrdata_en = Signal(cwl_sys_latency+2)
+        last_wrdata_en = Signal(cwl_sys_latency + 2)
         wrphase = dfi.phases[self.settings.wrphase]
-        self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en[:-1]))
+        self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en))
         self.comb += oe.eq(
             last_wrdata_en[cwl_sys_latency + -1] |
             last_wrdata_en[cwl_sys_latency +  0] |
@@ -605,12 +605,12 @@ class S7DDRPHY(Module, AutoCSR):
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         if memtype == "DDR2":
-            dqs_sys_latency = cwl_sys_latency-1
+            dqs_sys_latency = cwl_sys_latency - 1
         elif memtype == "DDR3":
-            dqs_sys_latency = cwl_sys_latency-1 if with_odelay else cwl_sys_latency
+            dqs_sys_latency = cwl_sys_latency - 1 if with_odelay else cwl_sys_latency
         self.comb += [
-            dqs_preamble.eq(last_wrdata_en[dqs_sys_latency-1] & ~last_wrdata_en[dqs_sys_latency]),
-            dqs_postamble.eq(last_wrdata_en[dqs_sys_latency+1] & ~last_wrdata_en[dqs_sys_latency]),
+            dqs_preamble.eq(last_wrdata_en[dqs_sys_latency - 1] & ~last_wrdata_en[dqs_sys_latency]),
+            dqs_postamble.eq(last_wrdata_en[dqs_sys_latency + 1] & ~last_wrdata_en[dqs_sys_latency]),
         ]
 
 # Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------

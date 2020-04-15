@@ -426,29 +426,30 @@ class ECP5DDRPHY(Module, AutoCSR):
         # Read Control Path ------------------------------------------------------------------------
         # Read latency = ODDRX2DQA latency + cl_sys_latency + IDDRX2DQA latency + Bitslip latency.
         rddata_en  = dfi.phases[self.settings.rdphase].rddata_en
-        rddata_ens = Array([Signal() for i in range(self.settings.read_latency-1)])
-        for i in range(self.settings.read_latency-1):
+        for i in range(self.settings.read_latency - 1):
             n_rddata_en = Signal()
             self.sync += n_rddata_en.eq(rddata_en)
-            self.comb += rddata_ens[i].eq(rddata_en)
+            if i in [cl_sys_latency + 1, cl_sys_latency + 2]:
+                self.comb += If(rddata_en, dqs_read.eq(1))
             rddata_en = n_rddata_en
-        self.sync += [phase.rddata_valid.eq(rddata_en)
-            for phase in dfi.phases]
-        self.comb += dqs_read.eq(rddata_ens[cl_sys_latency+1] | rddata_ens[cl_sys_latency+2])
+        self.sync += [phase.rddata_valid.eq(rddata_en) for phase in dfi.phases]
 
         # Write Control Path -----------------------------------------------------------------------
         oe = Signal()
-        last_wrdata_en = Signal(cwl_sys_latency+3)
+        last_wrdata_en = Signal(cwl_sys_latency + 3)
         wrphase = dfi.phases[self.settings.wrphase]
-        self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en[:-1]))
+        self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en))
         self.comb += oe.eq(
-            last_wrdata_en[cwl_sys_latency-1] |
-            last_wrdata_en[cwl_sys_latency]   |
-            last_wrdata_en[cwl_sys_latency+1] |
-            last_wrdata_en[cwl_sys_latency+2])
-        self.sync += oe_dqs.eq(oe), oe_dq.eq(oe)
-        self.sync += bl8_sel.eq(last_wrdata_en[cwl_sys_latency-1])
+            last_wrdata_en[cwl_sys_latency + -1] |
+            last_wrdata_en[cwl_sys_latency +  0] |
+            last_wrdata_en[cwl_sys_latency +  1] |
+            last_wrdata_en[cwl_sys_latency +  2])
+        self.sync += [
+            oe_dqs.eq(oe),
+            oe_dq.eq(oe),
+            bl8_sel.eq(last_wrdata_en[cwl_sys_latency - 1])
+        ]
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
-        self.sync += dqs_preamble.eq(last_wrdata_en[cwl_sys_latency-2])
+        self.sync += dqs_preamble.eq(last_wrdata_en[cwl_sys_latency - 2])
         self.sync += dqs_postamble.eq(oe_dqs)

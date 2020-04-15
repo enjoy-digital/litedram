@@ -495,7 +495,7 @@ class USDDRPHY(Module, AutoCSR):
         # Read Control Path ------------------------------------------------------------------------
         # Read latency = OSERDESE3 latency + cl_sys_latency + ISERDESE3 latency + Bitslip latency.
         rddata_en = dfi.phases[self.settings.rdphase].rddata_en
-        for i in range(self.settings.read_latency-1):
+        for i in range(self.settings.read_latency - 1):
             n_rddata_en = Signal()
             self.sync += n_rddata_en.eq(rddata_en)
             rddata_en = n_rddata_en
@@ -506,9 +506,9 @@ class USDDRPHY(Module, AutoCSR):
 
         # Write Control Path -----------------------------------------------------------------------
         oe = Signal()
-        last_wrdata_en = Signal(cwl_sys_latency+2)
+        last_wrdata_en = Signal(cwl_sys_latency + 2)
         wrphase = dfi.phases[self.settings.wrphase]
-        self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en[:-1]))
+        self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en))
         self.comb += oe.eq(
             last_wrdata_en[cwl_sys_latency + -1] |
             last_wrdata_en[cwl_sys_latency +  0] |
