@@ -405,10 +405,15 @@ class ECP5DDRPHY(Module, AutoCSR):
                 dq_bitslip_o_d = Signal(4)
                 self.sync += dq_bitslip_o_d.eq(dq_bitslip.o)
                 self.comb += [
-                    dfi.phases[0].rddata[0*databits+j].eq(dq_bitslip_o_d[0]), dfi.phases[0].rddata[1*databits+j].eq(dq_bitslip_o_d[1]),
-                    dfi.phases[0].rddata[2*databits+j].eq(dq_bitslip_o_d[2]), dfi.phases[0].rddata[3*databits+j].eq(dq_bitslip_o_d[3]),
-                    dfi.phases[1].rddata[0*databits+j].eq(dq_bitslip.o[0]), dfi.phases[1].rddata[1*databits+j].eq(dq_bitslip.o[1]),
-                    dfi.phases[1].rddata[2*databits+j].eq(dq_bitslip.o[2]), dfi.phases[1].rddata[3*databits+j].eq(dq_bitslip.o[3]),
+                    dfi.phases[0].rddata[0*databits+j].eq(dq_bitslip_o_d[0]),
+                    dfi.phases[0].rddata[1*databits+j].eq(dq_bitslip_o_d[1]),
+                    dfi.phases[0].rddata[2*databits+j].eq(dq_bitslip_o_d[2]),
+                    dfi.phases[0].rddata[3*databits+j].eq(dq_bitslip_o_d[3]),
+
+                    dfi.phases[1].rddata[0*databits+j].eq(dq_bitslip.o[0]),
+                    dfi.phases[1].rddata[1*databits+j].eq(dq_bitslip.o[1]),
+                    dfi.phases[1].rddata[2*databits+j].eq(dq_bitslip.o[2]),
+                    dfi.phases[1].rddata[3*databits+j].eq(dq_bitslip.o[3]),
                 ]
                 self.specials += [
                     Instance("TSHX2DQA",
@@ -424,32 +429,39 @@ class ECP5DDRPHY(Module, AutoCSR):
                 ]
 
         # Read Control Path ------------------------------------------------------------------------
-        # Read latency = ODDRX2DQA latency + cl_sys_latency + IDDRX2DQA latency + Bitslip latency.
-        rddata_en  = dfi.phases[self.settings.rdphase].rddata_en
-        for i in range(self.settings.read_latency - 1):
-            n_rddata_en = Signal()
-            self.sync += n_rddata_en.eq(rddata_en)
-            if i in [cl_sys_latency + 1, cl_sys_latency + 2]:
-                self.comb += If(rddata_en, dqs_read.eq(1))
-            rddata_en = n_rddata_en
-        self.sync += [phase.rddata_valid.eq(rddata_en) for phase in dfi.phases]
+        # Creates a shift register of read commands coming from the DFI interface. This shift register
+        # is used to control DQS read (internal read pulse of the DQSBUF) and to indicate to the
+        # DFI interface that the read data is valid.
+        #
+        # The DQS read must be asserted for 2 sys_clk cycles before the read data is coming back from
+        # the DRAM (see 6.2.4 READ Pulse Positioning Optimization of FPGA-TN-02035-1.2)
+        #
+        # The read data valid is asserted for 1 sys_clk cycle when the data is available on the DFI
+        # interface, the latency is the sum of the ODDRX2DQA, CAS, IDDRX2DQA and Bitslip latencies.
+        rddata_en      = Signal(self.settings.read_latency)
+        rddata_en_last = Signal.like(rddata_en)
+        self.comb += rddata_en.eq(Cat(dfi.phases[self.settings.rdphase].rddata_en, rddata_en_last))
+        self.sync += rddata_en_last.eq(rddata_en)
+        self.sync += dqs_read.eq(rddata_en[cl_sys_latency:cl_sys_latency + 2] != 0b00)
+        self.sync += [phase.rddata_valid.eq(rddata_en[-1]) for phase in dfi.phases]
 
         # Write Control Path -----------------------------------------------------------------------
-        oe = Signal()
-        last_wrdata_en = Signal(cwl_sys_latency + 3)
-        wrphase = dfi.phases[self.settings.wrphase]
-        self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en))
-        self.comb += oe.eq(
-            last_wrdata_en[cwl_sys_latency + -1] |
-            last_wrdata_en[cwl_sys_latency +  0] |
-            last_wrdata_en[cwl_sys_latency +  1] |
-            last_wrdata_en[cwl_sys_latency +  2])
-        self.sync += [
-            oe_dqs.eq(oe),
-            oe_dq.eq(oe),
-            bl8_sel.eq(last_wrdata_en[cwl_sys_latency - 1])
-        ]
+        # Creates a shift register of write commands coming from the DFI interface. This shift register
+        # is used to control DQ/DQS tristates and to select write data of the DRAM burst from the DFI
+        # interface: The PHY is operating in halfrate mode (so provide 4 datas every sys_clk cycles:
+        # 2x for DDR, 2x for halfrate) but DDR3 requires a burst of 8 datas (BL8) for best efficiency.
+        # Writes are then performed in 2 sys_clk cycles and data needs to be selected for each cycle.
+        # The DQ/DQS tristates are controlled for 4 sys_clk cycles: Write (2) + Pre/Postamble (2).
+        wrdata_en      = Signal(cwl_sys_latency + 4)
+        wrdata_en_last = Signal.like(wrdata_en)
+        self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
+        self.sync += wrdata_en_last.eq(wrdata_en)
+        self.sync += oe_dq.eq(wrdata_en[cwl_sys_latency:cwl_sys_latency + 4] != 0b0000)
+        self.sync += bl8_sel.eq(wrdata_en[cwl_sys_latency])
+        self.comb += oe_dqs.eq(oe_dq)
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
-        self.sync += dqs_preamble.eq(last_wrdata_en[cwl_sys_latency - 2])
+        # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
+        # write.
+        self.sync += dqs_preamble.eq(wrdata_en[cwl_sys_latency - 1])
         self.sync += dqs_postamble.eq(oe_dqs)
