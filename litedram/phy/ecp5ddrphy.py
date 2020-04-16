@@ -479,5 +479,5 @@ class ECP5DDRPHY(Module, AutoCSR):
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
         # write.
-        self.sync += dqs_preamble.eq(wrdata_en[cwl_sys_latency - 1])
-        self.sync += dqs_postamble.eq(oe_dqs)
+        self.sync += dqs_preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10)
+        self.sync += dqs_postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01)
