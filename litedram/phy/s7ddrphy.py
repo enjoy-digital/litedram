@@ -592,10 +592,8 @@ class S7DDRPHY(Module, AutoCSR):
         self.comb += If(self._wlevel_en.storage, oe_dqs.eq(1)).Else(oe_dqs.eq(oe_dq))
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
-        self.sync += [
-            dqs_preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10),
-            dqs_postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01),
-        ]
+        self.sync += dqs_preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10)
+        self.sync += dqs_postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01)
 
 # Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 

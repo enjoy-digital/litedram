@@ -525,10 +525,8 @@ class USDDRPHY(Module, AutoCSR):
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
         # write.
-        self.sync += [
-            dqs_preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10),
-            dqs_postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01),
-        ]
+        self.sync += dqs_preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10)
+        self.sync += dqs_postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01)
 
 # Xilinx Ultrascale Plus DDR3/DDR4 PHY -------------------------------------------------------------
 
