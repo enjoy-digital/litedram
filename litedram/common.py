@@ -109,7 +109,7 @@ class Settings:
 
 
 class PhySettings(Settings):
-    def __init__(self, memtype, databits, dfi_databits,
+    def __init__(self, phytype, memtype, databits, dfi_databits,
                  nphases,
                  rdphase, wrphase,
                  rdcmdphase, wrcmdphase,

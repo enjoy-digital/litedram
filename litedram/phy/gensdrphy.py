@@ -24,6 +24,7 @@ class GENSDRPHY(Module):
 
         # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
+            phytype       = "GENSDRPHY",
             memtype       = "SDR",
             databits      = databits,
             dfi_databits  = databits,

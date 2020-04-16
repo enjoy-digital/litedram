@@ -28,6 +28,7 @@ class S7DDRPHY(Module, AutoCSR):
         assert not (memtype == "DDR3" and nphases == 2) # FIXME: Needs BL8 support for nphases=2
         assert interface_type in ["NETWORKING", "MEMORY"]
         assert not (interface_type == "MEMORY" and nphases == 2)
+        phytype     = self.__class__.__name__
         pads        = PHYPadsCombiner(pads)
         tck         = 2/(2*nphases*sys_clk_freq)
         addressbits = len(pads.a)
@@ -37,20 +38,25 @@ class S7DDRPHY(Module, AutoCSR):
         nphases     = nphases
         assert databits%8 == 0
 
+        # Parameters -------------------------------------------------------------------------------
         iodelay_tap_average = {
             200e6: 78e-12,
             300e6: 52e-12,
             400e6: 39e-12, # Only valid for -3 and -2/2E speed grades
         }
+        half_sys8x_taps = math.floor(tck/(4*iodelay_tap_average[iodelay_clk_freq]))
+
+        cl, cwl         = get_cl_cw(memtype, tck)
+        cl_sys_latency  = get_sys_latency(nphases, cl)
+        cwl             = cwl + cmd_latency
+        cwl_sys_latency = get_sys_latency(nphases, cwl)
 
         # Registers --------------------------------------------------------------------------------
-        self._dly_sel = CSRStorage(databits//8)
-        half_sys8x_taps = math.floor(tck/(4*iodelay_tap_average[iodelay_clk_freq]))
+        self._dly_sel         = CSRStorage(databits//8)
         self._half_sys8x_taps = CSRStorage(5, reset=half_sys8x_taps)
 
-        if with_odelay:
-            self._wlevel_en     = CSRStorage()
-            self._wlevel_strobe = CSR()
+        self._wlevel_en     = CSRStorage()
+        self._wlevel_strobe = CSR()
 
         self._cdly_rst = CSR()
         self._cdly_inc = CSR()
@@ -63,17 +69,12 @@ class S7DDRPHY(Module, AutoCSR):
         self._rdly_dq_bitslip     = CSR()
 
         if with_odelay:
-            self._wdly_dq_rst  = CSR()
-            self._wdly_dq_inc  = CSR()
-            self._wdly_dqs_rst = CSR()
-            self._wdly_dqs_inc = CSR()
+            self._wdly_dq_rst   = CSR()
+            self._wdly_dq_inc   = CSR()
+            self._wdly_dqs_rst  = CSR()
+            self._wdly_dqs_inc  = CSR()
 
         # PHY settings -----------------------------------------------------------------------------
-        cl, cwl         = get_cl_cw(memtype, tck)
-        cl_sys_latency  = get_sys_latency(nphases, cl)
-        cwl             = cwl + cmd_latency
-        cwl_sys_latency = get_sys_latency(nphases, cwl)
-
         rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
         wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
         iserdese2_latency  = {
@@ -81,6 +82,7 @@ class S7DDRPHY(Module, AutoCSR):
             "MEMORY":     1,
         }
         self.settings = PhySettings(
+            phytype       = phytype,
             memtype       = memtype,
             databits      = databits,
             dfi_databits  = 2*databits,
@@ -93,7 +95,7 @@ class S7DDRPHY(Module, AutoCSR):
             cl            = cl,
             cwl           = cwl - cmd_latency,
             read_latency  = 2 + cl_sys_latency + iserdese2_latency[interface_type] + 2,
-            write_latency = cwl_sys_latency
+            write_latency = cwl_sys_latency,
         )
 
         # DFI Interface ----------------------------------------------------------------------------
@@ -291,18 +293,14 @@ class S7DDRPHY(Module, AutoCSR):
             dqs_serdes_pattern.eq(0b01010101),
             If(dqs_preamble | dqs_postamble,
                 dqs_serdes_pattern.eq(0b0000000)
+            ),
+            If(self._wlevel_en.storage,
+                dqs_serdes_pattern.eq(0b00000000),
+                If(self._wlevel_strobe.re,
+                    dqs_serdes_pattern.eq(0b00000001)
+                )
             )
         ]
-        if with_odelay:
-            self.comb += [
-                If(self._wlevel_en.storage,
-                    dqs_serdes_pattern.eq(0b00000000),
-                    If(self._wlevel_strobe.re,
-                        dqs_serdes_pattern.eq(0b00000001)
-                    )
-                )
-            ]
-
         for i in range(databits//8):
             dm_o_nodelay = Signal()
             self.specials += Instance("OSERDESE2",
@@ -573,12 +571,7 @@ class S7DDRPHY(Module, AutoCSR):
             n_rddata_en = Signal()
             self.sync += n_rddata_en.eq(rddata_en)
             rddata_en = n_rddata_en
-        if with_odelay:
-            self.sync += [phase.rddata_valid.eq(rddata_en | self._wlevel_en.storage)
-                for phase in dfi.phases]
-        else:
-            self.sync += [phase.rddata_valid.eq(rddata_en)
-                for phase in dfi.phases]
+            self.sync += [phase.rddata_valid.eq(rddata_en | self._wlevel_en.storage) for phase in dfi.phases]
 
         # Write Control Path -----------------------------------------------------------------------
         oe = Signal()
@@ -589,19 +582,13 @@ class S7DDRPHY(Module, AutoCSR):
             last_wrdata_en[cwl_sys_latency + -1] |
             last_wrdata_en[cwl_sys_latency +  0] |
             last_wrdata_en[cwl_sys_latency +  1])
-        if with_odelay:
-            self.sync += [
-                If(self._wlevel_en.storage,
-                    oe_dqs.eq(1), oe_dq.eq(0)
-                ).Else(
-                    oe_dqs.eq(oe), oe_dq.eq(oe)
-                )
-            ]
-        else:
-            self.sync += [
-                oe_dqs.eq(oe),
-                oe_dq.eq(oe)
-            ]
+        self.sync += [
+            If(self._wlevel_en.storage,
+                oe_dqs.eq(1), oe_dq.eq(0)
+            ).Else(
+                oe_dqs.eq(oe), oe_dq.eq(oe)
+            )
+        ]
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         if memtype == "DDR2":

@@ -397,8 +397,36 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     r = "#ifndef __GENERATED_SDRAM_PHY_H\n#define __GENERATED_SDRAM_PHY_H\n"
     r += "#include <hw/common.h>\n#include <generated/csr.h>\n#include <hw/flags.h>\n\n"
 
+    phytype = phy_settings.phytype.upper()
     nphases = phy_settings.nphases
-    r += "#define DFII_NPHASES "+str(nphases)+"\n\n"
+
+    # Define PHY type and number of phases
+    r += "#define SDRAM_PHY_"+phytype+"\n"
+    r += "#define SDRAM_PHY_PHASES "+str(nphases)+"\n"
+
+    # Define Read/Write Leveling capability
+    if phytype in ["USDDRPHY", "USPDDRPHY", "K7DDRPHY", "V7DDRPHY"]:
+        r += "#define SDRAM_PHY_WRITE_LEVELING_CAPABLE\n"
+    if phytype in ["USDDRPHY", "USPDDRPHY"]:
+        r += "#define SDRAM_PHY_WRITE_LEVELING_REINIT\n"
+    if phytype in ["USDDRPHY", "USPDDRPHY", "A7DDRPHY", "K7DDRPHY", "V7DDRPHY", "ECP5DDRPHY"]:
+        r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
+
+    # Define number of modules/delays/bitslips
+    if phytype in ["USDDRPHY", "USPDDRPHY"]:
+        r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2\n"
+        r += "#define SDRAM_PHY_DELAYS 512\n"
+        r += "#define SDRAM_PHY_BITSLIPS 8\n"
+    elif phytype in ["A7DDRPHY", "K7DDRPHY", "V7DDRPHY"]:
+        r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2\n"
+        r += "#define SDRAM_PHY_DELAYS 32\n"
+        r += "#define SDRAM_PHY_BITSLIPS 8\n"
+    elif phytype in ["ECP5DDRPHY"]:
+        r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/4\n"
+        r += "#define SDRAM_PHY_DELAYS 8\n"
+        r += "#define SDRAM_PHY_BITSLIPS 4\n"
+
+    r += "\n"
 
     r += "static void cdelay(int i);\n"
 
@@ -431,7 +459,7 @@ __attribute__((unused)) static void command_p{n}(int cmd)
     for n in range(nphases):
         sdram_dfii_pix_wrdata_addr.append("CSR_SDRAM_DFII_PI{n}_WRDATA_ADDR".format(n=n))
     r += """
-const unsigned long sdram_dfii_pix_wrdata_addr[DFII_NPHASES] = {{
+const unsigned long sdram_dfii_pix_wrdata_addr[SDRAM_PHY_PHASES] = {{
 \t{sdram_dfii_pix_wrdata_addr}
 }};
 """.format(sdram_dfii_pix_wrdata_addr=",\n\t".join(sdram_dfii_pix_wrdata_addr))
@@ -440,7 +468,7 @@ const unsigned long sdram_dfii_pix_wrdata_addr[DFII_NPHASES] = {{
     for n in range(nphases):
         sdram_dfii_pix_rddata_addr.append("CSR_SDRAM_DFII_PI{n}_RDDATA_ADDR".format(n=n))
     r += """
-const unsigned long sdram_dfii_pix_rddata_addr[DFII_NPHASES] = {{
+const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {{
 \t{sdram_dfii_pix_rddata_addr}
 }};
 """.format(sdram_dfii_pix_rddata_addr=",\n\t".join(sdram_dfii_pix_rddata_addr))

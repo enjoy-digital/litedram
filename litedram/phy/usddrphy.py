@@ -22,8 +22,9 @@ class USDDRPHY(Module, AutoCSR):
         memtype          = "DDR3",
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
-        cmd_latency      = 0,
-        device           = "ULTRASCALE"):
+        cmd_latency      = 0):
+        phytype     = self.__class__.__name__
+        device      = {"USDDRPHY": "ULTRASCALE", "USPDDRPHY": "ULTRASCALE_PLUS"}[phytype]
         pads        = PHYPadsCombiner(pads)
         tck         = 2/(2*4*sys_clk_freq)
         addressbits = len(pads.a)
@@ -34,14 +35,18 @@ class USDDRPHY(Module, AutoCSR):
         databits = len(pads.dq)
         nphases  = 4
         assert databits%8 == 0
-        assert device in ["ULTRASCALE", "ULTRASCALE_PLUS"]
-        if device == "ULTRASCALE":
-            assert iodelay_clk_freq >= 200e6
-        if device == "ULTRASCALE_PLUS":
-            assert iodelay_clk_freq >= 300e6
 
         if hasattr(pads, "ten"):
             self.comb += pads.ten.eq(0)
+
+        # Parameters -------------------------------------------------------------------------------
+        if phytype == "USDDRPHY":  assert iodelay_clk_freq >= 200e6
+        if phytype == "USPDDRPHY": assert iodelay_clk_freq >= 300e6
+
+        cl, cwl         = get_cl_cw(memtype, tck)
+        cwl             = cwl + cmd_latency
+        cl_sys_latency  = get_sys_latency(nphases, cl)
+        cwl_sys_latency = get_sys_latency(nphases, cwl)
 
         # Registers --------------------------------------------------------------------------------
         self._en_vtc              = CSRStorage(reset=1)
@@ -68,14 +73,10 @@ class USDDRPHY(Module, AutoCSR):
         self._wdly_dqs_inc        = CSR()
 
         # PHY settings -----------------------------------------------------------------------------
-        cl, cwl         = get_cl_cw(memtype, tck)
-        cwl             = cwl + cmd_latency
-        cl_sys_latency  = get_sys_latency(nphases, cl)
-        cwl_sys_latency = get_sys_latency(nphases, cwl)
-
         rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
         wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
         self.settings = PhySettings(
+            phytype       = phytype,
             memtype       = memtype,
             databits      = databits,
             dfi_databits  = 2*databits,
@@ -525,4 +526,4 @@ class USDDRPHY(Module, AutoCSR):
 
 class USPDDRPHY(USDDRPHY):
     def __init__(self, pads, **kwargs):
-        USDDRPHY.__init__(self, pads, device="ULTRASCALE_PLUS", **kwargs)
+        USDDRPHY.__init__(self, pads, **kwargs)

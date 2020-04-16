@@ -46,6 +46,7 @@ class S6HalfRateDDRPHY(Module):
         # PHY settings -----------------------------------------------------------------------------
         if memtype == "DDR3":
             self.settings = PhySettings(
+                phytype       = "S6HalfRateDDRPHY",
                 memtype       = "DDR3",
                 databits      = databits,
                 dfi_databits  = 2*databits,
@@ -62,6 +63,7 @@ class S6HalfRateDDRPHY(Module):
             )
         else:
             self.settings = PhySettings(
+                phytype       = "S6HalfRateDDRPHY",
                 memtype       = memtype,
                 databits      = databits,
                 dfi_databits  = 2*databits,
@@ -424,6 +426,7 @@ class S6QuarterRateDDRPHY(Module):
 
         # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
+            phytype       = "S6QuarterRateDDRPHY",
             memtype       = "DDR3",
             databits      = databits,
             dfi_databits  = 2*databits,

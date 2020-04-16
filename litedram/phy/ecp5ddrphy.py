@@ -95,6 +95,11 @@ class ECP5DDRPHY(Module, AutoCSR):
         # Init -------------------------------------------------------------------------------------
         self.submodules.init = ClockDomainsRenamer("init")(ECP5DDRPHYInit("sys2x"))
 
+        # Parameters -------------------------------------------------------------------------------
+        cl, cwl         = get_cl_cw(memtype, tck)
+        cl_sys_latency  = get_sys_latency(nphases, cl)
+        cwl_sys_latency = get_sys_latency(nphases, cwl)
+
         # Registers --------------------------------------------------------------------------------
         self._dly_sel = CSRStorage(databits//8)
 
@@ -110,13 +115,10 @@ class ECP5DDRPHY(Module, AutoCSR):
         self.datavalid = Signal(databits//8)
 
         # PHY settings -----------------------------------------------------------------------------
-        cl, cwl         = get_cl_cw(memtype, tck)
-        cl_sys_latency  = get_sys_latency(nphases, cl)
-        cwl_sys_latency = get_sys_latency(nphases, cwl)
-
         rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
         wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
         self.settings = PhySettings(
+            phytype       = "ECP5DDRPHY",
             memtype       = memtype,
             databits      = databits,
             dfi_databits  = 4*databits,
