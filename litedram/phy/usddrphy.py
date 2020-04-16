@@ -274,9 +274,14 @@ class USDDRPHY(Module, AutoCSR):
 
         # DQS and DM -------------------------------------------------------------------------------
         oe_dqs             = Signal()
-        dqs_serdes_pattern = Signal(8)
+        dqs_preamble       = Signal()
+        dqs_postamble      = Signal()
+        dqs_serdes_pattern = Signal(8, reset=0b01010101)
         self.comb += [
             dqs_serdes_pattern.eq(0b01010101),
+            If(dqs_preamble | dqs_postamble,
+                dqs_serdes_pattern.eq(0b0000000)
+            ),
             If(self._wlevel_en.storage,
                 dqs_serdes_pattern.eq(0b00000000),
                 If(self._wlevel_strobe.re,
@@ -507,20 +512,22 @@ class USDDRPHY(Module, AutoCSR):
         self.sync += [phase.rddata_valid.eq(rddata_en[-1] | self._wlevel_en.storage) for phase in dfi.phases]
 
         # Write Control Path -----------------------------------------------------------------------
-        oe = Signal()
-        last_wrdata_en = Signal(cwl_sys_latency + 2)
-        wrphase = dfi.phases[self.settings.wrphase]
-        self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en))
-        self.comb += oe.eq(
-            last_wrdata_en[cwl_sys_latency + -1] |
-            last_wrdata_en[cwl_sys_latency +  0] |
-            last_wrdata_en[cwl_sys_latency +  1])
+        # Creates a shift register of write commands coming from the DFI interface. This shift register
+        # is used to control DQ/DQS tristates. The DQ/DQS tristates are controlled for 3 sys_clk cycles:
+        # Write (1) + Pre/Postamble (2).
+        wrdata_en = Signal(cwl_sys_latency + 3)
+        wrdata_en_last = Signal.like(wrdata_en)
+        self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
+        self.sync += wrdata_en_last.eq(wrdata_en)
+        self.sync += oe_dq.eq(wrdata_en[cwl_sys_latency:] != 0b000)
+        self.comb += If(self._wlevel_en.storage, oe_dqs.eq(1)).Else(oe_dqs.eq(oe_dq))
+
+        # Write DQS Postamble/Preamble Control Path ------------------------------------------------
+        # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
+        # write.
         self.sync += [
-            If(self._wlevel_en.storage,
-                oe_dqs.eq(1), oe_dq.eq(0)
-            ).Else(
-                oe_dqs.eq(oe), oe_dq.eq(oe)
-            )
+            dqs_preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10),
+            dqs_postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01),
         ]
 
 # Xilinx Ultrascale Plus DDR3/DDR4 PHY -------------------------------------------------------------
