@@ -4,7 +4,13 @@
 #include <generated/csr.h>
 #include <hw/flags.h>
 
-#define DFII_NPHASES 4
+#define SDRAM_PHY_K7DDRPHY
+#define SDRAM_PHY_PHASES 4
+#define SDRAM_PHY_WRITE_LEVELING_CAPABLE
+#define SDRAM_PHY_READ_LEVELING_CAPABLE
+#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2
+#define SDRAM_PHY_DELAYS 32
+#define SDRAM_PHY_BITSLIPS 8
 
 static void cdelay(int i);
 
@@ -39,14 +45,14 @@ __attribute__((unused)) static void command_p3(int cmd)
 
 #define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE
 
-const unsigned long sdram_dfii_pix_wrdata_addr[DFII_NPHASES] = {
+const unsigned long sdram_dfii_pix_wrdata_addr[SDRAM_PHY_PHASES] = {
 	CSR_SDRAM_DFII_PI0_WRDATA_ADDR,
 	CSR_SDRAM_DFII_PI1_WRDATA_ADDR,
 	CSR_SDRAM_DFII_PI2_WRDATA_ADDR,
 	CSR_SDRAM_DFII_PI3_WRDATA_ADDR
 };
 
-const unsigned long sdram_dfii_pix_rddata_addr[DFII_NPHASES] = {
+const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {
 	CSR_SDRAM_DFII_PI0_RDDATA_ADDR,
 	CSR_SDRAM_DFII_PI1_RDDATA_ADDR,
 	CSR_SDRAM_DFII_PI2_RDDATA_ADDR,
