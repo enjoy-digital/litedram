@@ -273,22 +273,11 @@ class USDDRPHY(Module, AutoCSR):
                 self.comb += pads.ten.eq(0)
 
         # DQS and DM -------------------------------------------------------------------------------
-        oe_dqs             = Signal()
-        dqs_preamble       = Signal()
-        dqs_postamble      = Signal()
-        dqs_serdes_pattern = Signal(8, reset=0b01010101)
-        self.comb += [
-            dqs_serdes_pattern.eq(0b01010101),
-            If(dqs_preamble | dqs_postamble,
-                dqs_serdes_pattern.eq(0b0000000)
-            ),
-            If(self._wlevel_en.storage,
-                dqs_serdes_pattern.eq(0b00000000),
-                If(self._wlevel_strobe.re,
-                    dqs_serdes_pattern.eq(0b00000001)
-                )
-            )
-        ]
+        dqs_oe      = Signal()
+        dqs_pattern = DQSPattern(
+            wlevel_en     = self._wlevel_en.storage,
+            wlevel_strobe = self._wlevel_strobe.re)
+        self.submodules += dqs_pattern
         for i in range(databits//8):
             dm_o_nodelay = Signal()
             self.specials += [
@@ -355,12 +344,12 @@ class USDDRPHY(Module, AutoCSR):
                     i_RST    = ResetSignal(),
                     i_CLK    = ClockSignal("sys4x"),
                     i_CLKDIV = ClockSignal(),
-                    i_T      = ~oe_dqs,
+                    i_T      = ~dqs_oe,
                     i_D      = Cat(
-                        dqs_serdes_pattern[0], dqs_serdes_pattern[1],
-                        dqs_serdes_pattern[2], dqs_serdes_pattern[3],
-                        dqs_serdes_pattern[4], dqs_serdes_pattern[5],
-                        dqs_serdes_pattern[6], dqs_serdes_pattern[7]),
+                        dqs_pattern.o[0], dqs_pattern.o[1],
+                        dqs_pattern.o[2], dqs_pattern.o[3],
+                        dqs_pattern.o[4], dqs_pattern.o[5],
+                        dqs_pattern.o[6], dqs_pattern.o[7]),
                     o_OQ     = dqs_nodelay,
                     o_T_OUT  = dqs_t,
 
@@ -393,22 +382,16 @@ class USDDRPHY(Module, AutoCSR):
             ]
 
         # DQ ---------------------------------------------------------------------------------------
-        oe_dq = Signal()
+        dq_oe = Signal()
         for i in range(databits):
             dq_o_nodelay = Signal()
             dq_o_delayed = Signal()
             dq_i_nodelay = Signal()
             dq_i_delayed = Signal()
             dq_t         = Signal()
-            dq_bitslip   = BitSlip(8)
-            self.sync += \
-                If(self._dly_sel.storage[i//8],
-                    If(self._rdly_dq_bitslip_rst.re,
-                        dq_bitslip.value.eq(0)
-                    ).Elif(self._rdly_dq_bitslip.re,
-                        dq_bitslip.value.eq(dq_bitslip.value + 1)
-                    )
-                )
+            dq_bitslip = BitSlip(8,
+                rst = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re,
+                slp = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re)
             self.submodules += dq_bitslip
             self.specials += [
                 Instance("OSERDESE3",
@@ -426,7 +409,7 @@ class USDDRPHY(Module, AutoCSR):
                         dfi.phases[1].wrdata[i], dfi.phases[1].wrdata[databits+i],
                         dfi.phases[2].wrdata[i], dfi.phases[2].wrdata[databits+i],
                         dfi.phases[3].wrdata[i], dfi.phases[3].wrdata[databits+i]),
-                    i_T     = ~oe_dq,
+                    i_T     = ~dq_oe,
                     o_OQ     = dq_o_nodelay,
                     o_T_OUT  = dq_t,
                 ),
@@ -519,14 +502,14 @@ class USDDRPHY(Module, AutoCSR):
         wrdata_en_last = Signal.like(wrdata_en)
         self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
         self.sync += wrdata_en_last.eq(wrdata_en)
-        self.sync += oe_dq.eq(wrdata_en[cwl_sys_latency:] != 0b000)
-        self.comb += If(self._wlevel_en.storage, oe_dqs.eq(1)).Else(oe_dqs.eq(oe_dq))
+        self.sync += dq_oe.eq(wrdata_en[cwl_sys_latency:] != 0b000)
+        self.comb += If(self._wlevel_en.storage, dqs_oe.eq(1)).Else(dqs_oe.eq(dq_oe))
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
         # write.
-        self.sync += dqs_preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10)
-        self.sync += dqs_postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01)
+        self.sync += dqs_pattern.preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10)
+        self.sync += dqs_pattern.postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01)
 
 # Xilinx Ultrascale Plus DDR3/DDR4 PHY -------------------------------------------------------------
 

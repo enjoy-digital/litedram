@@ -86,19 +86,47 @@ class PHYPadsCombiner:
 # BitSlip ------------------------------------------------------------------------------------------
 
 class BitSlip(Module):
-    def __init__(self, dw):
+    def __init__(self, dw, rst=None, slp=None):
         self.i = Signal(dw)
         self.o = Signal(dw)
-        self.value = Signal(max=dw)
+        self.rst = Signal() if rst is None else rst
+        self.slp = Signal() if slp is None else slp
 
         # # #
+
+        value = Signal(max=dw)
+        self.sync += If(self.slp, value.eq(value + 1))
+        self.sync += If(self.rst, value.eq(0))
 
         r = Signal(2*dw, reset_less=True)
         self.sync += r.eq(Cat(r[dw:], self.i))
         cases = {}
         for i in range(dw):
             cases[i] = self.o.eq(r[i:dw+i])
-        self.comb += Case(self.value, cases)
+        self.comb += Case(value, cases)
+
+# DQS Pattern --------------------------------------------------------------------------------------
+
+class DQSPattern(Module):
+    def __init__(self, preamble=None, postamble=None, wlevel_en=0, wlevel_strobe=0):
+        self.preamble  = Signal() if preamble  is None else preamble
+        self.postamble = Signal() if postamble is None else postamble
+        self.o = Signal(8)
+
+        # # #
+
+        self.comb += [
+            self.o.eq(0b01010101),
+            If(self.preamble | self.postamble,
+                self.o.eq(0b0000000)
+            ),
+            If(wlevel_en,
+                self.o.eq(0b00000000),
+                If(wlevel_strobe,
+                    self.o.eq(0b00000001)
+                )
+            )
+        ]
 
 # Settings -----------------------------------------------------------------------------------------
 
