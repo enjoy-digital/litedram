@@ -412,10 +412,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                         o_Q3      = _dq_i_data[3],
                     )
                 ]
-                self.sync += [
-                    dq_i_data[:4].eq(dq_i_data[4:]),
-                    dq_i_data[4:].eq(_dq_i_data),
-                ]
+                self.sync += dq_i_data[:4].eq(dq_i_data[4:])
+                self.sync += dq_i_data[4:].eq(_dq_i_data)
                 self.comb += [
                     dfi.phases[0].rddata[0*databits+j].eq(dq_i_data[0]),
                     dfi.phases[0].rddata[1*databits+j].eq(dq_i_data[1]),
@@ -464,12 +462,12 @@ class ECP5DDRPHY(Module, AutoCSR):
         wrdata_en_last = Signal.like(wrdata_en)
         self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
         self.sync += wrdata_en_last.eq(wrdata_en)
-        self.sync += dq_oe.eq(wrdata_en[cwl_sys_latency:cwl_sys_latency + 4] != 0b0000)
+        self.sync += dq_oe.eq(wrdata_en[cwl_sys_latency:] != 0b0000)
         self.sync += bl8_chunk.eq(wrdata_en[cwl_sys_latency])
         self.comb += dqs_oe.eq(dq_oe)
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
         # write.
-        #self.sync += dqs_pattern.preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10)
-        #self.sync += dqs_pattern.postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01)
+        self.sync += dqs_pattern.preamble.eq( wrdata_en[cwl_sys_latency-3:-2-3] == 0b10) # FIXME: why -3?
+        self.sync += dqs_pattern.postamble.eq(wrdata_en[cwl_sys_latency-3+2:-3] == 0b01) # FIXME: why -3?
