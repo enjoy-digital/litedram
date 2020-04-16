@@ -454,7 +454,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         # the DRAM (see 6.2.4 READ Pulse Positioning Optimization of FPGA-TN-02035-1.2)
         #
         # The read data valid is asserted for 1 sys_clk cycle when the data is available on the DFI
-        # interface, the latency is the sum of the ODDRX2DQA, CAS, IDDRX2DQA and Bitslip latencies.
+        # interface, the latency is the sum of the ODDRX2DQA, CAS, IDDRX2DQA latencies.
         rddata_en_last = Signal.like(rddata_en)
         self.comb += rddata_en.eq(Cat(dfi.phases[self.settings.rdphase].rddata_en, rddata_en_last))
         self.sync += rddata_en_last.eq(rddata_en)
