@@ -139,7 +139,7 @@ class ECP5DDRPHY(Module, AutoCSR):
 
         # # #
 
-        bl8_sel   = Signal()
+        bl8_chunk   = Signal()
         rddata_en = Signal(self.settings.read_latency)
         wrdata_en = Signal(cwl_sys_latency + 4)
 
@@ -203,10 +203,10 @@ class ECP5DDRPHY(Module, AutoCSR):
                     )
 
         # DQ ---------------------------------------------------------------------------------------
-        oe_dq         = Signal()
-        oe_dqs        = Signal()
-        dqs_postamble = Signal()
-        dqs_preamble  = Signal()
+        dq_oe       = Signal()
+        dqs_oe      = Signal()
+        dqs_pattern = DQSPattern()
+        self.submodules += dqs_pattern
         for i in range(databits//8):
             # DQSBUFM
             dqs_i   = Signal()
@@ -286,15 +286,11 @@ class ECP5DDRPHY(Module, AutoCSR):
             burstdet_d = Signal()
             self.sync += [
                 burstdet_d.eq(burstdet),
-                If(self._burstdet_clr.re,
-                    self._burstdet_seen.status[i].eq(0)
-                ).Elif(burstdet & ~burstdet_d,
-                    self._burstdet_seen.status[i].eq(1)
-                )
+                If(self._burstdet_clr.re,  self._burstdet_seen.status[i].eq(0)),
+                If(burstdet & ~burstdet_d, self._burstdet_seen.status[i].eq(1)),
             ]
 
             # DQS and DM ---------------------------------------------------------------------------
-            dqs_serdes_pattern = Signal(8, reset=0b1010)
             dm_o_data          = Signal(8)
             dm_o_data_d        = Signal(8)
             dm_o_data_muxed    = Signal(4)
@@ -310,12 +306,10 @@ class ECP5DDRPHY(Module, AutoCSR):
                 dfi.phases[1].wrdata_mask[3*databits//8+i]),
             )
             self.sync += dm_o_data_d.eq(dm_o_data)
-            self.sync += \
-                If(bl8_sel,
-                    dm_o_data_muxed.eq(dm_o_data_d[4:])
-                ).Else(
-                    dm_o_data_muxed.eq(dm_o_data[:4])
-                )
+            dm_bl8_cases = {}
+            dm_bl8_cases[0] = dm_o_data_muxed.eq(dm_o_data[:4])
+            dm_bl8_cases[1] = dm_o_data_muxed.eq(dm_o_data_d[4:])
+            self.sync += Case(bl8_chunk, dm_bl8_cases)
             self.specials += Instance("ODDRX2DQA",
                 i_RST     = ResetSignal("sys2x"),
                 i_ECLK    = ClockSignal("sys2x"),
@@ -336,10 +330,10 @@ class ECP5DDRPHY(Module, AutoCSR):
                     i_ECLK = ClockSignal("sys2x"),
                     i_SCLK = ClockSignal(),
                     i_DQSW = dqsw,
-                    i_D0   = dqs_serdes_pattern[0],
-                    i_D1   = dqs_serdes_pattern[1],
-                    i_D2   = dqs_serdes_pattern[2],
-                    i_D3   = dqs_serdes_pattern[3],
+                    i_D0   = dqs_pattern.o[3],
+                    i_D1   = dqs_pattern.o[2],
+                    i_D2   = dqs_pattern.o[1],
+                    i_D3   = dqs_pattern.o[0],
                     o_Q    = dqs
                 ),
                 Instance("TSHX2DQSA",
@@ -347,8 +341,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                     i_ECLK = ClockSignal("sys2x"),
                     i_SCLK = ClockSignal(),
                     i_DQSW = dqsw,
-                    i_T0   = ~(oe_dqs|dqs_postamble),
-                    i_T1   = ~(oe_dqs|dqs_preamble),
+                    i_T0   = ~dqs_oe,
+                    i_T1   = ~dqs_oe,
                     o_Q    = dqs_oe_n
                 ),
                 Tristate(pads.dqs_p[i], dqs, ~dqs_oe_n, dqs_i)
@@ -375,12 +369,10 @@ class ECP5DDRPHY(Module, AutoCSR):
                     dfi.phases[1].wrdata[3*databits+j])
                 )
                 self.sync += dq_o_data_d.eq(dq_o_data)
-                self.sync += \
-                    If(bl8_sel,
-                        dq_o_data_muxed.eq(dq_o_data_d[4:])
-                    ).Else(
-                        dq_o_data_muxed.eq(dq_o_data[:4])
-                    )
+                dq_bl8_cases = {}
+                dq_bl8_cases[0] = dq_o_data_muxed.eq(dq_o_data[:4])
+                dq_bl8_cases[1] = dq_o_data_muxed.eq(dq_o_data_d[4:])
+                self.sync += Case(bl8_chunk, dq_bl8_cases)
                 _dq_i_data = Signal(4)
                 self.specials += [
                     Instance("ODDRX2DQA",
@@ -440,8 +432,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                         i_ECLK    = ClockSignal("sys2x"),
                         i_SCLK    = ClockSignal(),
                         i_DQSW270 = dqsw270,
-                        i_T0      = ~oe_dq,
-                        i_T1      = ~oe_dq,
+                        i_T0      = ~dq_oe,
+                        i_T1      = ~dq_oe,
                         o_Q       = dq_oe_n,
                     ),
                     Tristate(pads.dq[j], dq_o, ~dq_oe_n, dq_i)
@@ -472,12 +464,12 @@ class ECP5DDRPHY(Module, AutoCSR):
         wrdata_en_last = Signal.like(wrdata_en)
         self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
         self.sync += wrdata_en_last.eq(wrdata_en)
-        self.sync += oe_dq.eq(wrdata_en[cwl_sys_latency:cwl_sys_latency + 4] != 0b0000)
-        self.sync += bl8_sel.eq(wrdata_en[cwl_sys_latency])
-        self.comb += oe_dqs.eq(oe_dq)
+        self.sync += dq_oe.eq(wrdata_en[cwl_sys_latency:cwl_sys_latency + 4] != 0b0000)
+        self.sync += bl8_chunk.eq(wrdata_en[cwl_sys_latency])
+        self.comb += dqs_oe.eq(dq_oe)
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
         # write.
-        self.sync += dqs_preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10)
-        self.sync += dqs_postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01)
+        #self.sync += dqs_pattern.preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10)
+        #self.sync += dqs_pattern.postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01)
