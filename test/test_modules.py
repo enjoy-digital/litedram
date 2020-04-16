@@ -10,6 +10,11 @@ from litedram.modules import SDRAMModule, DDR3SPDData
 
 
 def load_spd_reference(filename):
+    """Load reference SPD data from a CSV file
+
+    Micron reference SPD data can be obtained from:
+    https://www.micron.com/support/tools-and-utilities/serial-presence-detect
+    """
     script_dir = os.path.dirname(os.path.realpath(__file__))
     path = os.path.join(script_dir, "spd_data", filename)
     data = [0] * 256
@@ -18,7 +23,7 @@ def load_spd_reference(filename):
         for row in reader:
             address = row["Byte Number"]
             value = row["Byte Value"]
-            # ignore ranges (timings are specified per byte)
+            # Ignore ranges (data we care about is specified per byte anyway)
             if len(address.split("-")) == 1:
                 data[int(address)] = int(value, 16)
     return data
@@ -26,6 +31,7 @@ def load_spd_reference(filename):
 
 class TestSPD(unittest.TestCase):
     def test_tck_to_speedgrade(self):
+        # Verify that speedgrade transfer rates are calculated correctly from tck
         tck_to_speedgrade = {
             2.5:    800,
             1.875: 1066,
@@ -64,31 +70,54 @@ class TestSPD(unittest.TestCase):
                     self.assertEqual(txx, txx_ref)
 
     def test_MT16KTF1G64HZ(self):
-        data = load_spd_reference("MT16KTF1G64HZ-1G6N1.csv")
         kwargs = dict(clk_freq=125e6, rate="1:4")
         module_ref = litedram.modules.MT16KTF1G64HZ(**kwargs)
-        module = SDRAMModule.from_spd_data(data, **kwargs)
-        self.compare_geometry(module, module_ref)
-        sgt = module.speedgrade_timings["1600"]
-        self.assertEqual(sgt.tRP,            13.125)
-        self.assertEqual(sgt.tRCD,           13.125)
-        self.assertEqual(sgt.tRP + sgt.tRAS, 48.125)
+
+        with self.subTest(speedgrade="-1G6"):
+            data = load_spd_reference("MT16KTF1G64HZ-1G6N1.csv")
+            module = SDRAMModule.from_spd_data(data, **kwargs)
+            self.compare_geometry(module, module_ref)
+            sgt = module.speedgrade_timings["1600"]
+            self.assertEqual(sgt.tRP,            13.125)
+            self.assertEqual(sgt.tRCD,           13.125)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 48.125)
+
+        with self.subTest(speedgrade="-1G9"):
+            data = load_spd_reference("MT16KTF1G64HZ-1G9E1.csv")
+            module = SDRAMModule.from_spd_data(data, **kwargs)
+            self.compare_geometry(module, module_ref)
+            sgt = module.speedgrade_timings["1866"]
+            self.assertEqual(sgt.tRP,            13.125)
+            self.assertEqual(sgt.tRCD,           13.125)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 47.125)
 
     def test_MT18KSF1G72HZ(self):
-        data = load_spd_reference("MT18KSF1G72HZ-1G6E2.csv")
         kwargs = dict(clk_freq=125e6, rate="1:4")
         module_ref = litedram.modules.MT18KSF1G72HZ(**kwargs)
-        module = SDRAMModule.from_spd_data(data, **kwargs)
-        self.compare_geometry(module, module_ref)
-        sgt = module.speedgrade_timings["1600"]
-        self.assertEqual(sgt.tRP,            13.125)
-        self.assertEqual(sgt.tRCD,           13.125)
-        self.assertEqual(sgt.tRP + sgt.tRAS, 48.125)
+
+        with self.subTest(speedgrade="-1G6"):
+            data = load_spd_reference("MT18KSF1G72HZ-1G6E2.csv")
+            module = SDRAMModule.from_spd_data(data, **kwargs)
+            self.compare_geometry(module, module_ref)
+            sgt = module.speedgrade_timings["1600"]
+            self.assertEqual(sgt.tRP,            13.125)
+            self.assertEqual(sgt.tRCD,           13.125)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 48.125)
+
+        with self.subTest(speedgrade="-1G4"):
+            data = load_spd_reference("MT18KSF1G72HZ-1G4E2.csv")
+            module = SDRAMModule.from_spd_data(data, **kwargs)
+            self.compare_geometry(module, module_ref)
+            sgt = module.speedgrade_timings["1333"]
+            self.assertEqual(sgt.tRP,            13.125)
+            self.assertEqual(sgt.tRCD,           13.125)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 49.125)
 
     def test_MT8JTF12864(self):
-        data = load_spd_reference("MT8JTF12864AZ-1G4G1.csv")
         kwargs = dict(clk_freq=125e6, rate="1:4")
         module_ref = litedram.modules.MT8JTF12864(**kwargs)
+
+        data = load_spd_reference("MT8JTF12864AZ-1G4G1.csv")
         module = SDRAMModule.from_spd_data(data, **kwargs)
         self.compare_geometry(module, module_ref)
         sgt = module.speedgrade_timings["1333"]
@@ -97,12 +126,32 @@ class TestSPD(unittest.TestCase):
         self.assertEqual(sgt.tRP + sgt.tRAS, 49.125)
 
     def test_MT8KTF51264(self):
-        data = load_spd_reference("MT8KTF51264HZ-1G4E1.csv")
         kwargs = dict(clk_freq=100e6, rate="1:4")
         module_ref = litedram.modules.MT8KTF51264(**kwargs)
-        module = SDRAMModule.from_spd_data(data, **kwargs)
-        self.compare_geometry(module, module_ref)
-        sgt = module.speedgrade_timings["1333"]
-        self.assertEqual(sgt.tRP,            13.125)
-        self.assertEqual(sgt.tRCD,           13.125)
-        self.assertEqual(sgt.tRP + sgt.tRAS, 49.125)
+
+        with self.subTest(speedgrade="-1G4"):
+            data = load_spd_reference("MT8KTF51264HZ-1G4E1.csv")
+            module = SDRAMModule.from_spd_data(data, **kwargs)
+            self.compare_geometry(module, module_ref)
+            sgt = module.speedgrade_timings["1333"]
+            self.assertEqual(sgt.tRP,            13.125)
+            self.assertEqual(sgt.tRCD,           13.125)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 49.125)
+
+        with self.subTest(speedgrade="-1G6"):
+            data = load_spd_reference("MT8KTF51264HZ-1G6E1.csv")
+            module = SDRAMModule.from_spd_data(data, **kwargs)
+            self.compare_geometry(module, module_ref)
+            sgt = module.speedgrade_timings["1600"]
+            self.assertEqual(sgt.tRP,            13.125)
+            self.assertEqual(sgt.tRCD,           13.125)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 48.125)
+
+        with self.subTest(speedgrade="-1G9"):
+            data = load_spd_reference("MT8KTF51264HZ-1G9P1.csv")
+            module = SDRAMModule.from_spd_data(data, **kwargs)
+            self.compare_geometry(module, module_ref)
+            sgt = module.speedgrade_timings["1866"]
+            self.assertEqual(sgt.tRP,            13.125)
+            self.assertEqual(sgt.tRCD,           13.125)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 47.125)
