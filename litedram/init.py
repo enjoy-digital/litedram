@@ -1,5 +1,5 @@
 # This file is Copyright (c) 2013-2014 Sebastien Bourdeauducq <sb@m-labs.hk>
-# This file is Copyright (c) 2013-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2013-2020 Florent Kermarrec <florent@enjoy-digital.fr>
 # This file is Copyright (c) 2017 whitequark <whitequark@whitequark.org>
 # This file is Copyright (c) 2014 Yann Sionneau <ys@m-labs.hk>
 # This file is Copyright (c) 2018 bunnie <bunnie@kosagi.com>
@@ -39,9 +39,9 @@ def get_sdr_phy_init_sequence(phy_settings, timing_settings):
 # DDR ----------------------------------------------------------------------------------------------
 
 def get_ddr_phy_init_sequence(phy_settings, timing_settings):
-    cl = phy_settings.cl
-    bl = 4
-    mr = log2_int(bl) + (cl << 4)
+    cl  = phy_settings.cl
+    bl  = 4
+    mr  = log2_int(bl) + (cl << 4)
     emr = 0
     reset_dll = 1 << 8
 
@@ -61,9 +61,9 @@ def get_ddr_phy_init_sequence(phy_settings, timing_settings):
 # LPDDR --------------------------------------------------------------------------------------------
 
 def get_lpddr_phy_init_sequence(phy_settings, timing_settings):
-    cl = phy_settings.cl
-    bl = 4
-    mr = log2_int(bl) + (cl << 4)
+    cl  = phy_settings.cl
+    bl  = 4
+    mr  = log2_int(bl) + (cl << 4)
     emr = 0
     reset_dll = 1 << 8
 
@@ -83,15 +83,15 @@ def get_lpddr_phy_init_sequence(phy_settings, timing_settings):
 # DDR2 ---------------------------------------------------------------------------------------------
 
 def get_ddr2_phy_init_sequence(phy_settings, timing_settings):
-    cl = phy_settings.cl
-    bl = 4
-    wr = 2
-    mr = log2_int(bl) + (cl << 4) + (wr << 9)
-    emr = 0
+    cl   = phy_settings.cl
+    bl   = 4
+    wr   = 2
+    mr   = log2_int(bl) + (cl << 4) + (wr << 9)
+    emr  = 0
     emr2 = 0
     emr3 = 0
+    ocd  = 7 << 7
     reset_dll = 1 << 8
-    ocd = 7 << 7
 
     init_sequence = [
         ("Bring CKE high", 0x0000, 0, cmds["CKE"], 20000),
@@ -113,8 +113,8 @@ def get_ddr2_phy_init_sequence(phy_settings, timing_settings):
 # DDR3 ---------------------------------------------------------------------------------------------
 
 def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
-    cl = phy_settings.cl
-    bl = 8
+    cl  = phy_settings.cl
+    bl  = 8
     cwl = phy_settings.cwl
 
     def format_mr0(bl, cl, wr, dll_reset):
@@ -186,8 +186,8 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
 
     # default electrical settings (point to point)
     rtt_nom = "60ohm"
-    rtt_wr = "60ohm"
-    ron = "34ohm"
+    rtt_wr  = "60ohm"
+    ron     = "34ohm"
 
     # override electrical settings if specified
     if hasattr(phy_settings, "rtt_nom"):
@@ -197,7 +197,7 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
     if hasattr(phy_settings, "ron"):
         ron = phy_settings.ron
 
-    wr = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
+    wr  = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
     mr0 = format_mr0(bl, cl, wr, 1)
     mr1 = format_mr1(z_to_ron[ron], z_to_rtt_nom[rtt_nom])
     mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
@@ -218,8 +218,8 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
 # DDR4 ---------------------------------------------------------------------------------------------
 
 def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
-    cl = phy_settings.cl
-    bl = 8
+    cl  = phy_settings.cl
+    bl  = 8
     cwl = phy_settings.cwl
 
     def format_mr0(bl, cl, wr, dll_reset):
@@ -344,8 +344,8 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
 
     # default electrical settings (point to point)
     rtt_nom = "40ohm"
-    rtt_wr = "120ohm"
-    ron = "34ohm"
+    rtt_wr  = "120ohm"
+    ron     = "34ohm"
 
     # override electrical settings if specified
     if hasattr(phy_settings, "rtt_nom"):
@@ -355,7 +355,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     if hasattr(phy_settings, "ron"):
         ron = phy_settings.ron
 
-    wr = max(timing_settings.tWTR*phy_settings.nphases, 10) # >= ceiling(tWR/tCK)
+    wr  = max(timing_settings.tWTR*phy_settings.nphases, 10) # >= ceiling(tWR/tCK)
     mr0 = format_mr0(bl, cl, wr, 1)
     mr1 = format_mr1(1, z_to_ron[ron], z_to_rtt_nom[rtt_nom])
     mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
