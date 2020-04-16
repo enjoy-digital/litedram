@@ -514,10 +514,14 @@ class S7DDRPHY(Module, AutoCSR):
                 )
             self.submodules += dq_bitslip
             self.comb += [
-                dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]), dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
-                dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]), dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
-                dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]), dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
-                dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]), dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7])
+                dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]),
+                dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]),
+                dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]),
+                dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]),
+                dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
+                dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
+                dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
+                dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7])
             ]
 
             if with_odelay:
@@ -565,13 +569,16 @@ class S7DDRPHY(Module, AutoCSR):
             ]
 
         # Read Control Path ------------------------------------------------------------------------
-        # Read latency = OSERDESE2 latency + cl_sys_latency + ISERDESE2 latency + Bitslip latency.
-        rddata_en = dfi.phases[self.settings.rdphase].rddata_en
-        for i in range(self.settings.read_latency - 1):
-            n_rddata_en = Signal()
-            self.sync += n_rddata_en.eq(rddata_en)
-            rddata_en = n_rddata_en
-            self.sync += [phase.rddata_valid.eq(rddata_en | self._wlevel_en.storage) for phase in dfi.phases]
+        # Creates a shift register of read commands coming from the DFI interface. This shift register
+        # is used to indicate to the DFI interface that the read data is valid.
+        #
+        # The read data valid is asserted for 1 sys_clk cycle when the data is available on the DFI
+        # interface, the latency is the sum of the OSERDESE2, CAS, ISERDESE2 and Bitslip latencies.
+        rddata_en      = Signal(self.settings.read_latency)
+        rddata_en_last = Signal.like(rddata_en)
+        self.comb += rddata_en.eq(Cat(dfi.phases[self.settings.rdphase].rddata_en, rddata_en_last))
+        self.sync += rddata_en_last.eq(rddata_en)
+        self.sync += [phase.rddata_valid.eq(rddata_en[-1] | self._wlevel_en.storage) for phase in dfi.phases]
 
         # Write Control Path -----------------------------------------------------------------------
         oe = Signal()
