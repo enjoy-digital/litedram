@@ -581,30 +581,20 @@ class S7DDRPHY(Module, AutoCSR):
         self.sync += [phase.rddata_valid.eq(rddata_en[-1] | self._wlevel_en.storage) for phase in dfi.phases]
 
         # Write Control Path -----------------------------------------------------------------------
-        oe = Signal()
-        last_wrdata_en = Signal(cwl_sys_latency + 2)
-        wrphase = dfi.phases[self.settings.wrphase]
-        self.sync += last_wrdata_en.eq(Cat(wrphase.wrdata_en, last_wrdata_en))
-        self.comb += oe.eq(
-            last_wrdata_en[cwl_sys_latency + -1] |
-            last_wrdata_en[cwl_sys_latency +  0] |
-            last_wrdata_en[cwl_sys_latency +  1])
-        self.sync += [
-            If(self._wlevel_en.storage,
-                oe_dqs.eq(1), oe_dq.eq(0)
-            ).Else(
-                oe_dqs.eq(oe), oe_dq.eq(oe)
-            )
-        ]
+        # Creates a shift register of write commands coming from the DFI interface. This shift register
+        # is used to control DQ/DQS tristates. The DQ/DQS tristates are controlled for 3 sys_clk cycles:
+        # Write (1) + Pre/Postamble (2).
+        wrdata_en = Signal(cwl_sys_latency + 3)
+        wrdata_en_last = Signal.like(wrdata_en)
+        self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
+        self.sync += wrdata_en_last.eq(wrdata_en)
+        self.sync += oe_dq.eq(wrdata_en[cwl_sys_latency:] != 0b000)
+        self.comb += If(self._wlevel_en.storage, oe_dqs.eq(1)).Else(oe_dqs.eq(oe_dq))
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
-        if memtype == "DDR2":
-            dqs_sys_latency = cwl_sys_latency - 1
-        elif memtype == "DDR3":
-            dqs_sys_latency = cwl_sys_latency - 1 if with_odelay else cwl_sys_latency
-        self.comb += [
-            dqs_preamble.eq(last_wrdata_en[dqs_sys_latency - 1] & ~last_wrdata_en[dqs_sys_latency]),
-            dqs_postamble.eq(last_wrdata_en[dqs_sys_latency + 1] & ~last_wrdata_en[dqs_sys_latency]),
+        self.sync += [
+            dqs_preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10),
+            dqs_postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01),
         ]
 
 # Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------
