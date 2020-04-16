@@ -36,9 +36,6 @@ class USDDRPHY(Module, AutoCSR):
         nphases  = 4
         assert databits%8 == 0
 
-        if hasattr(pads, "ten"):
-            self.comb += pads.ten.eq(0)
-
         # Parameters -------------------------------------------------------------------------------
         if phytype == "USDDRPHY":  assert iodelay_clk_freq >= 200e6
         if phytype == "USPDDRPHY": assert iodelay_clk_freq >= 300e6
@@ -271,6 +268,9 @@ class USDDRPHY(Module, AutoCSR):
                         o_DATAOUT = getattr(pads, name),
                     )
                 ]
+
+            if hasattr(pads, "ten"):
+                self.comb += pads.ten.eq(0)
 
         # DQS and DM -------------------------------------------------------------------------------
         oe_dqs             = Signal()
