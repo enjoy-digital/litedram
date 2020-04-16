@@ -6,7 +6,7 @@ import csv
 import unittest
 
 import litedram.modules
-from litedram.modules import SDRAMModule
+from litedram.modules import SDRAMModule, DDR3SPDData
 
 
 def load_spd_reference(filename):
@@ -25,6 +25,18 @@ def load_spd_reference(filename):
 
 
 class TestSPD(unittest.TestCase):
+    def test_tck_to_speedgrade(self):
+        tck_to_speedgrade = {
+            2.5:    800,
+            1.875: 1066,
+            1.5:   1333,
+            1.25:  1600,
+            1.071: 1866,
+            0.938: 2133,
+        }
+        for tck, speedgrade in tck_to_speedgrade.items():
+            self.assertEqual(speedgrade, DDR3SPDData.speedgrade_freq(tck))
+
     def compare_geometry(self, module, module_ref):
         self.assertEqual(module.memtype, module_ref.memtype)
         self.assertEqual(module.nbanks, module_ref.nbanks)

@@ -102,10 +102,6 @@ class DDR3SPDData:
         trtp_min = self.txx_ns(mtb=b[27])
         tfaw_min = self.txx_ns(mtb=_word(lsn(b[28]), b[29]))
 
-        # calculate speedgrade
-        freq_mhz = (1 / (tck_min * 1e-9)) / 1e6
-        speedgrade = str(int(freq_mhz * 2))
-
         technology_timings = _TechnologyTimings(
             tREFI = 64e6/8192,      # 64ms/8192ops
             tWTR  = (4, twtr_min),  # min 4 cycles
@@ -122,6 +118,7 @@ class DDR3SPDData:
             tRAS = tras_min,
         )
 
+        speedgrade = str(self.speedgrade_freq(tck_min))
         self.technology_timings = technology_timings
         self.speedgrade_timings = {
             speedgrade: speedgrade_timings,
@@ -144,6 +141,23 @@ class DDR3SPDData:
         # decode FTB encoded in 8-bit two's complement
         ftb = _twos_complement(ftb, 8)
         return mtb * self.medium_timebase_ns + ftb * self.fine_timebase_ns
+
+    @staticmethod
+    def speedgrade_freq(tck_ns):
+        # Calculate rounded speedgrade frequency from tck_min
+        freq_mhz = (1 / (tck_ns * 1e-9)) / 1e6
+        freq_mhz *= 2  # clock rate -> transfer rate (DDR)
+        speedgrades = [800, 1066, 1333, 1600, 1866, 2133]
+        for f in speedgrades:
+            # Due to limited tck accuracy of 1ps, calculations may yield higher
+            # frequency than in reality (e.g. for DDR3-1866: tck=1.071 ns ->
+            # -> f=1867.4 MHz, while real is f=1866.6(6) MHz).
+            max_error = 2
+            if abs(freq_mhz - f) < max_error:
+                return f
+        raise ValueError("Transfer rate = {:.2f} does not correspond to any DDR3 speedgrade"
+                         .format(freq_mhz))
+
 
 # SDRAMModule --------------------------------------------------------------------------------------
 
