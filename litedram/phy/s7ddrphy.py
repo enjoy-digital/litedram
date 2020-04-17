@@ -25,7 +25,7 @@ class S7DDRPHY(Module, AutoCSR):
         iodelay_clk_freq = 200e6,
         cmd_latency      = 0,
         interface_type   = "NETWORKING"):
-        assert not (memtype == "DDR3" and nphases == 2) # FIXME: Needs BL8 support for nphases=2
+        assert not (memtype == "DDR3" and nphases == 2)
         assert interface_type in ["NETWORKING", "MEMORY"]
         assert not (interface_type == "MEMORY" and nphases == 2)
         phytype     = self.__class__.__name__
@@ -285,11 +285,14 @@ class S7DDRPHY(Module, AutoCSR):
                         )
 
         # DQS and DM -------------------------------------------------------------------------------
-        dqs_oe      = Signal()
-        dqs_pattern = DQSPattern(
+        dqs_oe         = Signal()
+        dqs_oe_delayed = Signal() # Tristate control is asynchronous, needs to be delayed.
+        dqs_pattern    = DQSPattern(
             wlevel_en     = self._wlevel_en.storage,
-            wlevel_strobe = self._wlevel_strobe.re)
+            wlevel_strobe = self._wlevel_strobe.re,
+            register      = not with_odelay)
         self.submodules += dqs_pattern
+        self.sync += dqs_oe_delayed.eq(dqs_pattern.preamble | dqs_oe | dqs_pattern.postamble)
         for i in range(databits//8):
             dm_o_nodelay = Signal()
             self.specials += Instance("OSERDESE2",
@@ -358,7 +361,7 @@ class S7DDRPHY(Module, AutoCSR):
                 o_OFB    = dqs_o_no_delay if with_odelay else Signal(),
                 o_OQ     = Signal() if with_odelay else dqs_o_no_delay,
                 i_TCE    = 1,
-                i_T1     = ~dqs_oe,
+                i_T1     = ~dqs_oe_delayed,
                 o_TQ     = dqs_t,
             )
             if with_odelay:
@@ -402,7 +405,9 @@ class S7DDRPHY(Module, AutoCSR):
             )
 
         # DQ ---------------------------------------------------------------------------------------
-        dq_oe = Signal()
+        dq_oe         = Signal()
+        dq_oe_delayed = Signal() # Tristate control is asynchronous, needs to be delayed.
+        self.sync += dq_oe_delayed.eq(dqs_pattern.preamble | dq_oe | dqs_pattern.postamble)
         for i in range(databits):
             dq_o_nodelay = Signal()
             dq_o_delayed = Signal()
@@ -429,7 +434,7 @@ class S7DDRPHY(Module, AutoCSR):
                     i_D7     = dfi.phases[3].wrdata[i],
                     i_D8     = dfi.phases[3].wrdata[databits+i],
                     i_TCE    = 1,
-                    i_T1     = ~dq_oe,
+                    i_T1     = ~dq_oe_delayed,
                     o_TQ     = dq_t,
                     i_OCE    = 1,
                     o_OQ     = dq_o_nodelay,
@@ -565,20 +570,20 @@ class S7DDRPHY(Module, AutoCSR):
 
         # Write Control Path -----------------------------------------------------------------------
         # Creates a shift register of write commands coming from the DFI interface. This shift register
-        # is used to control DQ/DQS tristates. The DQ/DQS tristates are controlled for 3 sys_clk cycles:
-        # Write (1) + Pre/Postamble (2).
-        wrdata_en = Signal(cwl_sys_latency + 3)
+        # is used to control DQ/DQS tristates.
+        wrdata_en = Signal(cwl_sys_latency + 2)
         wrdata_en_last = Signal.like(wrdata_en)
         self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
         self.sync += wrdata_en_last.eq(wrdata_en)
-        self.sync += dq_oe.eq(wrdata_en[cwl_sys_latency:] != 0b000)
+        self.comb += dq_oe.eq(wrdata_en[cwl_sys_latency])
         self.comb += If(self._wlevel_en.storage, dqs_oe.eq(1)).Else(dqs_oe.eq(dq_oe))
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
-        # write.
-        self.sync += dqs_pattern.preamble.eq( wrdata_en[cwl_sys_latency:-1] == 0b10)
-        self.sync += dqs_pattern.postamble.eq(wrdata_en[cwl_sys_latency+1:] == 0b01)
+        # write. During writes, DQS tristate is configured as output for at least 3 sys_clk cycles:
+        # 1 for Preamble, 1 for the Write and 1 for the Postamble.
+        self.comb += dqs_pattern.preamble.eq( wrdata_en[cwl_sys_latency - 1]  & ~wrdata_en[cwl_sys_latency])
+        self.comb += dqs_pattern.postamble.eq(wrdata_en[cwl_sys_latency + 1]  & ~wrdata_en[cwl_sys_latency])
 
 # Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 

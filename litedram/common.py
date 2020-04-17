@@ -108,7 +108,7 @@ class BitSlip(Module):
 # DQS Pattern --------------------------------------------------------------------------------------
 
 class DQSPattern(Module):
-    def __init__(self, preamble=None, postamble=None, wlevel_en=0, wlevel_strobe=0):
+    def __init__(self, preamble=None, postamble=None, wlevel_en=0, wlevel_strobe=0, register=False):
         self.preamble  = Signal() if preamble  is None else preamble
         self.postamble = Signal() if postamble is None else postamble
         self.o = Signal(8)
@@ -117,8 +117,11 @@ class DQSPattern(Module):
 
         self.comb += [
             self.o.eq(0b01010101),
-            If(self.preamble | self.postamble,
-                self.o.eq(0b0000000)
+            If(self.preamble,
+                self.o.eq(0b00010101)
+            ),
+            If(self.postamble,
+                self.o.eq(0b01010100)
             ),
             If(wlevel_en,
                 self.o.eq(0b00000000),
@@ -127,6 +130,10 @@ class DQSPattern(Module):
                 )
             )
         ]
+        if register:
+            o = Signal.like(self.o)
+            self.sync += o.eq(self.o)
+            self.o = o
 
 # Settings -----------------------------------------------------------------------------------------
 

@@ -141,7 +141,6 @@ class ECP5DDRPHY(Module, AutoCSR):
 
         bl8_chunk   = Signal()
         rddata_en = Signal(self.settings.read_latency)
-        wrdata_en = Signal(cwl_sys_latency + 4)
 
         # Iterate on pads groups -------------------------------------------------------------------
         for pads_group in range(len(pads.groups)):
@@ -309,7 +308,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             dm_bl8_cases = {}
             dm_bl8_cases[0] = dm_o_data_muxed.eq(dm_o_data[:4])
             dm_bl8_cases[1] = dm_o_data_muxed.eq(dm_o_data_d[4:])
-            self.sync += Case(bl8_chunk, dm_bl8_cases)
+            self.sync += Case(bl8_chunk, dm_bl8_cases) # FIXME: use self.comb?
             self.specials += Instance("ODDRX2DQA",
                 i_RST     = ResetSignal("sys2x"),
                 i_ECLK    = ClockSignal("sys2x"),
@@ -330,10 +329,10 @@ class ECP5DDRPHY(Module, AutoCSR):
                     i_ECLK = ClockSignal("sys2x"),
                     i_SCLK = ClockSignal(),
                     i_DQSW = dqsw,
-                    i_D0   = dqs_pattern.o[3],
-                    i_D1   = dqs_pattern.o[2],
-                    i_D2   = dqs_pattern.o[1],
-                    i_D3   = dqs_pattern.o[0],
+                    i_D0   = 0, # FIXME: dqs_pattern.o[3],
+                    i_D1   = 1, # FIXME: dqs_pattern.o[2],
+                    i_D2   = 0, # FIXME: dqs_pattern.o[1],
+                    i_D3   = 1, # FIXME: dqs_pattern.o[0],
                     o_Q    = dqs
                 ),
                 Instance("TSHX2DQSA",
@@ -341,8 +340,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                     i_ECLK = ClockSignal("sys2x"),
                     i_SCLK = ClockSignal(),
                     i_DQSW = dqsw,
-                    i_T0   = ~dqs_oe,
-                    i_T1   = ~dqs_oe,
+                    i_T0   = ~(dqs_pattern.preamble | dqs_oe | dqs_pattern.postamble),
+                    i_T1   = ~(dqs_pattern.preamble | dqs_oe | dqs_pattern.postamble),
                     o_Q    = dqs_oe_n
                 ),
                 Tristate(pads.dqs_p[i], dqs, ~dqs_oe_n, dqs_i)
@@ -372,7 +371,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                 dq_bl8_cases = {}
                 dq_bl8_cases[0] = dq_o_data_muxed.eq(dq_o_data[:4])
                 dq_bl8_cases[1] = dq_o_data_muxed.eq(dq_o_data_d[4:])
-                self.sync += Case(bl8_chunk, dq_bl8_cases)
+                self.sync += Case(bl8_chunk, dq_bl8_cases) # FIXME: use self.comb?
                 _dq_i_data = Signal(4)
                 self.specials += [
                     Instance("ODDRX2DQA",
@@ -430,8 +429,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                         i_ECLK    = ClockSignal("sys2x"),
                         i_SCLK    = ClockSignal(),
                         i_DQSW270 = dqsw270,
-                        i_T0      = ~dq_oe,
-                        i_T1      = ~dq_oe,
+                        i_T0      = ~(dqs_pattern.preamble | dq_oe | dqs_pattern.postamble),
+                        i_T1      = ~(dqs_pattern.preamble | dq_oe | dqs_pattern.postamble),
                         o_Q       = dq_oe_n,
                     ),
                     Tristate(pads.dq[j], dq_o, ~dq_oe_n, dq_i)
@@ -458,16 +457,18 @@ class ECP5DDRPHY(Module, AutoCSR):
         # interface: The PHY is operating in halfrate mode (so provide 4 datas every sys_clk cycles:
         # 2x for DDR, 2x for halfrate) but DDR3 requires a burst of 8 datas (BL8) for best efficiency.
         # Writes are then performed in 2 sys_clk cycles and data needs to be selected for each cycle.
-        # The DQ/DQS tristates are controlled for 4 sys_clk cycles: Write (2) + Pre/Postamble (2).
+        # FIXME: understand +2
+        wrdata_en = Signal(cwl_sys_latency + 5)
         wrdata_en_last = Signal.like(wrdata_en)
         self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
         self.sync += wrdata_en_last.eq(wrdata_en)
-        self.sync += dq_oe.eq(wrdata_en[cwl_sys_latency:] != 0b0000)
-        self.sync += bl8_chunk.eq(wrdata_en[cwl_sys_latency])
+        self.comb += dq_oe.eq(wrdata_en[cwl_sys_latency + 2] | wrdata_en[cwl_sys_latency + 3])
+        self.comb += bl8_chunk.eq(wrdata_en[cwl_sys_latency + 1])
         self.comb += dqs_oe.eq(dq_oe)
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
-        # write.
-        self.sync += dqs_pattern.preamble.eq( wrdata_en[cwl_sys_latency-3:-2-3] == 0b10) # FIXME: why -3?
-        self.sync += dqs_pattern.postamble.eq(wrdata_en[cwl_sys_latency-3+2:-3] == 0b01) # FIXME: why -3?
+        # write. During writes, DQS tristate is configured as output for at least 4 sys_clk cycles:
+        # 1 for Preamble, 2 for the Write and 1 for the Postamble.
+        self.comb += dqs_pattern.preamble.eq( wrdata_en[cwl_sys_latency + 1]  & ~wrdata_en[cwl_sys_latency + 2])
+        self.comb += dqs_pattern.postamble.eq(wrdata_en[cwl_sys_latency + 4]  & ~wrdata_en[cwl_sys_latency + 3])
