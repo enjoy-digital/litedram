@@ -73,6 +73,7 @@ class TestSPD(unittest.TestCase):
 
     def compare_modules(self, module, module_ref, omit=None):
         self.assertEqual(module.memtype, module_ref.memtype)
+        self.assertEqual(module.rate, module_ref.rate)
         self.compare_geometry(module, module_ref)
         self.compare_technology_timings(module, module_ref, omit=omit)
         self.compare_speedgrade_timings(module, module_ref, omit=omit)
@@ -83,7 +84,7 @@ class TestSPD(unittest.TestCase):
 
         with self.subTest(speedgrade="-1G6"):
             data = load_spd_reference("MT16KTF1G64HZ-1G6P1.csv")
-            module = SDRAMModule.from_spd_data(data, **kwargs)
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
             self.compare_modules(module, module_ref)
             sgt = module.speedgrade_timings["1600"]
             self.assertEqual(sgt.tRP,            13.125)
@@ -92,7 +93,7 @@ class TestSPD(unittest.TestCase):
 
         with self.subTest(speedgrade="-1G9"):
             data = load_spd_reference("MT16KTF1G64HZ-1G9E1.csv")
-            module = SDRAMModule.from_spd_data(data, **kwargs)
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
             # tRRD it different for this speedgrade
             self.compare_modules(module, module_ref, omit={"tRRD"})
             self.assertEqual(module.technology_timings.tRRD, (4, 5))
@@ -107,7 +108,7 @@ class TestSPD(unittest.TestCase):
 
         with self.subTest(speedgrade="-1G6"):
             data = load_spd_reference("MT18KSF1G72HZ-1G6E2.csv")
-            module = SDRAMModule.from_spd_data(data, **kwargs)
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
             self.compare_modules(module, module_ref)
             sgt = module.speedgrade_timings["1600"]
             self.assertEqual(sgt.tRP,            13.125)
@@ -116,7 +117,7 @@ class TestSPD(unittest.TestCase):
 
         with self.subTest(speedgrade="-1G4"):
             data = load_spd_reference("MT18KSF1G72HZ-1G4E2.csv")
-            module = SDRAMModule.from_spd_data(data, **kwargs)
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
             self.compare_modules(module, module_ref)
             sgt = module.speedgrade_timings["1333"]
             self.assertEqual(sgt.tRP,            13.125)
@@ -128,7 +129,7 @@ class TestSPD(unittest.TestCase):
         module_ref = litedram.modules.MT8JTF12864(**kwargs)
 
         data = load_spd_reference("MT8JTF12864AZ-1G4G1.csv")
-        module = SDRAMModule.from_spd_data(data, **kwargs)
+        module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
         self.compare_modules(module, module_ref)
         sgt = module.speedgrade_timings["1333"]
         self.assertEqual(sgt.tRP,            13.125)
@@ -141,7 +142,7 @@ class TestSPD(unittest.TestCase):
 
         with self.subTest(speedgrade="-1G4"):
             data = load_spd_reference("MT8KTF51264HZ-1G4E1.csv")
-            module = SDRAMModule.from_spd_data(data, **kwargs)
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
             self.compare_modules(module, module_ref)
             sgt = module.speedgrade_timings["1333"]
             self.assertEqual(sgt.tRP,            13.125)
@@ -150,7 +151,7 @@ class TestSPD(unittest.TestCase):
 
         with self.subTest(speedgrade="-1G6"):
             data = load_spd_reference("MT8KTF51264HZ-1G6E1.csv")
-            module = SDRAMModule.from_spd_data(data, **kwargs)
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
             self.compare_modules(module, module_ref)
             sgt = module.speedgrade_timings["1600"]
             self.assertEqual(sgt.tRP,            13.125)
@@ -159,7 +160,7 @@ class TestSPD(unittest.TestCase):
 
         with self.subTest(speedgrade="-1G9"):
             data = load_spd_reference("MT8KTF51264HZ-1G9P1.csv")
-            module = SDRAMModule.from_spd_data(data, **kwargs)
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
             # tRRD different for this timing
             self.compare_modules(module, module_ref, omit={"tRRD"})
             self.assertEqual(module.technology_timings.tRRD, (4, 5))

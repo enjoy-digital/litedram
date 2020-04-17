@@ -118,10 +118,10 @@ class DDR3SPDData:
             tRAS = tras_min,
         )
 
-        speedgrade = str(self.speedgrade_freq(tck_min))
+        self.speedgrade = str(self.speedgrade_freq(tck_min))
         self.technology_timings = technology_timings
         self.speedgrade_timings = {
-            speedgrade: speedgrade_timings,
+            self.speedgrade: speedgrade_timings,
             "default": speedgrade_timings,
         }
 
@@ -250,7 +250,7 @@ class SDRAMModule:
         return max(self.ck_to_cycles(c), self.ns_to_cycles(t))
 
     @classmethod
-    def from_spd_data(cls, spd_data, *args, **kwargs):
+    def from_spd_data(cls, spd_data, clk_freq, fine_refresh_mode=None):
         # set parameters from SPD data based on memory type
         spd_cls = {
             0x0b: DDR3SPDData,
@@ -266,7 +266,18 @@ class SDRAMModule:
             technology_timings = spd.technology_timings
             speedgrade_timings = spd.speedgrade_timings
 
-        return _SDRAMModule(*args, **kwargs)
+        nphases = {
+            "SDR":   1,
+            "DDR":   2,
+            "LPDDR": 2,
+            "DDR2":  2,
+            "DDR3":  4,
+            "DDR4":  4,
+        }[spd.memtype]
+        rate = "1:{}".format(nphases)
+
+        return _SDRAMModule(clk_freq, rate=rate, speedgrade=spd.speedgrade,
+                            fine_refresh_mode=fine_refresh_mode)
 
 # SDR ----------------------------------------------------------------------------------------------
 
