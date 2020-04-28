@@ -61,12 +61,15 @@ class LiteDRAMCrossbar(Module):
     def __init__(self, controller):
         self.controller = controller
 
-        self.rca_bits         = controller.address_width
-        self.nbanks           = controller.nbanks
-        self.nranks           = controller.nranks
-        self.cmd_buffer_depth = controller.settings.cmd_buffer_depth
-        self.read_latency     = controller.settings.phy.read_latency + 1
-        self.write_latency    = controller.settings.phy.write_latency + 1
+        self.rca_bits          = controller.address_width
+        self.nbanks            = controller.nbanks
+        self.nranks            = controller.nranks
+        self.cmd_buffer_depth  = controller.settings.cmd_buffer_depth
+        self.read_latency      = controller.settings.phy.read_latency + 1
+
+        self.write_latency     = Signal(controller.settings.phy.write_latency.nbits + 1)
+        self.write_latency_max = (2**controller.settings.phy.write_latency.nbits - 1) + 1
+        self.comb             += self.write_latency.eq(controller.settings.phy.write_latency + 1)
 
         self.bank_bits = log2_int(self.nbanks, False)
         self.rank_bits = log2_int(self.nranks, False)
@@ -179,12 +182,17 @@ class LiteDRAMCrossbar(Module):
                 for nm, master_rdata_valid in enumerate(master_rdata_valids)]
 
         # Delay write/read signals based on their latency
+        # use shift registers
+        def shifted(signal, shift, width):
+            shift_reg = Signal(width)
+            shift_reg_last = Signal.like(shift_reg)
+            self.comb += shift_reg.eq(Cat(signal, shift_reg_last))
+            self.sync += shift_reg_last.eq(shift_reg)
+            return Array(shift_reg)[shift]
+
         for nm, master_wdata_ready in enumerate(master_wdata_readys):
-            for i in range(self.write_latency):
-                new_master_wdata_ready = Signal()
-                self.sync += new_master_wdata_ready.eq(master_wdata_ready)
-                master_wdata_ready = new_master_wdata_ready
-            master_wdata_readys[nm] = master_wdata_ready
+            master_wdata_readys[nm] = shifted(master_wdata_ready, shift=self.write_latency,
+                                              width=self.write_latency_max + 1)
 
         for nm, master_rdata_valid in enumerate(master_rdata_valids):
             for i in range(self.read_latency):

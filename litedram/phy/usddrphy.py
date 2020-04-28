@@ -22,7 +22,8 @@ class USDDRPHY(Module, AutoCSR):
         memtype          = "DDR3",
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
-        cmd_latency      = 0):
+        cmd_latency      = 0,
+        cmd_latency_max  = 8):
         phytype     = self.__class__.__name__
         device      = {"USDDRPHY": "ULTRASCALE", "USPDDRPHY": "ULTRASCALE_PLUS"}[phytype]
         pads        = PHYPadsCombiner(pads)
@@ -41,9 +42,7 @@ class USDDRPHY(Module, AutoCSR):
         if phytype == "USPDDRPHY": assert iodelay_clk_freq >= 300e6
 
         cl, cwl         = get_cl_cw(memtype, tck)
-        cwl             = cwl + cmd_latency
         cl_sys_latency  = get_sys_latency(nphases, cl)
-        cwl_sys_latency = get_sys_latency(nphases, cwl)
 
         # Registers --------------------------------------------------------------------------------
         self._en_vtc              = CSRStorage(reset=1)
@@ -69,9 +68,36 @@ class USDDRPHY(Module, AutoCSR):
         self._wdly_dqs_rst        = CSR()
         self._wdly_dqs_inc        = CSR()
 
+        self._cmd_latency         = CSRStorage(bits_for(cmd_latency_max - 1), reset=cmd_latency)
+        self._wrcmdphase          = CSRStatus(bits_for(nphases))
+        self._wrphase             = CSRStatus(bits_for(nphases))
+
+        # Dynamic latency --------------------------------------------------------------------------
+        # cwl_sys_latency = ceil((cwl + cmd_latency) / nphases)
+        # Division can be replaced with shift, as nphases is always a power of 2.
+        # To get the ceiling (instead of floor), we add (nphases - 1).
+        cwl_sys_latency  = Signal(max=cwl + cmd_latency_max)
+        _cwl_sys_latency = Signal(max=cwl + cmd_latency_max + nphases)
+        self.comb += _cwl_sys_latency.eq(cwl + self._cmd_latency.storage + (nphases - 1))
+        self.comb += cwl_sys_latency.eq(_cwl_sys_latency[log2_int(nphases):])
+
         # PHY settings -----------------------------------------------------------------------------
         rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
-        wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
+
+        # wrphase    = cwl_sys_latency * nphases - (cwl + cmd_latency)
+        # wrcmdphase = (wrphase - 1) % nphases
+        wrcmdphase = Signal(max=nphases)
+        wrphase    = Signal(max=nphases)
+        _wrphase   = Signal(cwl_sys_latency.nbits + log2_int(nphases))
+        self.comb += _wrphase.eq((cwl_sys_latency << log2_int(nphases)) - (cwl + self._cmd_latency.storage))
+        self.comb += wrphase.eq(_wrphase)
+        self.comb += wrcmdphase.eq(wrphase - 1)
+
+        self.comb += [
+            self._wrcmdphase.status.eq(wrcmdphase),
+            self._wrphase.status.eq(wrphase),
+        ]
+
         self.settings = PhySettings(
             phytype       = phytype,
             memtype       = memtype,
@@ -84,7 +110,7 @@ class USDDRPHY(Module, AutoCSR):
             rdcmdphase    = rdcmdphase,
             wrcmdphase    = wrcmdphase,
             cl            = cl,
-            cwl           = cwl - cmd_latency,
+            cwl           = cwl,
             read_latency  = 2 + cl_sys_latency + 1 + 2,
             write_latency = cwl_sys_latency
         )
@@ -501,19 +527,19 @@ class USDDRPHY(Module, AutoCSR):
         # Write Control Path -----------------------------------------------------------------------
         # Creates a shift register of write commands coming from the DFI interface. This shift register
         # is used to control DQ/DQS tristates.
-        wrdata_en = Signal(cwl_sys_latency + 2)
+        wrdata_en = Signal(2**cwl_sys_latency.nbits + 1)
         wrdata_en_last = Signal.like(wrdata_en)
-        self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
+        self.comb += wrdata_en.eq(Cat(Array(dfi.phases)[self.settings.wrphase].wrdata_en, wrdata_en_last))
         self.sync += wrdata_en_last.eq(wrdata_en)
-        self.comb += dq_oe.eq(wrdata_en[cwl_sys_latency])
+        self.comb += dq_oe.eq(Array(wrdata_en)[cwl_sys_latency])
         self.comb += If(self._wlevel_en.storage, dqs_oe.eq(1)).Else(dqs_oe.eq(dq_oe))
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
         # write. During writes, DQS tristate is configured as output for at least 3 sys_clk cycles:
         # 1 for Preamble, 1 for the Write and 1 for the Postamble.
-        self.comb += dqs_pattern.preamble.eq( wrdata_en[cwl_sys_latency - 1]  & ~wrdata_en[cwl_sys_latency])
-        self.comb += dqs_pattern.postamble.eq(wrdata_en[cwl_sys_latency + 1]  & ~wrdata_en[cwl_sys_latency])
+        self.comb += dqs_pattern.preamble.eq( Array(wrdata_en)[cwl_sys_latency - 1]  & ~Array(wrdata_en)[cwl_sys_latency])
+        self.comb += dqs_pattern.postamble.eq(Array(wrdata_en)[cwl_sys_latency + 1]  & ~Array(wrdata_en)[cwl_sys_latency])
 
 # Xilinx Ultrascale Plus DDR3/DDR4 PHY -------------------------------------------------------------
 

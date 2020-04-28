@@ -440,16 +440,40 @@ __attribute__((unused)) static void command_p{n}(int cmd)
 }}""".format(n=str(n))
     r += "\n\n"
 
-    # rd/wr access macros
+    # rd access macros
     r += """
 #define sdram_dfii_pird_address_write(X) sdram_dfii_pi{rdphase}_address_write(X)
-#define sdram_dfii_piwr_address_write(X) sdram_dfii_pi{wrphase}_address_write(X)
 #define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi{rdphase}_baddress_write(X)
-#define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi{wrphase}_baddress_write(X)
 #define command_prd(X) command_p{rdphase}(X)
-#define command_pwr(X) command_p{wrphase}(X)
-""".format(rdphase=str(phy_settings.rdphase), wrphase=str(phy_settings.wrphase))
-    r += "\n"
+    """.format(rdphase=str(phy_settings.rdphase))
+
+    # wr access functions
+    def wrphase_access(declaration, call_fmt):
+        case_fmt = "        case {phase}: {call}; break;"
+        cases = [case_fmt.format(phase=i, call=call_fmt.format(phase=i))
+                 for i in range(phy_settings.nphases)]
+        return """
+{declaration} {{
+    switch (ddrphy_wrphase_read()) {{
+{phase_cases}
+        default: break;
+    }}
+}}
+        """.rstrip().format(declaration=declaration, phase_cases="\n".join(cases))
+
+    r += wrphase_access(
+        declaration="static inline void sdram_dfii_piwr_address_write(int address)",
+        call_fmt="sdram_dfii_pi{phase}_address_write(address)",
+    )
+    r += wrphase_access(
+        declaration="static inline void sdram_dfii_piwr_baddress_write(int address)",
+        call_fmt="sdram_dfii_pi{phase}_baddress_write(address)",
+    )
+    r += wrphase_access(
+        declaration="static inline void command_pwr(int cmd)",
+        call_fmt="command_p{phase}(cmd)",
+    )
+    r += "\n\n"
 
     #
     # sdrrd/sdrwr functions utilities

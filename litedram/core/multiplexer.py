@@ -324,10 +324,11 @@ class Multiplexer(Module, AutoCSR):
                     elif i == settings.phy.rdcmdphase:
                         s = steerer.sel[i].eq(STEER_CMD)
                 elif r_w_n == "write":
-                    if i == settings.phy.wrphase:
-                        s = steerer.sel[i].eq(STEER_REQ)
-                    elif i == settings.phy.wrcmdphase:
-                        s = steerer.sel[i].eq(STEER_CMD)
+                    s = If(i == settings.phy.wrphase,
+                            steerer.sel[i].eq(STEER_REQ)
+                        ).Elif(i == settings.phy.wrcmdphase,
+                            steerer.sel[i].eq(STEER_CMD)
+                        ).Else(s)
                 else:
                     raise ValueError
                 r.append(s)
