@@ -55,6 +55,28 @@ def get_sys_phases(nphases, sys_latency, cas_latency):
 
 # PHY Pads Transformers ----------------------------------------------------------------------------
 
+class PHYPadsReducer:
+    """PHY Pads Reducer
+
+    Reduce DRAM pads to only use specific modules.
+
+    For testing purposes, we often need to use only some of the DRAM modules. PHYPadsReducer allows
+    selecting specific modules and avoid re-definining dram pins in the Platform for this.
+    """
+    def __init__(self, pads, modules):
+        self.pads    = pads
+        self.modules = modules
+
+    def __getattr__(self, name):
+        if name in ["dq"]:
+            return Array([getattr(self.pads, name)[8*i + j]
+                for i in self.modules
+                for j in range(8)])
+        if name in ["dm", "dqs", "dqs_p", "dqs_n"]:
+            return Array([getattr(self.pads, name)[i] for i in self.modules])
+        else:
+            return getattr(self.pads, name)
+
 class PHYPadsCombiner:
     """PHY Pads Combiner
 
