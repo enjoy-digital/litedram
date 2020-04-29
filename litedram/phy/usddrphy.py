@@ -22,7 +22,8 @@ class USDDRPHY(Module, AutoCSR):
         memtype          = "DDR3",
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
-        cmd_latency      = 0):
+        cmd_latency      = 0,
+        is_rdimm         = False):
         phytype     = self.__class__.__name__
         device      = {"USDDRPHY": "ULTRASCALE", "USPDDRPHY": "ULTRASCALE_PLUS"}[phytype]
         pads        = PHYPadsCombiner(pads)
@@ -89,6 +90,16 @@ class USDDRPHY(Module, AutoCSR):
             read_latency  = 2 + cl_sys_latency + 1 + 2,
             write_latency = cwl_sys_latency
         )
+
+        if is_rdimm:
+            # All drive settings for an 8-chip load
+            self.settings.set_rdimm(
+                tck               = tck,
+                rcd_pll_bypass    = False,
+                rcd_ca_cs_drive   = 0x5,
+                rcd_odt_cke_drive = 0x5,
+                rcd_clk_drive     = 0x5
+            )
 
         # DFI Interface ----------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
