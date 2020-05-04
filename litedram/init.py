@@ -449,7 +449,7 @@ __attribute__((unused)) static void command_p{n}(int cmd)
 
 
     # wr access functions
-    if phytype in ["USDDRPHY", "USPDDRPHY"]:
+    if phytype in ["USDDRPHY", "USPDDRPHY", "A7DDRPHY", "K7DDRPHY", "V7DDRPHY"]:
         def wrphase_access(declaration, call_fmt):
             case_fmt = "        case {phase}: {call}; break;"
             cases = [case_fmt.format(phase=i, call=call_fmt.format(phase=i))
