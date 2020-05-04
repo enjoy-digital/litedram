@@ -123,7 +123,7 @@ class ControllerStub:
                 # has been sent from the crossbar port.
                 wdata = self.W(bank=n, addr=cmd_addr,
                                data=None, we=None)  # to be filled in callback
-                self._waiting.append(self.WaitingData(data=wdata, delay=self.write_latency))
+                self._waiting.append(self.WaitingData(data=wdata, delay=self.write_latency.value))
             else:  # READ
                 yield bank.rdata_valid.eq(1)
                 yield
@@ -151,7 +151,7 @@ class CrossbarDUT(Module):
         memtype       = "DDR2",
         dfi_databits  = 2*16,
         read_latency  = 5,
-        write_latency = 1,
+        write_latency = Constant(1),
     )
     default_geom_settings = dict(
         bankbits = 3,

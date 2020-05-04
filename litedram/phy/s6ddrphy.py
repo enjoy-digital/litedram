@@ -53,13 +53,13 @@ class S6HalfRateDDRPHY(Module):
                 nranks        = nranks,
                 nphases       = nphases,
                 rdphase       = 0,
-                wrphase       = 1,
+                wrphase       = Constant(1),
                 rdcmdphase    = 1,
-                wrcmdphase    = 0,
+                wrcmdphase    = Constant(0),
                 cl            = 5,
                 cwl           = 6,
                 read_latency  = 6,
-                write_latency = 2
+                write_latency = Constant(2)
             )
         else:
             self.settings = PhySettings(
@@ -70,12 +70,12 @@ class S6HalfRateDDRPHY(Module):
                 nranks        = nranks,
                 nphases       = nphases,
                 rdphase       = 0,
-                wrphase       = 1,
+                wrphase       = Constant(1),
                 rdcmdphase    = 1,
-                wrcmdphase    = 0,
+                wrcmdphase    = Constant(0),
                 cl            = 3,
                 read_latency  = 5,
-                write_latency = 0
+                write_latency = Constant(0)
             )
 
         # DFI Interface ----------------------------------------------------------------------------
@@ -433,13 +433,13 @@ class S6QuarterRateDDRPHY(Module):
             nranks        = nranks,
             nphases       = nphases,
             rdphase       = 0,
-            wrphase       = 1,
+            wrphase       = Constant(1),
             rdcmdphase    = 1,
-            wrcmdphase    = 0,
+            wrcmdphase    = Constant(0),
             cl            = 5,
             cwl           = 6,
             read_latency  = 6//2+1,
-            write_latency = 2//2
+            write_latency = Constant(2//2)
         )
 
         # DFI Interface ----------------------------------------------------------------------------
@@ -482,10 +482,10 @@ class S6QuarterRateDDRPHY(Module):
                 dfi.phases[3].connect(half_rate_phy.dfi.phases[1], omit=dfi_omit),
             ),
         ]
-        wr_data_en = dfi.phases[self.settings.wrphase].wrdata_en & ~phase_sel
+        wr_data_en = Array(dfi.phases)[self.settings.wrphase].wrdata_en & ~phase_sel
         wr_data_en_d = Signal()
         sd_sys2x += wr_data_en_d.eq(wr_data_en)
-        self.comb += half_rate_phy.dfi.phases[half_rate_phy.settings.wrphase].wrdata_en.eq(wr_data_en | wr_data_en_d)
+        self.comb += Array(half_rate_phy.dfi.phases)[half_rate_phy.settings.wrphase].wrdata_en.eq(wr_data_en | wr_data_en_d)
 
         # Reads
         rddata = Array(Signal(2*databits) for i in range(2))

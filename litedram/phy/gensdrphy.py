@@ -31,12 +31,12 @@ class GENSDRPHY(Module):
             nranks        = nranks,
             nphases       = 1,
             rdphase       = 0,
-            wrphase       = 0,
+            wrphase       = Constant(0),
             rdcmdphase    = 0,
-            wrcmdphase    = 0,
+            wrcmdphase    = Constant(0),
             cl            = cl,
             read_latency  = cl + cmd_latency,
-            write_latency = 0
+            write_latency = Constant(0)
         )
 
         # DFI Interface ----------------------------------------------------------------------------

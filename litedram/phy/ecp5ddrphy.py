@@ -125,13 +125,13 @@ class ECP5DDRPHY(Module, AutoCSR):
             nranks        = nranks,
             nphases       = nphases,
             rdphase       = rdphase,
-            wrphase       = wrphase,
+            wrphase       = Constant(wrphase),
             rdcmdphase    = rdcmdphase,
-            wrcmdphase    = wrcmdphase,
+            wrcmdphase    = Constant(wrcmdphase),
             cl            = cl,
             cwl           = cwl,
             read_latency  = 2 + cl_sys_latency + 2 + log2_int(4//nphases) + 4,
-            write_latency = cwl_sys_latency
+            write_latency = Constant(cwl_sys_latency)
         )
 
         # DFI Interface ----------------------------------------------------------------------------
@@ -460,7 +460,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         # FIXME: understand +2
         wrdata_en = Signal(cwl_sys_latency + 5)
         wrdata_en_last = Signal.like(wrdata_en)
-        self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
+        self.comb += wrdata_en.eq(Cat(Array(dfi.phases)[self.settings.wrphase].wrdata_en, wrdata_en_last))
         self.sync += wrdata_en_last.eq(wrdata_en)
         self.comb += dq_oe.eq(wrdata_en[cwl_sys_latency + 2] | wrdata_en[cwl_sys_latency + 3])
         self.comb += bl8_chunk.eq(wrdata_en[cwl_sys_latency + 1])

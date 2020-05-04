@@ -38,11 +38,35 @@ __attribute__((unused)) static void command_p3(int cmd)
 
 
 #define sdram_dfii_pird_address_write(X) sdram_dfii_pi1_address_write(X)
-#define sdram_dfii_piwr_address_write(X) sdram_dfii_pi3_address_write(X)
 #define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi1_baddress_write(X)
-#define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi3_baddress_write(X)
 #define command_prd(X) command_p1(X)
-#define command_pwr(X) command_p3(X)
+static inline void sdram_dfii_piwr_address_write(int address) {
+    switch (ddrphy_wrphase_read()) {
+        case 0: sdram_dfii_pi0_address_write(address); break;
+        case 1: sdram_dfii_pi1_address_write(address); break;
+        case 2: sdram_dfii_pi2_address_write(address); break;
+        case 3: sdram_dfii_pi3_address_write(address); break;
+        default: break;
+    }
+}
+static inline void sdram_dfii_piwr_baddress_write(int address) {
+    switch (ddrphy_wrphase_read()) {
+        case 0: sdram_dfii_pi0_baddress_write(address); break;
+        case 1: sdram_dfii_pi1_baddress_write(address); break;
+        case 2: sdram_dfii_pi2_baddress_write(address); break;
+        case 3: sdram_dfii_pi3_baddress_write(address); break;
+        default: break;
+    }
+}
+static inline void command_pwr(int cmd) {
+    switch (ddrphy_wrphase_read()) {
+        case 0: command_p0(cmd); break;
+        case 1: command_p1(cmd); break;
+        case 2: command_p2(cmd); break;
+        case 3: command_p3(cmd); break;
+        default: break;
+    }
+}
 
 #define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE
 
