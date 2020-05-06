@@ -313,6 +313,7 @@ class LiteDRAMCore(SoCSDRAM):
         # Parameters -------------------------------------------------------------------------------
         sys_clk_freq = core_config["sys_clk_freq"]
         cpu_type     = core_config["cpu"]
+        cpu_variant  = core_config.get("cpu_variant",  "standard")
         csr_expose   = core_config.get("csr_expose", False)
         csr_align    = core_config.get("csr_align", 32)
         if cpu_type is None:
@@ -331,6 +332,7 @@ class LiteDRAMCore(SoCSDRAM):
         # SoCSDRAM ---------------------------------------------------------------------------------
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
             cpu_type       = cpu_type,
+            cpu_variant    = cpu_variant,
             csr_alignment  = csr_align,
             max_sdram_size = 0x01000000, # Only expose 16MB to the CPU, enough for Init/Calib.
             **kwargs)
