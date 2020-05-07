@@ -73,15 +73,26 @@ class NativePortDriver:
             yield
 
     @passive
-    def read_data_handler(self):
-        while True:
-            while (yield self.port.rdata.valid) == 0:
-                yield
-            data = (yield self.port.rdata.data)
+    def read_data_handler(self, latency=0):
+        if latency == 0:
             yield self.port.rdata.ready.eq(1)
-            yield
-            yield self.port.rdata.ready.eq(0)
-            self.rdata.append(data)
+            while True:
+                while (yield self.port.rdata.valid) == 0:
+                    yield
+                data = (yield self.port.rdata.data)
+                yield
+                self.rdata.append(data)
+        else:
+            while True:
+                while (yield self.port.rdata.valid) == 0:
+                    yield
+                data = (yield self.port.rdata.data)
+                yield self.port.rdata.ready.eq(1)
+                yield
+                self.rdata.append(data)
+                yield self.port.rdata.ready.eq(0)
+                for _ in range(latency):
+                    yield
 
     def read(self, address, wait_data=True):
         yield self.port.cmd.valid.eq(1)
@@ -97,17 +108,20 @@ class NativePortDriver:
                 yield
             return self.rdata[-1]
 
-    def write(self, address, data, we=None, wait_data=True):
+    def write(self, address, data, we=None, wait_data=True, data_with_cmd=False):
         if we is None:
             we = 2**self.port.wdata.we.nbits - 1
         yield self.port.cmd.valid.eq(1)
         yield self.port.cmd.we.eq(1)
         yield self.port.cmd.addr.eq(address)
+        if data_with_cmd:
+            self.wdata.append((data, we))
         yield
         while (yield self.port.cmd.ready) == 0:
             yield
+        if not data_with_cmd:
+            self.wdata.append((data, we))
         yield self.port.cmd.valid.eq(0)
-        self.wdata.append((data, we))
         if wait_data:
             n_wdata = len(self.wdata)
             while len(self.wdata) != n_wdata - 1:

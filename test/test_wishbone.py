@@ -44,7 +44,7 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
             dut.mem.write_handler(dut.port),
             dut.mem.read_handler(dut.port),
         ]
-        run_simulation(dut, generators)
+        run_simulation(dut, generators, vcd_name='sim.vcd')
         self.assertEqual(dut.mem.mem, mem_expected)
 
     def test_wishbone_8bit(self):
