@@ -8,7 +8,7 @@ from migen import *
 
 from litex.soc.interconnect.stream import *
 
-from litedram.common import LiteDRAMNativeWritePort, LiteDRAMNativeReadPort
+from litedram.common import LiteDRAMNativePort, LiteDRAMNativeWritePort, LiteDRAMNativeReadPort
 from litedram.frontend.adaptation import LiteDRAMNativePortConverter, LiteDRAMNativePortCDC
 
 from test.common import *
@@ -17,20 +17,31 @@ from litex.gen.sim import *
 
 
 class ConverterDUT(Module):
-    def __init__(self, user_data_width, native_data_width, mem_depth):
-        self.write_user_port     = LiteDRAMNativeWritePort(address_width=32, data_width=user_data_width)
-        self.write_crossbar_port = LiteDRAMNativeWritePort(address_width=32, data_width=native_data_width)
-        self.read_user_port      = LiteDRAMNativeReadPort( address_width=32, data_width=user_data_width)
-        self.read_crossbar_port  = LiteDRAMNativeReadPort( address_width=32, data_width=native_data_width)
+    def __init__(self, user_data_width, native_data_width, mem_depth, separate_rw=True):
+        self.separate_rw = separate_rw
+        if separate_rw:
+            self.write_user_port     = LiteDRAMNativeWritePort(address_width=32, data_width=user_data_width)
+            self.write_crossbar_port = LiteDRAMNativeWritePort(address_width=32, data_width=native_data_width)
+            self.read_user_port      = LiteDRAMNativeReadPort( address_width=32, data_width=user_data_width)
+            self.read_crossbar_port  = LiteDRAMNativeReadPort( address_width=32, data_width=native_data_width)
+        else:
+            self.write_user_port     = LiteDRAMNativePort(mode="both", address_width=32, data_width=user_data_width)
+            self.write_crossbar_port = LiteDRAMNativePort(mode="both", address_width=32, data_width=native_data_width)
+            self.read_user_port      = self.write_user_port
+            self.read_crossbar_port  = self.write_crossbar_port
 
         # Memory
         self.memory = DRAMMemory(native_data_width, mem_depth)
 
     def do_finalize(self):
-        self.submodules.write_converter = LiteDRAMNativePortConverter(
-            self.write_user_port, self.write_crossbar_port)
-        self.submodules.read_converter = LiteDRAMNativePortConverter(
-            self.read_user_port, self.read_crossbar_port)
+        if self.separate_rw:
+            self.submodules.write_converter = LiteDRAMNativePortConverter(
+                self.write_user_port, self.write_crossbar_port)
+            self.submodules.read_converter = LiteDRAMNativePortConverter(
+                self.read_user_port, self.read_crossbar_port)
+        else:
+            self.submodules.converter = LiteDRAMNativePortConverter(
+                self.write_user_port, self.write_crossbar_port)
 
     def read(self, address, read_data=True):
         port = self.read_user_port
@@ -161,58 +172,52 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
             dut.memory.read_handler(dut.read_crossbar_port),
             timeout_generator(5000),
         ]
-        run_simulation(dut, generators)
+        run_simulation(dut, generators, vcd_name='sim.vcd')
         self.assertEqual(dut.memory.mem, mem_expected)
         self.assertEqual(read_data, [data for adr, data in pattern])
 
+    # TODO: test port.flush!
+
+    def converter_test(self, test_data, user_data_width, native_data_width):
+        for separate_rw in [True, False]:
+            with self.subTest(separate_rw=separate_rw):
+                data = self.pattern_test_data[test_data]
+                dut  = ConverterDUT(user_data_width=user_data_width, native_data_width=native_data_width,
+                                    mem_depth=len(data["expected"]), separate_rw=separate_rw)
+                self.converter_readback_test(dut, data["pattern"], data["expected"])
+
     def test_converter_1to1(self):
         # Verify 64-bit to 64-bit identify-conversion.
-        data = self.pattern_test_data["64bit"]
-        dut  = ConverterDUT(user_data_width=64, native_data_width=64, mem_depth=len(data["expected"]))
-        self.converter_readback_test(dut, data["pattern"], data["expected"])
+        self.converter_test(test_data="64bit", user_data_width=64, native_data_width=64)
 
     def test_converter_2to1(self):
         # Verify 64-bit to 32-bit down-conversion.
-        data = self.pattern_test_data["64bit_to_32bit"]
-        dut  = ConverterDUT(user_data_width=64, native_data_width=32, mem_depth=len(data["expected"]))
-        self.converter_readback_test(dut, data["pattern"], data["expected"])
+        self.converter_test(test_data="64bit_to_32bit", user_data_width=64, native_data_width=32)
 
     def test_converter_4to1(self):
         # Verify 32-bit to 8-bit down-conversion.
-        data = self.pattern_test_data["32bit_to_8bit"]
-        dut  = ConverterDUT(user_data_width=32, native_data_width=8, mem_depth=len(data["expected"]))
-        self.converter_readback_test(dut, data["pattern"], data["expected"])
+        self.converter_test(test_data="32bit_to_8bit", user_data_width=32, native_data_width=8)
 
     def test_converter_8to1(self):
         # Verify 64-bit to 8-bit down-conversion.
-        data = self.pattern_test_data["64bit_to_8bit"]
-        dut  = ConverterDUT(user_data_width=64, native_data_width=8, mem_depth=len(data["expected"]))
-        self.converter_readback_test(dut, data["pattern"], data["expected"])
+        self.converter_test(test_data="64bit_to_8bit", user_data_width=64, native_data_width=8)
 
     def test_converter_1to2(self):
         # Verify 8-bit to 16-bit up-conversion.
-        data = self.pattern_test_data["8bit_to_16bit"]
-        dut  = ConverterDUT(user_data_width=8, native_data_width=16, mem_depth=len(data["expected"]))
-        self.converter_readback_test(dut, data["pattern"], data["expected"])
+        self.converter_test(test_data="8bit_to_16bit", user_data_width=8, native_data_width=16)
 
     def test_converter_1to4(self):
         # Verify 32-bit to 128-bit up-conversion.
-        data = self.pattern_test_data["32bit_to_128bit"]
-        dut  = ConverterDUT(user_data_width=32, native_data_width=128, mem_depth=len(data["expected"]))
-        self.converter_readback_test(dut, data["pattern"], data["expected"])
+        self.converter_test(test_data="32bit_to_128bit", user_data_width=32, native_data_width=128)
 
     def test_converter_1to8(self):
         # Verify 32-bit to 256-bit up-conversion.
-        data = self.pattern_test_data["32bit_to_256bit"]
-        dut  = ConverterDUT(user_data_width=32, native_data_width=256, mem_depth=len(data["expected"]))
-        self.converter_readback_test(dut, data["pattern"], data["expected"])
+        self.converter_test(test_data="32bit_to_256bit", user_data_width=32, native_data_width=256)
 
     # TODO: implement case when user does not write all words (LiteDRAMNativeWritePortUpConverter)
     @unittest.skip("Only full-burst writes currently supported")
     def test_converter_up_not_aligned(self):
-        data = self.pattern_test_data["8bit_to_32bit_not_aligned"]
-        dut  = ConverterDUT(user_data_width=8, native_data_width=32, mem_depth=len(data["expected"]))
-        self.converter_readback_test(dut, data["pattern"], data["expected"])
+        self.converter_test(test_data="8bit_to_32bit_not_aligned", user_data_width=8, native_data_width=32)
 
     def cdc_readback_test(self, dut, pattern, mem_expected, clocks):
         assert len(set(adr for adr, _ in pattern)) == len(pattern), "Pattern has duplicates!"
