@@ -510,10 +510,5 @@ class TestCrossbar(unittest.TestCase):
         modes       = ["both", "write", "read"]
         for mode, data_width in itertools.product(modes, data_widths):
             with self.subTest(mode=mode, data_width=data_width):
-                # Up conversion is supported only for single direction ports
-                if mode == "both" and data_width < dut.interface.data_width:
-                    with self.assertRaises(NotImplementedError):
-                        dut.crossbar.get_port(mode=mode, data_width=data_width)
-                else:
-                    port = dut.crossbar.get_port(mode=mode, data_width=data_width)
-                    self.assertEqual(port.data_width, data_width)
+                port = dut.crossbar.get_port(mode=mode, data_width=data_width)
+                self.assertEqual(port.data_width, data_width)
