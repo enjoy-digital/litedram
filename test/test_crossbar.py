@@ -34,11 +34,15 @@ class ControllerStub:
         self.data = []  # data registered on datapath (W/R)
         self._waiting = []  # data waiting to be set on datapath
         # Incremental generator of artificial read data
-        self._read_data = itertools.count(0x10)
+        self._read_data = self.read_data_counter()
         # Simulated dealy of command processing, by default just constant
         self._cmd_delay = cmd_delay or (lambda: 6)
         # Minimal logic required so that no two banks will become ready at the same moment
         self._multiplexer_lock = None
+
+    @staticmethod
+    def read_data_counter():
+        return itertools.count(0x10)
 
     def generators(self):
         bank_handlers = [self.bankmachine_handler(bn) for bn in range(self.interface.nbanks)]
@@ -214,7 +218,7 @@ class TestCrossbar(unittest.TestCase):
         dut.crossbar.get_port()
         dut.finalize()
 
-    def crossbar_test(self, dut, generators, timeout=100, **kwargs):
+    def crossbar_test(self, dut, generators, timeout=200, **kwargs):
         # Runs simulation with a controller stub (passive generators) and user generators
         if not isinstance(generators, list):
             generators = [generators]
@@ -245,8 +249,7 @@ class TestCrossbar(unittest.TestCase):
         # Verify that address is translated correctly.
         reads = []
 
-        def producer(dut, port):
-            driver = NativePortDriver(port)
+        def producer(dut, driver):
             for t in transfers:
                 addr = dut.addr_port(bank=t["bank"], row=t["row"], col=t["col"])
                 if t["rw"] == self.W:
@@ -260,6 +263,7 @@ class TestCrossbar(unittest.TestCase):
         geom_settings = dict(colbits=10, rowbits=13, bankbits=2)
         dut  = CrossbarDUT(geom_settings=geom_settings)
         port = dut.crossbar.get_port()
+        driver = NativePortDriver(port)
         transfers = [
             dict(rw=self.W, bank=2, row=0x30, col=0x03, data=0x20),
             dict(rw=self.W, bank=3, row=0x30, col=0x03, data=0x21),
@@ -271,16 +275,17 @@ class TestCrossbar(unittest.TestCase):
             dict(rw=self.R, bank=1, row=0x10, col=0x77),
         ]
         expected = []
+        read_data = ControllerStub.read_data_counter()
         for i, t in enumerate(transfers):
             cls = t["rw"]
             addr = dut.addr_iface(row=t["row"], col=t["col"])
             if cls == self.W:
                 kwargs = dict(data=t["data"], we=0xff)
             elif cls == self.R:
-                kwargs = dict(data=0x10 + i)
-            return cls(bank=t["bank"], addr=addr, **kwargs)
+                kwargs = dict(data=next(read_data))
+            expected.append(cls(bank=t["bank"], addr=addr, **kwargs))
 
-        data = self.crossbar_test(dut, producer(port))
+        data = self.crossbar_test(dut, producer(dut, driver))
         self.assertEqual(data, expected)
 
     def test_arbitration(self):
