@@ -108,7 +108,7 @@ class PHYPadsCombiner:
 # BitSlip ------------------------------------------------------------------------------------------
 
 class BitSlip(Module):
-    def __init__(self, dw, rst=None, slp=None):
+    def __init__(self, dw, rst=None, slp=None, cycles=1):
         self.i = Signal(dw)
         self.o = Signal(dw)
         self.rst = Signal() if rst is None else rst
@@ -116,14 +116,14 @@ class BitSlip(Module):
 
         # # #
 
-        value = Signal(max=dw)
+        value = Signal(max=cycles*dw)
         self.sync += If(self.slp, value.eq(value + 1))
         self.sync += If(self.rst, value.eq(0))
 
-        r = Signal(2*dw, reset_less=True)
+        r = Signal((cycles+1)*dw, reset_less=True)
         self.sync += r.eq(Cat(r[dw:], self.i))
         cases = {}
-        for i in range(dw):
+        for i in range(cycles*dw):
             cases[i] = self.o.eq(r[i:dw+i])
         self.comb += Case(value, cases)
 
