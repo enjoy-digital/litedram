@@ -416,11 +416,11 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     if phytype in ["USDDRPHY", "USPDDRPHY"]:
         r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2\n"
         r += "#define SDRAM_PHY_DELAYS 512\n"
-        r += "#define SDRAM_PHY_BITSLIPS 8\n"
+        r += "#define SDRAM_PHY_BITSLIPS 16\n"
     elif phytype in ["A7DDRPHY", "K7DDRPHY", "V7DDRPHY"]:
         r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2\n"
         r += "#define SDRAM_PHY_DELAYS 32\n"
-        r += "#define SDRAM_PHY_BITSLIPS 8\n"
+        r += "#define SDRAM_PHY_BITSLIPS 16\n"
     elif phytype in ["ECP5DDRPHY"]:
         r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/4\n"
         r += "#define SDRAM_PHY_DELAYS 8\n"

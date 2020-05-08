@@ -401,8 +401,9 @@ class USDDRPHY(Module, AutoCSR):
             dq_i_delayed = Signal()
             dq_t         = Signal()
             dq_bitslip = BitSlip(8,
-                rst = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re,
-                slp = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re)
+                rst    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re,
+                slp    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
+                cycles = 2)
             self.submodules += dq_bitslip
             self.specials += [
                 Instance("OSERDESE3",
