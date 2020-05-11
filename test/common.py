@@ -94,8 +94,10 @@ class NativePortDriver:
                 for _ in range(latency):
                     yield
 
-    def read(self, address, wait_data=True):
+    def read(self, address, first=0, last=0, wait_data=True):
         yield self.port.cmd.valid.eq(1)
+        yield self.port.cmd.first.eq(first)
+        yield self.port.cmd.last.eq(last)
         yield self.port.cmd.we.eq(0)
         yield self.port.cmd.addr.eq(address)
         yield
@@ -108,10 +110,12 @@ class NativePortDriver:
                 yield
             return self.rdata[-1]
 
-    def write(self, address, data, we=None, wait_data=True, data_with_cmd=False):
+    def write(self, address, data, we=None, first=0, last=0, wait_data=True, data_with_cmd=False):
         if we is None:
             we = 2**self.port.wdata.we.nbits - 1
         yield self.port.cmd.valid.eq(1)
+        yield self.port.cmd.first.eq(first)
+        yield self.port.cmd.last.eq(last)
         yield self.port.cmd.we.eq(1)
         yield self.port.cmd.addr.eq(address)
         if data_with_cmd:

@@ -158,28 +158,27 @@ class LiteDRAMNativePortUpConverter(Module):
         sel = Signal(ratio)
         cmd_buffer = stream.SyncFIFO([("sel", ratio), ("we", 1)], 4)
         self.submodules += cmd_buffer
-        # store last command info
+        # store last received command
         cmd_addr = Signal.like(port_from.cmd.addr)
         cmd_we = Signal()
+        cmd_last = Signal()
         # indicates that we need to proceed to the next port_to command
         next_cmd = Signal()
         # signals that indicate that write/read convertion has finished
         wdata_finished = Signal()
         rdata_finished = Signal()
-        # register that user requested a flush
-        flush_r = Signal()
 
         self.comb += [
             # go to the next command if one of the following happens:
             #  * port_to address changes
             #  * cmd type changes
             #  * we received all the `ratio` commands
-            #  * this is last command (flush)
+            #  * this is the last command in a sequence
             next_cmd.eq(
-                (cmd_addr[log2_int(ratio):] != port_from.cmd.addr[log2_int(ratio):]) |
-                (cmd_we != port_from.cmd.we) |
-                (sel == 2**ratio - 1) |
-                port_from.flush | flush_r
+                (cmd_addr[log2_int(ratio):] != port_from.cmd.addr[log2_int(ratio):])
+                | (cmd_we != port_from.cmd.we)
+                | (sel == 2**ratio - 1)
+                | cmd_last
             ),
             # when the first command is received, send it immediatelly
             If(sel == 0,
@@ -208,16 +207,12 @@ class LiteDRAMNativePortUpConverter(Module):
             If(port_from.cmd.valid & port_from.cmd.ready,
                 cmd_addr.eq(port_from.cmd.addr),
                 cmd_we.eq(port_from.cmd.we),
+                cmd_last.eq(port_from.cmd.last),
                 sel.eq(sel | (1 << port_from.cmd.addr[:log2_int(ratio)])),
             ),
             # clear `sel` after the command has been sent for data procesing
             If(cmd_buffer.sink.valid & cmd_buffer.sink.ready,
                 sel.eq(0),
-                flush_r.eq(0),
-            ),
-            # store flush info until we register the current command
-            If(port_from.flush,
-               flush_r.eq(1)
             ),
         ]
 

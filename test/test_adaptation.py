@@ -50,15 +50,13 @@ class ConverterDUT(Module):
             self.submodules.converter = LiteDRAMNativePortConverter(
                 self.write_user_port, self.write_crossbar_port)
 
-    def read(self, address, wait_data=True):
-        return (yield from self.read_driver.read(address, wait_data=wait_data))
+    def read(self, address, **kwargs):
+        return (yield from self.read_driver.read(address, **kwargs))
 
-    def write(self, address, data, wait_data=True, we=None):
-        data_with_cmd = False
+    def write(self, address, data, **kwargs):
         if self.write_user_port.data_width > self.write_crossbar_port.data_width:
-            data_with_cmd = True
-        return (yield from self.write_driver.write(address, data, we, wait_data=wait_data,
-                                                   data_with_cmd=data_with_cmd))
+            kwargs["data_with_cmd"] = True
+        return (yield from self.write_driver.write(address, data, **kwargs))
 
 
 class CDCDUT(ConverterDUT):
@@ -99,14 +97,13 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
                 for adr, data in pattern:
                     yield from dut.write(adr, data)
 
-                for adr, _ in pattern:
+                for adr, _ in pattern[:-1]:
                     yield from dut.read(adr, wait_data=False)
-
-                # we need to flush after last command in the up-converter case, if the last
-                # command does not fill whole `sel`
-                yield dut.write_user_port.flush.eq(1)
-                yield
-                yield dut.write_user_port.flush.eq(0)
+                # use cmd.last to indicate last command in the sequence
+                # this is needed for the cases in up-converter when it cannot be deduced
+                # that port_to.cmd should be sent
+                adr, _ = pattern[-1]
+                yield from dut.read(adr, wait_data=False, last=1)
 
                 yield from dut.write_driver.wait_all()
                 yield from dut.read_driver.wait_all()
@@ -123,8 +120,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
         self.assertEqual(dut.read_driver.rdata, [data for adr, data in pattern])
 
     def converter_test(self, test_data, user_data_width, native_data_width, **kwargs):
-        #  for separate_rw in [True, False]:
-        for separate_rw in [False]:
+        for separate_rw in [True, False]:
             with self.subTest(separate_rw=separate_rw):
                 data = self.pattern_test_data[test_data]
                 dut  = ConverterDUT(user_data_width=user_data_width, native_data_width=native_data_width,
@@ -209,7 +205,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
             0x00000000,  # 0x0c
         ]
 
-        for separate_rw in [False, True]:
+        for separate_rw in [True, False]:
             with self.subTest(separate_rw=separate_rw):
                 dut  = ConverterDUT(user_data_width=8, native_data_width=32,
                                     mem_depth=len(mem_expected), separate_rw=separate_rw)
@@ -217,14 +213,11 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
                                              main_generator=main_generator)
 
     def test_up_converter_write_with_manual_flush(self):
-        # Verify that up-conversion writes incomplete data when flushed
+        # Verify that up-conversion writes incomplete data when it receives cmd.last
         def main_generator(dut):
             yield from dut.write(0x00, 0x11, wait_data=False)
             yield from dut.write(0x01, 0x22, wait_data=False)
-            yield from dut.write(0x02, 0x33, wait_data=False)
-            yield dut.write_user_port.flush.eq(1)
-            yield
-            yield dut.write_user_port.flush.eq(0)
+            yield from dut.write(0x02, 0x33, wait_data=False, last=1)
 
             yield from dut.write_driver.wait_all()
             for _ in range(8):  # wait for memory
@@ -238,7 +231,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
             0x00000000,  # 0x0c
         ]
 
-        for separate_rw in [False, True]:
+        for separate_rw in [True, False]:
             with self.subTest(separate_rw=separate_rw):
                 dut  = ConverterDUT(user_data_width=8, native_data_width=32,
                                     mem_depth=len(mem_expected), separate_rw=separate_rw)
@@ -269,7 +262,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
         ]
 
 
-        for separate_rw in [False, True]:
+        for separate_rw in [True, False]:
             with self.subTest(separate_rw=separate_rw):
                 dut  = ConverterDUT(user_data_width=8, native_data_width=32,
                                     mem_depth=len(mem_expected), separate_rw=separate_rw)
@@ -312,7 +305,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
             (0x01, mem_expected[1]),
         ]
 
-        for separate_rw in [False, True]:
+        for separate_rw in [True, False]:
             with self.subTest(separate_rw=separate_rw):
                 dut  = ConverterDUT(user_data_width=8, native_data_width=32,
                                     mem_depth=len(mem_expected), separate_rw=separate_rw)
@@ -324,10 +317,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
         def main_generator(dut):
             yield from dut.write(0x00, 0x11, wait_data=False)
             yield from dut.write(0x02, 0x22, wait_data=False)
-            yield from dut.write(0x03, 0x33, wait_data=False)
-            yield dut.write_user_port.flush.eq(1)
-            yield
-            yield dut.write_user_port.flush.eq(0)
+            yield from dut.write(0x03, 0x33, wait_data=False, last=1)
 
             yield from dut.write_driver.wait_all()
             for _ in range(8):  # wait for memory
