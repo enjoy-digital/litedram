@@ -77,13 +77,13 @@ class CDCDUT(ConverterDUT):
 
 
 class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
-    def test_converter_down_ratio_must_be_integer(self):
+    def test_down_converter_ratio_must_be_integer(self):
         with self.assertRaises(ValueError) as cm:
             dut = ConverterDUT(user_data_width=64, native_data_width=24, mem_depth=128)
             dut.finalize()
         self.assertIn("ratio must be an int", str(cm.exception).lower())
 
-    def test_converter_up_ratio_must_be_integer(self):
+    def test_up_converter_ratio_must_be_integer(self):
         with self.assertRaises(ValueError) as cm:
             dut = ConverterDUT(user_data_width=32, native_data_width=48, mem_depth=128)
             dut.finalize()
@@ -155,7 +155,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
         # Verify 32-bit to 256-bit up-conversion.
         self.converter_test(test_data="32bit_to_256bit", user_data_width=32, native_data_width=256)
 
-    def test_converter_up_read_latencies(self):
+    def test_up_converter_read_latencies(self):
         # Verify that up-conversion works with different port reader latencies
         cases = {
             "1to2": dict(test_data="8bit_to_16bit",   user_data_width=8,  native_data_width=16),
@@ -168,7 +168,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
                     with self.subTest(conversion=conversion):
                         self.converter_test(**kwargs, read_latency=latency)
 
-    def test_converter_down_read_latencies(self):
+    def test_down_converter_read_latencies(self):
         # Verify that down-conversion works with different port reader latencies
         cases = {
             "2to1": dict(test_data="64bit_to_32bit", user_data_width=64, native_data_width=32),
@@ -330,7 +330,7 @@ class TestAdaptation(MemoryTestDataMixin, unittest.TestCase):
                 self.converter_readback_test(dut, pattern=[], mem_expected=mem_expected,
                                              main_generator=main_generator)
 
-    def test_converter_up_not_aligned(self):
+    def test_up_converter_not_aligned(self):
         data = self.pattern_test_data["8bit_to_32bit_not_aligned"]
         dut  = ConverterDUT(user_data_width=8, native_data_width=32,
                             mem_depth=len(data["expected"]), separate_rw=False)
