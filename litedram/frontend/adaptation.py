@@ -164,25 +164,27 @@ class LiteDRAMNativePortUpConverter(Module):
         cmd_last = Signal()
         # indicates that we need to proceed to the next port_to command
         next_cmd = Signal()
+        addr_changed = Signal()
         # signals that indicate that write/read convertion has finished
         wdata_finished = Signal()
         rdata_finished = Signal()
+        # used to prevent reading old memory value if previous command has written the same address
+        read_lock = Signal()
+        rw_collision = Signal()
 
         self.comb += [
+            addr_changed.eq(cmd_addr[log2_int(ratio):] != port_from.cmd.addr[log2_int(ratio):]),
+            # collision happens on write to read transition when address does not change
+            rw_collision.eq(cmd_we & (port_from.cmd.valid & ~port_from.cmd.we) & ~addr_changed),
             # go to the next command if one of the following happens:
             #  * port_to address changes
             #  * cmd type changes
             #  * we received all the `ratio` commands
             #  * this is the last command in a sequence
-            next_cmd.eq(
-                (cmd_addr[log2_int(ratio):] != port_from.cmd.addr[log2_int(ratio):])
-                | (cmd_we != port_from.cmd.we)
-                | (sel == 2**ratio - 1)
-                | cmd_last
-            ),
+            next_cmd.eq(addr_changed | (cmd_we != port_from.cmd.we) | (sel == 2**ratio - 1) | cmd_last),
             # when the first command is received, send it immediatelly
             If(sel == 0,
-                If(port_from.cmd.valid,
+                If(port_from.cmd.valid & ~read_lock,
                     port_to.cmd.valid.eq(1),
                     port_to.cmd.we.eq(port_from.cmd.we),
                     port_to.cmd.addr.eq(port_from.cmd.addr[log2_int(ratio):]),
@@ -214,6 +216,12 @@ class LiteDRAMNativePortUpConverter(Module):
             If(cmd_buffer.sink.valid & cmd_buffer.sink.ready,
                 sel.eq(0),
             ),
+            # block sending read command if we have just written to that address
+            If(wdata_finished,
+                read_lock.eq(0),
+            ).Elif(rw_collision & ~port_to.cmd.valid,
+                read_lock.eq(1)
+            )
         ]
 
         # Read Datapath ----------------------------------------------------------------------------
