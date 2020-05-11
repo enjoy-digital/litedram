@@ -39,7 +39,6 @@
         },
     },
 
-    # CSR Port -----------------------------------------------------------------
-    "csr_expose": "False", # Expose CSR bus as I/Os
-    "csr_align" : 32,      # CSR alignment
+    # Bus Port -----------------------------------------------------------------
+    "bus_expose": False, # Expose SoC bus as I/Os
 }

@@ -40,7 +40,6 @@ from litex.boards.platforms import versa_ecp5
 from litex.soc.cores.clock import *
 from litex.soc.integration.soc_sdram import *
 from litex.soc.integration.builder import *
-from litex.soc.interconnect import csr_bus
 from litex.soc.interconnect import wishbone
 from litex.soc.cores.uart import *
 
@@ -314,8 +313,7 @@ class LiteDRAMCore(SoCSDRAM):
         sys_clk_freq = core_config["sys_clk_freq"]
         cpu_type     = core_config["cpu"]
         cpu_variant  = core_config.get("cpu_variant",  "standard")
-        csr_expose   = core_config.get("csr_expose", False)
-        csr_align    = core_config.get("csr_align", 32)
+        bus_expose   = core_config.get("bus_expose", False)
         if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
@@ -333,7 +331,6 @@ class LiteDRAMCore(SoCSDRAM):
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
             cpu_type       = cpu_type,
             cpu_variant    = cpu_variant,
-            csr_alignment  = csr_align,
             max_sdram_size = 0x01000000, # Only expose 16MB to the CPU, enough for Init/Calib.
             **kwargs)
 
@@ -389,23 +386,13 @@ class LiteDRAMCore(SoCSDRAM):
             platform.request("init_error").eq(self.ddrctrl.init_error.storage)
         ]
 
-        # CSR port ---------------------------------------------------------------------------------
-        if csr_expose:
-            csr_port = csr_bus.Interface(
-                address_width = self.csr_address_width,
-                data_width    = self.csr_data_width)
-            self.add_csr_master(csr_port)
-            platform.add_extension(get_csr_ios(self.csr_address_width, self.csr_data_width))
-            _csr_port_io = platform.request("csr_port", 0)
-            self.comb += [
-                csr_port.adr.eq(_csr_port_io.adr),
-                csr_port.we.eq(_csr_port_io.we),
-                csr_port.dat_w.eq(_csr_port_io.dat_w),
-                _csr_port_io.dat_r.eq(csr_port.dat_r),
-            ]
-            if self.cpu_type == None:
-                csr_base = core_config.get("csr_base", 0)
-                self.shadow_base = csr_base;
+        # Bus port ---------------------------------------------------------------------------------
+        if bus_expose:
+            wb_bus = wishbone.Interface()
+            self.bus.add_master(master=wb_bus)
+            platform.add_extension(wb_bus.get_ios("wb"))
+            wb_pads = platform.request("wb")
+            self.comb += wb_bus.connect_to_pads(wb_pads, mode="slave")
 
         # User ports -------------------------------------------------------------------------------
         self.comb += [
