@@ -303,6 +303,7 @@ class LiteDRAMCore(SoCCore):
         sys_clk_freq = core_config["sys_clk_freq"]
         cpu_type     = core_config["cpu"]
         cpu_variant  = core_config.get("cpu_variant",  "standard")
+        had_ddrctl   = core_config.get("has_ddrctl", False)
         if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
@@ -368,7 +369,7 @@ class LiteDRAMCore(SoCCore):
         )
 
         # DRAM Control/Status ----------------------------------------------------------------------
-        if cpu_type is not None:
+        if cpu_type is not None or had_ddrctl:
             # Expose calibration status to user.
             self.submodules.ddrctrl = LiteDRAMCoreControl()
             self.add_csr("ddrctrl")
@@ -376,7 +377,7 @@ class LiteDRAMCore(SoCCore):
                 platform.request("init_done").eq(self.ddrctrl.init_done.storage),
                 platform.request("init_error").eq(self.ddrctrl.init_error.storage)
             ]
-        else:
+        if cpu_type is None:
             # Expose bus interface to user.
             wb_bus = wishbone.Interface()
             self.bus.add_master(master=wb_bus)
