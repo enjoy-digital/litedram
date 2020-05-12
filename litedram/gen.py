@@ -304,6 +304,7 @@ class LiteDRAMCore(SoCCore):
         cpu_type     = core_config["cpu"]
         cpu_variant  = core_config.get("cpu_variant",  "standard")
         had_ddrctl   = core_config.get("has_ddrctl", False)
+        csr_align    = core_config.get("csr_align", 32)
         if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
@@ -317,6 +318,7 @@ class LiteDRAMCore(SoCCore):
             cpu_type      = cpu_type,
             cpu_variant   = cpu_variant,
             csr_base      = csr_base,
+            csr_alignment = csr_align,
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
