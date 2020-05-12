@@ -159,7 +159,7 @@ class LiteDRAMNativePortUpConverter(Module):
 
         # defines cmd type and the chunks that have been requested for the current port_to command
         sel              = Signal(ratio)
-        cmd_buffer       = stream.SyncFIFO([("sel", ratio), ("we", 1)], 4)
+        cmd_buffer       = stream.SyncFIFO([("sel", ratio), ("we", 1)], 0)
         self.submodules += cmd_buffer
         # store last received command
         cmd_addr         = Signal.like(port_from.cmd.addr)
@@ -175,30 +175,57 @@ class LiteDRAMNativePortUpConverter(Module):
         read_lock        = Signal()
         rw_collision     = Signal()
 
+        # different order depending on read/write:
+        # read:  new -> cmd -> fill -> commit -> new
+        # write: new -> fill -> commit -> cmd -> new
+        # for writes we have to send the command at the end to prevent situations when, during
+        # a burst, LiteDRAM expects data (wdata_ready=1) but write converter is still converting
         self.submodules.fsm = fsm = FSM()
         fsm.act("NEW",
-            # when the first command is received, send it immediatelly
-            If(port_from.cmd.valid & ~read_lock,
-                port_to.cmd.valid.eq(1),
-                port_to.cmd.we.eq(port_from.cmd.we),
-                port_to.cmd.addr.eq(port_from.cmd.addr[log2_int(ratio):]),
-                port_from.cmd.ready.eq(port_to.cmd.ready),
-                If(port_from.cmd.ready,
+            port_from.cmd.ready.eq(port_from.cmd.valid & ~read_lock),
+            If(port_from.cmd.ready,
+                NextValue(cmd_addr, port_from.cmd.addr),
+                NextValue(cmd_we, port_from.cmd.we),
+                NextValue(cmd_last, port_from.cmd.last),
+                NextValue(sel, 1 << port_from.cmd.addr[:log2_int(ratio)]),
+                If(port_from.cmd.we,
                     NextState("FILL"),
+                ).Else(
+                    NextState("CMD"),
                 )
-            ),
+            )
+        )
+        fsm.act("CMD",
+            port_to.cmd.valid.eq(1),
+            port_to.cmd.we.eq(cmd_we),
+            port_to.cmd.addr.eq(cmd_addr[log2_int(ratio):]),
+            If(port_to.cmd.ready,
+                If(cmd_we,
+                    NextState("NEW")
+                ).Else(
+                    NextState("FILL")
+                )
+            )
         )
         fsm.act("FILL",
-            If(next_cmd,  # send current command info when we have to go to the next command
-                cmd_buffer.sink.valid.eq(1),
-                cmd_buffer.sink.sel.eq(sel),
-                cmd_buffer.sink.we.eq(cmd_we),
-                If(cmd_buffer.sink.ready,
-                    NextValue(sel, 0),
-                    NextState("NEW"),
-                )
+            If(next_cmd,
+                NextState("COMMIT")
             ).Else(  # acknowledge incomming commands, while filling `sel`
                 port_from.cmd.ready.eq(port_from.cmd.valid),
+                NextValue(cmd_last, port_from.cmd.last),
+                NextValue(sel, sel | 1 << port_from.cmd.addr[:log2_int(ratio)]),
+            )
+        )
+        fsm.act("COMMIT",
+            cmd_buffer.sink.valid.eq(1),
+            cmd_buffer.sink.sel.eq(sel),
+            cmd_buffer.sink.we.eq(cmd_we),
+            If(cmd_buffer.sink.ready,
+                If(cmd_we,
+                    NextState("CMD")
+                ).Else(
+                    NextState("NEW")
+                )
             )
         )
 
@@ -216,12 +243,6 @@ class LiteDRAMNativePortUpConverter(Module):
         ]
 
         self.sync += [
-            If(port_from.cmd.valid & port_from.cmd.ready,
-                cmd_addr.eq(port_from.cmd.addr),
-                cmd_we.eq(port_from.cmd.we),
-                cmd_last.eq(port_from.cmd.last),
-                sel.eq(sel | (1 << port_from.cmd.addr[:log2_int(ratio)])),
-            ),
             # block sending read command if we have just written to that address
             If(wdata_finished,
                 read_lock.eq(0),
@@ -274,7 +295,7 @@ class LiteDRAMNativePortUpConverter(Module):
         if mode == "write" or mode == "both":
             # queue write data not to miss it when the lower chunks haven't been reqested
             wdata_fifo    = stream.SyncFIFO(port_from.wdata.description, ratio - 1)
-            wdata_buffer  = stream.SyncFIFO(port_to.wdata.description, 0)
+            wdata_buffer  = stream.SyncFIFO(port_to.wdata.description, 1)
             wdata_converter = stream.StrideConverter(
                 port_from.wdata.description,
                 port_to.wdata.description,
@@ -311,7 +332,7 @@ class LiteDRAMNativePortUpConverter(Module):
                         wdata_converter.sink.valid.eq(wdata_fifo.source.valid),
                         wdata_converter.sink.data.eq(wdata_fifo.source.data),
                         wdata_converter.sink.we.eq(wdata_fifo.source.we),
-                        wdata_fifo.source.ready.eq(1),
+                        wdata_fifo.source.ready.eq(wdata_converter.sink.ready),
                     ).Else(  # if chunk is not valid, send any data and do not advance fifo
                         wdata_converter.sink.valid.eq(1),
                     ),
@@ -332,10 +353,6 @@ class LiteDRAMNativePortConverter(Module):
         assert port_from.mode         == port_to.mode
 
         # # #
-        print('#' * 80)
-        print('LiteDRAMNativePortConverter')
-        print('port_from.data_width', end=' = '); __import__('pprint').pprint(port_from.data_width)
-        print('port_to.data_width  ', end=' = '); __import__('pprint').pprint(port_to.data_width)
 
         mode = port_from.mode
 
