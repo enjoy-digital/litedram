@@ -303,18 +303,22 @@ class LiteDRAMCore(SoCCore):
         sys_clk_freq = core_config["sys_clk_freq"]
         cpu_type     = core_config["cpu"]
         cpu_variant  = core_config.get("cpu_variant",  "standard")
-        bus_expose   = core_config.get("bus_expose", False)
+        had_ddrctl   = core_config.get("has_ddrctl", False)
+        csr_align    = core_config.get("csr_align", 32)
         if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
             kwargs["with_uart"]            = False
             kwargs["with_timer"]           = False
             kwargs["with_ctrl"]            = False
+            csr_base                       = core_config.get("csr_base", 0)
 
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, sys_clk_freq,
-            cpu_type    = cpu_type,
-            cpu_variant = cpu_variant,
+            cpu_type      = cpu_type,
+            cpu_variant   = cpu_variant,
+            csr_base      = csr_base,
+            csr_alignment = csr_align,
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
@@ -367,7 +371,7 @@ class LiteDRAMCore(SoCCore):
         )
 
         # DRAM Control/Status ----------------------------------------------------------------------
-        if cpu_type is not None:
+        if cpu_type is not None or had_ddrctl:
             # Expose calibration status to user.
             self.submodules.ddrctrl = LiteDRAMCoreControl()
             self.add_csr("ddrctrl")
@@ -375,12 +379,12 @@ class LiteDRAMCore(SoCCore):
                 platform.request("init_done").eq(self.ddrctrl.init_done.storage),
                 platform.request("init_error").eq(self.ddrctrl.init_error.storage)
             ]
-        else:
+        if cpu_type is None:
             # Expose bus interface to user.
-            wb_bus = wishbone.Interface()
+            wb_bus = wishbone.Interface(adr_width = self.csr.address_width)
             self.bus.add_master(master=wb_bus)
-            platform.add_extension(wb_bus.get_ios("wb"))
-            wb_pads = platform.request("wb")
+            platform.add_extension(wb_bus.get_ios("wb_ctrl"))
+            wb_pads = platform.request("wb_ctrl")
             self.comb += wb_bus.connect_to_pads(wb_pads, mode="slave")
 
         # User ports -------------------------------------------------------------------------------
