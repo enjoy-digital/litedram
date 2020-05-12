@@ -38,7 +38,7 @@ from litex.build.lattice import LatticePlatform
 from litex.boards.platforms import versa_ecp5
 
 from litex.soc.cores.clock import *
-from litex.soc.integration.soc_sdram import *
+from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 from litex.soc.interconnect import wishbone
 from litex.soc.cores.uart import *
@@ -295,7 +295,7 @@ class LiteDRAMCoreControl(Module, AutoCSR):
 
 # LiteDRAMCore -------------------------------------------------------------------------------------
 
-class LiteDRAMCore(SoCSDRAM):
+class LiteDRAMCore(SoCCore):
     def __init__(self, platform, core_config, **kwargs):
         platform.add_extension(get_common_ios())
 
@@ -304,21 +304,17 @@ class LiteDRAMCore(SoCSDRAM):
         cpu_type     = core_config["cpu"]
         cpu_variant  = core_config.get("cpu_variant",  "standard")
         bus_expose   = core_config.get("bus_expose", False)
-        kwargs["l2_size"]           = 0
-        kwargs["min_l2_data_width"] = 0
         if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
             kwargs["with_uart"]            = False
             kwargs["with_timer"]           = False
             kwargs["with_ctrl"]            = False
-            kwargs["with_wishbone"]        = False
 
-        # SoCSDRAM ---------------------------------------------------------------------------------
-        SoCSDRAM.__init__(self, platform, sys_clk_freq,
-            cpu_type       = cpu_type,
-            cpu_variant    = cpu_variant,
-            max_sdram_size = 0x01000000, # Only expose 16MB to the CPU, enough for Init/Calib.
+        # SoCCore ----------------------------------------------------------------------------------
+        SoCCore.__init__(self, platform, sys_clk_freq,
+            cpu_type    = cpu_type,
+            cpu_variant = cpu_variant,
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
@@ -360,10 +356,15 @@ class LiteDRAMCore(SoCSDRAM):
             "1:4" if core_config["memtype"] == "DDR3" else "1:2")
         controller_settings = controller_settings = ControllerSettings(
             cmd_buffer_depth=core_config["cmd_buffer_depth"])
-        self.register_sdram(self.ddrphy,
-            geom_settings       = sdram_module.geom_settings,
-            timing_settings     = sdram_module.timing_settings,
-            controller_settings = controller_settings)
+        self.add_sdram("sdram",
+            phy                     = self.ddrphy,
+            module                  = sdram_module,
+            origin                  = self.mem_map["main_ram"],
+            size                    = 0x01000000, # Only expose 16MB to the CPU, enough for Init/Calib.
+            l2_cache_size           = 0,
+            l2_cache_min_data_width = 0,
+            controller_settings     = controller_settings,
+        )
 
         # DRAM Control/Status ----------------------------------------------------------------------
         if cpu_type is not None:
