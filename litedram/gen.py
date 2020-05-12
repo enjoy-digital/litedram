@@ -106,16 +106,6 @@ def get_dram_ios(core_config):
         ),
     ]
 
-def get_csr_ios(aw, dw):
-    return [
-        ("csr_port", 0,
-            Subsignal("adr",   Pins(aw)),
-            Subsignal("we",    Pins(1)),
-            Subsignal("dat_w", Pins(dw)),
-            Subsignal("dat_r", Pins(dw))
-        ),
-    ]
-
 def get_native_user_port_ios(_id, aw, dw):
     return [
         ("user_port_{}".format(_id), 0,
@@ -314,18 +304,15 @@ class LiteDRAMCore(SoCSDRAM):
         cpu_type     = core_config["cpu"]
         cpu_variant  = core_config.get("cpu_variant",  "standard")
         bus_expose   = core_config.get("bus_expose", False)
+        kwargs["l2_size"]           = 0
+        kwargs["min_l2_data_width"] = 0
         if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
-            kwargs["l2_size"]              = 0
-            kwargs["min_l2_data_width"]    = 0
             kwargs["with_uart"]            = False
             kwargs["with_timer"]           = False
             kwargs["with_ctrl"]            = False
             kwargs["with_wishbone"]        = False
-        else:
-            kwargs["l2_size"]           = 0
-            kwargs["min_l2_data_width"] = 0
 
         # SoCSDRAM ---------------------------------------------------------------------------------
         SoCSDRAM.__init__(self, platform, sys_clk_freq,
@@ -371,23 +358,24 @@ class LiteDRAMCore(SoCSDRAM):
 
         sdram_module = core_config["sdram_module"](sys_clk_freq,
             "1:4" if core_config["memtype"] == "DDR3" else "1:2")
-        controller_settings = controller_settings=ControllerSettings(
+        controller_settings = controller_settings = ControllerSettings(
             cmd_buffer_depth=core_config["cmd_buffer_depth"])
         self.register_sdram(self.ddrphy,
             geom_settings       = sdram_module.geom_settings,
             timing_settings     = sdram_module.timing_settings,
             controller_settings = controller_settings)
 
-        # DRAM Initialization ----------------------------------------------------------------------
-        self.submodules.ddrctrl = LiteDRAMCoreControl()
-        self.add_csr("ddrctrl")
-        self.comb += [
-            platform.request("init_done").eq(self.ddrctrl.init_done.storage),
-            platform.request("init_error").eq(self.ddrctrl.init_error.storage)
-        ]
-
-        # Bus port ---------------------------------------------------------------------------------
-        if bus_expose:
+        # DRAM Control/Status ----------------------------------------------------------------------
+        if cpu_type is not None:
+            # Expose calibration status to user.
+            self.submodules.ddrctrl = LiteDRAMCoreControl()
+            self.add_csr("ddrctrl")
+            self.comb += [
+                platform.request("init_done").eq(self.ddrctrl.init_done.storage),
+                platform.request("init_error").eq(self.ddrctrl.init_error.storage)
+            ]
+        else:
+            # Expose bus interface to user.
             wb_bus = wishbone.Interface()
             self.bus.add_master(master=wb_bus)
             platform.add_extension(wb_bus.get_ios("wb"))
