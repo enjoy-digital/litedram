@@ -309,11 +309,13 @@ class LiteDRAMCore(SoCCore):
             kwargs["with_uart"]            = False
             kwargs["with_timer"]           = False
             kwargs["with_ctrl"]            = False
+            csr_base                       = core_config.get("csr_base", 0)
 
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, sys_clk_freq,
-            cpu_type    = cpu_type,
-            cpu_variant = cpu_variant,
+            cpu_type      = cpu_type,
+            cpu_variant   = cpu_variant,
+            csr_base      = csr_base,
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
