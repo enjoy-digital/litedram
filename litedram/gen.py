@@ -303,7 +303,6 @@ class LiteDRAMCore(SoCCore):
         sys_clk_freq = core_config["sys_clk_freq"]
         cpu_type     = core_config["cpu"]
         cpu_variant  = core_config.get("cpu_variant",  "standard")
-        bus_expose   = core_config.get("bus_expose", False)
         if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
