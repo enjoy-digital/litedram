@@ -28,11 +28,17 @@ class LiteDRAMWishbone2Native(Module):
             [("data", port_data_width),     ("we", port_data_width//8)],
         )
         self.submodules += wdata_converter
+        wdata_lock = Signal()
         self.comb += [
-            wdata_converter.sink.valid.eq(wishbone.cyc & wishbone.stb & wishbone.we),
+            wdata_converter.sink.valid.eq(wishbone.cyc & wishbone.stb & wishbone.we & ~wdata_lock),
             wdata_converter.sink.data.eq(wishbone.dat_w),
             wdata_converter.sink.we.eq(wishbone.sel),
             wdata_converter.source.connect(port.wdata)
+        ]
+        self.sync += [
+            If(wdata_converter.sink.valid & wdata_converter.sink.ready,
+               wdata_lock.eq(1)
+            )
         ]
 
         # Read Datapath ----------------------------------------------------------------------------
@@ -55,6 +61,7 @@ class LiteDRAMWishbone2Native(Module):
             port.cmd.valid.eq(wishbone.cyc & wishbone.stb),
             port.cmd.we.eq(wishbone.we),
             port.cmd.addr.eq(wishbone.adr*ratio + count - adr_offset),
+            port.cmd.last.eq(1),
             If(port.cmd.valid & port.cmd.ready,
                 NextValue(count, count + 1),
                 If(count == (ratio - 1),
@@ -69,6 +76,7 @@ class LiteDRAMWishbone2Native(Module):
         )
         fsm.act("WAIT-WRITE",
             If(wdata_converter.sink.ready,
+                NextValue(wdata_lock, 0),
                 wishbone.ack.eq(1),
                 NextState("CMD")
             )
