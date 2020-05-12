@@ -381,10 +381,10 @@ class LiteDRAMCore(SoCCore):
             ]
         if cpu_type is None:
             # Expose bus interface to user.
-            wb_bus = wishbone.Interface()
+            wb_bus = wishbone.Interface(adr_width = self.csr.address_width)
             self.bus.add_master(master=wb_bus)
-            platform.add_extension(wb_bus.get_ios("wb"))
-            wb_pads = platform.request("wb")
+            platform.add_extension(wb_bus.get_ios("wb_ctrl"))
+            wb_pads = platform.request("wb_ctrl")
             self.comb += wb_bus.connect_to_pads(wb_pads, mode="slave")
 
         # User ports -------------------------------------------------------------------------------
