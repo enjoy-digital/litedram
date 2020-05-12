@@ -300,25 +300,24 @@ class LiteDRAMCore(SoCCore):
         platform.add_extension(get_common_ios())
 
         # Parameters -------------------------------------------------------------------------------
-        sys_clk_freq = core_config["sys_clk_freq"]
-        cpu_type     = core_config["cpu"]
-        cpu_variant  = core_config.get("cpu_variant",  "standard")
-        had_ddrctl   = core_config.get("has_ddrctl", False)
-        csr_align    = core_config.get("csr_align", 32)
+        sys_clk_freq  = core_config["sys_clk_freq"]
+        cpu_type      = core_config["cpu"]
+        cpu_variant   = core_config.get("cpu_variant", "standard")
+        csr_alignment = core_config.get("csr_alignment", 32)
+        csr_base      = core_config.get("csr_base", None)
         if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
             kwargs["with_uart"]            = False
             kwargs["with_timer"]           = False
             kwargs["with_ctrl"]            = False
-            csr_base                       = core_config.get("csr_base", 0)
 
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, sys_clk_freq,
             cpu_type      = cpu_type,
             cpu_variant   = cpu_variant,
             csr_base      = csr_base,
-            csr_alignment = csr_align,
+            csr_alignment = csr_alignment,
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
@@ -365,23 +364,21 @@ class LiteDRAMCore(SoCCore):
             module                  = sdram_module,
             origin                  = self.mem_map["main_ram"],
             size                    = 0x01000000, # Only expose 16MB to the CPU, enough for Init/Calib.
+            with_soc_interconnect   = cpu_type is not None,
             l2_cache_size           = 0,
             l2_cache_min_data_width = 0,
             controller_settings     = controller_settings,
         )
 
         # DRAM Control/Status ----------------------------------------------------------------------
-        if cpu_type is not None or had_ddrctl:
-            # Expose calibration status to user.
-            self.submodules.ddrctrl = LiteDRAMCoreControl()
-            self.add_csr("ddrctrl")
-            self.comb += [
-                platform.request("init_done").eq(self.ddrctrl.init_done.storage),
-                platform.request("init_error").eq(self.ddrctrl.init_error.storage)
-            ]
+        # Expose calibration status to user.
+        self.submodules.ddrctrl = LiteDRAMCoreControl()
+        self.add_csr("ddrctrl")
+        self.comb += platform.request("init_done").eq(self.ddrctrl.init_done.storage)
+        self.comb += platform.request("init_error").eq(self.ddrctrl.init_error.storage)
+        # If no CPU, expose a bus control interface to user.
         if cpu_type is None:
-            # Expose bus interface to user.
-            wb_bus = wishbone.Interface(adr_width = self.csr.address_width)
+            wb_bus = wishbone.Interface(adr_width=self.csr.address_width)
             self.bus.add_master(master=wb_bus)
             platform.add_extension(wb_bus.get_ios("wb_ctrl"))
             wb_pads = platform.request("wb_ctrl")
