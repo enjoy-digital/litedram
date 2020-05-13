@@ -217,7 +217,7 @@ class DRAMMemory:
         mask = reduce(or_, [0xff << (8 * bit) for bit in range(self.width//8)
                             if (we & (1 << bit)) != 0], 0)
         data = data & mask
-        self.mem[address%self.depth] = data
+        self.mem[address%self.depth] = data | (self.mem[address%self.depth] & ~mask)
         if self._debug in ["1", "W"]:
             print("W 0x{:08x}: 0x{:0{dwidth}x}".format(address, self.mem[address%self.depth],
                                                        dwidth=self.width//4))

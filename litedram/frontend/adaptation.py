@@ -173,6 +173,7 @@ class LiteDRAMNativePortUpConverter(Module):
         rdata_finished   = Signal()
         # used to prevent reading old memory value if previous command has written the same address
         read_lock        = Signal()
+        read_unlocked    = Signal()
         rw_collision     = Signal()
 
         # different order depending on read/write:
@@ -239,15 +240,21 @@ class LiteDRAMNativePortUpConverter(Module):
             #  * cmd type changes
             #  * we received all the `ratio` commands
             #  * this is the last command in a sequence
-            next_cmd.eq(addr_changed | (cmd_we != port_from.cmd.we) | (sel == 2**ratio - 1) | cmd_last),
+            #  * master requests a flush (even after the command has been sent)
+            next_cmd.eq(addr_changed | (cmd_we != port_from.cmd.we) | (sel == 2**ratio - 1)
+                        | cmd_last | port_from.flush),
         ]
 
         self.sync += [
             # block sending read command if we have just written to that address
             If(wdata_finished,
                 read_lock.eq(0),
-            ).Elif(rw_collision & ~port_to.cmd.valid,
+                read_unlocked.eq(1),
+            ).Elif(rw_collision & ~port_to.cmd.valid & ~read_unlocked,
                 read_lock.eq(1)
+            ),
+            If(port_from.cmd.valid & port_from.cmd.ready,
+                read_unlocked.eq(0)
             )
         ]
 

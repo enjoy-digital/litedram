@@ -15,12 +15,6 @@ from test.common import DRAMMemory, MemoryTestDataMixin
 
 
 class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
-    def test_wishbone_data_width_not_smaller(self):
-        with self.assertRaises(AssertionError):
-            wb   = wishbone.Interface(data_width=32)
-            port = LiteDRAMNativePort("both", address_width=32, data_width=wb.data_width * 2)
-            LiteDRAMWishbone2Native(wb, port)
-
     def wishbone_readback_test(self, pattern, mem_expected, wishbone, port, base_address=0):
         class DUT(Module):
             def __init__(self):
@@ -80,6 +74,20 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
         data = self.pattern_test_data["32bit_to_8bit"]
         wb   = wishbone.Interface(adr_width=30, data_width=32)
         port = LiteDRAMNativePort("both", address_width=30, data_width=8)
+        self.wishbone_readback_test(data["pattern"], data["expected"], wb, port)
+
+    def test_wishbone_8bit_to_32bit(self):
+        # Verify Wishbone with 8-bit data width up-converted to 32-bit data width.
+        data = self.pattern_test_data["8bit_to_32bit"]
+        wb   = wishbone.Interface(adr_width=30, data_width=8)
+        port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+        self.wishbone_readback_test(data["pattern"], data["expected"], wb, port)
+
+    def test_wishbone_32bit_to_64bit(self):
+        # Verify Wishbone with 32-bit data width up-converted to 64-bit data width.
+        data = self.pattern_test_data["32bit_to_64bit"]
+        wb   = wishbone.Interface(adr_width=30, data_width=32)
+        port = LiteDRAMNativePort("both", address_width=30, data_width=64)
         self.wishbone_readback_test(data["pattern"], data["expected"], wb, port)
 
     def test_wishbone_32bit_base_address(self):
