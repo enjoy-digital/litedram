@@ -376,7 +376,7 @@ class LiteDRAMCore(SoCCore):
         self.comb += platform.request("init_error").eq(self.ddrctrl.init_error.storage)
         # If no CPU, expose a bus control interface to user.
         if cpu_type is None:
-            wb_bus = wishbone.Interface(self.bus.address_width)
+            wb_bus = wishbone.Interface()
             self.bus.add_master(master=wb_bus)
             platform.add_extension(wb_bus.get_ios("wb_ctrl"))
             wb_pads = platform.request("wb_ctrl")
