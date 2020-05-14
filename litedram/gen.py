@@ -280,7 +280,7 @@ class LiteDRAMS7DDRPHYCRG(Module):
             sys_pll.create_clkout(self.cd_sys2x_dqs, 2*core_config["sys_clk_freq"], phase=90)
         self.comb += platform.request("pll_locked").eq(sys_pll.locked)
 
-        self.submodules.iodelay_pll = iodelay_pll = S7PLL()
+        self.submodules.iodelay_pll = iodelay_pll = S7PLL(speedgrade=core_config["speedgrade"])
         self.comb += iodelay_pll.reset.eq(rst)
         iodelay_pll.register_clkin(clk, core_config["input_clk_freq"])
         iodelay_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
