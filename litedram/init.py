@@ -364,9 +364,62 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     mr5 = 0
     mr6 = format_mr6(4) # FIXME: tCCD
 
+    rdimm_init = []
+    if phy_settings.is_rdimm:
+        def get_coarse_speed(tck, pll_bypass):
+            # JESD82-31A page 78
+            f_to_coarse_speed = {
+                1600e6: 0,
+                1866e6: 1,
+                2133e6: 2,
+                2400e6: 3,
+                2666e6: 4,
+                2933e6: 5,
+                3200e6: 6,
+            }
+            if pll_bypass:
+                return 7
+            else:
+                for f, speed in f_to_coarse_speed.items():
+                        if tck >= 2/f:
+                            return speed
+                raise ValueError
+        def get_fine_speed(tck):
+            # JESD82-31A page 83
+            freq = 2/tck
+            fine_speed = (freq - 1240e6) // 20e6
+            fine_speed = max(fine_speed, 0)
+            fine_speed = min(fine_speed, 0b1100001)
+            return fine_speed
+
+        coarse_speed = get_coarse_speed(phy_settings.tck, phy_settings.rcd_pll_bypass)
+        fine_speed = get_fine_speed(phy_settings.tck)
+
+        rcd_reset = 0x060 | 0x0                          # F0RC06: command space control; 0: reset RCD
+
+        f0rc0f = 0x0F0 | 0x4                             # F0RC05: 0 nCK latency adder
+
+        f0rc03 = 0x030 | phy_settings.rcd_ca_cs_drive    # F0RC03: CA/CS drive strength
+        f0rc04 = 0x040 | phy_settings.rcd_odt_cke_drive  # F0RC04: ODT/CKE drive strength
+        f0rc05 = 0x050 | phy_settings.rcd_clk_drive      # F0RC04: ODT/CKE drive strength
+
+        f0rc0a = 0x0A0 | coarse_speed                    # F0RC0A: coarse speed selection and PLL bypass
+        f0rc3x = 0x300 | fine_speed                      # F0RC3x: fine speed selection
+
+        rdimm_init = [
+            ("Reset RCD", rcd_reset, 7, cmds["MODE_REGISTER"], 50000),
+            ("Load RCD F0RC0F", f0rc0f, 7, cmds["MODE_REGISTER"], 100),
+            ("Load RCD F0RC03", f0rc03, 7, cmds["MODE_REGISTER"], 100),
+            ("Load RCD F0RC04", f0rc04, 7, cmds["MODE_REGISTER"], 100),
+            ("Load RCD F0RC05", f0rc05, 7, cmds["MODE_REGISTER"], 100),
+            ("Load RCD F0RC0A", f0rc0a, 7, cmds["MODE_REGISTER"], 100),
+            ("Load RCD F0RC3X", f0rc3x, 7, cmds["MODE_REGISTER"], 100),
+        ]
+
     init_sequence = [
         ("Release reset", 0x0000, 0, cmds["UNRESET"], 50000),
         ("Bring CKE high", 0x0000, 0, cmds["CKE"], 10000),
+    ] + rdimm_init + [
         ("Load Mode Register 3", mr3, 3, cmds["MODE_REGISTER"], 0),
         ("Load Mode Register 6", mr6, 6, cmds["MODE_REGISTER"], 0),
         ("Load Mode Register 5", mr5, 5, cmds["MODE_REGISTER"], 0),
@@ -426,6 +479,10 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
         r += "#define SDRAM_PHY_DELAYS 8\n"
         r += "#define SDRAM_PHY_BITSLIPS 4\n"
 
+    if phy_settings.is_rdimm:
+        assert phy_settings.memtype == "DDR4"
+        r += "#define SDRAM_PHY_DDR4_RDIMM\n"
+
     r += "\n"
 
     r += "static void cdelay(int i);\n"
@@ -482,16 +539,32 @@ const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {{
 
     r += "static void init_sequence(void)\n{\n"
     for comment, a, ba, cmd, delay in init_sequence:
-        r += "\t/* {0} */\n".format(comment)
-        r += "\tsdram_dfii_pi0_address_write({0:#x});\n".format(a)
-        r += "\tsdram_dfii_pi0_baddress_write({0:d});\n".format(ba)
-        if cmd[:12] == "DFII_CONTROL":
-            r += "\tsdram_dfii_control_write({0});\n".format(cmd)
-        else:
-            r += "\tcommand_p0({0});\n".format(cmd)
-        if delay:
-            r += "\tcdelay({0:d});\n".format(delay)
-        r += "\n"
+        invert_masks = [(0, 0), ]
+        if phy_settings.is_rdimm:
+            assert phy_settings.memtype == "DDR4"
+            # JESD82-31A page 38
+            #
+            # B-side chips have certain usually-inconsequential address and BA
+            # bits inverted by the RCD to reduce SSO current. For mode register
+            # writes, however, we must compensate for this. BG[1] also directs
+            # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
+            #
+            # The 'ba != 7' is because we don't do this to writes to the RCD
+            # itself.
+            if ba != 7:
+                invert_masks.append((0b10101111111000, 0b1111))
+
+        for a_inv, ba_inv in invert_masks:
+            r += "\t/* {0} */\n".format(comment)
+            r += "\tsdram_dfii_pi0_address_write({0:#x});\n".format(a ^ a_inv)
+            r += "\tsdram_dfii_pi0_baddress_write({0:d});\n".format(ba ^ ba_inv)
+            if cmd[:12] == "DFII_CONTROL":
+                r += "\tsdram_dfii_control_write({0});\n".format(cmd)
+            else:
+                r += "\tcommand_p0({0});\n".format(cmd)
+            if delay:
+                r += "\tcdelay({0:d});\n".format(delay)
+            r += "\n"
     r += "}\n"
 
     r += "#endif\n"

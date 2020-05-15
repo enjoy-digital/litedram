@@ -173,6 +173,7 @@ class PhySettings(Settings):
                  cl, read_latency, write_latency, nranks=1, cwl=None):
         self.set_attributes(locals())
         self.cwl = cl if cwl is None else cwl
+        self.is_rdimm = False
 
     # Optional DDR3/DDR4 electrical settings:
     # rtt_nom: Non-Writes on-die termination impedance
@@ -182,6 +183,11 @@ class PhySettings(Settings):
         assert self.memtype in ["DDR3", "DDR4"]
         self.set_attributes(locals())
 
+    # Optional RDIMM configuration
+    def set_rdimm(self, tck, rcd_pll_bypass, rcd_ca_cs_drive, rcd_odt_cke_drive, rcd_clk_drive):
+        assert self.memtype == "DDR4"
+        self.is_rdimm = True
+        self.set_attributes(locals())
 
 class GeomSettings(Settings):
     def __init__(self, bankbits, rowbits, colbits):
