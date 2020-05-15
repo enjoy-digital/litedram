@@ -281,7 +281,7 @@ class SDRAMModule:
             speedgrade        = spd.speedgrade,
             fine_refresh_mode = fine_refresh_mode)
 
-class SDRAMRegisteredModule: registered = True
+class SDRAMRegisteredModule(SDRAMModule): registered = True
 
 # SDR ----------------------------------------------------------------------------------------------
 
