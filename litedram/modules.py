@@ -158,7 +158,6 @@ class DDR3SPDData:
         raise ValueError("Transfer rate = {:.2f} does not correspond to any DDR3 speedgrade"
                          .format(freq_mhz))
 
-
 # SDRAMModule --------------------------------------------------------------------------------------
 
 class SDRAMModule:
@@ -172,6 +171,7 @@ class SDRAMModule:
     SDRAM modules with the same geometry exist can have
     various speedgrades.
     """
+    registered = False
     def __init__(self, clk_freq, rate, speedgrade=None, fine_refresh_mode=None):
         self.clk_freq      = clk_freq
         self.rate          = rate
@@ -276,13 +276,19 @@ class SDRAMModule:
         }[spd.memtype]
         rate = "1:{}".format(nphases)
 
-        return _SDRAMModule(clk_freq, rate=rate, speedgrade=spd.speedgrade,
-                            fine_refresh_mode=fine_refresh_mode)
+        return _SDRAMModule(clk_freq,
+            rate              = rate,
+            speedgrade        = spd.speedgrade,
+            fine_refresh_mode = fine_refresh_mode)
+
+class SDRAMRegisteredModule: registered = True
 
 # SDR ----------------------------------------------------------------------------------------------
 
-class IS42S16160(SDRAMModule):
-    memtype = "SDR"
+class SDRModule(SDRAMModule):                     memtype = "SDR"
+class SDRRegisteredModule(SDRAMRegisteredModule): memtype = "SDR"
+
+class IS42S16160(SDRModule):
     # geometry
     nbanks = 4
     nrows  = 8192
@@ -291,9 +297,7 @@ class IS42S16160(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=20, tRCD=20, tWR=20, tRFC=(None, 70), tFAW=None, tRAS=None)}
 
-
-class IS42S16320(SDRAMModule):
-    memtype = "SDR"
+class IS42S16320(SDRModule):
     # geometry
     nbanks = 4
     nrows  = 8192
@@ -302,9 +306,7 @@ class IS42S16320(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=20, tRCD=20, tWR=20, tRFC=(None, 70), tFAW=None, tRAS=None)}
 
-
-class MT48LC4M16(SDRAMModule):
-    memtype = "SDR"
+class MT48LC4M16(SDRModule):
     # geometry
     nbanks = 4
     nrows  = 4096
@@ -313,9 +315,7 @@ class MT48LC4M16(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=14, tRFC=(None, 66), tFAW=None, tRAS=None)}
 
-
-class MT48LC16M16(SDRAMModule):
-    memtype = "SDR"
+class MT48LC16M16(SDRModule):
     # geometry
     nbanks = 4
     nrows  = 8192
@@ -324,9 +324,7 @@ class MT48LC16M16(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 15))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=20, tRCD=20, tWR=15, tRFC=(None, 66), tFAW=None, tRAS=44)}
 
-
-class AS4C16M16(SDRAMModule):
-    memtype = "SDR"
+class AS4C16M16(SDRModule):
     # geometry
     nbanks = 4
     nrows  = 8192
@@ -335,9 +333,7 @@ class AS4C16M16(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=18, tRCD=18, tWR=12, tRFC=(None, 60), tFAW=None, tRAS=None)}
 
-
-class AS4C32M16(SDRAMModule):
-    memtype = "SDR"
+class AS4C32M16(SDRModule):
     # geometry
     nbanks = 4
     nrows  = 8192
@@ -346,8 +342,7 @@ class AS4C32M16(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=18, tRCD=18, tWR=12, tRFC=(None, 60), tFAW=None, tRAS=None)}
 
-class AS4C32M8(SDRAMModule):
-    memtype = "SDR"
+class AS4C32M8(SDRModule):
     # geometry
     nbanks = 4
     nrows  = 8192
@@ -356,8 +351,7 @@ class AS4C32M8(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 15))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=20, tRCD=20, tWR=15, tRFC=(None, 66), tFAW=None, tRAS=44)}
 
-class M12L64322A(SDRAMModule):
-    memtype = "SDR"
+class M12L64322A(SDRModule):
     # geometry
     nbanks = 4
     nrows  = 2048
@@ -366,8 +360,7 @@ class M12L64322A(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 10))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 55), tFAW=None, tRAS=40)}
 
-class M12L16161A(SDRAMModule):
-    memtype = "SDR"
+class M12L16161A(SDRModule):
     # geometry
     nbanks = 2
     nrows  = 2048
@@ -377,6 +370,9 @@ class M12L16161A(SDRAMModule):
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 55), tFAW=None, tRAS=40)}
 
 # DDR ----------------------------------------------------------------------------------------------
+
+class DDRModule(SDRAMModule):                     memtype = "DDR"
+class DDRRegisteredModule(SDRAMRegisteredModule): memtype = "DDR"
 
 class MT46V32M16(SDRAMModule):
     memtype = "DDR"
@@ -388,10 +384,12 @@ class MT46V32M16(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 70), tFAW=None, tRAS=None)}
 
+# LPDDR --------------------------------------------------------------------------------------------
 
-# LPDDR
-class MT46H32M16(SDRAMModule):
-    memtype = "LPDDR"
+class LPDDRModule(SDRAMModule):                     memtype = "LPDDR"
+class LPDDRRegisteredModule(SDRAMRegisteredModule): memtype = "LPDDR"
+
+class MT46H32M16(LPDDRModule):
     # geometry
     nbanks = 4
     nrows  = 8192
@@ -400,9 +398,7 @@ class MT46H32M16(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 72), tFAW=None, tRAS=None)}
 
-
-class MT46H32M32(SDRAMModule):
-    memtype = "LPDDR"
+class MT46H32M32(LPDDRModule):
     # geometry
     nbanks = 4
     nrows  = 8192
@@ -410,10 +406,13 @@ class MT46H32M32(SDRAMModule):
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 72), tFAW=None, tRAS=None)}
-
 
 # DDR2 ---------------------------------------------------------------------------------------------
-class MT47H128M8(SDRAMModule):
+
+class DDR2Module(SDRAMModule):                     memtype = "DDR2"
+class DDR2RegisteredModule(SDRAMRegisteredModule): memtype = "DDR2"
+
+class MT47H128M8(DDR2Module):
     memtype = "DDR2"
     # geometry
     nbanks = 8
@@ -423,8 +422,7 @@ class MT47H128M8(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(None, 7.5), tCCD=(2, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 127.5), tFAW=None, tRAS=None)}
 
-
-class MT47H32M16(SDRAMModule):
+class MT47H32M16(DDR2Module):
     memtype = "DDR2"
     # geometry
     nbanks = 4
@@ -434,8 +432,7 @@ class MT47H32M16(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(None, 7.5), tCCD=(2, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 127.5), tFAW=None, tRAS=None)}
 
-
-class MT47H64M16(SDRAMModule):
+class MT47H64M16(DDR2Module):
     memtype = "DDR2"
     # geometry
     nbanks = 8
@@ -445,8 +442,7 @@ class MT47H64M16(SDRAMModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(None, 7.5), tCCD=(2, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 127.5), tFAW=None, tRAS=None)}
 
-
-class P3R1GE4JGF(SDRAMModule):
+class P3R1GE4JGF(DDR2Module):
     memtype = "DDR2"
     # geometry
     nbanks = 8
@@ -458,7 +454,10 @@ class P3R1GE4JGF(SDRAMModule):
 
 # DDR3 (Chips) -------------------------------------------------------------------------------------
 
-class MT41K64M16(SDRAMModule):
+class DDR3Module(SDRAMModule):                     memtype = "DDR3"
+class DDR3RegisteredModule(SDRAMRegisteredModule): memtype = "DDR3"
+
+class MT41K64M16(DDR3Module):
     memtype = "DDR3"
     # geometry
     nbanks = 8
@@ -474,8 +473,7 @@ class MT41K64M16(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
-
-class MT41J128M16(SDRAMModule):
+class MT41J128M16(DDR3Module):
     memtype = "DDR3"
     # geometry
     nbanks = 8
@@ -491,13 +489,9 @@ class MT41J128M16(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
+class MT41K128M16(MT41J128M16): pass
 
-class MT41K128M16(MT41J128M16):
-    pass
-
-
-class MT41J256M16(SDRAMModule):
-    memtype = "DDR3"
+class MT41J256M16(DDR3Module):
     # geometry
     nbanks = 8
     nrows  = 32768
@@ -512,13 +506,9 @@ class MT41J256M16(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
+class MT41K256M16(MT41J256M16): pass
 
-class MT41K256M16(MT41J256M16):
-    pass
-
-
-class MT41J512M16(SDRAMModule):
-    memtype = "DDR3"
+class MT41J512M16(DDR3Module):
     # geometry
     nbanks = 8
     nrows  = 65536
@@ -530,13 +520,9 @@ class MT41J512M16(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
+class MT41K512M16(MT41J512M16): pass
 
-class MT41K512M16(MT41J512M16):
-    pass
-
-
-class K4B1G0446F(SDRAMModule):
-    memtype = "DDR3"
+class K4B1G0446F(DDR3Module):
     # geometry
     nbanks = 8
     nrows  = 16384
@@ -551,9 +537,7 @@ class K4B1G0446F(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
-
-class K4B2G1646F(SDRAMModule):
-    memtype = "DDR3"
+class K4B2G1646F(DDR3Module):
     # geometry
     nbanks = 8
     nrows  = 16384
@@ -568,9 +552,7 @@ class K4B2G1646F(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
-
-class H5TC4G63CFR(SDRAMModule):
-    memtype = "DDR3"
+class H5TC4G63CFR(DDR3Module):
     # geometry
     nbanks = 8
     nrows  = 16384
@@ -582,9 +564,7 @@ class H5TC4G63CFR(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["800"]
 
-
-class IS43TR16128B(SDRAMModule):
-    memtype = "DDR3"
+class IS43TR16128B(DDR3Module):
     # geometry
     nbanks = 8
     nrows  = 16384
@@ -599,9 +579,8 @@ class IS43TR16128B(SDRAMModule):
 
 # DDR3 (SO-DIMM) -----------------------------------------------------------------------------------
 
-class MT8JTF12864(SDRAMModule):
+class MT8JTF12864(DDR3Module):
     # base chip: MT41J128M8
-    memtype = "DDR3"
     # geometry
     nbanks = 8
     nrows  = 16384
@@ -614,10 +593,8 @@ class MT8JTF12864(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["1333"]
 
-
-class MT8KTF51264(SDRAMModule):
+class MT8KTF51264(DDR3Module):
     # base chip: MT41K512M8
-    memtype = "DDR3"
     # geometry
     nbanks = 8
     nrows  = 65536
@@ -633,10 +610,8 @@ class MT8KTF51264(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["1866"]
 
-
-class MT18KSF1G72HZ(SDRAMModule):
+class MT18KSF1G72HZ(DDR3Module):
     # base chip: MT41K512M8
-    memtype = "DDR3"
     # geometry
     nbanks = 8
     nrows  = 65536
@@ -650,9 +625,7 @@ class MT18KSF1G72HZ(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
-
-class AS4C256M16D3A(SDRAMModule):
-    memtype = "DDR3"
+class AS4C256M16D3A(DDR3Module):
     # geometry
     nbanks = 8
     nrows  = 32768
@@ -664,10 +637,8 @@ class AS4C256M16D3A(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
-
-class MT16KTF1G64HZ(SDRAMModule):
+class MT16KTF1G64HZ(DDR3Module):
     # base chip: MT41K512M8
-    memtype = "DDR3"
     # geometry
     nbanks = 8
     nrows  = 65536
@@ -685,8 +656,11 @@ class MT16KTF1G64HZ(SDRAMModule):
 
 
 # DDR4 (Chips) -------------------------------------------------------------------------------------
-class EDY4016A(SDRAMModule):
-    memtype = "DDR4"
+
+class DDR4Module(SDRAMModule):                     memtype = "DDR4"
+class DDR4RegisteredModule(SDRAMRegisteredModule): memtype = "DDR4"
+
+class EDY4016A(DDR4Module):
     # geometry
     ngroupbanks = 4
     ngroups     = 2
@@ -702,9 +676,7 @@ class EDY4016A(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
 
-
-class MT40A1G8(SDRAMModule):
-    memtype = "DDR4"
+class MT40A1G8(DDR4Module):
     # geometry
     ngroupbanks = 4
     ngroups     = 4
@@ -721,9 +693,7 @@ class MT40A1G8(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
 
-
-class MT40A256M16(SDRAMModule):
-    memtype = "DDR4"
+class MT40A256M16(DDR4Module):
     # geometry
     ngroupbanks = 4
     ngroups     = 2
@@ -739,9 +709,7 @@ class MT40A256M16(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
 
-
-class MT40A512M8(SDRAMModule):
-    memtype = "DDR4"
+class MT40A512M8(DDR4Module):
     # geometry
     ngroupbanks = 4
     ngroups     = 4
@@ -758,9 +726,7 @@ class MT40A512M8(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
 
-
-class MT40A512M16(SDRAMModule):
-    memtype = "DDR4"
+class MT40A512M16(DDR4Module):
     # geometry
     ngroupbanks = 4
     ngroups     = 2
@@ -777,8 +743,8 @@ class MT40A512M16(SDRAMModule):
     speedgrade_timings["default"] = speedgrade_timings["2400"]
 
 # DDR4 (SO-DIMM) -----------------------------------------------------------------------------------
-class KVR21SE15S84(SDRAMModule):
-    memtype = "DDR4"
+
+class KVR21SE15S84(DDR4Module):
     # geometry
     ngroupbanks = 4
     ngroups     = 4
@@ -794,8 +760,7 @@ class KVR21SE15S84(SDRAMModule):
     }
     speedgrade_timings["default"] = speedgrade_timings["2133"]
 
-class MTA4ATF51264HZ(SDRAMModule):
-    memtype = "DDR4"
+class MTA4ATF51264HZ(DDR4Module):
     # geometry
     ngroupbanks = 4
     ngroups     = 2
@@ -812,8 +777,8 @@ class MTA4ATF51264HZ(SDRAMModule):
     speedgrade_timings["default"] = speedgrade_timings["2133"]
 
 # DDR4 (RDIMM) -------------------------------------------------------------------------------------
-class MTA18ASF2G72PZ(SDRAMModule):
-    memtype = "DDR4"
+
+class MTA18ASF2G72PZ(DDR4RegisteredModule):
     # geometry
     ngroupbanks = 4
     ngroups     = 4
