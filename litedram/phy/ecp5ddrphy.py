@@ -162,25 +162,19 @@ class ECP5DDRPHY(Module, AutoCSR):
 
             # Addresses and Commands ---------------------------------------------------------------
             for i in range(addressbits):
-                self.specials += Instance("ODDRX2F",
+                self.specials += Instance("ODDRX1F",
                     i_RST  = ResetSignal("sys2x"),
-                    i_ECLK = ClockSignal("sys2x"),
                     i_SCLK = ClockSignal(),
                     i_D0   = dfi.phases[0].address[i],
-                    i_D1   = dfi.phases[0].address[i],
-                    i_D2   = dfi.phases[1].address[i],
-                    i_D3   = dfi.phases[1].address[i],
+                    i_D1   = dfi.phases[1].address[i],
                     o_Q    = pads.a[i]
                 )
             for i in range(bankbits):
-                self.specials += Instance("ODDRX2F",
+                self.specials += Instance("ODDRX1F",
                     i_RST  = ResetSignal("sys2x"),
-                    i_ECLK = ClockSignal("sys2x"),
                     i_SCLK = ClockSignal(),
                     i_D0   = dfi.phases[0].bank[i],
-                    i_D1   = dfi.phases[0].bank[i],
-                    i_D2   = dfi.phases[1].bank[i],
-                    i_D3   = dfi.phases[1].bank[i],
+                    i_D1   = dfi.phases[1].bank[i],
                     o_Q    = pads.ba[i]
                 )
             controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
@@ -190,14 +184,11 @@ class ECP5DDRPHY(Module, AutoCSR):
                 controls.append("cs_n")
             for name in controls:
                 for i in range(len(getattr(pads, name))):
-                    self.specials += Instance("ODDRX2F",
+                    self.specials += Instance("ODDRX1F",
                         i_RST  = ResetSignal("sys2x"),
-                        i_ECLK = ClockSignal("sys2x"),
                         i_SCLK = ClockSignal(),
                         i_D0   = getattr(dfi.phases[0], name)[i],
-                        i_D1   = getattr(dfi.phases[0], name)[i],
-                        i_D2   = getattr(dfi.phases[1], name)[i],
-                        i_D3   = getattr(dfi.phases[1], name)[i],
+                        i_D1   = getattr(dfi.phases[1], name)[i],
                         o_Q    = getattr(pads, name)[i]
                     )
 
