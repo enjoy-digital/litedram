@@ -448,7 +448,20 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
 
 def get_sdram_phy_c_header(phy_settings, timing_settings):
     r = "#ifndef __GENERATED_SDRAM_PHY_H\n#define __GENERATED_SDRAM_PHY_H\n"
-    r += "#include <hw/common.h>\n#include <generated/csr.h>\n#include <hw/flags.h>\n\n"
+    r += "#include <hw/common.h>\n"
+    r += "#include <generated/csr.h>\n"
+
+    r += "#define DFII_CONTROL_SEL        0x01\n"
+    r += "#define DFII_CONTROL_CKE        0x02\n"
+    r += "#define DFII_CONTROL_ODT        0x04\n"
+    r += "#define DFII_CONTROL_RESET_N    0x08\n"
+
+    r += "#define DFII_COMMAND_CS         0x01\n"
+    r += "#define DFII_COMMAND_WE         0x02\n"
+    r += "#define DFII_COMMAND_CAS        0x04\n"
+    r += "#define DFII_COMMAND_RAS        0x08\n"
+    r += "#define DFII_COMMAND_WRDATA     0x10\n"
+    r += "#define DFII_COMMAND_RDDATA     0x20\n"
 
     phytype = phy_settings.phytype.upper()
     nphases = phy_settings.nphases
