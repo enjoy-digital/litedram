@@ -73,15 +73,7 @@ class LiteDRAMCrossbar(Module):
 
         self.masters = []
 
-    def get_port(self, mode="both", data_width=None, clock_domain="sys", reverse=False, **kwargs):
-        # retro-compatibility # FIXME: remove
-        if "cd" in kwargs:
-            print("[WARNING] Please update LiteDRAMCrossbar.get_port's \"cd\" parameter to \"clock_domain\"")
-            clock_domain = kwargs["cd"]
-        if "dw" in kwargs:
-            print("[WARNING] Please update LiteDRAMCrossbar.get_port's \"dw\" parameter to \"data_width\"")
-            data_width = kwargs["dw"]
-
+    def get_port(self, mode="both", data_width=None, clock_domain="sys", reverse=False):
         if self.finalized:
             raise FinalizeError
 
