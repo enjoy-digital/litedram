@@ -315,7 +315,7 @@ class LiteDRAMNativeReadPort(LiteDRAMNativePort):
 class tXXDController(Module):
     def __init__(self, txxd):
         self.valid = valid = Signal()
-        self.ready = ready = Signal(reset=1)
+        self.ready = ready = Signal(reset=txxd is None)
         ready.attr.add("no_retiming")
 
         # # #
