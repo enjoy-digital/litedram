@@ -333,7 +333,8 @@ class tXXDController(Module):
                 ).Elif(~ready,
                     count.eq(count - 1),
                     If(count == 1,
-                        ready.eq(1))
+                        ready.eq(1)
+                    )
                 )
 
 

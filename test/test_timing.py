@@ -29,23 +29,23 @@ class TestTiming(unittest.TestCase):
 
     def test_txxd_controller(self):
         txxd = 1
-        valids = "_-______"
-        readys = "--------"
+        valids = "__-______"
+        readys = "_--------"
         self.txxd_controller_test(txxd, valids, readys)
 
         txxd = 2
-        valids = "_-______"
-        readys = "--_-----"
+        valids = "__-______"
+        readys = "_--_-----"
         self.txxd_controller_test(txxd, valids, readys)
 
         txxd = 3
-        valids = "_-______"
-        readys = "--__----"
+        valids = "____-______"
+        readys = "___--__----"
         self.txxd_controller_test(txxd, valids, readys)
 
         txxd = 4
-        valids = "_-______"
-        readys = "--___---"
+        valids = "____-______"
+        readys = "___--___---"
         self.txxd_controller_test(txxd, valids, readys)
 
     def txxd_controller_random_test(self, txxd, loops):
