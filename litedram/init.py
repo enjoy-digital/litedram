@@ -114,7 +114,7 @@ def get_ddr2_phy_init_sequence(phy_settings, timing_settings):
 
 def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
     cl  = phy_settings.cl
-    bl  = 8
+    bl  = 4
     cwl = phy_settings.cwl
 
     def format_mr0(bl, cl, wr, dll_reset):
