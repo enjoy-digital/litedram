@@ -1,0 +1,25 @@
+From 38417a4c58d967659ba4a3de7ee1802ef130d461 Mon Sep 17 00:00:00 2001
+From: Mariusz Glebocki <mglebocki@antmicro.com>
+Date: Wed, 20 May 2020 08:45:21 +0200
+Subject: [PATCH 5/7] Replace unsupported assignment
+
+---
+ ddr3.v | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ddr3.v b/ddr3.v
+index 50c1ec2..fb9a2d5 100644
+--- a/ddr3.v
++++ b/ddr3.v
+@@ -1401,7 +1401,7 @@ module ddr3 (
+                                             end else begin
+                                                 if (DEBUG) $display ("%m: at time %t INFO: %s bank %d", $time, cmd_string[cmd], i);
+                                                 active_bank[i] = 1'b0;
+-                                                tm_bank_precharge[i] <= $time;
++                                                tm_bank_precharge[i] = $time;
+                                                 tm_precharge <= $time;
+                                                 ck_precharge <= ck_cntr;
+                                             end
+-- 
+2.20.1
+

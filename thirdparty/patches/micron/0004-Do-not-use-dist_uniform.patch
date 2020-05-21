@@ -1,0 +1,34 @@
+From 304b645093cfcb937b6e58092a90a123564023cb Mon Sep 17 00:00:00 2001
+From: Mariusz Glebocki <mglebocki@antmicro.com>
+Date: Wed, 20 May 2020 08:45:11 +0200
+Subject: [PATCH 4/7] Do not use $dist_uniform
+
+---
+ ddr3.v | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ddr3.v b/ddr3.v
+index e74ad92..50c1ec2 100644
+--- a/ddr3.v
++++ b/ddr3.v
+@@ -1949,7 +1949,7 @@ module ddr3 (
+                     if (dqsck_min == dqsck_max) begin
+                         dqsck[i] = dqsck_min;
+                     end else begin
+-                        dqsck[i] = $dist_uniform(seed, dqsck_min, dqsck_max);
++                        dqsck[i] = (dqsck_min + dqsck_max) / 2;
+                     end
+                     dqsq_max = TDQSQ + dqsck[i];
+ 
+@@ -1961,7 +1961,7 @@ module ddr3 (
+                             if (dqsq_min == dqsq_max) begin
+                                 dq_out_dly   [i*`DQ_PER_DQS + j] <= #(tck_avg/2 + dqsq_min) dq_out[i*`DQ_PER_DQS + j];
+                             end else begin
+-                                dq_out_dly   [i*`DQ_PER_DQS + j] <= #(tck_avg/2 + $dist_uniform(seed, dqsq_min, dqsq_max)) dq_out[i*`DQ_PER_DQS + j];
++                                dq_out_dly   [i*`DQ_PER_DQS + j] <= #(tck_avg/2 + (dqsq_min + dqsq_max)/2) dq_out[i*`DQ_PER_DQS + j];
+                             end
+                         end
+                     end
+-- 
+2.20.1
+

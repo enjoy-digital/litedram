@@ -1,0 +1,22 @@
+From 6ec70787e0ab14ba03111bf033c051ae054a8ea3 Mon Sep 17 00:00:00 2001
+From: Mariusz Glebocki <mglebocki@antmicro.com>
+Date: Wed, 20 May 2020 08:37:54 +0200
+Subject: [PATCH 3/7] Prevent file I/O
+
+---
+ ddr3.v | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ddr3.v b/ddr3.v
+index 3ee6885..e74ad92 100644
+--- a/ddr3.v
++++ b/ddr3.v
+@@ -1,4 +1,4 @@
+-`define MAX_MEM
++// `define MAX_MEM
+ /****************************************************************************************
+ *
+ *    File Name:  ddr3.v
+-- 
+2.20.1
+

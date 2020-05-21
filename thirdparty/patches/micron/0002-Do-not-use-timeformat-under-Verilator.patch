@@ -1,0 +1,30 @@
+From 7ffdfe343e5795977edde3b7bc43988a5564a8b7 Mon Sep 17 00:00:00 2001
+From: Mariusz Glebocki <mglebocki@antmicro.com>
+Date: Wed, 20 May 2020 08:33:51 +0200
+Subject: [PATCH 2/7] Do not use $timeformat under Verilator
+
+---
+ ddr3.v | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/ddr3.v b/ddr3.v
+index dd20747..3ee6885 100644
+--- a/ddr3.v
++++ b/ddr3.v
+@@ -553,8 +553,11 @@ module ddr3 (
+         if ((1<<BO_BITS) > BL_MAX) 
+             $display("%m ERROR: 2^BO_BITS cannot be greater than BL_MAX parameter.");
+ 
+-        $timeformat (-12, 1, " ps", 1);
+-        seed = RANDOM_SEED;
++        `ifdef VERILATOR
++        `else
++            $timeformat (-12, 1, " ps", 1);
++            seed = RANDOM_SEED;
++        `endif
+ 
+         ck_cntr = 0;
+     end
+-- 
+2.20.1
+

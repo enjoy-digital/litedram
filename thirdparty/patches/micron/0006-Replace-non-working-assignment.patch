@@ -1,0 +1,25 @@
+From 6f3d44bc66e3a4c14a34dc54969065a98a8df4b4 Mon Sep 17 00:00:00 2001
+From: Mariusz Glebocki <mglebocki@antmicro.com>
+Date: Wed, 20 May 2020 09:10:43 +0200
+Subject: [PATCH 6/7] Replace non-working assignment
+
+---
+ ddr3.v | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ddr3.v b/ddr3.v
+index fb9a2d5..92a0c37 100644
+--- a/ddr3.v
++++ b/ddr3.v
+@@ -2125,7 +2125,7 @@ module ddr3 (
+                                 // the internal precharge happens (not at the next rising clock edge after this event).
+                                 if ($time - tm_bank_read_end[i] < TRTP) begin
+                                     if (DEBUG) $display ("%m: at time %t INFO: Auto Precharge bank %d", tm_bank_read_end[i] + TRTP, i);
+-                                    active_bank[i] <= #(tm_bank_read_end[i] + TRTP - $time) 0;
++                                    active_bank[i] = 0;
+                                     auto_precharge_bank[i] <= #(tm_bank_read_end[i] + TRTP - $time) 0;
+                                     tm_bank_precharge[i] <= #(tm_bank_read_end[i] + TRTP - $time) tm_bank_read_end[i] + TRTP;
+                                     tm_precharge <= #(tm_bank_read_end[i] + TRTP - $time) tm_bank_read_end[i] + TRTP;
+-- 
+2.20.1
+

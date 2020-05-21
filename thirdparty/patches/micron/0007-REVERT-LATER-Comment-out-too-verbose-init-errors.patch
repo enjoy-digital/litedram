@@ -1,0 +1,99 @@
+From ff560c42b49c854439f9a9b1c07cbc6d64be09b5 Mon Sep 17 00:00:00 2001
+From: Mariusz Glebocki <mglebocki@antmicro.com>
+Date: Wed, 20 May 2020 08:59:21 +0200
+Subject: [PATCH 7/7] [REVERT LATER] Comment out too verbose init errors
+
+---
+ ddr3.v | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
+
+diff --git a/ddr3.v b/ddr3.v
+index 92a0c37..8a5a531 100644
+--- a/ddr3.v
++++ b/ddr3.v
+@@ -2048,17 +2048,17 @@ module ddr3 (
+                 // check setup of command signals
+                 if ($time > TIS) begin
+                     if ($time - tm_cke < TIS) 
+-                        $display ("%m: at time %t ERROR:   tIS violation on CKE by %t", $time, tm_cke + TIS - $time);
++                        ; // $display ("%m: at time %t ERROR:   tIS violation on CKE by %t", $time, tm_cke + TIS - $time);
+                     if (cke_in) begin
+                         for (i=0; i<3; i=i+1) begin
+                             if ($time - tm_cmd_addr[i] < TIS) 
+-                                $display ("%m: at time %t ERROR:   tIS violation on %s by %t", $time, cmd_addr_string[i], tm_cmd_addr[i] + TIS - $time);
++                                ; // $display ("%m: at time %t ERROR:   tIS violation on %s by %t", $time, cmd_addr_string[i], tm_cmd_addr[i] + TIS - $time);
+                         end
+                     end
+                     if (cke_in & !(cs_n_in | (ras_n_in & cas_n_in & we_n_in))) begin // Bank and Address are don't care when DES or NOP
+                         for (i=4; i<23; i=i+1) begin
+                             if ($time - tm_cmd_addr[i] < TIS)
+-                                $display ("%m: at time %t ERROR:   tIS violation on %s by %t", $time, cmd_addr_string[i], tm_cmd_addr[i] + TIS - $time);
++                                ; // $display ("%m: at time %t ERROR:   tIS violation on %s by %t", $time, cmd_addr_string[i], tm_cmd_addr[i] + TIS - $time);
+                         end
+                     end
+                 end
+@@ -2227,15 +2227,15 @@ module ddr3 (
+                         if (TCK_MIN - tck_avg >= 1.0)
+                             $display ("%m: at time %t ERROR: tCK(avg) minimum violation by %f ps.", $time, TCK_MIN - tck_avg);
+                         if (tck_avg - TCK_MAX >= 1.0) 
+-                            $display ("%m: at time %t ERROR: tCK(avg) maximum violation by %f ps.", $time, tck_avg - TCK_MAX);
++                            ; // $display ("%m: at time %t ERROR: tCK(avg) maximum violation by %f ps.", $time, tck_avg - TCK_MAX);
+ 
+                         // check tCL
+                         if (tm_ck_neg - $time < TCL_ABS_MIN*tck_avg) 
+-                            $display ("%m: at time %t ERROR: tCL(abs) minimum violation on CLK by %t", $time, TCL_ABS_MIN*tck_avg - tm_ck_neg + $time);
++                            ; // $display ("%m: at time %t ERROR: tCL(abs) minimum violation on CLK by %t", $time, TCL_ABS_MIN*tck_avg - tm_ck_neg + $time);
+                         if (tcl_avg < TCL_AVG_MIN*tck_avg) 
+-                            $display ("%m: at time %t ERROR: tCL(avg) minimum violation on CLK by %t", $time, TCL_AVG_MIN*tck_avg - tcl_avg);
++                            ; // $display ("%m: at time %t ERROR: tCL(avg) minimum violation on CLK by %t", $time, TCL_AVG_MIN*tck_avg - tcl_avg);
+                         if (tcl_avg > TCL_AVG_MAX*tck_avg) 
+-                            $display ("%m: at time %t ERROR: tCL(avg) maximum violation on CLK by %t", $time, tcl_avg - TCL_AVG_MAX*tck_avg);
++                            ; // $display ("%m: at time %t ERROR: tCL(avg) maximum violation on CLK by %t", $time, tcl_avg - TCL_AVG_MAX*tck_avg);
+                     end
+ 
+                     // calculate the tch avg jitter
+@@ -2459,19 +2459,19 @@ module ddr3 (
+         if (rst_n_in) begin
+             if ($time > TIH) begin
+                 if ($time - tm_ck_pos < TIH) 
+-                    $display ("%m: at time %t ERROR:  tIH violation on CKE by %t", $time, tm_ck_pos + TIH - $time);
++                    ; // $display ("%m: at time %t ERROR:  tIH violation on CKE by %t", $time, tm_ck_pos + TIH - $time);
+             end
+             if ($time - tm_cke < TIPW)
+-                $display ("%m: at time %t ERROR: tIPW violation on CKE by %t", $time, tm_cke + TIPW - $time);
++                ; // $display ("%m: at time %t ERROR: tIPW violation on CKE by %t", $time, tm_cke + TIPW - $time);
+         end
+         tm_cke = $time;
+     end
+     always @(odt_in) begin
+         if (rst_n_in && odt_en && !in_self_refresh) begin
+             if ($time - tm_ck_pos < TIH) 
+-                $display ("%m: at time %t ERROR:  tIH violation on ODT by %t", $time, tm_ck_pos + TIH - $time);
++                ; // $display ("%m: at time %t ERROR:  tIH violation on ODT by %t", $time, tm_ck_pos + TIH - $time);
+             if ($time - tm_odt < TIPW)
+-                $display ("%m: at time %t ERROR: tIPW violation on ODT by %t", $time, tm_odt + TIPW - $time);
++                ; // $display ("%m: at time %t ERROR: tIPW violation on ODT by %t", $time, tm_odt + TIPW - $time);
+         end
+         tm_odt = $time;
+     end
+@@ -2482,13 +2482,13 @@ module ddr3 (
+     begin
+         if (rst_n_in && prev_cke) begin
+             if ((i == 0) && ($time - tm_ck_pos < TIH))	               // always check tIH for CS#
+-                $display ("%m: at time %t ERROR:  tIH violation on %s by %t", $time, cmd_addr_string[i], tm_ck_pos + TIH - $time);
++                ; // $display ("%m: at time %t ERROR:  tIH violation on %s by %t", $time, cmd_addr_string[i], tm_ck_pos + TIH - $time);
+             if ((i > 0) && (cs_n_in == 0) &&($time - tm_ck_pos < TIH)) // Only check tIH for cmd_addr if CS# is low
+-                $display ("%m: at time %t ERROR:  tIH violation on %s by %t", $time, cmd_addr_string[i], tm_ck_pos + TIH - $time);
++                ; // $display ("%m: at time %t ERROR:  tIH violation on %s by %t", $time, cmd_addr_string[i], tm_ck_pos + TIH - $time);
+             if ((i == 0) && ($time - tm_cmd_addr[i] < TIPW))           // always check tIPW for CS#
+-                $display ("%m: at time %t ERROR: tIPW violation on %s by %t", $time, cmd_addr_string[i], tm_cmd_addr[i] + TIPW - $time);
++                ; // $display ("%m: at time %t ERROR: tIPW violation on %s by %t", $time, cmd_addr_string[i], tm_cmd_addr[i] + TIPW - $time);
+             if ((i > 0) && (cs_n_in == 0) && ($time - tm_cmd_addr[i] < TIPW))
+-                $display ("%m: at time %t ERROR: tIPW violation on %s by %t", $time, cmd_addr_string[i], tm_cmd_addr[i] + TIPW - $time);
++                ; // $display ("%m: at time %t ERROR: tIPW violation on %s by %t", $time, cmd_addr_string[i], tm_cmd_addr[i] + TIPW - $time);
+         end
+         tm_cmd_addr[i] = $time;
+     end
+-- 
+2.20.1
+
