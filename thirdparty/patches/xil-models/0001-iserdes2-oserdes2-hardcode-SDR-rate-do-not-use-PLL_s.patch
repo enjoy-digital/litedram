@@ -1,0 +1,71 @@
+From a70433f489ad2c1da9d58f6d327a5b477fa15fbc Mon Sep 17 00:00:00 2001
+From: Mariusz Glebocki <mglebocki@antmicro.com>
+Date: Wed, 20 May 2020 07:33:55 +0200
+Subject: [PATCH] iserdes2, oserdes2: hardcode SDR rate; do not use PLL_sim
+
+---
+ ISERDES2.v | 18 +++++++++---------
+ OSERDES2.v | 18 +++++++++---------
+ 2 files changed, 18 insertions(+), 18 deletions(-)
+
+diff --git a/ISERDES2.v b/ISERDES2.v
+index d9d0dd0..4d67b1c 100644
+--- a/ISERDES2.v
++++ b/ISERDES2.v
+@@ -295,15 +295,15 @@ module ISERDES2 (
+     end  // initial begin
+ 
+ //-----------------------------------------------------------------------------------
+-   parameter PLL_MULT = DATA_RATE == "DDR" ? 2 : 1;
+-   PLL_sim PLL_sim(.input_clk(CLK0_IN),
+-		   .output_clk(clk_int),
+-		   .pll_mult(PLL_MULT),
+-		   .pll_div(1),
+-		   .locked(),
+-		   .debug(0));
+-   
+-   //assign clk_int = clk0_int | clk1_int;
++   // parameter PLL_MULT = DATA_RATE == "DDR" ? 2 : 1;
++   // PLL_sim PLL_sim(.input_clk(CLK0_IN),
++			 // .output_clk(clk_int),
++			 // .pll_mult(PLL_MULT),
++			 // .pll_div(1),
++			 // .locked(),
++			 // .debug(0));
++
++    assign clk_int = CLK0_IN;
+ 
+     assign CFB0_OUT = CLK0_IN;
+     assign CFB1_OUT = CLK1_IN;
+diff --git a/OSERDES2.v b/OSERDES2.v
+index 5ffe996..99b43e2 100644
+--- a/OSERDES2.v
++++ b/OSERDES2.v
+@@ -464,15 +464,15 @@ module OSERDES2 (
+ //           #100  clk1_int = 0;
+ //        end
+ //    endgenerate
+-//    assign clk_int = clk0_int | clk1_int;
+-   parameter PLL_MULT = DATA_RATE_OQ == "DDR" ? 2 : 1;
+-   PLL_sim PLL_sim(.input_clk(CLK0_INDELAY),
+-		   .output_clk(clk_int),
+-		   .pll_mult(PLL_MULT),
+-		   .pll_div(1),
+-		   .locked(),
+-		   .debug(0));
+-   
++   assign clk_int = CLK0_INDELAY;
++   // parameter PLL_MULT = DATA_RATE_OQ == "DDR" ? 2 : 1;
++   // PLL_sim PLL_sim(.input_clk(CLK0_INDELAY),
++					// .output_clk(clk_int),
++					// .pll_mult(PLL_MULT),
++					// .pll_div(1),
++					// .locked(),
++					// .debug(0));
++
+ //
+ // =====================
+ // IOCE sample
+-- 
+2.20.1
+

@@ -1,0 +1,3 @@
+[submodule "thirdparty/xil-models"]
+	path = thirdparty/xil-models
+	url = git@github.com:dirjud/Nitro-Parts-lib-Xilinx.git
