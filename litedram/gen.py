@@ -574,7 +574,7 @@ def main():
 
     soc     = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000)
     builder = Builder(soc, **builder_arguments)
-    builder.build(build_name="litedram_core") # FIXME: regular_comb=False
+    builder.build(build_name="litedram_core", regular_comb=False)
 
     if soc.cpu_type is not None:
         init_filename = "mem.init"
