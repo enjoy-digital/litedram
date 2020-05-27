@@ -158,6 +158,27 @@ class DDR3SPDData:
         raise ValueError("Transfer rate = {:.2f} does not correspond to any DDR3 speedgrade"
                          .format(freq_mhz))
 
+def parse_spd_hexdump(filename):
+    """Parse data dumped using the `spdread` command in LiteX BIOS
+
+    This will read files in format:
+        Memory dump:
+        0x00000000  00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f  ................
+        0x00000010  10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f  ................
+    """
+    data = []
+    last_addr = -1
+    with open(filename) as f:
+        for line in f:
+            if line.startswith("0x"):
+                tokens = line.strip().split()
+                addr = int(tokens[0], 16)
+                assert addr > last_addr
+                values = [int(v, 16) for v in tokens[1:17]]
+                data.extend(values)
+                last_addr = addr
+    return data
+
 # SDRAMModule --------------------------------------------------------------------------------------
 
 class SDRAMModule:
