@@ -492,7 +492,7 @@ class SDRAMPHYModel(Module):
             self.submodules += timing_checker
 
         # Bank init data ---------------------------------------------------------------------------
-        bank_init  = [[] for i in range(nbanks)]
+        bank_init  = [None for i in range(nbanks)]
 
         if init:
             bank_init = self.__prepare_bank_init_data(

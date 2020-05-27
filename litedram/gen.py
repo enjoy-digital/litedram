@@ -37,6 +37,10 @@ from litex.build.xilinx import XilinxPlatform
 from litex.build.lattice import LatticePlatform
 from litex.boards.platforms import versa_ecp5
 
+from litex.build.sim import SimPlatform
+from litex.tools.litex_sim import get_sdram_phy_settings
+from litedram.phy.model import SDRAMPHYModel
+
 from litex.soc.cores.clock import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
@@ -296,7 +300,7 @@ class LiteDRAMCoreControl(Module, AutoCSR):
 # LiteDRAMCore -------------------------------------------------------------------------------------
 
 class LiteDRAMCore(SoCCore):
-    def __init__(self, platform, core_config, **kwargs):
+    def __init__(self, platform, core_config, is_sim=False, **kwargs):
         platform.add_extension(get_common_ios())
 
         # Parameters -------------------------------------------------------------------------------
@@ -304,6 +308,9 @@ class LiteDRAMCore(SoCCore):
         cpu_type      = core_config["cpu"]
         cpu_variant   = core_config.get("cpu_variant", "standard")
         csr_alignment = core_config.get("csr_alignment", 32)
+        csr_data_width= core_config.get("csr_data_width", None)
+        if csr_data_width is not None:
+            kwargs["csr_data_width"]  = csr_data_width
         if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
@@ -313,21 +320,38 @@ class LiteDRAMCore(SoCCore):
 
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, sys_clk_freq,
-            cpu_type      = cpu_type,
-            cpu_variant   = cpu_variant,
-            csr_alignment = csr_alignment,
+            cpu_type       = cpu_type,
+            cpu_variant    = cpu_variant,
+            csr_alignment  = csr_alignment,
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
-        if core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
+        if is_sim:
+            self.submodules.crg = CRG(platform.request("clk"))
+        elif core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
             self.submodules.crg = crg = LiteDRAMECP5DDRPHYCRG(platform, core_config)
-        if core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
+        elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             self.submodules.crg = LiteDRAMS7DDRPHYCRG(platform, core_config)
 
         # DRAM -------------------------------------------------------------------------------------
         platform.add_extension(get_dram_ios(core_config))
-        # ECP5DDRPHY
-        if core_config["sdram_phy"] in  [litedram_phys.ECP5DDRPHY]:
+        sdram_module = core_config["sdram_module"](sys_clk_freq,
+            "1:4" if core_config["memtype"] == "DDR3" else "1:2")
+        # Sim
+        if is_sim:
+            sdram_clk_freq   = int(100e6) # FIXME: use 100MHz timings
+            phy_settings   = get_sdram_phy_settings(
+                memtype    = sdram_module.memtype,
+                data_width = 16, #sdram_data_width, # XXXX FIXME
+                clk_freq   = sdram_clk_freq)
+            self.submodules.ddrphy = SDRAMPHYModel(
+                module    = sdram_module,
+                settings  = phy_settings,
+                clk_freq  = sdram_clk_freq,
+                verbosity = 1,
+                init      = [])
+       # ECP5DDRPHY
+        elif core_config["sdram_phy"] in  [litedram_phys.ECP5DDRPHY]:
             assert core_config["memtype"] in ["DDR3"]
             self.submodules.ddrphy = core_config["sdram_phy"](
                 pads         = platform.request("ddram"),
@@ -336,7 +360,7 @@ class LiteDRAMCore(SoCCore):
             self.add_constant("ECP5DDRPHY")
             sdram_module = core_config["sdram_module"](sys_clk_freq, "1:2")
         # S7DDRPHY
-        if core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
+        elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             assert core_config["memtype"] in ["DDR2", "DDR3"]
             self.submodules.ddrphy = core_config["sdram_phy"](
                 pads             = platform.request("ddram"),
@@ -353,8 +377,6 @@ class LiteDRAMCore(SoCCore):
                     ron     = core_config["ron"])
         self.add_csr("ddrphy")
 
-        sdram_module = core_config["sdram_module"](sys_clk_freq,
-            "1:4" if core_config["memtype"] == "DDR3" else "1:2")
         controller_settings = controller_settings = ControllerSettings(
             cmd_buffer_depth=core_config["cmd_buffer_depth"])
         self.add_sdram("sdram",
@@ -525,8 +547,10 @@ def main():
     builder_args(parser)
     parser.set_defaults(output_dir="build")
     parser.add_argument("config", help="YAML config file")
+    parser.add_argument("--sim", action='store_true', help="Generate a sim model")
     args = parser.parse_args()
     core_config = yaml.load(open(args.config).read(), Loader=yaml.Loader)
+    is_sim = args.sim
 
     # Convert YAML elements to Python/LiteX --------------------------------------------------------
     for k, v in core_config.items():
@@ -542,7 +566,9 @@ def main():
             core_config[k] = getattr(litedram_phys, core_config[k])
 
     # Generate core --------------------------------------------------------------------------------
-    if core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
+    if is_sim:
+        platform = SimPlatform("", io=[])
+    elif core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
         platform = LatticePlatform("LFE5UM5G-45F-8BG381C", io=[], toolchain="trellis") # FIXME: allow other devices.
     elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
         platform = XilinxPlatform("", io=[], toolchain="vivado")
@@ -552,7 +578,7 @@ def main():
     builder_arguments = builder_argdict(args)
     builder_arguments["compile_gateware"] = False
 
-    soc      = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000)
+    soc      = LiteDRAMCore(platform, core_config, is_sim=is_sim, integrated_rom_size=0x6000)
     builder  = Builder(soc, **builder_arguments)
     vns      = builder.build(build_name="litedram_core", regular_comb=False)
 
