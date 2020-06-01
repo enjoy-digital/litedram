@@ -43,6 +43,12 @@ class TestSPD(unittest.TestCase):
         for tck, speedgrade in tck_to_speedgrade.items():
             self.assertEqual(speedgrade, DDR3SPDData.speedgrade_freq(tck))
 
+    def test_spd_data(self):
+        # Verify that correct _spd_data is added to SDRAMModule
+        data = load_spd_reference("MT16KTF1G64HZ-1G6P1.csv")
+        module = SDRAMModule.from_spd_data(data, 125e6)
+        self.assertEqual(module._spd_data, data)
+
     def compare_geometry(self, module, module_ref):
         self.assertEqual(module.nbanks, module_ref.nbanks)
         self.assertEqual(module.nrows, module_ref.nrows)
