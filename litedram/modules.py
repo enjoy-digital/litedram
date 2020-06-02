@@ -231,6 +231,20 @@ class DDR4SPDData(DDR3SPDData):
         twtr_s_min = self.txx_ns(mtb=_word(_lsn(b[43]), b[44]))
         twtr_l_min = self.txx_ns(mtb=_word(_msn(b[43]), b[45]))
 
+        # minimum tFAW in clock cycles depends on page size
+        sdram_device_width = {
+            0b000:  4,
+            0b001:  8,
+            0b010: 16,
+            0b011: 32,
+        }[_read_field(b[12], nbits=3, shift=0)]
+        page_size_bytes = self.ncols * sdram_device_width / 8
+        tfaw_min_ck = {
+            512:  16,
+            1024: 20,
+            2048: 28,
+        }[page_size_bytes]
+
         technology_timings = _TechnologyTimings(
             tREFI = self.trefi,
             tWTR  = (4, twtr_l_min),
@@ -243,7 +257,7 @@ class DDR4SPDData(DDR3SPDData):
             tRCD = trcd_min,
             tWR  = twr_min,
             tRFC = self.trfc,
-            tFAW = (None, tfaw_min),
+            tFAW = (tfaw_min_ck, tfaw_min),
             tRAS = tras_min,
         )
 
