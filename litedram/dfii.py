@@ -49,7 +49,11 @@ class DFIInjector(Module, AutoCSR):
         self.slave  = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.master = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
 
-        self._control = CSRStorage(4)  # sel, cke, odt, reset_n
+        # sel, cke, odt, reset_n
+        #
+        # sel defaults 1 (HW control) so sim models don't need to perform
+        # the initialization sequence
+        self._control = CSRStorage(4, reset=0x01)
 
         for n, phase in enumerate(inti.phases):
             setattr(self.submodules, "pi" + str(n), PhaseInjector(phase))
