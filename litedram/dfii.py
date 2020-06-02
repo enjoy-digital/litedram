@@ -49,23 +49,27 @@ class DFIInjector(Module, AutoCSR):
         self.slave  = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.master = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
 
-        # sel, cke, odt, reset_n
-        #
-        # sel defaults 1 (HW control) so sim models don't need to perform
-        # the initialization sequence
-        self._control = CSRStorage(4, reset=0x01)
+        self._control = CSRStorage(fields=[
+            CSRField("sel",     size=1, values=[
+                ("``0b0``", "Software (CPU) control."),
+                ("``0b1`",  "Hardware control (default)."),
+            ], reset=0b0), # Defaults to HW control.
+            CSRField("cke",     size=1),
+            CSRField("odt",     size=1),
+            CSRField("reset_n", size=1),
+        ])
 
         for n, phase in enumerate(inti.phases):
             setattr(self.submodules, "pi" + str(n), PhaseInjector(phase))
 
         # # #
 
-        self.comb += If(self._control.storage[0],
+        self.comb += If(self._control.fields.sel,
                 self.slave.connect(self.master)
             ).Else(
                 inti.connect(self.master)
             )
         for i in range(nranks):
-            self.comb += [phase.cke[i].eq(self._control.storage[1]) for phase in inti.phases]
-            self.comb += [phase.odt[i].eq(self._control.storage[2]) for phase in inti.phases if hasattr(phase, "odt")]
-        self.comb += [phase.reset_n.eq(self._control.storage[3]) for phase in inti.phases if hasattr(phase, "reset_n")]
+            self.comb += [phase.cke[i].eq(self._control.fields.cke) for phase in inti.phases]
+            self.comb += [phase.odt[i].eq(self._control.fields.odt) for phase in inti.phases if hasattr(phase, "odt")]
+        self.comb += [phase.reset_n.eq(self._control.fields.reset_n) for phase in inti.phases if hasattr(phase, "reset_n")]
