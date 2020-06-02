@@ -160,6 +160,100 @@ class DDR3SPDData:
         raise ValueError("Transfer rate = {:.2f} does not correspond to any speedgrade"
                          .format(freq_mhz))
 
+
+class DDR4SPDData(DDR3SPDData):
+    memtype = "DDR4"
+    _speedgrades = [1600, 1866, 2133, 2400, 2666, 2933, 3200]
+
+    def get_geometry(self, data):
+        bankgroupbits = {
+            0b00: 0,
+            0b01: 1,
+            0b10: 2,
+        }[_read_field(data[4], nbits=2, shift=6)]
+        bankbits = {
+            0b00: 2,
+            0b01: 3,
+        }[_read_field(data[4], nbits=2, shift=4)]
+        rowbits = {
+            0b000: 12,
+            0b001: 13,
+            0b010: 14,
+            0b011: 15,
+            0b100: 16,
+            0b101: 17,
+            0b110: 18,
+        }[_read_field(data[5], nbits=3, shift=3)]
+        colbits = {
+            0b000:  9,
+            0b001: 10,
+            0b010: 11,
+            0b011: 12,
+        }[_read_field(data[5], nbits=3, shift=0)]
+
+        self.ngroups = 2**bankgroupbits
+        self.ngroupbanks = 2**bankbits
+        self.nbanks = self.ngroups * self.ngroupbanks
+        self.nrows = 2**rowbits
+        self.ncols = 2**colbits
+
+    def init_timebase(self, data):
+        # there is only one possible value for DDR4
+        self.medium_timebase_ns = {
+            0b00: 125e-3,
+        }[_read_field(data[17], nbits=2, shift=2)]
+        self.fine_timebase_ns = {
+            0b00: 1e-3,
+        }[_read_field(data[17], nbits=2, shift=0)]
+
+    def get_timings(self, data):
+        b = data
+
+        self.trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
+
+        tckavg_min  = self.txx_ns(mtb=b[18], ftb=b[125])
+        tckavg_max  = self.txx_ns(mtb=b[19], ftb=b[124])
+        taa_min  = self.txx_ns(mtb=b[24], ftb=b[123])
+        trcd_min = self.txx_ns(mtb=b[25], ftb=b[122])
+        trp_min  = self.txx_ns(mtb=b[26], ftb=b[121])
+        tras_min = self.txx_ns(mtb=_word(_lsn(b[27]), b[28]))
+        trc_min  = self.txx_ns(mtb=_word(_msn(b[27]), b[29]), ftb=b[120])
+        self.trfc = {
+            "1x": (None, self.txx_ns(mtb=_word(b[31], b[30]))),
+            "2x": (None, self.txx_ns(mtb=_word(b[33], b[32]))),
+            "4x": (None, self.txx_ns(mtb=_word(b[35], b[34]))),
+        }
+        tfaw_min = self.txx_ns(mtb=_word(_lsn(b[36]), b[37]))
+        trrd_s_min = self.txx_ns(mtb=b[38], ftb=b[119])
+        trrd_l_min = self.txx_ns(mtb=b[39], ftb=b[118])
+        tccd_l_min = self.txx_ns(mtb=b[40], ftb=b[117])  # min 6 cycles?
+        twr_min  = self.txx_ns(mtb=_word(_lsn(b[41]), b[42]))
+        twtr_s_min = self.txx_ns(mtb=_word(_lsn(b[43]), b[44]))
+        twtr_l_min = self.txx_ns(mtb=_word(_msn(b[43]), b[45]))
+
+        technology_timings = _TechnologyTimings(
+            tREFI = self.trefi,
+            tWTR  = (4, twtr_l_min),
+            tCCD  = (4, tccd_l_min),
+            tRRD  = (4, trrd_l_min),
+            tZQCS = (128, 80),
+        )
+        speedgrade_timings = _SpeedgradeTimings(
+            tRP  = trp_min,
+            tRCD = trcd_min,
+            tWR  = twr_min,
+            tRFC = self.trfc,
+            tFAW = (None, tfaw_min),
+            tRAS = tras_min,
+        )
+
+        self.speedgrade = str(self.speedgrade_freq(tckavg_min))
+        self.technology_timings = technology_timings
+        self.speedgrade_timings = {
+            self.speedgrade: speedgrade_timings,
+            "default": speedgrade_timings,
+        }
+
 def parse_spd_hexdump(filename):
     """Parse data dumped using the `spdread` command in LiteX BIOS
 
@@ -277,6 +371,7 @@ class SDRAMModule:
         # set parameters from SPD data based on memory type
         spd_cls = {
             0x0b: DDR3SPDData,
+            0x0c: DDR4SPDData,
         }[spd_data[2]]
         spd = spd_cls(spd_data)
 
