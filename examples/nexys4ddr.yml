@@ -8,7 +8,6 @@
     "memtype":    "DDR2",      # DRAM type
 
     # PHY ----------------------------------------------------------------------
-    "cmd_delay":       0,            # Command additional delay (in taps)
     "cmd_latency":     0,            # Command additional latency
     "sdram_module":    "MT47H64M16", # SDRAM modules of the board or SO-DIMM
     "sdram_module_nb": 2,            # Number of byte groups

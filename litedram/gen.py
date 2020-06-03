@@ -17,8 +17,10 @@ for some use cases it could be interesting to generate a standalone verilog file
 The standalone core is generated from a YAML configuration file that allows the user to generate
 easily a custom configuration of the core.
 
-Current version of the generator is limited to DDR2/DDR3 Xilinx 7-Series FPGA and DDR3 on Lattice
-ECP5.
+Current version of the generator is limited to:
+- DDR3 on Lattice ECP5 FPGAs.
+- DDR2/DDR3 on Xilinx 7-Series FPGAs.
+- DDR4 on Xilinx Ultascale(+) FPGAs.
 """
 
 import os
@@ -86,26 +88,51 @@ def get_common_ios():
     ]
 
 def get_dram_ios(core_config):
-    sdram_module = core_config["sdram_module"]
-    return [
-        ("ddram", 0,
-            Subsignal("a",       Pins(log2_int(core_config["sdram_module"].nrows))),
-            Subsignal("ba",      Pins(log2_int(core_config["sdram_module"].nbanks))),
-            Subsignal("ras_n",   Pins(1)),
-            Subsignal("cas_n",   Pins(1)),
-            Subsignal("we_n",    Pins(1)),
-            Subsignal("cs_n",    Pins(core_config["sdram_rank_nb"])),
-            Subsignal("dm",      Pins(core_config["sdram_module_nb"])),
-            Subsignal("dq",      Pins(8*core_config["sdram_module_nb"])),
-            Subsignal("dqs_p",   Pins(core_config["sdram_module_nb"])),
-            Subsignal("dqs_n",   Pins(core_config["sdram_module_nb"])),
-            Subsignal("clk_p",   Pins(core_config["sdram_rank_nb"])),
-            Subsignal("clk_n",   Pins(core_config["sdram_rank_nb"])),
-            Subsignal("cke",     Pins(core_config["sdram_rank_nb"])),
-            Subsignal("odt",     Pins(core_config["sdram_rank_nb"])),
-            Subsignal("reset_n", Pins(1))
-        ),
-    ]
+    if core_config["memtype"] in ["DDR2", "DDR3"]:
+        a_width = log2_int(core_config["sdram_module"].nrows)
+        return [
+            ("ddram", 0,
+                Subsignal("a",       Pins(log2_int(core_config["sdram_module"].nrows))),
+                Subsignal("ba",      Pins(log2_int(core_config["sdram_module"].nbanks))),
+                Subsignal("ras_n",   Pins(1)),
+                Subsignal("cas_n",   Pins(1)),
+                Subsignal("we_n",    Pins(1)),
+                Subsignal("cs_n",    Pins(core_config["sdram_rank_nb"])),
+                Subsignal("dm",      Pins(core_config["sdram_module_nb"])),
+                Subsignal("dq",      Pins(8*core_config["sdram_module_nb"])),
+                Subsignal("dqs_p",   Pins(core_config["sdram_module_nb"])),
+                Subsignal("dqs_n",   Pins(core_config["sdram_module_nb"])),
+                Subsignal("clk_p",   Pins(core_config["sdram_rank_nb"])),
+                Subsignal("clk_n",   Pins(core_config["sdram_rank_nb"])),
+                Subsignal("cke",     Pins(core_config["sdram_rank_nb"])),
+                Subsignal("odt",     Pins(core_config["sdram_rank_nb"])),
+                Subsignal("reset_n", Pins(1))
+            ),
+        ]
+    elif core_config["memtype"] == "DDR4":
+        # On DDR4, A14. A15 and A16 are shared with we_n/cas_n/ras_n
+        a_width = min(log2_int(core_config["sdram_module"].nrows), 14)
+        return [
+            ("ddram", 0,
+                Subsignal("a",       Pins(a_width)),
+                Subsignal("ba",      Pins(log2_int(core_config["sdram_module"].ngroupbanks))),
+                Subsignal("bg",      Pins(log2_int(core_config["sdram_module"].ngroups))),
+                Subsignal("ras_n",   Pins(1)),
+                Subsignal("cas_n",   Pins(1)),
+                Subsignal("we_n",    Pins(1)),
+                Subsignal("cs_n",    Pins(core_config["sdram_rank_nb"])),
+                Subsignal("act_n",   Pins(1)),
+                Subsignal("dm",      Pins(core_config["sdram_module_nb"])),
+                Subsignal("dq",      Pins(8*core_config["sdram_module_nb"])),
+                Subsignal("dqs_p",   Pins(core_config["sdram_module_nb"])),
+                Subsignal("dqs_n",   Pins(core_config["sdram_module_nb"])),
+                Subsignal("clk_p",   Pins(core_config["sdram_rank_nb"])),
+                Subsignal("clk_n",   Pins(core_config["sdram_rank_nb"])),
+                Subsignal("cke",     Pins(core_config["sdram_rank_nb"])),
+                Subsignal("odt",     Pins(core_config["sdram_rank_nb"])),
+                Subsignal("reset_n", Pins(1))
+            ),
+        ]
 
 def get_native_user_port_ios(_id, aw, dw):
     return [
@@ -274,6 +301,7 @@ class LiteDRAMS7DDRPHYCRG(Module):
         clk = platform.request("clk")
         rst = platform.request("rst")
 
+        # Sys PLL
         self.submodules.sys_pll = sys_pll = S7PLL(speedgrade=core_config["speedgrade"])
         self.comb += sys_pll.reset.eq(rst)
         sys_pll.register_clkin(clk, core_config["input_clk_freq"])
@@ -287,10 +315,51 @@ class LiteDRAMS7DDRPHYCRG(Module):
             sys_pll.create_clkout(self.cd_sys4x_dqs, 4*core_config["sys_clk_freq"], phase=90)
         else:
             raise NotImplementedError
-
         self.comb += platform.request("pll_locked").eq(sys_pll.locked)
 
+        # IODelay Ctrl
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_iodelay)
+
+class LiteDRAMUSDDRPHYCRG(Module):
+    def __init__(self, platform, core_config):
+        assert core_config["memtype"] in ["DDR4"]
+        self.clock_domains.cd_por       = ClockDomain(reset_less=True)
+        self.clock_domains.cd_sys       = ClockDomain()
+        self.clock_domains.cd_sys4x     = ClockDomain()
+        self.clock_domains.cd_sys4x_pll = ClockDomain()
+        self.clock_domains.cd_iodelay   = ClockDomain()
+
+        # # #
+
+        clk = platform.request("clk")
+        rst = platform.request("rst")
+
+        # Power On Reset
+        por_count = Signal(32, reset=int(core_config["input_clk_freq"]*100/1e3)) # 100ms
+        por_done  = Signal()
+        self.comb += self.cd_por.clk.eq(clk)
+        self.comb += por_done.eq(por_count == 0)
+        self.sync.por += If(~por_done, por_count.eq(por_count - 1))
+
+        # Sys PLL
+        self.submodules.sys_pll = sys_pll = USMMCM(speedgrade=core_config["speedgrade"])
+        self.comb += sys_pll.reset.eq(rst)
+        sys_pll.register_clkin(clk, core_config["input_clk_freq"])
+        sys_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
+        sys_pll.create_clkout(self.cd_sys4x_pll, 4*core_config["sys_clk_freq"], buf=None)
+        self.comb += platform.request("pll_locked").eq(sys_pll.locked)
+        self.specials += [
+            Instance("BUFGCE_DIV", name="main_bufgce_div",
+                p_BUFGCE_DIVIDE=4,
+                i_CE=por_done, i_I=self.cd_sys4x_pll.clk, o_O=self.cd_sys.clk),
+            Instance("BUFGCE", name="main_bufgce",
+                i_CE=por_done, i_I=self.cd_sys4x_pll.clk, o_O=self.cd_sys4x.clk),
+            AsyncResetSynchronizer(self.cd_sys4x, ~por_done | ~sys_pll.locked | rst),
+            AsyncResetSynchronizer(self.cd_sys,   ~por_done | ~sys_pll.locked | rst),
+        ]
+
+        # IODelay Ctrl
+        self.submodules.idelayctrl = USIDELAYCTRL(self.cd_iodelay, cd_sys=self.cd_sys)
 
 # LiteDRAMCoreControl ------------------------------------------------------------------------------
 
@@ -331,10 +400,15 @@ class LiteDRAMCore(SoCCore):
             self.submodules.crg = crg = LiteDRAMECP5DDRPHYCRG(platform, core_config)
         elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             self.submodules.crg = LiteDRAMS7DDRPHYCRG(platform, core_config)
+        elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:
+            self.submodules.crg = LiteDRAMUSDDRPHYCRG(platform, core_config)
 
         # DRAM -------------------------------------------------------------------------------------
         platform.add_extension(get_dram_ios(core_config))
-        sdram_module = core_config["sdram_module"](sys_clk_freq, rate={"DDR3": "1:4", "DDR2": "1:2"}[core_config["memtype"]])
+        sdram_module = core_config["sdram_module"](sys_clk_freq, rate={
+            "DDR2": "1:2",
+            "DDR3": "1:4",
+            "DDR4": "1:4"}[core_config["memtype"]])
 
         # Sim
         if isinstance(platform, SimPlatform):
@@ -365,16 +439,30 @@ class LiteDRAMCore(SoCCore):
             self.submodules.ddrphy = core_config["sdram_phy"](
                 pads             = platform.request("ddram"),
                 memtype          = core_config["memtype"],
-                nphases          = 4 if core_config["memtype"] == "DDR3" else 2,
+                nphases          = {"DDR2": 2, "DDR3": 4}[core_config["memtype"]],
                 sys_clk_freq     = sys_clk_freq,
                 iodelay_clk_freq = core_config["iodelay_clk_freq"],
                 cmd_latency      = core_config["cmd_latency"])
-            self.add_constant("CMD_DELAY", core_config["cmd_delay"])
             if core_config["memtype"] == "DDR3":
                 self.ddrphy.settings.add_electrical_settings(
                     rtt_nom = core_config["rtt_nom"],
                     rtt_wr  = core_config["rtt_wr"],
                     ron     = core_config["ron"])
+
+        # USDDRPHY
+        elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:
+            self.submodules.ddrphy = core_config["sdram_phy"](
+                pads             = platform.request("ddram"),
+                memtype          = core_config["memtype"],
+                sys_clk_freq     = sys_clk_freq,
+                iodelay_clk_freq = core_config["iodelay_clk_freq"],
+                cmd_latency      = core_config["cmd_latency"])
+            self.ddrphy.settings.add_electrical_settings(
+                rtt_nom = core_config["rtt_nom"],
+                rtt_wr  = core_config["rtt_wr"],
+                ron     = core_config["ron"])
+        else:
+            raise NotImplementedError
         self.add_csr("ddrphy")
 
         controller_settings = controller_settings = ControllerSettings(
@@ -570,6 +658,8 @@ def main():
     elif core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
         platform = LatticePlatform("LFE5UM5G-45F-8BG381C", io=[], toolchain="trellis") # FIXME: allow other devices.
     elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
+        platform = XilinxPlatform("", io=[], toolchain="vivado")
+    elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:
         platform = XilinxPlatform("", io=[], toolchain="vivado")
     else:
         raise ValueError("Unsupported SDRAM PHY: {}".format(core_config["sdram_phy"]))
