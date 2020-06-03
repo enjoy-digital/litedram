@@ -277,6 +277,7 @@ class LiteDRAMS7DDRPHYCRG(Module):
         self.submodules.sys_pll = sys_pll = S7PLL(speedgrade=core_config["speedgrade"])
         self.comb += sys_pll.reset.eq(rst)
         sys_pll.register_clkin(clk, core_config["input_clk_freq"])
+        sys_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
         sys_pll.create_clkout(self.cd_sys, core_config["sys_clk_freq"])
         if core_config["memtype"] == "DDR2":
             sys_pll.create_clkout(self.cd_sys2x,     2*core_config["sys_clk_freq"])
@@ -289,10 +290,6 @@ class LiteDRAMS7DDRPHYCRG(Module):
 
         self.comb += platform.request("pll_locked").eq(sys_pll.locked)
 
-        self.submodules.iodelay_pll = iodelay_pll = S7PLL(speedgrade=core_config["speedgrade"])
-        self.comb += iodelay_pll.reset.eq(rst)
-        iodelay_pll.register_clkin(clk, core_config["input_clk_freq"])
-        iodelay_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_iodelay)
 
 # LiteDRAMCoreControl ------------------------------------------------------------------------------
