@@ -609,9 +609,7 @@ class LiteDRAMCore(SoCCore):
                     base            = port["base"],
                     depth           = port["depth"],
                     write_port      = self.sdram.crossbar.get_port("write"),
-                    write_threshold = port["depth"] - 32, # FIXME
                     read_port       = self.sdram.crossbar.get_port("read"),
-                    read_threshold  = 32 # FIXME
                 )
                 self.submodules += fifo
                 self.comb += [
