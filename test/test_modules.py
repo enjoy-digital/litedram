@@ -17,7 +17,7 @@ def load_spd_reference(filename):
     """
     script_dir = os.path.dirname(os.path.realpath(__file__))
     path = os.path.join(script_dir, "spd_data", filename)
-    data = [0] * 256
+    data = [0] * 512
     with open(path) as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -174,3 +174,46 @@ class TestSPD(unittest.TestCase):
             self.assertEqual(sgt.tRP,            13.125)
             self.assertEqual(sgt.tRCD,           13.125)
             self.assertEqual(sgt.tRP + sgt.tRAS, 47.125)
+
+    def test_MTA4ATF51264HZ_parsing(self):
+        kwargs = dict(clk_freq=100e6, rate="1:4")
+
+        with self.subTest(speedgrade="-2G3"):
+            data = load_spd_reference("MTA4ATF51264HZ-2G3B1.csv")
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
+            sgt = module.speedgrade_timings["2400"]
+            self.assertEqual(sgt.tRP,            13.75)
+            self.assertEqual(sgt.tRCD,           13.75)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 45.75)
+
+        with self.subTest(speedgrade="-3G2"):
+            data = load_spd_reference("MTA4ATF51264HZ-3G2E1.csv")
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
+            sgt = module.speedgrade_timings["3200"]
+            self.assertEqual(sgt.tRP,            13.75)
+            self.assertEqual(sgt.tRCD,           13.75)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 45.75)
+
+    # FIXME: when setting timings as seen in SPD, DRAM leveling fails
+    @unittest.skip("Using timings from SPD fails DRAM initialzation on this module")
+    def test_MTA4ATF51264HZ(self):
+        kwargs = dict(clk_freq=100e6, rate="1:4")
+        module_ref = litedram.modules.MTA4ATF51264HZ(**kwargs)
+
+        with self.subTest(speedgrade="-2G3"):
+            data = load_spd_reference("MTA4ATF51264HZ-2G3B1.csv")
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
+            self.compare_modules(module, module_ref)
+            sgt = module.speedgrade_timings["2400"]
+            self.assertEqual(sgt.tRP,            13.75)
+            self.assertEqual(sgt.tRCD,           13.75)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 45.75)
+
+        with self.subTest(speedgrade="-3G2"):
+            data = load_spd_reference("MTA4ATF51264HZ-3G2E1.csv")
+            module = SDRAMModule.from_spd_data(data, kwargs["clk_freq"])
+            self.compare_modules(module, module_ref)
+            sgt = module.speedgrade_timings["3200"]
+            self.assertEqual(sgt.tRP,            13.75)
+            self.assertEqual(sgt.tRCD,           13.75)
+            self.assertEqual(sgt.tRP + sgt.tRAS, 45.75)
