@@ -1,4 +1,5 @@
 # This file is Copyright (c) 2012-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2020 Antmicro <www.antmicro.com>
 # License: BSD
 
 # 1:1 frequency-ratio Generic SDR PHY
@@ -78,3 +79,75 @@ class GENSDRPHY(Module):
         rddata_en = Signal(cl + cmd_latency)
         self.sync += rddata_en.eq(Cat(dfi.p0.rddata_en, rddata_en))
         self.sync += dfi.p0.rddata_valid.eq(rddata_en[-1])
+
+# Half-rate Generic SDR PHY ------------------------------------------------------------------------
+
+class HalfRateGENSDRPHY(Module):
+    def __init__(self, pads, cl=2, cmd_latency=1):
+        pads        = PHYPadsCombiner(pads)
+        addressbits = len(pads.a)
+        bankbits    = len(pads.ba)
+        nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
+        databits    = len(pads.dq)
+        nphases     = 2
+
+        # FullRate PHY -----------------------------------------------------------------------------
+        full_rate_phy = GENSDRPHY(pads, cl, cmd_latency)
+        self.submodules += ClockDomainsRenamer("sys2x")(full_rate_phy)
+
+        # PHY settings -----------------------------------------------------------------------------
+        self.settings = PhySettings(
+            phytype       = "HalfRateGENSDRPHY",
+            memtype       = "SDR",
+            databits      = databits,
+            dfi_databits  = databits,
+            nranks        = nranks,
+            nphases       = nphases,
+            rdphase       = 0,
+            wrphase       = 1,
+            rdcmdphase    = 1,
+            wrcmdphase    = 0,
+            cl            = cl,
+            read_latency  = (cl + cmd_latency)//2 + 1,
+            write_latency = 0
+        )
+
+        # DFI adaptation ---------------------------------------------------------------------------
+        self.dfi = dfi = Interface(addressbits, bankbits, nranks, databits, nphases)
+
+        # Select active sys2x phase
+        # sys       ----____----____
+        # phase_sel 0   1   0   1
+        # sys2x     --__--__--__--__
+        phase_sel = Signal(reset=1)
+        self.sync.sys2x += phase_sel.eq(~phase_sel)
+
+        # Commands and address
+        dfi_omit = set(["rddata", "rddata_valid", "wrdata_en"])
+        self.comb += [
+            If(~phase_sel,
+                dfi.phases[0].connect(full_rate_phy.dfi.phases[0], omit=dfi_omit),
+            ).Else(
+                dfi.phases[1].connect(full_rate_phy.dfi.phases[0], omit=dfi_omit),
+            ),
+        ]
+        wr_data_en = dfi.phases[self.settings.wrphase].wrdata_en & ~phase_sel
+        wr_data_en_d = Signal()
+        self.sync.sys2x += wr_data_en_d.eq(wr_data_en)
+        self.comb += full_rate_phy.dfi.phases[0].wrdata_en.eq(wr_data_en | wr_data_en_d)
+
+        # Reads
+        rddata = Signal(2*databits)
+        rddata_valid = Signal()
+
+        self.sync.sys2x += [
+            rddata_valid.eq(full_rate_phy.dfi.phases[0].rddata_valid),
+            rddata.eq(full_rate_phy.dfi.phases[0].rddata)
+        ]
+
+        self.sync += [
+            dfi.phases[0].rddata.eq(rddata),
+            dfi.phases[0].rddata_valid.eq(rddata_valid),
+            dfi.phases[1].rddata.eq(full_rate_phy.dfi.phases[0].rddata),
+            dfi.phases[1].rddata_valid.eq(full_rate_phy.dfi.phases[0].rddata_valid),
+        ]
