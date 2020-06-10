@@ -53,7 +53,7 @@ class DFIInjector(Module, AutoCSR):
             CSRField("sel",     size=1, values=[
                 ("``0b0``", "Software (CPU) control."),
                 ("``0b1`",  "Hardware control (default)."),
-            ], reset=0b0), # Defaults to HW control.
+            ], reset=0b1), # Defaults to HW control.
             CSRField("cke",     size=1),
             CSRField("odt",     size=1),
             CSRField("reset_n", size=1),
