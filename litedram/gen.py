@@ -665,7 +665,7 @@ def main():
     builder_arguments = builder_argdict(args)
     builder_arguments["compile_gateware"] = False
 
-    soc     = LiteDRAMCore(platform, core_config, integrated_rom_size=0x6000)
+    soc     = LiteDRAMCore(platform, core_config, integrated_rom_size=0x8000)
     builder = Builder(soc, **builder_arguments)
     builder.build(build_name="litedram_core", regular_comb=False)
 
