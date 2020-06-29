@@ -248,7 +248,8 @@ class LiteDRAMECP5DDRPHYCRG(Module):
 
         # # #
 
-        self.stop = Signal()
+        self.stop  = Signal()
+        self.reset = Signal()
 
         # clk / rst
         clk = platform.request("clk")
@@ -257,7 +258,7 @@ class LiteDRAMECP5DDRPHYCRG(Module):
         # power on reset
         por_count = Signal(16, reset=2**16-1)
         por_done  = Signal()
-        self.comb += self.cd_por.clk.eq(ClockSignal())
+        self.comb += self.cd_por.clk.eq(clk)
         self.comb += por_done.eq(por_count == 0)
         self.sync.por += If(~por_done, por_count.eq(por_count - 1))
 
@@ -275,10 +276,11 @@ class LiteDRAMECP5DDRPHYCRG(Module):
                 p_DIV     = "2.0",
                 i_ALIGNWD = 0,
                 i_CLKI    = self.cd_sys2x.clk,
-                i_RST     = self.cd_sys2x.rst,
+                i_RST     = self.reset,
                 o_CDIVX   = self.cd_sys.clk),
-            AsyncResetSynchronizer(self.cd_init, ~por_done | ~pll.locked | rst),
-            AsyncResetSynchronizer(self.cd_sys,  ~por_done | ~pll.locked | rst),
+            AsyncResetSynchronizer(self.cd_init,  ~por_done | ~pll.locked | rst),
+            AsyncResetSynchronizer(self.cd_sys,   ~por_done | ~pll.locked | rst | self.reset),
+            AsyncResetSynchronizer(self.cd_sys2x, ~por_done | ~pll.locked | rst | self.reset),
         ]
 
 class LiteDRAMS7DDRPHYCRG(Module):
@@ -430,6 +432,7 @@ class LiteDRAMCore(SoCCore):
                 pads         = platform.request("ddram"),
                 sys_clk_freq = sys_clk_freq)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
+            self.comb += crg.reset.eq(self.ddrphy.init.reset)
             self.add_constant("ECP5DDRPHY")
             sdram_module = core_config["sdram_module"](sys_clk_freq, "1:2")
 
