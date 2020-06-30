@@ -40,8 +40,8 @@ class ECP5DDRPHYInit(Module):
         _lock = Signal()
         delay = Signal()
         self.specials += Instance("DDRDLLA",
-            i_CLK      = ClockSignal("sys2x"),
             i_RST      = ResetSignal("init"),
+            i_CLK      = ClockSignal("sys2x"),
             i_UDDCNTLN = ~update,
             i_FREEZE   = freeze,
             o_DDRDEL   = delay,
@@ -151,8 +151,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                 sd_clk_se = Signal()
                 self.specials += Instance("ODDRX2F",
                     i_RST  = ResetSignal("sys"),
+                    i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
-                    i_SCLK = ClockSignal(),
                     i_D0   = 0,
                     i_D1   = 1,
                     i_D2   = 0,
@@ -164,8 +164,8 @@ class ECP5DDRPHY(Module, AutoCSR):
             for i in range(addressbits):
                 self.specials += Instance("ODDRX2F",
                     i_RST  = ResetSignal("sys"),
+                    i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
-                    i_SCLK = ClockSignal(),
                     i_D0   = dfi.phases[0].address[i],
                     i_D1   = dfi.phases[0].address[i],
                     i_D2   = dfi.phases[1].address[i],
@@ -175,8 +175,8 @@ class ECP5DDRPHY(Module, AutoCSR):
             for i in range(bankbits):
                 self.specials += Instance("ODDRX2F",
                     i_RST  = ResetSignal("sys"),
+                    i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
-                    i_SCLK = ClockSignal(),
                     i_D0   = dfi.phases[0].bank[i],
                     i_D1   = dfi.phases[0].bank[i],
                     i_D2   = dfi.phases[1].bank[i],
@@ -192,8 +192,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                 for i in range(len(getattr(pads, name))):
                     self.specials += Instance("ODDRX2F",
                         i_RST  = ResetSignal("sys"),
+                        i_SCLK = ClockSignal("sys"),
                         i_ECLK = ClockSignal("sys2x"),
-                        i_SCLK = ClockSignal(),
                         i_D0   = getattr(dfi.phases[0], name)[i],
                         i_D1   = getattr(dfi.phases[0], name)[i],
                         i_D2   = getattr(dfi.phases[1], name)[i],
@@ -203,7 +203,7 @@ class ECP5DDRPHY(Module, AutoCSR):
 
         # DQ ---------------------------------------------------------------------------------------
         dq_oe         = Signal()
-        dqs_re         = Signal()
+        dqs_re        = Signal()
         dqs_oe        = Signal()
         dqs_postamble = Signal()
         dqs_preamble  = Signal()
@@ -216,25 +216,20 @@ class ECP5DDRPHY(Module, AutoCSR):
             rdpntr  = Signal(3)
             wrpntr  = Signal(3)
             rdly    = Signal(7)
-            self.sync += \
-                If(self._dly_sel.storage[i],
-                    If(self._rdly_dq_rst.re,
-                        rdly.eq(0),
-                    ).Elif(self._rdly_dq_inc.re,
-                        rdly.eq(rdly + 1),
-                    )
-                )
-            datavalid   = Signal()
-            burstdet    = Signal()
+            burstdet  = Signal()
+            self.sync += [
+                If(self._dly_sel.storage[i] & self._rdly_dq_rst.re, rdly.eq(0)),
+                If(self._dly_sel.storage[i] & self._rdly_dq_inc.re, rdly.eq(rdly + 1))
+            ]
             self.specials += Instance("DQSBUFM",
                 p_DQS_LI_DEL_ADJ = "MINUS",
                 p_DQS_LI_DEL_VAL = 1,
                 p_DQS_LO_DEL_ADJ = "MINUS",
                 p_DQS_LO_DEL_VAL = 4,
                 # Clocks / Reset
+                i_RST            = ResetSignal("sys"),
                 i_SCLK           = ClockSignal("sys"),
                 i_ECLK           = ClockSignal("sys2x"),
-                i_RST            = ResetSignal("sys"),
                 i_DDRDEL         = self.init.delay,
                 i_PAUSE          = self.init.pause | self._dly_sel.storage[i],
 
@@ -276,9 +271,9 @@ class ECP5DDRPHY(Module, AutoCSR):
             ]
 
             # DQS and DM ---------------------------------------------------------------------------
-            dm_o_data          = Signal(8)
-            dm_o_data_d        = Signal(8)
-            dm_o_data_muxed    = Signal(4)
+            dm_o_data       = Signal(8)
+            dm_o_data_d     = Signal(8)
+            dm_o_data_muxed = Signal(4)
             self.comb += dm_o_data.eq(Cat(
                 dfi.phases[0].wrdata_mask[0*databits//8+i],
                 dfi.phases[0].wrdata_mask[1*databits//8+i],
@@ -297,8 +292,8 @@ class ECP5DDRPHY(Module, AutoCSR):
             self.sync += Case(bl8_chunk, dm_bl8_cases)
             self.specials += Instance("ODDRX2DQA",
                 i_RST     = ResetSignal("sys"),
+                i_SCLK    = ClockSignal("sys"),
                 i_ECLK    = ClockSignal("sys2x"),
-                i_SCLK    = ClockSignal(),
                 i_DQSW270 = dqsw270,
                 i_D0      = dm_o_data_muxed[0],
                 i_D1      = dm_o_data_muxed[1],
@@ -312,8 +307,8 @@ class ECP5DDRPHY(Module, AutoCSR):
             self.specials += [
                 Instance("ODDRX2DQSB",
                     i_RST  = ResetSignal("sys"),
+                    i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
-                    i_SCLK = ClockSignal(),
                     i_DQSW = dqsw,
                     i_D0   = 0,
                     i_D1   = 1,
@@ -323,8 +318,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                 ),
                 Instance("TSHX2DQSA",
                     i_RST  = ResetSignal("sys"),
+                    i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
-                    i_SCLK = ClockSignal(),
                     i_DQSW = dqsw,
                     i_T0   = ~(dqs_oe | dqs_postamble),
                     i_T1   = ~(dqs_oe | dqs_preamble),
@@ -361,8 +356,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                 self.specials += [
                     Instance("ODDRX2DQA",
                         i_RST     = ResetSignal("sys"),
+                        i_SCLK    = ClockSignal("sys"),
                         i_ECLK    = ClockSignal("sys2x"),
-                        i_SCLK    = ClockSignal(),
                         i_DQSW270 = dqsw270,
                         i_D0      = dq_o_data_muxed[0],
                         i_D1      = dq_o_data_muxed[1],
@@ -380,8 +375,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                     ),
                     Instance("IDDRX2DQA",
                         i_RST     = ResetSignal("sys"),
+                        i_SCLK    = ClockSignal("sys"),
                         i_ECLK    = ClockSignal("sys2x"),
-                        i_SCLK    = ClockSignal(),
                         i_DQSR90  = dqsr90,
                         i_RDPNTR0 = rdpntr[0],
                         i_RDPNTR1 = rdpntr[1],
@@ -396,6 +391,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                         o_Q3      = dq_i_data[3],
                     )
                 ]
+
                 dq_i_bitslip = BitSlip(4,
                     rst    = self._dly_sel.storage[i] & self._rdly_dq_bitslip_rst.re,
                     slp    = self._dly_sel.storage[i] & self._rdly_dq_bitslip.re,
@@ -417,8 +413,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                 self.specials += [
                     Instance("TSHX2DQA",
                         i_RST     = ResetSignal("sys"),
+                        i_SCLK    = ClockSignal("sys"),
                         i_ECLK    = ClockSignal("sys2x"),
-                        i_SCLK    = ClockSignal(),
                         i_DQSW270 = dqsw270,
                         i_T0      = ~dq_oe,
                         i_T1      = ~dq_oe,
