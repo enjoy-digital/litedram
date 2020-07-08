@@ -49,23 +49,26 @@ class GENSDRPHY(Module):
             pads.sel_group(pads_group)
 
             # Addresses and Commands ---------------------------------------------------------------
-            self.specials += [SDROutput(i=dfi.p0.address[i], o=pads.a[i])  for i in range(len(pads.a))]
-            self.specials += [SDROutput(i=dfi.p0.bank[i], o=pads.ba[i]) for i in range(len(pads.ba))]
-            self.specials += SDROutput(i=dfi.p0.cas_n, o=pads.cas_n)
-            self.specials += SDROutput(i=dfi.p0.ras_n, o=pads.ras_n)
-            self.specials += SDROutput(i=dfi.p0.we_n, o=pads.we_n)
+            for i in range(len(pads.a)):
+                self.specials += SDROutput(i=dfi.p0.address[i], o=pads.a[i], clk=ClockSignal("sys"))
+            for i in range(len(pads.ba)):
+                self.specials += SDROutput(i=dfi.p0.bank[i], o=pads.ba[i], clk=ClockSignal("sys"))
+            self.specials += SDROutput(i=dfi.p0.cas_n, o=pads.cas_n, clk=ClockSignal("sys"))
+            self.specials += SDROutput(i=dfi.p0.ras_n, o=pads.ras_n, clk=ClockSignal("sys"))
+            self.specials += SDROutput(i=dfi.p0.we_n, o=pads.we_n, clk=ClockSignal("sys"))
             if hasattr(pads, "cke"):
-                self.specials += SDROutput(i=dfi.p0.cke, o=pads.cke)
+                self.specials += SDROutput(i=dfi.p0.cke, o=pads.cke, clk=ClockSignal("sys"))
             if hasattr(pads, "cs_n"):
-                self.specials += SDROutput(i=dfi.p0.cs_n, o=pads.cs_n)
+                self.specials += SDROutput(i=dfi.p0.cs_n, o=pads.cs_n, clk=ClockSignal("sys"))
 
         # DQ/DM Data Path --------------------------------------------------------------------------
         for i in range(len(pads.dq)):
             self.specials += SDRTristate(
-                io = pads.dq[i],
-                o  = dfi.p0.wrdata[i],
-                oe = dfi.p0.wrdata_en,
-                i  = dfi.p0.rddata[i],
+                io  = pads.dq[i],
+                o   = dfi.p0.wrdata[i],
+                oe  = dfi.p0.wrdata_en,
+                i   = dfi.p0.rddata[i],
+                clk = ClockSignal("sys")
             )
         if hasattr(pads, "dm"):
             for i in range(len(pads.dm)):
