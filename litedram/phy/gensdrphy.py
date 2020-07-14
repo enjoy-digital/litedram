@@ -50,26 +50,23 @@ class GENSDRPHY(Module):
             pads.sel_group(pads_group)
 
             # Addresses and Commands ---------------------------------------------------------------
-            for i in range(len(pads.a)):
-                self.specials += SDROutput(i=dfi.p0.address[i], o=pads.a[i], clk=ClockSignal("sys"))
-            for i in range(len(pads.ba)):
-                self.specials += SDROutput(i=dfi.p0.bank[i], o=pads.ba[i], clk=ClockSignal("sys"))
-            self.specials += SDROutput(i=dfi.p0.cas_n, o=pads.cas_n, clk=ClockSignal("sys"))
-            self.specials += SDROutput(i=dfi.p0.ras_n, o=pads.ras_n, clk=ClockSignal("sys"))
-            self.specials += SDROutput(i=dfi.p0.we_n, o=pads.we_n, clk=ClockSignal("sys"))
+            self.specials += [SDROutput(i=dfi.p0.address[i], o=pads.a[i])  for i in range(len(pads.a))]
+            self.specials += [SDROutput(i=dfi.p0.bank[i], o=pads.ba[i]) for i in range(len(pads.ba))]
+            self.specials += SDROutput(i=dfi.p0.cas_n, o=pads.cas_n)
+            self.specials += SDROutput(i=dfi.p0.ras_n, o=pads.ras_n)
+            self.specials += SDROutput(i=dfi.p0.we_n, o=pads.we_n)
             if hasattr(pads, "cke"):
-                self.specials += SDROutput(i=dfi.p0.cke, o=pads.cke, clk=ClockSignal("sys"))
+                self.specials += SDROutput(i=dfi.p0.cke, o=pads.cke)
             if hasattr(pads, "cs_n"):
-                self.specials += SDROutput(i=dfi.p0.cs_n, o=pads.cs_n, clk=ClockSignal("sys"))
+                self.specials += SDROutput(i=dfi.p0.cs_n, o=pads.cs_n)
 
         # DQ/DM Data Path --------------------------------------------------------------------------
         for i in range(len(pads.dq)):
             self.specials += SDRTristate(
-                io  = pads.dq[i],
-                o   = dfi.p0.wrdata[i],
-                oe  = dfi.p0.wrdata_en,
-                i   = dfi.p0.rddata[i],
-                clk = ClockSignal("sys")
+                io = pads.dq[i],
+                o  = dfi.p0.wrdata[i],
+                oe = dfi.p0.wrdata_en,
+                i  = dfi.p0.rddata[i],
             )
         if hasattr(pads, "dm"):
             for i in range(len(pads.dm)):
@@ -104,23 +101,36 @@ class HalfRateGENSDRPHY(Module):
             nranks        = nranks,
             nphases       = nphases,
             rdphase       = 0,
-            wrphase       = 1,
+            wrphase       = 0,
             rdcmdphase    = 1,
-            wrcmdphase    = 0,
+            wrcmdphase    = 1,
             cl            = cl,
-            read_latency  = (cl + cmd_latency)//2 + 1,
+            read_latency  = (cl + cmd_latency)//2 + 2,  # FIXME: should be possible to have 1 cycle less latency
             write_latency = 0
         )
 
         # DFI adaptation ---------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, databits, nphases)
 
-        # Select active sys2x phase
-        # sys       ----____----____
+        # Clock ------------------------------------------------------------------------------------
+
+        # select active sys2x phase
+        # sys_clk   ----____----____
         # phase_sel 0   1   0   1
-        # sys2x     --__--__--__--__
-        phase_sel = Signal(reset=1)
-        self.sync.sys2x += phase_sel.eq(~phase_sel)
+        self.phase_sel = phase_sel = Signal()
+        phase_sys2x = Signal.like(phase_sel)
+        phase_sys = Signal.like(phase_sys2x)
+
+        self.sync += phase_sys.eq(phase_sys2x)
+
+        self.sync.sys2x += [
+            If(phase_sys2x == phase_sys,
+                phase_sel.eq(0),
+            ).Else(
+                phase_sel.eq(~phase_sel)
+            ),
+            phase_sys2x.eq(~phase_sel)
+        ]
 
         # Commands and address
         dfi_omit = set(["rddata", "rddata_valid", "wrdata_en"])
@@ -137,7 +147,7 @@ class HalfRateGENSDRPHY(Module):
         self.comb += full_rate_phy.dfi.phases[0].wrdata_en.eq(wr_data_en | wr_data_en_d)
 
         # Reads
-        rddata = Signal(2*databits)
+        rddata = Signal(databits)
         rddata_valid = Signal()
 
         self.sync.sys2x += [
@@ -149,5 +159,5 @@ class HalfRateGENSDRPHY(Module):
             dfi.phases[0].rddata.eq(rddata),
             dfi.phases[0].rddata_valid.eq(rddata_valid),
             dfi.phases[1].rddata.eq(full_rate_phy.dfi.phases[0].rddata),
-            dfi.phases[1].rddata_valid.eq(full_rate_phy.dfi.phases[0].rddata_valid),
+            dfi.phases[1].rddata_valid.eq(rddata_valid),
         ]

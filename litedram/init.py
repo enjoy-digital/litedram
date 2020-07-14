@@ -20,7 +20,7 @@ cmds = {
 
 def get_sdr_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
-    bl = 1
+    bl = phy_settings.nphases
     mr = log2_int(bl) + (cl << 4)
     reset_dll = 1 << 8
 

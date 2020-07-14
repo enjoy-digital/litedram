@@ -45,7 +45,8 @@ class ControllerSettings(Settings):
 class LiteDRAMController(Module):
     def __init__(self, phy_settings, geom_settings, timing_settings, clk_freq,
         controller_settings=ControllerSettings()):
-        address_align = log2_int(burst_lengths[phy_settings.memtype])
+        burst_length = phy_settings.nphases * (1 if phy_settings.memtype == "SDR" else 2)
+        address_align = log2_int(burst_length)
 
         # Settings ---------------------------------------------------------------------------------
         self.settings        = controller_settings
