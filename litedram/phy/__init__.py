@@ -1,4 +1,4 @@
-from litedram.phy.gensdrphy import GENSDRPHY
+from litedram.phy.gensdrphy import GENSDRPHY, HalfRateGENSDRPHY
 
 from litedram.phy.s6ddrphy import S6HalfRateDDRPHY, S6QuarterRateDDRPHY
 from litedram.phy.s7ddrphy import V7DDRPHY, K7DDRPHY, A7DDRPHY
