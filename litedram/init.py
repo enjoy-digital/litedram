@@ -151,12 +151,13 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
         mr0 |= wr_to_mr0[wr] << 9
         return mr0
 
-    def format_mr1(ron, rtt_nom):
+    def format_mr1(ron, rtt_nom, tdqs):
         mr1 = ((ron >> 0) & 1) << 1
         mr1 |= ((ron >> 1) & 1) << 5
         mr1 |= ((rtt_nom >> 0) & 1) << 2
         mr1 |= ((rtt_nom >> 1) & 1) << 6
         mr1 |= ((rtt_nom >> 2) & 1) << 9
+        mr1 |= (tdqs & 1) << 11
         return mr1
 
     def format_mr2(cwl, rtt_wr):
@@ -188,6 +189,7 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
     rtt_nom = "60ohm"
     rtt_wr  = "60ohm"
     ron     = "34ohm"
+    tdqs    = 0
 
     # override electrical settings if specified
     if hasattr(phy_settings, "rtt_nom"):
@@ -196,10 +198,12 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
         rtt_wr = phy_settings.rtt_wr
     if hasattr(phy_settings, "ron"):
         ron = phy_settings.ron
+    if getattr(phy_settings, "tdqs", False):
+        tdqs = 1
 
     wr  = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
     mr0 = format_mr0(bl, cl, wr, 1)
-    mr1 = format_mr1(z_to_ron[ron], z_to_rtt_nom[rtt_nom])
+    mr1 = format_mr1(z_to_ron[ron], z_to_rtt_nom[rtt_nom], tdqs)
     mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
     mr3 = 0
 
@@ -274,13 +278,14 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
         mr0 |= (wr_to_mr0[wr] >> 3) << 13
         return mr0
 
-    def format_mr1(dll_enable, ron, rtt_nom):
+    def format_mr1(dll_enable, ron, rtt_nom, tdqs):
         mr1 = dll_enable
         mr1 |= ((ron >> 0) & 0b1) << 1
         mr1 |= ((ron >> 1) & 0b1) << 2
         mr1 |= ((rtt_nom >> 0) & 0b1) << 8
         mr1 |= ((rtt_nom >> 1) & 0b1) << 9
         mr1 |= ((rtt_nom >> 2) & 0b1) << 10
+        mr1 |= (tdqs & 0b1) << 11
         return mr1
 
     def format_mr2(cwl, rtt_wr):
@@ -346,6 +351,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     rtt_nom = "40ohm"
     rtt_wr  = "120ohm"
     ron     = "34ohm"
+    tdqs    = 0
 
     # override electrical settings if specified
     if hasattr(phy_settings, "rtt_nom"):
@@ -354,10 +360,12 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
         rtt_wr = phy_settings.rtt_wr
     if hasattr(phy_settings, "ron"):
         ron = phy_settings.ron
+    if getattr(phy_settings, "tdqs", False):
+        tdqs = 1
 
     wr  = max(timing_settings.tWTR*phy_settings.nphases, 10) # >= ceiling(tWR/tCK)
     mr0 = format_mr0(bl, cl, wr, 1)
-    mr1 = format_mr1(1, z_to_ron[ron], z_to_rtt_nom[rtt_nom])
+    mr1 = format_mr1(1, z_to_ron[ron], z_to_rtt_nom[rtt_nom], tdqs)
     mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
     mr3 = format_mr3(timing_settings.fine_refresh_mode)
     mr4 = 0
