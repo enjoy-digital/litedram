@@ -179,7 +179,8 @@ class PhySettings(Settings):
     # rtt_nom: Non-Writes on-die termination impedance
     # rtt_wr: Writes on-die termination impedance
     # ron: Output driver impedance
-    def add_electrical_settings(self, rtt_nom, rtt_wr, ron):
+    # tdqs: Termination Data Strobe enable.
+    def add_electrical_settings(self, rtt_nom, rtt_wr, ron, tdqs=False):
         assert self.memtype in ["DDR3", "DDR4"]
         self.set_attributes(locals())
 
