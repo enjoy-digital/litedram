@@ -34,11 +34,15 @@ class ControllerStub:
         self.data = []  # data registered on datapath (W/R)
         self._waiting = []  # data waiting to be set on datapath
         # Incremental generator of artificial read data
-        self._read_data = itertools.count(0x10)
+        self._read_data = self.read_data_counter()
         # Simulated dealy of command processing, by default just constant
         self._cmd_delay = cmd_delay or (lambda: 6)
         # Minimal logic required so that no two banks will become ready at the same moment
         self._multiplexer_lock = None
+
+    @staticmethod
+    def read_data_counter():
+        return itertools.count(0x10)
 
     def generators(self):
         bank_handlers = [self.bankmachine_handler(bn) for bn in range(self.interface.nbanks)]
@@ -214,7 +218,7 @@ class TestCrossbar(unittest.TestCase):
         dut.crossbar.get_port()
         dut.finalize()
 
-    def crossbar_test(self, dut, generators, timeout=100, **kwargs):
+    def crossbar_test(self, dut, generators, timeout=200, **kwargs):
         # Runs simulation with a controller stub (passive generators) and user generators
         if not isinstance(generators, list):
             generators = [generators]
@@ -245,8 +249,7 @@ class TestCrossbar(unittest.TestCase):
         # Verify that address is translated correctly.
         reads = []
 
-        def producer(dut, port):
-            driver = NativePortDriver(port)
+        def producer(dut, driver):
             for t in transfers:
                 addr = dut.addr_port(bank=t["bank"], row=t["row"], col=t["col"])
                 if t["rw"] == self.W:
@@ -260,6 +263,7 @@ class TestCrossbar(unittest.TestCase):
         geom_settings = dict(colbits=10, rowbits=13, bankbits=2)
         dut  = CrossbarDUT(geom_settings=geom_settings)
         port = dut.crossbar.get_port()
+        driver = NativePortDriver(port)
         transfers = [
             dict(rw=self.W, bank=2, row=0x30, col=0x03, data=0x20),
             dict(rw=self.W, bank=3, row=0x30, col=0x03, data=0x21),
@@ -271,30 +275,34 @@ class TestCrossbar(unittest.TestCase):
             dict(rw=self.R, bank=1, row=0x10, col=0x77),
         ]
         expected = []
+        read_data = ControllerStub.read_data_counter()
         for i, t in enumerate(transfers):
             cls = t["rw"]
             addr = dut.addr_iface(row=t["row"], col=t["col"])
             if cls == self.W:
                 kwargs = dict(data=t["data"], we=0xff)
             elif cls == self.R:
-                kwargs = dict(data=0x10 + i)
-            return cls(bank=t["bank"], addr=addr, **kwargs)
+                kwargs = dict(data=next(read_data))
+            expected.append(cls(bank=t["bank"], addr=addr, **kwargs))
 
-        data = self.crossbar_test(dut, producer(port))
+        data = self.crossbar_test(dut, [producer(dut, driver)] + driver.generators())
         self.assertEqual(data, expected)
 
     def test_arbitration(self):
         # Create multiple masters that write to the same bank at the same time and verify that all
         # the requests have been sent correctly.
-        def producer(dut, port, num):
-            driver = NativePortDriver(port)
+        def producer(dut, driver, num):
             addr = dut.addr_port(bank=3, row=0x10 + num, col=0x20 + num)
             yield from driver.write(addr, data=0x30 + num)
 
         dut      = CrossbarDUT()
         ports    = [dut.crossbar.get_port() for _ in range(4)]
-        masters  = [producer(dut, port, i) for i, port in enumerate(ports)]
-        data     = self.crossbar_test(dut, masters)
+        drivers  = [NativePortDriver(port) for port in ports]
+        masters  = [producer(dut, driver, i) for i, driver in enumerate(drivers)]
+        generators = masters
+        for driver in drivers:
+            generators.extend(driver.generators())
+        data     = self.crossbar_test(dut, generators)
         expected = {
             self.W(bank=3, addr=dut.addr_iface(row=0x10, col=0x20), data=0x30, we=0xff),
             self.W(bank=3, addr=dut.addr_iface(row=0x11, col=0x21), data=0x31, we=0xff),
@@ -309,16 +317,14 @@ class TestCrossbar(unittest.TestCase):
         # continuously writing to bank 1 (bank is locked) so that master A is blocked. We use
         # wait_data=False because we are only concerned about sending commands fast enough for
         # the lock to be held continuously.
-        def master_a(dut, port):
-            driver = NativePortDriver(port)
+        def master_a(dut, driver):
             adr    = functools.partial(dut.addr_port, row=1, col=1)
             write  = functools.partial(driver.write, wait_data=False)
             yield from write(adr(bank=0), data=0x10)
             yield from write(adr(bank=1), data=0x11)
             yield from write(adr(bank=0), data=0x12, wait_data=True)
 
-        def master_b(dut, port):
-            driver = NativePortDriver(port)
+        def master_b(dut, driver):
             adr    = functools.partial(dut.addr_port, row=2, col=2)
             write  = functools.partial(driver.write, wait_data=False)
             yield from write(adr(bank=1), data=0x20)
@@ -327,9 +333,11 @@ class TestCrossbar(unittest.TestCase):
             yield from write(adr(bank=1), data=0x23)
             yield from write(adr(bank=1), data=0x24)
 
-        dut   = CrossbarDUT()
-        ports = [dut.crossbar.get_port() for _ in range(2)]
-        data  = self.crossbar_test(dut, [master_a(dut, ports[0]), master_b(dut, ports[1])])
+        dut     = CrossbarDUT()
+        ports   = [dut.crossbar.get_port() for _ in range(2)]
+        drivers = [NativePortDriver(port) for port in ports]
+        masters = [master_a(dut, drivers[0]), master_b(dut, drivers[1])]
+        data    = self.crossbar_test(dut, masters + drivers[0].generators() + drivers[1].generators())
         expected = [
             self.W(bank=0, addr=dut.addr_iface(row=1, col=1), data=0x10, we=0xff),  # A
             self.W(bank=1, addr=dut.addr_iface(row=2, col=2), data=0x20, we=0xff),  #  B
@@ -389,14 +397,13 @@ class TestCrossbar(unittest.TestCase):
         produced = defaultdict(list)
         prng = random.Random(42)
 
-        def master(dut, port, num):
+        def master(dut, driver, num):
             # Choose operation types based on port mode
             ops_choice = {
                 "both":  ["w", "r"],
                 "write": ["w"],
                 "read":  ["r"],
-            }[port.mode]
-            driver = NativePortDriver(port)
+            }[driver.port.mode]
 
             for i in range(n_ops):
                 bank = prng.randrange(n_banks)
@@ -412,12 +419,13 @@ class TestCrossbar(unittest.TestCase):
                     yield from driver.read(addr)
                     produced[num].append(self.R(bank, addr_iface, data=None))
 
-            for _ in range(8):
-                yield
+            yield from driver.wait_all()
 
         generators = defaultdict(list)
         for i, port in enumerate(ports):
-            generators[port.clock_domain].append(master(dut, port, i))
+            driver = NativePortDriver(port)
+            generators[port.clock_domain].append(master(dut, driver, i))
+            generators[port.clock_domain].extend(driver.generators())
         generators["sys"] += controller.generators()
         generators["sys"].append(timeout_generator(80 * n_ops))
 
@@ -502,10 +510,5 @@ class TestCrossbar(unittest.TestCase):
         modes       = ["both", "write", "read"]
         for mode, data_width in itertools.product(modes, data_widths):
             with self.subTest(mode=mode, data_width=data_width):
-                # Up conversion is supported only for single direction ports
-                if mode == "both" and data_width < dut.interface.data_width:
-                    with self.assertRaises(NotImplementedError):
-                        dut.crossbar.get_port(mode=mode, data_width=data_width)
-                else:
-                    port = dut.crossbar.get_port(mode=mode, data_width=data_width)
-                    self.assertEqual(port.data_width, data_width)
+                port = dut.crossbar.get_port(mode=mode, data_width=data_width)
+                self.assertEqual(port.data_width, data_width)

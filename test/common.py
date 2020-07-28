@@ -45,47 +45,91 @@ class NativePortDriver:
     """
     def __init__(self, port):
         self.port = port
+        self.wdata = []  # fifo, consumed by handler
+        self.rdata = []  # stack, never consumed
+        self.rdata_expected = 0
 
-    def read(self, address, wait_data=True):
+    def generators(self):
+        return [self.write_data_handler(), self.read_data_handler()]
+
+    def wait_all(self):
+        while self.wdata or len(self.rdata) < self.rdata_expected:
+            yield
+
+    @passive
+    def write_data_handler(self):
+        while True:
+            if self.wdata:
+                # pop the data only after write has been completed
+                data, we = self.wdata[0]
+                yield self.port.wdata.valid.eq(1)
+                yield self.port.wdata.data.eq(data)
+                yield self.port.wdata.we.eq(we)
+                yield
+                while (yield self.port.wdata.ready) == 0:
+                    yield
+                yield self.port.wdata.valid.eq(0)
+                self.wdata.pop(0)
+            yield
+
+    @passive
+    def read_data_handler(self, latency=0):
+        if latency == 0:
+            yield self.port.rdata.ready.eq(1)
+            while True:
+                while (yield self.port.rdata.valid) == 0:
+                    yield
+                data = (yield self.port.rdata.data)
+                yield
+                self.rdata.append(data)
+        else:
+            while True:
+                while (yield self.port.rdata.valid) == 0:
+                    yield
+                data = (yield self.port.rdata.data)
+                yield self.port.rdata.ready.eq(1)
+                yield
+                self.rdata.append(data)
+                yield self.port.rdata.ready.eq(0)
+                for _ in range(latency):
+                    yield
+
+    def read(self, address, first=0, last=0, wait_data=True):
         yield self.port.cmd.valid.eq(1)
+        yield self.port.cmd.first.eq(first)
+        yield self.port.cmd.last.eq(last)
         yield self.port.cmd.we.eq(0)
         yield self.port.cmd.addr.eq(address)
         yield
         while (yield self.port.cmd.ready) == 0:
             yield
+        self.rdata_expected += 1
         yield self.port.cmd.valid.eq(0)
-        yield
         if wait_data:
-            while (yield self.port.rdata.valid) == 0:
+            while len(self.rdata) != self.rdata_expected:
                 yield
-            data = (yield self.port.rdata.data)
-            yield self.port.rdata.ready.eq(1)
-            yield
-            yield self.port.rdata.ready.eq(0)
-            yield
-            return data
-        else:
-            yield self.port.rdata.ready.eq(1)
+            return self.rdata[-1]
 
-    def write(self, address, data, we=None, wait_data=True):
+    def write(self, address, data, we=None, first=0, last=0, wait_data=True, data_with_cmd=False):
         if we is None:
             we = 2**self.port.wdata.we.nbits - 1
         yield self.port.cmd.valid.eq(1)
+        yield self.port.cmd.first.eq(first)
+        yield self.port.cmd.last.eq(last)
         yield self.port.cmd.we.eq(1)
         yield self.port.cmd.addr.eq(address)
+        if data_with_cmd:
+            self.wdata.append((data, we))
         yield
         while (yield self.port.cmd.ready) == 0:
             yield
+        if not data_with_cmd:
+            self.wdata.append((data, we))
         yield self.port.cmd.valid.eq(0)
-        yield self.port.wdata.valid.eq(1)
-        yield self.port.wdata.data.eq(data)
-        yield self.port.wdata.we.eq(we)
-        yield
         if wait_data:
-            while (yield self.port.wdata.ready) == 0:
+            n_wdata = len(self.wdata)
+            while len(self.wdata) != n_wdata - 1:
                 yield
-            yield self.port.wdata.valid.eq(0)
-            yield
 
 
 class CmdRequestRWDriver:
@@ -173,7 +217,7 @@ class DRAMMemory:
         mask = reduce(or_, [0xff << (8 * bit) for bit in range(self.width//8)
                             if (we & (1 << bit)) != 0], 0)
         data = data & mask
-        self.mem[address%self.depth] = data
+        self.mem[address%self.depth] = data | (self.mem[address%self.depth] & ~mask)
         if self._debug in ["1", "W"]:
             print("W 0x{:08x}: 0x{:0{dwidth}x}".format(address, self.mem[address%self.depth],
                                                        dwidth=self.width//4))
@@ -474,7 +518,7 @@ class MemoryTestDataMixin:
                     (0x05, 0x11),
                     (0x0a, 0x22),
                     (0x0f, 0x33),
-                    (0x1d, 0x44),
+                    (0x1e, 0x44),
                     (0x15, 0x55),
                     (0x13, 0x66),
                     (0x18, 0x77),
