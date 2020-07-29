@@ -356,8 +356,6 @@ class LiteDRAMUSDDRPHYCRG(Module):
                 i_CE=por_done, i_I=self.cd_sys4x_pll.clk, o_O=self.cd_sys.clk),
             Instance("BUFGCE", name="main_bufgce",
                 i_CE=por_done, i_I=self.cd_sys4x_pll.clk, o_O=self.cd_sys4x.clk),
-            AsyncResetSynchronizer(self.cd_sys4x, ~por_done | ~sys_pll.locked | rst),
-            AsyncResetSynchronizer(self.cd_sys,   ~por_done | ~sys_pll.locked | rst),
         ]
 
         # IODelay Ctrl
