@@ -19,40 +19,37 @@ class LiteDRAMNativePortCDC(Module):
         assert port_from.data_width    == port_to.data_width
         assert port_from.mode          == port_to.mode
 
-        address_width     = port_from.address_width
-        data_width        = port_from.data_width
-        mode              = port_from.mode
-        clock_domain_from = port_from.clock_domain
-        clock_domain_to   = port_to.clock_domain
+        address_width = port_from.address_width
+        data_width    = port_from.data_width
+        mode          = port_from.mode
 
         # # #
 
-        cmd_fifo = stream.AsyncFIFO([("we", 1), ("addr", address_width)], cmd_depth)
-        cmd_fifo = ClockDomainsRenamer(
-            {"write": clock_domain_from,
-             "read":  clock_domain_to})(cmd_fifo)
-        self.submodules += cmd_fifo
-        self.submodules += stream.Pipeline(
-            port_from.cmd, cmd_fifo, port_to.cmd)
+        cmd_cdc = stream.ClockDomainCrossing(
+            layout  = [("we", 1), ("addr", address_width)],
+            cd_from = port_from.clock_domain,
+            cd_to   = port_to.clock_domain,
+            depth   = cmd_depth)
+        self.submodules += cmd_cdc
+        self.submodules += stream.Pipeline(port_from.cmd, cmd_cdc, port_to.cmd)
 
-        if mode == "write" or mode == "both":
-            wdata_fifo = stream.AsyncFIFO(
-                [("data", data_width), ("we", data_width//8)], wdata_depth)
-            wdata_fifo = ClockDomainsRenamer(
-                {"write": clock_domain_from,
-                 "read":  clock_domain_to})(wdata_fifo)
-            self.submodules += wdata_fifo
-            self.submodules += stream.Pipeline(
-                port_from.wdata, wdata_fifo, port_to.wdata)
+        if mode in ["write", "both"]:
+            wdata_cdc = stream.ClockDomainCrossing(
+                layout  = [("data", data_width), ("we", data_width//8)],
+                cd_from = port_from.clock_domain,
+                cd_to   = port_to.clock_domain,
+                depth   = wdata_depth)
+            self.submodules += wdata_cdc
+            self.submodules += stream.Pipeline(port_from.wdata, wdata_cdc, port_to.wdata)
 
-        if mode == "read" or mode == "both":
-            rdata_fifo = stream.AsyncFIFO([("data", data_width)], rdata_depth)
-            rdata_fifo = ClockDomainsRenamer(
-                {"write": clock_domain_to,
-                 "read":  clock_domain_from})(rdata_fifo)
-            self.submodules += rdata_fifo
-            self.submodules += stream.Pipeline(
-                port_to.rdata, rdata_fifo, port_from.rdata)
+        if mode in ["read", "both"]:
+            rdata_cdc = stream.ClockDomainCrossing(
+                layout  = [("data", data_width)],
+                cd_from = port_to.clock_domain,
+                cd_to   = port_from.clock_domain,
+                depth   = rdata_depth)
+            self.submodules += rdata_cdc
+            self.submodules += stream.Pipeline(port_to.rdata, rdata_cdc, port_from.rdata)
 
 # LiteDRAMNativePortDownConverter ------------------------------------------------------------------
 
