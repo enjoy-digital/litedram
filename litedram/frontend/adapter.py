@@ -75,20 +75,11 @@ class LiteDRAMNativePortDownConverter(Module):
 
         ratio = port_from.data_width//port_to.data_width
         mode  = port_from.mode
-
-        counter       = Signal(max=ratio)
-        counter_reset = Signal()
-        counter_ce    = Signal()
-        self.sync += \
-            If(counter_reset,
-                counter.eq(0)
-            ).Elif(counter_ce,
-                counter.eq(counter + 1)
-            )
+        count = Signal(max=ratio)
 
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
-            counter_reset.eq(1),
+            NextValue(count, 0),
             If(port_from.cmd.valid,
                 NextState("CONVERT")
             )
@@ -96,30 +87,29 @@ class LiteDRAMNativePortDownConverter(Module):
         fsm.act("CONVERT",
             port_to.cmd.valid.eq(1),
             port_to.cmd.we.eq(port_from.cmd.we),
-            port_to.cmd.addr.eq(port_from.cmd.addr*ratio + counter),
+            port_to.cmd.addr.eq(port_from.cmd.addr*ratio + count),
             If(port_to.cmd.ready,
-                counter_ce.eq(1),
-                If(counter == ratio - 1,
+                NextValue(count, count + 1),
+                If(count == (ratio - 1),
                     port_from.cmd.ready.eq(1),
                     NextState("IDLE")
                 )
             )
         )
 
-        if mode == "write" or mode == "both":
+        if mode in ["write", "both"]:
             wdata_converter = stream.StrideConverter(
-                port_from.wdata.description,
-                port_to.wdata.description,
-                reverse=reverse)
+                description_from = port_from.wdata.description,
+                description_to   = port_to.wdata.description,
+                reverse          = reverse)
             self.submodules += wdata_converter
-            self.submodules += stream.Pipeline(
-                port_from.wdata, wdata_converter, port_to.wdata)
+            self.submodules += stream.Pipeline(port_from.wdata, wdata_converter, port_to.wdata)
 
-        if mode == "read" or mode == "both":
+        if mode in ["read", "both"]:
             rdata_converter = stream.StrideConverter(
-                port_to.rdata.description,
-                port_from.rdata.description,
-                reverse=reverse)
+                description_from = port_to.rdata.description,
+                description_to   = port_from.rdata.description,
+                reverse          = reverse)
             self.submodules += rdata_converter
             self.submodules += stream.Pipeline(
                 port_to.rdata, rdata_converter, port_from.rdata)
