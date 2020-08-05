@@ -358,8 +358,4 @@ class LiteDRAMNativePortConverter(Module):
             self.submodules.converter = LiteDRAMNativePortUpConverter(port_from, port_to, reverse)
         else:
             # Identity
-            self.comb += [
-                port_from.cmd.connect(port_to.cmd),
-                port_from.wdata.connect(port_to.wdata),
-                port_to.rdata.connect(port_from.rdata)
-            ]
+            self.comb += port_from.connect(port_to)

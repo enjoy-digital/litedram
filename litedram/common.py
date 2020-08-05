@@ -273,13 +273,12 @@ class LiteDRAMNativePort(Settings):
     def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0):
         self.set_attributes(locals())
 
-        self.lock = Signal()
+        self.flush = Signal()
+        self.lock  = Signal()
 
         self.cmd   = stream.Endpoint(cmd_description(address_width))
         self.wdata = stream.Endpoint(wdata_description(data_width))
         self.rdata = stream.Endpoint(rdata_description(data_width))
-
-        self.flush = Signal()
 
         # retro-compatibility # FIXME: remove
         self.aw = self.address_width
@@ -300,6 +299,14 @@ class LiteDRAMNativePort(Settings):
         else:
             return self.cmd.addr[:cba_shift]
 
+    def connect(self, port):
+        return [
+            self.cmd.connect(port.cmd),
+            self.wdata.connect(port.wdata),
+            port.rdata.connect(self.rdata),
+            port.flush.eq(self.flush),
+            self.lock.eq(port.lock),
+        ]
 
 class LiteDRAMNativeWritePort(LiteDRAMNativePort):
     def __init__(self, *args, **kwargs):
