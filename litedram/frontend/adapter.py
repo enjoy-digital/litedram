@@ -348,15 +348,16 @@ class LiteDRAMNativePortConverter(Module):
 
         # # #
 
-        mode = port_from.mode
+        ratio = port_from.data_width/port_to.data_width
 
-        if port_from.data_width > port_to.data_width:
-            converter = LiteDRAMNativePortDownConverter(port_from, port_to, reverse)
-            self.submodules += converter
-        elif port_from.data_width < port_to.data_width:
-            converter = LiteDRAMNativePortUpConverter(port_from, port_to, reverse)
-            self.submodules += converter
+        if ratio > 1:
+            # DownConverter
+            self.submodules.converter = LiteDRAMNativePortDownConverter(port_from, port_to, reverse)
+        elif ratio < 1:
+            # UpConverter
+            self.submodules.converter = LiteDRAMNativePortUpConverter(port_from, port_to, reverse)
         else:
+            # Identity
             self.comb += [
                 port_from.cmd.connect(port_to.cmd),
                 port_from.wdata.connect(port_to.wdata),
