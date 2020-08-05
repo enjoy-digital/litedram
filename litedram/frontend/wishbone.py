@@ -36,44 +36,38 @@ class LiteDRAMWishbone2Native(Module):
 
         adr_offset = base_address >> log2_int(port.data_width//8)
 
-        # Write Datapath ---------------------------------------------------------------------------
+        cmd_consumed   = Signal()
+        wdata_consumed = Signal()
+        ack_cmd        = Signal()
+        ack_wdata      = Signal()
+        ack_rdata      = Signal()
+
+        # Latch ready signals of cmd/wdata and then wait until all are ready.
+        self.sync += [
+            If(wishbone.ack,
+                cmd_consumed.eq(0),
+                wdata_consumed.eq(0),
+            ).Else(
+                If(port.cmd.valid   & port.cmd.ready,   cmd_consumed.eq(1)),
+                If(port.wdata.valid & port.wdata.ready, wdata_consumed.eq(1)),
+            ),
+        ]
+
         self.comb += [
+            port.cmd.addr.eq(wishbone.adr - adr_offset),
+            port.cmd.we.eq(wishbone.we),
             port.wdata.data.eq(wishbone.dat_w),
             port.wdata.we.eq(wishbone.sel),
-        ]
-
-        # Read Datapath ----------------------------------------------------------------------------
-        self.comb += [
             wishbone.dat_r.eq(port.rdata.data),
+            # Always wait for reads, flush write when transaction ends.
+            port.flush.eq(~wishbone.cyc),
+            port.cmd.last.eq(~wishbone.we),
+            # Make sure cmd/wdata won't stay valid after it is consumed.
+            port.cmd.valid.eq(wishbone.cyc & wishbone.stb & ~cmd_consumed),
+            port.wdata.valid.eq((port.cmd.valid | cmd_consumed) & port.cmd.we & ~wdata_consumed),
+            port.rdata.ready.eq((port.cmd.valid | cmd_consumed) & ~port.cmd.we),
+            wishbone.ack.eq(ack_cmd & ((wishbone.we & ack_wdata) | (~wishbone.we & ack_rdata))),
+            ack_cmd.eq((port.cmd.valid & port.cmd.ready) | cmd_consumed),
+            ack_wdata.eq((port.wdata.valid & port.wdata.ready) | wdata_consumed),
+            ack_rdata.eq(port.rdata.valid & port.rdata.ready),
         ]
-
-        # Control ----------------------------------------------------------------------------------
-        self.submodules.fsm = fsm = FSM(reset_state="CMD")
-        fsm.act("CMD",
-            port.flush.eq(~wishbone.cyc),   # Flush write when transaction ends.
-            port.cmd.last.eq(~wishbone.we), # Always wait for reads.
-            port.cmd.valid.eq(wishbone.cyc & wishbone.stb),
-            port.cmd.we.eq(wishbone.we),
-            port.cmd.addr.eq(wishbone.adr - adr_offset),
-            If(port.cmd.valid & port.cmd.ready,
-                If(wishbone.we,
-                    NextState("WAIT-WRITE")
-                ).Else(
-                    NextState("WAIT-READ")
-                )
-            )
-        )
-        fsm.act("WAIT-WRITE",
-            port.wdata.valid.eq(1),
-            If(port.wdata.ready,
-                wishbone.ack.eq(1),
-                NextState("CMD")
-            )
-        )
-        fsm.act("WAIT-READ",
-            port.rdata.ready.eq(1),
-            If(port.rdata.valid,
-               wishbone.ack.eq(1),
-               NextState("CMD")
-            )
-        )
