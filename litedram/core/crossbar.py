@@ -15,7 +15,7 @@ from litex.soc.interconnect import stream
 
 from litedram.common import *
 from litedram.core.controller import *
-from litedram.frontend.adaptation import *
+from litedram.frontend.adapter import *
 
 # LiteDRAMCrossbar ---------------------------------------------------------------------------------
 

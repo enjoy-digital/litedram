@@ -9,7 +9,7 @@ from migen import *
 
 from litex.soc.interconnect import stream
 from litedram.common import LiteDRAMNativePort
-from litedram.frontend.adaptation import LiteDRAMNativePortConverter
+from litedram.frontend.adapter import LiteDRAMNativePortConverter
 
 
 # LiteDRAMWishbone2Native --------------------------------------------------------------------------

@@ -1,4 +1,5 @@
-# This file is Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2016-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# This file is Copyright (c) 2020 Antmicro <www.antmicro.com>
 # License: BSD
 
 from migen import *
@@ -26,8 +27,7 @@ class LiteDRAMNativePortCDC(Module):
 
         # # #
 
-        cmd_fifo = stream.AsyncFIFO(
-            [("we", 1), ("addr", address_width)], cmd_depth)
+        cmd_fifo = stream.AsyncFIFO([("we", 1), ("addr", address_width)], cmd_depth)
         cmd_fifo = ClockDomainsRenamer(
             {"write": clock_domain_from,
              "read":  clock_domain_to})(cmd_fifo)
