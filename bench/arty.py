@@ -21,18 +21,6 @@ from litedram.modules import MT41K128M16
 
 from liteeth.phy.mii import LiteEthPHYMII
 
-def platform_request_all(platform, name):
-    from litex.build.generic_platform import ConstraintError
-    r = []
-    while True:
-        try:
-            r += [platform.request(name, len(r))]
-        except ConstraintError:
-            break
-    if r == []:
-        raise ValueError
-    return r
-
 # CRG ----------------------------------------------------------------------------------------------
 
 class _CRG(Module, AutoCSR):
@@ -106,7 +94,7 @@ class BenchSoC(SoCCore):
 
         # Leds -------------------------------------------------------------------------------------
         from litex.soc.cores.led import LedChaser
-        self.submodules.led = LedChaser(Cat(platform_request_all(platform, "user_led")), sys_clk_freq)
+        self.submodules.led = LedChaser(self.platform.request_all("user_led"), sys_clk_freq)
         self.add_csr("led")
 
 # Bench Test ---------------------------------------------------------------------------------------
