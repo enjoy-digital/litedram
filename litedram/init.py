@@ -479,6 +479,8 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
 
     # Define PHY type and number of phases
     r += "#define SDRAM_PHY_"+phytype+"\n"
+    r += "#define SDRAM_PHY_XDR "+str(1 if phy_settings.memtype == "SDR" else 2) + "\n"
+    r += "#define SDRAM_PHY_DATABITS "+str(phy_settings.databits) + "\n"
     r += "#define SDRAM_PHY_PHASES "+str(nphases)+"\n"
 
     # Define Read/Write Leveling capability
