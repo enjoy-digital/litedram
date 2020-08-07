@@ -16,6 +16,8 @@
 #define DFII_COMMAND_RDDATA     0x20
 
 #define SDRAM_PHY_GENSDRPHY
+#define SDRAM_PHY_XDR 1
+#define SDRAM_PHY_DATABITS 16
 #define SDRAM_PHY_PHASES 1
 
 static void cdelay(int i);
