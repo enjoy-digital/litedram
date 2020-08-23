@@ -1,8 +1,11 @@
-# This file is Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
-# This file is Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
-# This file is Copyright (c) 2018 John Sully <john@csquare.ca>
-# This file is Copyright (c) 2016 Tim 'mithro' Ansell <mithro@mithis.com>
-# License: BSD
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
+# Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2018 John Sully <john@csquare.ca>
+# Copyright (c) 2016 Tim 'mithro' Ansell <mithro@mithis.com>
+# SPDX-License-Identifier: BSD-2-Clause
 
 """Direct Memory Access (DMA) reader and writer modules."""
 

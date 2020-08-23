@@ -1,10 +1,13 @@
-# This file is Copyright (c) 2013-2014 Sebastien Bourdeauducq <sb@m-labs.hk>
-# This file is Copyright (c) 2013-2020 Florent Kermarrec <florent@enjoy-digital.fr>
-# This file is Copyright (c) 2017 whitequark <whitequark@whitequark.org>
-# This file is Copyright (c) 2014 Yann Sionneau <ys@m-labs.hk>
-# This file is Copyright (c) 2018 bunnie <bunnie@kosagi.com>
-# This file is Copyright (c) 2019 Gabriel L. Somlo <gsomlo@gmail.com>
-# License: BSD
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2013-2014 Sebastien Bourdeauducq <sb@m-labs.hk>
+# Copyright (c) 2013-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2017 whitequark <whitequark@whitequark.org>
+# Copyright (c) 2014 Yann Sionneau <ys@m-labs.hk>
+# Copyright (c) 2018 bunnie <bunnie@kosagi.com>
+# Copyright (c) 2019 Gabriel L. Somlo <gsomlo@gmail.com>
+# SPDX-License-Identifier: BSD-2-Clause
 
 from migen import log2_int
 

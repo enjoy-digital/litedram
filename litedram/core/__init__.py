@@ -1,3 +1,9 @@
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# SPDX-License-Identifier: BSD-2-Clause
+
 from migen import *
 
 from litex.soc.interconnect.csr import AutoCSR

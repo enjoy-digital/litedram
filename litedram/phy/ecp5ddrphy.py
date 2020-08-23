@@ -1,6 +1,9 @@
-# This file is Copyright (c) 2019 David Shah <dave@ds0.me>
-# This file is Copyright (c) 2019-2020 Florent Kermarrec <florent@enjoy-digital.fr>
-# License: BSD
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2019 David Shah <dave@ds0.me>
+# Copyright (c) 2019-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# SPDX-License-Identifier: BSD-2-Clause
 
 # 1:2 frequency-ratio DDR3 PHY for Lattice's ECP5
 # DDR3: 800 MT/s

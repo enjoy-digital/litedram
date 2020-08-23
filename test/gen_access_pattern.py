@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2020 Antmicro <www.antmicro.com>
+# SPDX-License-Identifier: BSD-2-Clause
+
 import random
 import argparse
 

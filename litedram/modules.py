@@ -1,16 +1,19 @@
-# This file is Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
-# This file is Copyright (c) 2015-2019 Florent Kermarrec <florent@enjoy-digital.fr>
-# This file is Copyright (c) 2018 John Sully <john@csquare.ca>
-# This file is Copyright (c) 2019 Ambroz Bizjak <abizjak.pro@gmail.com>
-# This file is Copyright (c) 2019 Antony Pavlov <antonynpavlov@gmail.com>
-# This file is Copyright (c) 2018 bunnie <bunnie@kosagi.com>
-# This file is Copyright (c) 2018 David Shah <dave@ds0.me>
-# This file is Copyright (c) 2019 Steve Haynal - VSD Engineering
-# This file is Copyright (c) 2018 Tim 'mithro' Ansell <me@mith.ro>
-# This file is Copyright (c) 2018 Daniel Kucera <daniel.kucera@gmail.com>
-# This file is Copyright (c) 2018 Mikołaj Sowiński <mikolaj.sowinski@gmail.com>
-# This file is Copyright (c) 2020 Antmicro <www.antmicro.com>
-# License: BSD
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
+# Copyright (c) 2015-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2018 John Sully <john@csquare.ca>
+# Copyright (c) 2019 Ambroz Bizjak <abizjak.pro@gmail.com>
+# Copyright (c) 2019 Antony Pavlov <antonynpavlov@gmail.com>
+# Copyright (c) 2018 bunnie <bunnie@kosagi.com>
+# Copyright (c) 2018 David Shah <dave@ds0.me>
+# Copyright (c) 2019 Steve Haynal - VSD Engineering
+# Copyright (c) 2018 Tim 'mithro' Ansell <me@mith.ro>
+# Copyright (c) 2018 Daniel Kucera <daniel.kucera@gmail.com>
+# Copyright (c) 2018 Mikołaj Sowiński <mikolaj.sowinski@gmail.com>
+# Copyright (c) 2020 Antmicro <www.antmicro.com>
+# SPDX-License-Identifier: BSD-2-Clause
 
 from math import ceil
 from collections import namedtuple

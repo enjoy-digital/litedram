@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
-# This file is Copyright (c) 2018-2020 Florent Kermarrec <florent@enjoy-digital.fr>
-# This file is Copyright (c) 2020 Stefan Schrijvers <ximin@ximinity.net>
-# License: BSD
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2018-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2020 Stefan Schrijvers <ximin@ximinity.net>
+# SPDX-License-Identifier: BSD-2-Clause
 
 """
 LiteDRAM standalone core generator

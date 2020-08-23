@@ -1,7 +1,10 @@
-# This file is Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
-# This file is Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
-# This file is Copyright (c) 2018 John Sully <john@csquare.ca>
-# License: BSD
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
+# Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2018 John Sully <john@csquare.ca>
+# SPDX-License-Identifier: BSD-2-Clause
 
 """LiteDRAM Multiplexer."""
 
