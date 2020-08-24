@@ -68,6 +68,7 @@ class BenchSoC(SoCCore):
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, clk_freq=sys_clk_freq,
             integrated_rom_size = 0x8000,
+            integrated_rom_mode = "rw",
             csr_data_width      = 32,
             uart_name           = "crossover")
 
@@ -110,6 +111,18 @@ def bench_test():
     wb.open()
 
     # # #
+
+    class SoCCtrl:
+        @staticmethod
+        def reboot():
+            wb.regs.ctrl_reset.write(1)
+
+        @staticmethod
+        def load_rom(filename):
+            from litex.soc.integration.common import get_mem_data
+            rom_data = get_mem_data(filename, "little")
+            for i, data in enumerate(rom_data):
+                wb.write(wb.mems.rom.base + 4*i)
 
     class ClkReg1:
         def __init__(self, value=0):
@@ -189,6 +202,10 @@ def bench_test():
 
     # # #
 
+    ctrl = SoCCtrl()
+    ctrl.load_rom("build/arty/software/bios/bios.bin")
+    ctrl.reset()
+
     vco_freq = 1.6e9
 
     s7pll = S7PLL()
@@ -212,7 +229,7 @@ def bench_test():
         print("sys_clk: {:3.2f}MHz".format((end-start)/(1e6*duration)))
 
         print("Reset SoC and get BIOS log...")
-        wb.regs.ctrl_reset.write(1)
+        ctrl.reset()
         start = time.time()
         while (time.time() - start) < 5:
             if wb.regs.uart_xover_rxempty.read() == 0:
