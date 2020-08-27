@@ -73,6 +73,7 @@ class BenchSoC(SoCCore):
 
         # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = _CRG(platform, sys_clk_freq)
+        self.add_csr("crg")
 
         # DDR4 SDRAM -------------------------------------------------------------------------------
         self.submodules.ddrphy = usddrphy.USDDRPHY(platform.request("ddram"),
@@ -88,7 +89,7 @@ class BenchSoC(SoCCore):
             size                    = 0x40000000,
         )
 
-        # Ethebone ---------------------------------------------------------------------------------
+        # Etherbone --------------------------------------------------------------------------------
         self.submodules.ethphy = KU_1000BASEX(self.crg.cd_clk200.clk,
             data_pads    = self.platform.request("sfp", 0),
             sys_clk_freq = self.clk_freq)
@@ -105,7 +106,7 @@ class BenchSoC(SoCCore):
 
 # Bench Test ---------------------------------------------------------------------------------------
 
-def bench_test():
+def bench_test(sys_clk_freq, vco_freq):
     import time
     from litex import RemoteClient
 
@@ -124,7 +125,7 @@ def bench_test():
             from litex.soc.integration.common import get_mem_data
             rom_data = get_mem_data(filename, "little")
             for i, data in enumerate(rom_data):
-                wb.write(wb.mems.rom.base + 4*i)
+                wb.write(wb.mems.rom.base + 4*i, data)
 
     class ClkReg1:
         def __init__(self, value=0):
@@ -206,20 +207,16 @@ def bench_test():
 
     ctrl = SoCCtrl()
     ctrl.load_rom("build/kcu105/software/bios/bios.bin")
-    ctrl.reset()
-
-    vco_freq = 1e9
+    ctrl.reboot()
 
     uspll = USPLL()
 
-    print("Dump Main PLL...")
-    clkout0_clkreg1 = ClkReg1(uspll.read(0x08))
-    print(clkout0_clkreg1)
+    clkout0_clkreg1 = ClkReg1(s7pll.read(0x08))
 
     # TODO: add dynamic freq test.
 
-    print("Reset SoC and get BIOS log...")
-    ctrl.reset()
+    print("Reboot SoC and get BIOS log...")
+    ctrl.reboot()
     start = time.time()
     while (time.time() - start) < 5:
         if wb.regs.uart_xover_rxempty.read() == 0:
@@ -238,17 +235,16 @@ def main():
     parser.add_argument("--test",  action="store_true", help="Run Test")
     args = parser.parse_args()
 
-    if args.build or args.load:
-        soc     = BenchSoC()
-        builder = Builder(soc, csr_csv="csr.csv")
-        builder.build(run=args.build)
+    soc     = BenchSoC()
+    builder = Builder(soc, csr_csv="csr.csv")
+    builder.build(run=args.build)
 
     if args.load:
         prog = soc.platform.create_programmer()
         prog.load_bitstream(os.path.join(builder.gateware_dir, soc.build_name + ".bit"))
 
     if args.test:
-        bench_test()
+        bench_test(vco_freq=soc.crg.main_pll.compute_config()["vco"])
 
 if __name__ == "__main__":
     main()

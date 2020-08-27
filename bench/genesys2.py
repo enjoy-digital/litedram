@@ -38,24 +38,26 @@ class _CRG(Module, AutoCSR):
         self.submodules.main_pll = main_pll = S7PLL(speedgrade=-2)
         self.comb += main_pll.reset.eq(~platform.request("cpu_reset_n"))
         main_pll.register_clkin(platform.request("clk200"), 200e6)
-        main_pll.create_clkout(self.cd_sys_pll, 200e6)
+        main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
         main_pll.create_clkout(self.cd_clk200,  200e6)
         main_pll.expose_drp()
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_clk200)
+
         sys_clk_counter = Signal(32)
         self.sync += sys_clk_counter.eq(sys_clk_counter + 1)
         self.sys_clk_counter = CSRStatus(32)
         self.comb += self.sys_clk_counter.status.eq(sys_clk_counter)
+
         self.submodules.pll = pll = S7PLL(speedgrade=-2)
         self.comb += pll.reset.eq(~main_pll.locked)
-        pll.register_clkin(self.cd_sys_pll.clk, 200e6)
+        pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
         pll.create_clkout(self.cd_sys,    sys_clk_freq)
         pll.create_clkout(self.cd_sys4x,  4*sys_clk_freq)
 
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, sys_clk_freq=int(125e6)):
+    def __init__(self, sys_clk_freq=int(175e6)):
         platform = genesys2.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -97,7 +99,7 @@ class BenchSoC(SoCCore):
 
 # Bench Test ---------------------------------------------------------------------------------------
 
-def bench_test():
+def bench_test(vco_freq):
     import time
     from litex import RemoteClient
 
@@ -116,7 +118,7 @@ def bench_test():
             from litex.soc.integration.common import get_mem_data
             rom_data = get_mem_data(filename, "little")
             for i, data in enumerate(rom_data):
-                wb.write(wb.mems.rom.base + 4*i)
+                wb.write(wb.mems.rom.base + 4*i, data)
 
     class ClkReg1:
         def __init__(self, value=0):
@@ -198,21 +200,17 @@ def bench_test():
 
     ctrl = SoCCtrl()
     ctrl.load_rom("build/genesys2/software/bios/bios.bin")
-    ctrl.reset()
-
-    vco_freq = 1.8e9
+    ctrl.reboot()
 
     s7pll = S7PLL()
 
-    print("Dump Main PLL...")
     clkout0_clkreg1 = ClkReg1(s7pll.read(0x08))
-    print(clkout0_clkreg1)
 
-    for i in range(7, 14):
-        sys_clk_freq = (125e6/200e6)*(vco_freq/i)
-        print("Reconfig Main PLL to {}MHz...".format(sys_clk_freq/1e6))
-        clkout0_clkreg1.high_time = i//2 + i%2
-        clkout0_clkreg1.low_time  = i//2
+    for clk_freq in range(int(60e6), int(180e6), int(10e6)):
+        vco_div = int(vco_freq/clk_freq)
+        print("Reconfig Main PLL to {}MHz...".format(vco_freq/vco_div/1e6))
+        clkout0_clkreg1.high_time = vco_div//2 + vco_div%2
+        clkout0_clkreg1.low_time  = vco_div//2
         s7pll.write(0x08, clkout0_clkreg1.pack())
 
         print("Measuring sys_clk...")
@@ -222,8 +220,8 @@ def bench_test():
         end = wb.regs.crg_sys_clk_counter.read()
         print("sys_clk: {:3.2f}MHz".format((end-start)/(1e6*duration)))
 
-        print("Reset SoC and get BIOS log...")
-        ctrl.reset()
+        print("Reboot SoC and get BIOS log...")
+        ctrl.reboot()
         start = time.time()
         while (time.time() - start) < 5:
             if wb.regs.uart_xover_rxempty.read() == 0:
@@ -242,17 +240,16 @@ def main():
     parser.add_argument("--test",  action="store_true", help="Run Test")
     args = parser.parse_args()
 
-    if args.build or args.load:
-        soc     = BenchSoC()
-        builder = Builder(soc, csr_csv="csr.csv")
-        builder.build(run=args.build)
+    soc     = BenchSoC()
+    builder = Builder(soc, csr_csv="csr.csv")
+    builder.build(run=args.build)
 
     if args.load:
         prog = soc.platform.create_programmer()
         prog.load_bitstream(os.path.join(builder.gateware_dir, soc.build_name + ".bit"))
 
     if args.test:
-        bench_test()
+        bench_test(vco_freq=soc.crg.main_pll.compute_config()["vco"])
 
 if __name__ == "__main__":
     main()

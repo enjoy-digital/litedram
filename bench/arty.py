@@ -40,7 +40,7 @@ class _CRG(Module, AutoCSR):
         self.submodules.main_pll = main_pll = S7PLL(speedgrade=-1)
         self.comb += main_pll.reset.eq(~platform.request("cpu_reset"))
         main_pll.register_clkin(platform.request("clk100"), 100e6)
-        main_pll.create_clkout(self.cd_sys_pll, 100e6)
+        main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
         main_pll.create_clkout(self.cd_clk200,  200e6)
         main_pll.create_clkout(self.cd_eth,     25e6)
         main_pll.expose_drp()
@@ -54,7 +54,7 @@ class _CRG(Module, AutoCSR):
 
         self.submodules.pll = pll = S7PLL(speedgrade=-1)
         self.comb += pll.reset.eq(~main_pll.locked)
-        pll.register_clkin(self.cd_sys_pll.clk, 100e6)
+        pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
         pll.create_clkout(self.cd_sys,          sys_clk_freq)
         pll.create_clkout(self.cd_sys4x,        4*sys_clk_freq)
         pll.create_clkout(self.cd_sys4x_dqs,    4*sys_clk_freq, phase=90)
@@ -62,7 +62,7 @@ class _CRG(Module, AutoCSR):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, sys_clk_freq=int(100e6)):
+    def __init__(self, sys_clk_freq=int(150e6)):
         platform = arty.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -98,12 +98,14 @@ class BenchSoC(SoCCore):
 
         # Leds -------------------------------------------------------------------------------------
         from litex.soc.cores.led import LedChaser
-        self.submodules.led = LedChaser(self.platform.request_all("user_led"), sys_clk_freq)
-        self.add_csr("led")
+        self.submodules.leds = LedChaser(
+            pads         = platform.request_all("user_led"),
+            sys_clk_freq = sys_clk_freq)
+        self.add_csr("leds")
 
 # Bench Test ---------------------------------------------------------------------------------------
 
-def bench_test():
+def bench_test(vco_freq):
     import time
     from litex import RemoteClient
 
@@ -122,7 +124,7 @@ def bench_test():
             from litex.soc.integration.common import get_mem_data
             rom_data = get_mem_data(filename, "little")
             for i, data in enumerate(rom_data):
-                wb.write(wb.mems.rom.base + 4*i)
+                wb.write(wb.mems.rom.base + 4*i, data)
 
     class ClkReg1:
         def __init__(self, value=0):
@@ -204,21 +206,17 @@ def bench_test():
 
     ctrl = SoCCtrl()
     ctrl.load_rom("build/arty/software/bios/bios.bin")
-    ctrl.reset()
-
-    vco_freq = 1.6e9
+    ctrl.reboot()
 
     s7pll = S7PLL()
 
-    print("Dump Main PLL...")
     clkout0_clkreg1 = ClkReg1(s7pll.read(0x08))
-    print(clkout0_clkreg1)
 
-    for i in range(12, 44, 2):
-        sys_clk_freq = vco_freq/i
-        print("Reconfig Main PLL to {}MHz...".format(sys_clk_freq/1e6))
-        clkout0_clkreg1.high_time = i//2 + i%2
-        clkout0_clkreg1.low_time  = i//2
+    for clk_freq in range(int(60e6), int(150e6), int(10e6)):
+        vco_div = int(vco_freq/clk_freq)
+        print("Reconfig Main PLL to {}MHz...".format(vco_freq/vco_div/1e6))
+        clkout0_clkreg1.high_time = vco_div//2 + vco_div%2
+        clkout0_clkreg1.low_time  = vco_div//2
         s7pll.write(0x08, clkout0_clkreg1.pack())
 
         print("Measuring sys_clk...")
@@ -228,8 +226,8 @@ def bench_test():
         end = wb.regs.crg_sys_clk_counter.read()
         print("sys_clk: {:3.2f}MHz".format((end-start)/(1e6*duration)))
 
-        print("Reset SoC and get BIOS log...")
-        ctrl.reset()
+        print("Reboot SoC and get BIOS log...")
+        ctrl.reboot()
         start = time.time()
         while (time.time() - start) < 5:
             if wb.regs.uart_xover_rxempty.read() == 0:
@@ -248,17 +246,16 @@ def main():
     parser.add_argument("--test",  action="store_true", help="Run Test")
     args = parser.parse_args()
 
-    if args.build or args.load:
-        soc     = BenchSoC()
-        builder = Builder(soc, csr_csv="csr.csv")
-        builder.build(run=args.build)
+    soc     = BenchSoC()
+    builder = Builder(soc, csr_csv="csr.csv")
+    builder.build(run=args.build)
 
     if args.load:
         prog = soc.platform.create_programmer()
         prog.load_bitstream(os.path.join(builder.gateware_dir, soc.build_name + ".bit"))
 
     if args.test:
-        bench_test()
+        bench_test(vco_freq=soc.crg.main_pll.compute_config()["vco"])
 
 if __name__ == "__main__":
     main()
