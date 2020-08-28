@@ -22,8 +22,6 @@ from litex.soc.cores.led import LedChaser
 from litedram.modules import EDY4016A
 from litedram.phy import usddrphy
 
-from liteeth.phy.ku_1000basex import KU_1000BASEX
-
 # CRG ----------------------------------------------------------------------------------------------
 
 class _CRG(Module):
@@ -32,14 +30,16 @@ class _CRG(Module):
         self.clock_domains.cd_sys4x  = ClockDomain(reset_less=True)
         self.clock_domains.cd_pll4x  = ClockDomain(reset_less=True)
         self.clock_domains.cd_clk200 = ClockDomain()
+        self.clock_domains.cd_uart      = ClockDomain()
 
         # # #
 
         self.submodules.pll = pll = USMMCM(speedgrade=-2)
         self.comb += pll.reset.eq(platform.request("cpu_reset"))
         pll.register_clkin(platform.request("clk125"), 125e6)
-        pll.create_clkout(self.cd_pll4x, sys_clk_freq*4, buf=None, with_reset=False)
-        pll.create_clkout(self.cd_clk200, 200e6, with_reset=False)
+        pll.create_clkout(self.cd_pll4x,     sys_clk_freq*4, buf=None, with_reset=False)
+        pll.create_clkout(self.cd_clk200,    200e6, with_reset=False)
+        pll.create_clkout(self.cd_uart, 100e6)
         pll.expose_drp()
 
         self.specials += [
@@ -89,14 +89,8 @@ class BenchSoC(SoCCore):
             size                    = 0x40000000,
         )
 
-        # Etherbone --------------------------------------------------------------------------------
-        self.submodules.ethphy = KU_1000BASEX(self.crg.cd_clk200.clk,
-            data_pads    = self.platform.request("sfp", 0),
-            sys_clk_freq = self.clk_freq)
-        self.add_csr("ethphy")
-        self.comb += self.platform.request("sfp_tx_disable_n", 0).eq(1)
-        self.platform.add_platform_command("set_property SEVERITY {{Warning}} [get_drc_checks REQP-1753]")
-        self.add_etherbone(phy=self.ethphy)
+        # UARTBone ---------------------------------------------------------------------------------
+        self.add_uartbone(name="serial", clk_freq=100e6, baudrate=1e6, cd="uart")
 
         # Leds -------------------------------------------------------------------------------------
         self.submodules.leds = LedChaser(

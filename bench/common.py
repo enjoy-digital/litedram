@@ -113,8 +113,12 @@ def s7_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
 
     clkout0_clkreg1 = ClkReg1(s7pll.read(0x08))
 
+    tested_vco_divs = []
     for clk_freq in range(int(freq_min), int(freq_max), int(freq_step)):
         vco_div = int(vco_freq/clk_freq)
+        if vco_div in tested_vco_divs:
+            continue
+        tested_vco_divs.append(vco_div)
         print("Reconfig Main PLL to {}MHz...".format(vco_freq/vco_div/1e6))
         clkout0_clkreg1.high_time = vco_div//2 + vco_div%2
         clkout0_clkreg1.low_time  = vco_div//2
@@ -131,8 +135,9 @@ def s7_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
         ctrl.reboot()
         start = time.time()
         while (time.time() - start) < bios_timeout:
-            if wb.regs.uart_xover_rxempty.read() == 0:
-                print("{:c}".format(wb.regs.uart_xover_rxtx.read()), end="")
+            if wb.regs.uart_xover_rxfull.read():
+                for c in wb.read(wb.regs.uart_xover_rxtx.addr, 16, burst="fixed"):
+                    print("{:c}".format(c), end="")
 
     # # #
 

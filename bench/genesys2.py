@@ -22,8 +22,6 @@ from litex.soc.integration.builder import *
 from litedram.phy import s7ddrphy
 from litedram.modules import MT41J256M16
 
-from liteeth.phy.s7rgmii import LiteEthPHYRGMII
-
 # CRG ----------------------------------------------------------------------------------------------
 
 class _CRG(Module, AutoCSR):
@@ -32,6 +30,7 @@ class _CRG(Module, AutoCSR):
         self.clock_domains.cd_sys       = ClockDomain()
         self.clock_domains.cd_sys4x     = ClockDomain(reset_less=True)
         self.clock_domains.cd_clk200    = ClockDomain()
+        self.clock_domains.cd_uart      = ClockDomain()
 
         # # #
 
@@ -40,6 +39,7 @@ class _CRG(Module, AutoCSR):
         main_pll.register_clkin(platform.request("clk200"), 200e6)
         main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
         main_pll.create_clkout(self.cd_clk200,  200e6)
+        main_pll.create_clkout(self.cd_uart,    100e6)
         main_pll.expose_drp()
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_clk200)
 
@@ -84,13 +84,8 @@ class BenchSoC(SoCCore):
             origin = self.mem_map["main_ram"]
         )
 
-        # Etherbone --------------------------------------------------------------------------------
-        self.submodules.ethphy = LiteEthPHYRGMII(
-            clock_pads         = self.platform.request("eth_clocks"),
-            pads               = self.platform.request("eth"),
-            with_hw_init_reset = False)
-        self.add_csr("ethphy")
-        self.add_etherbone(phy=self.ethphy)
+        # UARTBone ---------------------------------------------------------------------------------
+        self.add_uartbone(name="serial", clk_freq=100e6, baudrate=1e6, cd="uart")
 
         # Leds -------------------------------------------------------------------------------------
         from litex.soc.cores.led import LedChaser
@@ -121,7 +116,7 @@ def main():
         s7_bench_test(
             freq_min      = 60e6,
             freq_max      = 180e6,
-            freq_step     = 10e6,
+            freq_step     = 1e6,
             vco_freq      = soc.crg.main_pll.compute_config()["vco"],
             bios_filename = "build/genesys2/software/bios/bios.bin",
             bios_timeout  = 10,
