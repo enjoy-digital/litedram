@@ -86,22 +86,7 @@ class S7PLL:
         self.bus.regs.crg_main_pll_drp_write.write(1)
 
 
-class USPLL:
-    def __init__(self, bus):
-        self.bus = bus
-
-    def reset(self):
-        self.bus.regs.crg_pll_drp_reset.write(1)
-
-    def read(self, adr):
-        self.bus.regs.crg_pll_drp_adr.write(adr)
-        self.bus.regs.crg_pll_drp_read.write(1)
-        return self.bus.regs.crg_pll_drp_dat_r.read()
-
-    def write(self, adr, value):
-        self.bus.regs.crg_pll_drp_adr.write(adr)
-        self.bus.regs.crg_pll_drp_dat_w.write(value)
-        self.bus.regs.crg_pll_drp_write.write(1)
+class USPLL(S7PLL): pass
 
 # Bench Controller ---------------------------------------------------------------------------------
 
@@ -186,7 +171,7 @@ def s7_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
 
 # Bench Test ---------------------------------------------------------------------------------------
 
-def us_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_timeout=10):
+def us_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_timeout=40):
     import time
     from litex import RemoteClient
 
@@ -213,13 +198,13 @@ def us_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
     tested_vco_divs = []
     for clk_freq in range(int(freq_min), int(freq_max), int(freq_step)):
         # Compute VCO divider, skip if already tested.
-        vco_div = int(vco_freq/(4*clk_freq))
+        vco_div = int(vco_freq/clk_freq)
         if vco_div in tested_vco_divs:
             continue
         tested_vco_divs.append(vco_div)
 
         print("-"*40)
-        print("sys_clk = {}MHz...".format(vco_freq/4/vco_div/1e6))
+        print("sys_clk = {}MHz...".format(vco_freq/vco_div/1e6))
         print("-"*40)
 
         # Reconfigure PLL to change sys_clk

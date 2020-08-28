@@ -43,16 +43,16 @@ class _CRG(Module, AutoCSR):
         main_pll.expose_drp()
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_clk200)
 
-        sys_clk_counter = Signal(32)
-        self.sync += sys_clk_counter.eq(sys_clk_counter + 1)
-        self.sys_clk_counter = CSRStatus(32)
-        self.comb += self.sys_clk_counter.status.eq(sys_clk_counter)
-
         self.submodules.pll = pll = S7PLL(speedgrade=-2)
         self.comb += pll.reset.eq(~main_pll.locked)
         pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
         pll.create_clkout(self.cd_sys,    sys_clk_freq)
         pll.create_clkout(self.cd_sys4x,  4*sys_clk_freq)
+
+        sys_clk_counter = Signal(32)
+        self.sync += sys_clk_counter.eq(sys_clk_counter + 1)
+        self.sys_clk_counter = CSRStatus(32)
+        self.comb += self.sys_clk_counter.status.eq(sys_clk_counter)
 
 # Bench SoC ----------------------------------------------------------------------------------------
 

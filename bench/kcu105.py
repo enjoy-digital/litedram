@@ -26,21 +26,27 @@ from litedram.phy import usddrphy
 
 class _CRG(Module, AutoCSR):
     def __init__(self, platform, sys_clk_freq):
-        self.clock_domains.cd_sys    = ClockDomain()
-        self.clock_domains.cd_sys4x  = ClockDomain(reset_less=True)
-        self.clock_domains.cd_pll4x  = ClockDomain(reset_less=True)
-        self.clock_domains.cd_clk200 = ClockDomain()
-        self.clock_domains.cd_uart   = ClockDomain()
+        self.clock_domains.cd_sys_pll = ClockDomain()
+        self.clock_domains.cd_sys     = ClockDomain()
+        self.clock_domains.cd_sys4x   = ClockDomain(reset_less=True)
+        self.clock_domains.cd_pll4x   = ClockDomain(reset_less=True)
+        self.clock_domains.cd_clk200  = ClockDomain()
+        self.clock_domains.cd_uart    = ClockDomain()
 
         # # #
 
+        self.submodules.main_pll = main_pll = USMMCM(speedgrade=-2)
+        self.comb += main_pll.reset.eq(platform.request("cpu_reset"))
+        main_pll.register_clkin(platform.request("clk125"), 125e6)
+        main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
+        main_pll.create_clkout(self.cd_clk200, 200e6, with_reset=False)
+        main_pll.create_clkout(self.cd_uart,   100e6)
+        main_pll.expose_drp()
+
         self.submodules.pll = pll = USMMCM(speedgrade=-2)
-        self.comb += pll.reset.eq(platform.request("cpu_reset"))
-        pll.register_clkin(platform.request("clk125"), 125e6)
+        self.comb += pll.reset.eq(~main_pll.locked)
+        pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
         pll.create_clkout(self.cd_pll4x,  sys_clk_freq*4, buf=None, with_reset=False)
-        pll.create_clkout(self.cd_clk200, 200e6, with_reset=False)
-        pll.create_clkout(self.cd_uart,   100e6)
-        pll.expose_drp()
 
         self.specials += [
             Instance("BUFGCE_DIV", name="main_bufgce_div",
@@ -117,7 +123,7 @@ def main():
     if args.test:
         from common import us_bench_test
         us_bench_test(
-            freq_min      = 60e6,
+            freq_min      = 80e6,
             freq_max      = 180e6,
             freq_step     = 1e6,
             vco_freq      = soc.crg.pll.compute_config()["vco"],
