@@ -25,7 +25,7 @@ class USDDRPHY(Module, AutoCSR):
         memtype          = "DDR3",
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
-        cmd_latency      = 0,
+        cmd_latency      = 1,
         is_rdimm         = False):
         phytype     = self.__class__.__name__
         device      = {"USDDRPHY": "ULTRASCALE", "USPDDRPHY": "ULTRASCALE_PLUS"}[phytype]
@@ -51,6 +51,8 @@ class USDDRPHY(Module, AutoCSR):
         cwl_sys_latency = get_sys_latency(nphases, cwl)
 
         # Registers --------------------------------------------------------------------------------
+        self._rst                 = CSRStorage()
+
         self._en_vtc              = CSRStorage(reset=1)
 
         self._half_sys8x_taps     = CSRStatus(9)
@@ -127,7 +129,7 @@ class USDDRPHY(Module, AutoCSR):
                     p_IS_RST_INVERTED    = 0,
                     p_IS_CLK_INVERTED    = 0,
                     p_IS_CLKDIV_INVERTED = 0,
-                    i_RST    = ResetSignal(),
+                    i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal("sys4x"),
                     i_CLKDIV = ClockSignal(),
                     i_D      = 0b10101010,
@@ -141,7 +143,7 @@ class USDDRPHY(Module, AutoCSR):
                     p_DELAY_FORMAT     = "TIME",
                     p_DELAY_TYPE       = "VARIABLE",
                     p_DELAY_VALUE      = 0,
-                    i_RST          = self._cdly_rst.re,
+                    i_RST          = self._cdly_rst.re | self._rst.storage,
                     i_CLK          = ClockSignal(),
                     i_EN_VTC       = self._en_vtc.storage,
                     i_CE           = self._cdly_inc.re,
@@ -168,7 +170,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_IS_RST_INVERTED    = 0,
                         p_IS_CLK_INVERTED    = 0,
                         p_IS_CLKDIV_INVERTED = 0,
-                        i_RST    = ResetSignal(),
+                        i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
                         i_D      = Cat(dfi.phases[0].address[i], dfi.phases[0].address[i],
@@ -185,7 +187,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_DELAY_FORMAT     = "TIME",
                         p_DELAY_TYPE       = "VARIABLE",
                         p_DELAY_VALUE      = 0,
-                        i_RST     = self._cdly_rst.re,
+                        i_RST     = self._cdly_rst.re | self._rst.storage,
                         i_CLK     = ClockSignal(),
                         i_EN_VTC  = self._en_vtc.storage,
                         i_CE      = self._cdly_inc.re,
@@ -211,7 +213,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_IS_RST_INVERTED    = 0,
                         p_IS_CLK_INVERTED    = 0,
                         p_IS_CLKDIV_INVERTED = 0,
-                        i_RST    = ResetSignal(),
+                        i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
                         i_D      = Cat(
@@ -229,7 +231,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_DELAY_FORMAT     = "TIME",
                         p_DELAY_TYPE       = "VARIABLE",
                         p_DELAY_VALUE      = 0,
-                        i_RST     = self._cdly_rst.re,
+                        i_RST     = self._cdly_rst.re | self._rst.storage,
                         i_CLK     = ClockSignal(),
                         i_EN_VTC  = self._en_vtc.storage,
                         i_CE      = self._cdly_inc.re,
@@ -256,7 +258,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_IS_RST_INVERTED    = 0,
                         p_IS_CLK_INVERTED    = 0,
                         p_IS_CLKDIV_INVERTED = 0,
-                        i_RST    = ResetSignal(),
+                        i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
                         i_D      = Cat(
@@ -274,7 +276,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_DELAY_FORMAT     = "TIME",
                         p_DELAY_TYPE       = "VARIABLE",
                         p_DELAY_VALUE      = 0,
-                        i_RST     = self._cdly_rst.re,
+                        i_RST     = self._cdly_rst.re | self._rst.storage,
                         i_CLK     = ClockSignal(),
                         i_EN_VTC  = self._en_vtc.storage,
                         i_CE      = self._cdly_inc.re,
@@ -306,7 +308,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_IS_RST_INVERTED    = 0,
                         p_IS_CLK_INVERTED    = 0,
                         p_IS_CLKDIV_INVERTED = 0,
-                        i_RST    = ResetSignal(),
+                        i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
                         i_D      = Cat(
@@ -326,7 +328,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_DELAY_FORMAT     = "TIME",
                         p_DELAY_TYPE       = "VARIABLE",
                         p_DELAY_VALUE      = 0,
-                        i_RST     = self._dly_sel.storage[i] & self._wdly_dq_rst.re,
+                        i_RST     = (self._dly_sel.storage[i] & self._wdly_dq_rst.re) | self._rst.storage,
                         i_EN_VTC  = self._en_vtc.storage,
                         i_CLK     = ClockSignal(),
                         i_CE      = self._dly_sel.storage[i] & self._wdly_dq_inc.re,
@@ -364,7 +366,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_IS_RST_INVERTED    = 0,
                         p_IS_CLK_INVERTED    = 0,
                         p_IS_CLKDIV_INVERTED = 0,
-                        i_RST    = ResetSignal(),
+                        i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
                         i_T      = ~dqs_oe_delayed,
@@ -387,7 +389,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_DELAY_FORMAT     = "TIME",
                         p_DELAY_TYPE       = "VARIABLE",
                         p_DELAY_VALUE      = int(tck*1e12/4),
-                        i_RST         = self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
+                        i_RST         = (self._dly_sel.storage[i] & self._wdly_dqs_rst.re) | self._rst.storage,
                         i_CLK         = ClockSignal(),
                         i_EN_VTC      = self._en_vtc.storage,
                         i_CE          = self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
@@ -427,7 +429,7 @@ class USDDRPHY(Module, AutoCSR):
                     p_IS_RST_INVERTED    = 0,
                     p_IS_CLK_INVERTED    = 0,
                     p_IS_CLKDIV_INVERTED = 0,
-                    i_RST    = ResetSignal(),
+                    i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal("sys4x"),
                     i_CLKDIV = ClockSignal(),
                     i_D     = Cat(
@@ -462,7 +464,7 @@ class USDDRPHY(Module, AutoCSR):
                     p_DELAY_FORMAT     = "TIME",
                     p_DELAY_TYPE       = "VARIABLE",
                     p_DELAY_VALUE      = 0,
-                    i_RST     = self._dly_sel.storage[i//8] & self._wdly_dq_rst.re,
+                    i_RST     = (self._dly_sel.storage[i//8] & self._wdly_dq_rst.re) | self._rst.storage,
                     i_CLK     = ClockSignal(),
                     i_EN_VTC  = self._en_vtc.storage,
                     i_CE      = self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
@@ -481,7 +483,7 @@ class USDDRPHY(Module, AutoCSR):
                     p_DELAY_SRC        = "IDATAIN",
                     p_DELAY_TYPE       = "VARIABLE",
                     p_DELAY_VALUE      = 0,
-                    i_RST     = self._dly_sel.storage[i//8] & self._rdly_dq_rst.re,
+                    i_RST     = (self._dly_sel.storage[i//8] & self._rdly_dq_rst.re) | self._rst.storage,
                     i_CLK     = ClockSignal(),
                     i_EN_VTC  = self._en_vtc.storage,
                     i_CE      = self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
@@ -540,5 +542,5 @@ class USDDRPHY(Module, AutoCSR):
 # Xilinx Ultrascale Plus DDR3/DDR4 PHY -------------------------------------------------------------
 
 class USPDDRPHY(USDDRPHY):
-    def __init__(self, pads, **kwargs):
-        USDDRPHY.__init__(self, pads, **kwargs)
+    def __init__(self, pads, cmd_latency=1, **kwargs):
+        USDDRPHY.__init__(self, pads, cmd_latency=cmd_latency, **kwargs)
