@@ -55,6 +55,8 @@ class S7DDRPHY(Module, AutoCSR):
         cwl_sys_latency = get_sys_latency(nphases, cwl)
 
         # Registers --------------------------------------------------------------------------------
+        self._rst             = CSRStorage()
+
         self._dly_sel         = CSRStorage(databits//8)
         self._half_sys8x_taps = CSRStorage(5, reset=half_sys8x_taps)
 
@@ -121,7 +123,7 @@ class S7DDRPHY(Module, AutoCSR):
                     p_TRISTATE_WIDTH = 1,
                     p_DATA_RATE_OQ   = "DDR",
                     p_DATA_RATE_TQ   = "BUF",
-                    i_RST    = ResetSignal(),
+                    i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal(ddr_clk),
                     i_CLKDIV = ClockSignal(),
                     i_D1     = 0,
@@ -146,7 +148,7 @@ class S7DDRPHY(Module, AutoCSR):
                         p_ODELAY_TYPE           = "VARIABLE",
                         p_ODELAY_VALUE          = 0,
                         i_C        = ClockSignal(),
-                        i_LD       = self._cdly_rst.re,
+                        i_LD       = self._cdly_rst.re | self._rst.storage,
                         i_LDPIPEEN = 0,
                         i_CE       = self._cdly_inc.re,
                         i_INC      = 1,
@@ -168,7 +170,7 @@ class S7DDRPHY(Module, AutoCSR):
                     p_TRISTATE_WIDTH = 1,
                     p_DATA_RATE_OQ   = "DDR",
                     p_DATA_RATE_TQ   = "BUF",
-                    i_RST    = ResetSignal(),
+                    i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal(ddr_clk),
                     i_CLKDIV = ClockSignal(),
                     i_D1     = dfi.phases[0].address[i],
@@ -193,7 +195,7 @@ class S7DDRPHY(Module, AutoCSR):
                         p_ODELAY_TYPE           = "VARIABLE",
                         p_ODELAY_VALUE          = 0,
                         i_C        = ClockSignal(),
-                        i_LD       = self._cdly_rst.re,
+                        i_LD       = self._cdly_rst.re | self._rst.storage,
                         i_LDPIPEEN = 0,
                         i_CE       = self._cdly_inc.re,
                         i_INC      = 1,
@@ -208,7 +210,7 @@ class S7DDRPHY(Module, AutoCSR):
                     p_TRISTATE_WIDTH = 1,
                     p_DATA_RATE_OQ   = "DDR",
                     p_DATA_RATE_TQ   = "BUF",
-                    i_RST    = ResetSignal(),
+                    i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal(ddr_clk),
                     i_CLKDIV = ClockSignal(),
                     i_D1     = dfi.phases[0].bank[i],
@@ -233,7 +235,7 @@ class S7DDRPHY(Module, AutoCSR):
                         p_ODELAY_TYPE           = "VARIABLE",
                         p_ODELAY_VALUE          = 0,
                         i_C        = ClockSignal(),
-                        i_LD       = self._cdly_rst.re,
+                        i_LD       = self._cdly_rst.re | self._rst.storage,
                         i_LDPIPEEN = 0,
                         i_CE       = self._cdly_inc.re,
                         i_INC      = 1,
@@ -254,7 +256,7 @@ class S7DDRPHY(Module, AutoCSR):
                         p_TRISTATE_WIDTH = 1,
                         p_DATA_RATE_OQ   = "DDR",
                         p_DATA_RATE_TQ   = "BUF",
-                        i_RST    = ResetSignal(),
+                        i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal(ddr_clk),
                         i_CLKDIV = ClockSignal(),
                         i_D1     = getattr(dfi.phases[0], name)[i],
@@ -279,7 +281,7 @@ class S7DDRPHY(Module, AutoCSR):
                             p_ODELAY_TYPE           = "VARIABLE",
                             p_ODELAY_VALUE          = 0,
                             i_C        = ClockSignal(),
-                            i_LD       = self._cdly_rst.re,
+                            i_LD       = self._cdly_rst.re | self._rst.storage,
                             i_LDPIPEEN = 0,
                             i_CE       = self._cdly_inc.re,
                             i_INC      = 1,
@@ -304,7 +306,7 @@ class S7DDRPHY(Module, AutoCSR):
                 p_TRISTATE_WIDTH = 1,
                 p_DATA_RATE_OQ   = "DDR",
                 p_DATA_RATE_TQ   = "BUF",
-                i_RST    = ResetSignal(),
+                i_RST    = ResetSignal() | self._rst.storage,
                 i_CLK    = ClockSignal(ddr_clk),
                 i_CLKDIV = ClockSignal(),
                 i_D1     = dfi.phases[0].wrdata_mask[i],
@@ -329,7 +331,7 @@ class S7DDRPHY(Module, AutoCSR):
                     p_ODELAY_TYPE           = "VARIABLE",
                     p_ODELAY_VALUE          = 0,
                     i_C        = ClockSignal(),
-                    i_LD       = self._dly_sel.storage[i] & self._wdly_dq_rst.re,
+                    i_LD       = (self._dly_sel.storage[i] & self._wdly_dq_rst.re) | self._rst.storage,
                     i_LDPIPEEN = 0,
                     i_CE       = self._dly_sel.storage[i] & self._wdly_dq_inc.re,
                     i_INC      = 1,
@@ -349,7 +351,7 @@ class S7DDRPHY(Module, AutoCSR):
                 p_TRISTATE_WIDTH = 1,
                 p_DATA_RATE_OQ   = "DDR",
                 p_DATA_RATE_TQ   = "BUF",
-                i_RST    = ResetSignal(),
+                i_RST    = ResetSignal() | self._rst.storage,
                 i_CLK    = ClockSignal(ddr_clk) if with_odelay else ClockSignal(ddr_clk+"_dqs"),
                 i_CLKDIV = ClockSignal(),
                 i_D1     = dqs_pattern.o[0],
@@ -378,7 +380,7 @@ class S7DDRPHY(Module, AutoCSR):
                     p_ODELAY_TYPE           = "VARIABLE",
                     p_ODELAY_VALUE          = half_sys8x_taps,
                     i_C        = ClockSignal(),
-                    i_LD       = self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
+                    i_LD       = (self._dly_sel.storage[i] & self._wdly_dqs_rst.re) | self._rst.storage,
                     i_CE       = self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
                     i_LDPIPEEN = 0,
                     i_INC      = 1,
@@ -395,6 +397,7 @@ class S7DDRPHY(Module, AutoCSR):
                     p_PIPE_SEL              = "FALSE",
                     p_IDELAY_TYPE           = "FIXED",
                     p_IDELAY_VALUE          = half_sys8x_taps,
+                    i_LD                    = self._rst.storage,
                     i_IDATAIN               = dqs_i[i],
                     o_DATAOUT               = dqs_i_delayed[i]
                 )
@@ -425,7 +428,7 @@ class S7DDRPHY(Module, AutoCSR):
                     p_TRISTATE_WIDTH = 1,
                     p_DATA_RATE_OQ   = "DDR",
                     p_DATA_RATE_TQ   = "BUF",
-                    i_RST    = ResetSignal(),
+                    i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal(ddr_clk),
                     i_CLKDIV = ClockSignal(),
                     i_D1     = dfi.phases[0].wrdata[i],
@@ -452,7 +455,7 @@ class S7DDRPHY(Module, AutoCSR):
                         p_DATA_RATE      = "DDR",
                         p_NUM_CE         = 1,
                         p_IOBDELAY       = "IFD",
-                        i_RST     = ResetSignal(),
+                        i_RST     = ResetSignal() | self._rst.storage,
                         i_CLK     = ClockSignal(ddr_clk),
                         i_CLKB    = ~ClockSignal(ddr_clk),
                         i_CLKDIV  = ClockSignal(),
@@ -479,7 +482,7 @@ class S7DDRPHY(Module, AutoCSR):
                         p_DATA_RATE      = "DDR",
                         p_NUM_CE         = 1,
                         p_IOBDELAY       = "IFD",
-                        i_RST     = ResetSignal(),
+                        i_RST     = ResetSignal() | self._rst.storage,
                         i_CLK     = dqs_i_delayed[i//8],
                         i_CLKB    = ~dqs_i_delayed[i//8],
                         i_OCLK    = ClockSignal("sys4x"),
@@ -527,7 +530,7 @@ class S7DDRPHY(Module, AutoCSR):
                     p_ODELAY_TYPE           = "VARIABLE",
                     p_ODELAY_VALUE          = 0,
                     i_C        = ClockSignal(),
-                    i_LD       = self._dly_sel.storage[i//8] & self._wdly_dq_rst.re,
+                    i_LD       = (self._dly_sel.storage[i//8] & self._wdly_dq_rst.re)| self._rst.storage,
                     i_LDPIPEEN = 0,
                     i_CE       = self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
                     i_INC      = 1,
@@ -545,7 +548,7 @@ class S7DDRPHY(Module, AutoCSR):
                     p_IDELAY_TYPE           = "VARIABLE",
                     p_IDELAY_VALUE          = 0,
                     i_C        = ClockSignal(),
-                    i_LD       = self._dly_sel.storage[i//8] & self._rdly_dq_rst.re,
+                    i_LD       = (self._dly_sel.storage[i//8] & self._rdly_dq_rst.re) | self._rst.storage,
                     i_LDPIPEEN = 0,
                     i_CE       = self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
                     i_INC      = 1,
@@ -592,17 +595,17 @@ class S7DDRPHY(Module, AutoCSR):
 # Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 
 class V7DDRPHY(S7DDRPHY):
-    def __init__(self, pads, **kwargs):
+    def __init__(self, pads, cmd_latency=1, **kwargs):
         S7DDRPHY.__init__(self, pads, with_odelay=True, **kwargs)
 
 # Xilinx Kintex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 
 class K7DDRPHY(S7DDRPHY):
-    def __init__(self, pads, **kwargs):
-        S7DDRPHY.__init__(self, pads, with_odelay=True, **kwargs)
+    def __init__(self, pads, cmd_latency=1, **kwargs):
+        S7DDRPHY.__init__(self, pads, cmd_latency=cmd_latency, with_odelay=True, **kwargs)
 
 # Xilinx Artix7 (S7DDRPHY without odelay, sys2/4x_dqs generated in CRG with 90° phase vs sys2/4x) --
 
 class A7DDRPHY(S7DDRPHY):
-    def __init__(self, pads, **kwargs):
-        S7DDRPHY.__init__(self, pads, with_odelay=False, **kwargs)
+    def __init__(self, pads, cmd_latency=0, **kwargs):
+        S7DDRPHY.__init__(self, pads, cmd_latency=0, with_odelay=False, **kwargs)
