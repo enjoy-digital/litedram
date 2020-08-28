@@ -75,8 +75,7 @@ class BenchSoC(SoCCore):
         self.submodules.ddrphy = s7ddrphy.K7DDRPHY(platform.request("ddram"),
             memtype      = "DDR3",
             nphases      = 4,
-            sys_clk_freq = sys_clk_freq,
-            cmd_latency  = 1)
+            sys_clk_freq = sys_clk_freq)
         self.add_csr("ddrphy")
         self.add_sdram("sdram",
             phy    = self.ddrphy,
@@ -118,9 +117,7 @@ def main():
             freq_max      = 180e6,
             freq_step     = 1e6,
             vco_freq      = soc.crg.main_pll.compute_config()["vco"],
-            bios_filename = "build/genesys2/software/bios/bios.bin",
-            bios_timeout  = 10,
-        )
+            bios_filename = "build/genesys2/software/bios/bios.bin")
 
 if __name__ == "__main__":
     main()

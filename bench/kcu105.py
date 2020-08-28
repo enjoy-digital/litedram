@@ -24,22 +24,22 @@ from litedram.phy import usddrphy
 
 # CRG ----------------------------------------------------------------------------------------------
 
-class _CRG(Module):
+class _CRG(Module, AutoCSR):
     def __init__(self, platform, sys_clk_freq):
         self.clock_domains.cd_sys    = ClockDomain()
         self.clock_domains.cd_sys4x  = ClockDomain(reset_less=True)
         self.clock_domains.cd_pll4x  = ClockDomain(reset_less=True)
         self.clock_domains.cd_clk200 = ClockDomain()
-        self.clock_domains.cd_uart      = ClockDomain()
+        self.clock_domains.cd_uart   = ClockDomain()
 
         # # #
 
         self.submodules.pll = pll = USMMCM(speedgrade=-2)
         self.comb += pll.reset.eq(platform.request("cpu_reset"))
         pll.register_clkin(platform.request("clk125"), 125e6)
-        pll.create_clkout(self.cd_pll4x,     sys_clk_freq*4, buf=None, with_reset=False)
-        pll.create_clkout(self.cd_clk200,    200e6, with_reset=False)
-        pll.create_clkout(self.cd_uart, 100e6)
+        pll.create_clkout(self.cd_pll4x,  sys_clk_freq*4, buf=None, with_reset=False)
+        pll.create_clkout(self.cd_clk200, 200e6, with_reset=False)
+        pll.create_clkout(self.cd_uart,   100e6)
         pll.expose_drp()
 
         self.specials += [
@@ -61,7 +61,7 @@ class _CRG(Module):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, sys_clk_freq=int(125e6)):
+    def __init__(self, sys_clk_freq=int(175e6)):
         platform = kcu105.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -79,18 +79,17 @@ class BenchSoC(SoCCore):
         self.submodules.ddrphy = usddrphy.USDDRPHY(platform.request("ddram"),
             memtype          = "DDR4",
             sys_clk_freq     = sys_clk_freq,
-            iodelay_clk_freq = 200e6,
-            cmd_latency      = 1)
+            iodelay_clk_freq = 200e6)
         self.add_csr("ddrphy")
         self.add_sdram("sdram",
-            phy                     = self.ddrphy,
-            module                  = EDY4016A(sys_clk_freq, "1:4"),
-            origin                  = self.mem_map["main_ram"],
-            size                    = 0x40000000,
+            phy    = self.ddrphy,
+            module = EDY4016A(sys_clk_freq, "1:4"),
+            origin = self.mem_map["main_ram"],
+            size   = 0x40000000,
         )
 
         # UARTBone ---------------------------------------------------------------------------------
-        self.add_uartbone(name="serial", clk_freq=100e6, baudrate=1e6, cd="uart")
+        self.add_uartbone(name="serial", clk_freq=100e6, baudrate=115200, cd="uart")
 
         # Leds -------------------------------------------------------------------------------------
         self.submodules.leds = LedChaser(
@@ -116,7 +115,13 @@ def main():
         prog.load_bitstream(os.path.join(builder.gateware_dir, soc.build_name + ".bit"))
 
     if args.test:
-        raise NotImplementedError
+        from common import us_bench_test
+        us_bench_test(
+            freq_min      = 60e6,
+            freq_max      = 180e6,
+            freq_step     = 1e6,
+            vco_freq      = soc.crg.pll.compute_config()["vco"],
+            bios_filename = "build/kcu105/software/bios/bios.bin")
 
 if __name__ == "__main__":
     main()
