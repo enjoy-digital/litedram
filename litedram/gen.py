@@ -267,6 +267,7 @@ class LiteDRAMECP5DDRPHYCRG(Module):
 
         # pll
         self.submodules.pll = pll = ECP5PLL()
+        self.comb += pll.reset.eq(~por_done | rst)
         pll.register_clkin(clk, core_config["input_clk_freq"])
         pll.create_clkout(self.cd_sys2x_i, 2*core_config["sys_clk_freq"])
         pll.create_clkout(self.cd_init, core_config["init_clk_freq"])
@@ -281,9 +282,8 @@ class LiteDRAMECP5DDRPHYCRG(Module):
                 i_CLKI    = self.cd_sys2x.clk,
                 i_RST     = self.reset,
                 o_CDIVX   = self.cd_sys.clk),
-            AsyncResetSynchronizer(self.cd_init,  ~por_done | ~pll.locked | rst),
-            AsyncResetSynchronizer(self.cd_sys,   ~por_done | ~pll.locked | rst | self.reset),
-            AsyncResetSynchronizer(self.cd_sys2x, ~por_done | ~pll.locked | rst | self.reset),
+            AsyncResetSynchronizer(self.cd_sys,   ~pll.locked | self.reset),
+            AsyncResetSynchronizer(self.cd_sys2x, ~pll.locked | self.reset),
         ]
 
 class LiteDRAMS7DDRPHYCRG(Module):
