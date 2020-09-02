@@ -72,11 +72,11 @@ class PHYPadsReducer:
 
     def __getattr__(self, name):
         if name in ["dq"]:
-            return Array([getattr(self.pads, name)[8*i + j]
+            return Cat(Array([getattr(self.pads, name)[8*i + j]
                 for i in self.modules
-                for j in range(8)])
+                for j in range(8)]))
         if name in ["dm", "dqs", "dqs_p", "dqs_n"]:
-            return Array([getattr(self.pads, name)[i] for i in self.modules])
+            return Cat(Array([getattr(self.pads, name)[i] for i in self.modules]))
         else:
             return getattr(self.pads, name)
 
