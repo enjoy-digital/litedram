@@ -4,6 +4,8 @@
 # Copyright (c) 2020 Florent Kermarrec <florent@enjoy-digital.fr>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import time
+
 # PLL Helpers --------------------------------------------------------------------------------------
 
 class ClkReg1:
@@ -97,11 +99,12 @@ class BenchController:
     def reboot(self):
        self.bus.regs.ctrl_reset.write(1)
 
-    def load_rom(self, filename):
+    def load_rom(self, filename, delay=0):
         from litex.soc.integration.common import get_mem_data
         rom_data = get_mem_data(filename, "little")
         for i, data in enumerate(rom_data):
             self.bus.write(self.bus.mems.rom.base + 4*i, data)
+            time.sleep(delay)
 
 # Bench Test ---------------------------------------------------------------------------------------
 
@@ -182,7 +185,7 @@ def us_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
 
     # Load BIOS and reboot SoC
     ctrl = BenchController(bus)
-    #ctrl.load_rom(bios_filename)
+    ctrl.load_rom(bios_filename, delay=1e-4) # FIXME: delay needed on KCU105 @ 11200bauds.
     ctrl.reboot()
 
     # PLL/ClkReg
