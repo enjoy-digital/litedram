@@ -66,17 +66,20 @@ class PHYPadsReducer:
     For testing purposes, we often need to use only some of the DRAM modules. PHYPadsReducer allows
     selecting specific modules and avoid re-definining dram pins in the Platform for this.
     """
-    def __init__(self, pads, modules):
-        self.pads    = pads
-        self.modules = modules
+    def __init__(self, pads, modules, with_cat=False):
+        self.pads     = pads
+        self.modules  = modules
+        self.with_cat = with_cat
 
     def __getattr__(self, name):
         if name in ["dq"]:
-            return Cat(Array([getattr(self.pads, name)[8*i + j]
+            r = Array([getattr(self.pads, name)[8*i + j]
                 for i in self.modules
-                for j in range(8)]))
+                for j in range(8)])
+            return r if not self.with_cat else Cat(r)
         if name in ["dm", "dqs", "dqs_p", "dqs_n"]:
-            return Cat(Array([getattr(self.pads, name)[i] for i in self.modules]))
+            r = Array([getattr(self.pads, name)[i] for i in self.modules])
+            return r if not self.with_cat else Cat(r)
         else:
             return getattr(self.pads, name)
 
