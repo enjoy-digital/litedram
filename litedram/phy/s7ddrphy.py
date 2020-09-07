@@ -27,6 +27,7 @@ class S7DDRPHY(Module, AutoCSR):
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
         cmd_latency      = 0,
+        cmd_delay        = None,
         interface_type   = "NETWORKING"):
         assert not (memtype == "DDR3" and nphases == 2)
         assert interface_type in ["NETWORKING", "MEMORY"]
@@ -101,6 +102,8 @@ class S7DDRPHY(Module, AutoCSR):
             cwl           = cwl - cmd_latency,
             read_latency  = 2 + cl_sys_latency + iserdese2_latency[interface_type] + 2,
             write_latency = cwl_sys_latency,
+            cmd_latency   = cmd_latency,
+            cmd_delay     = cmd_delay,
         )
 
         # DFI Interface ----------------------------------------------------------------------------

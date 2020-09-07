@@ -26,6 +26,7 @@ class USDDRPHY(Module, AutoCSR):
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
         cmd_latency      = 1,
+        cmd_delay        = None,
         is_rdimm         = False):
         phytype     = self.__class__.__name__
         device      = {"USDDRPHY": "ULTRASCALE", "USPDDRPHY": "ULTRASCALE_PLUS"}[phytype]
@@ -93,7 +94,9 @@ class USDDRPHY(Module, AutoCSR):
             cl            = cl,
             cwl           = cwl - cmd_latency,
             read_latency  = 2 + cl_sys_latency + 1 + 2,
-            write_latency = cwl_sys_latency
+            write_latency = cwl_sys_latency,
+            cmd_latency   = cmd_latency,
+            cmd_delay     = cmd_delay,
         )
 
         if is_rdimm:

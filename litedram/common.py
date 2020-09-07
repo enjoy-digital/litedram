@@ -176,7 +176,8 @@ class PhySettings(Settings):
                  nphases,
                  rdphase, wrphase,
                  rdcmdphase, wrcmdphase,
-                 cl, read_latency, write_latency, nranks=1, cwl=None):
+                 cl, read_latency, write_latency, nranks=1, cwl=None,
+                 cmd_latency=None, cmd_delay=None):
         self.set_attributes(locals())
         self.cwl = cl if cwl is None else cwl
         self.is_rdimm = False
