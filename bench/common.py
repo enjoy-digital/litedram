@@ -108,7 +108,7 @@ class BenchController:
 
 # Bench Test ---------------------------------------------------------------------------------------
 
-def s7_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_timeout=10):
+def s7_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_timeout=40):
     import time
     from litex import RemoteClient
 
@@ -119,7 +119,7 @@ def s7_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
 
     # Load BIOS and reboot SoC
     ctrl = BenchController(bus)
-    ctrl.load_rom(bios_filename)
+    ctrl.load_rom(bios_filename, delay=1e-4) # FIXME: delay needed @ 115200bauds.
     ctrl.reboot()
 
     # PLL/ClkReg
@@ -185,7 +185,7 @@ def us_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
 
     # Load BIOS and reboot SoC
     ctrl = BenchController(bus)
-    ctrl.load_rom(bios_filename, delay=1e-4) # FIXME: delay needed on KCU105 @ 11200bauds.
+    ctrl.load_rom(bios_filename, delay=1e-4) # FIXME: delay needed @ 115200bauds.
     ctrl.reboot()
 
     # PLL/ClkReg

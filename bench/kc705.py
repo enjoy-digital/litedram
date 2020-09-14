@@ -84,7 +84,7 @@ class BenchSoC(SoCCore):
         )
 
         # UARTBone ---------------------------------------------------------------------------------
-        self.add_uartbone(name="serial", clk_freq=100e6, baudrate=500e3, cd="uart")
+        self.add_uartbone(name="serial", clk_freq=100e6, baudrate=115200, cd="uart")
 
         # Leds -------------------------------------------------------------------------------------
         from litex.soc.cores.led import LedChaser
