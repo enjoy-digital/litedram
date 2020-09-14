@@ -59,7 +59,7 @@ class _CRG(Module, AutoCSR):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, sys_clk_freq=int(175e6)):
+    def __init__(self, uart_name="serial", sys_clk_freq=int(175e6)):
         platform = genesys2.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ class BenchSoC(SoCCore):
             integrated_rom_size = 0x8000,
             integrated_rom_mode = "rw",
             csr_data_width      = 32,
-            uart_name           = "crossover")
+            uart_name           = uart_name)
 
         # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = _CRG(platform, sys_clk_freq)
@@ -77,7 +77,8 @@ class BenchSoC(SoCCore):
         self.submodules.ddrphy = s7ddrphy.K7DDRPHY(platform.request("ddram"),
             memtype      = "DDR3",
             nphases      = 4,
-            sys_clk_freq = sys_clk_freq)
+            sys_clk_freq = sys_clk_freq,
+            cmd_latency  = 0)
         self.add_csr("ddrphy")
         self.add_sdram("sdram",
             phy    = self.ddrphy,
@@ -86,7 +87,8 @@ class BenchSoC(SoCCore):
         )
 
         # UARTBone ---------------------------------------------------------------------------------
-        self.add_uartbone(name="serial", clk_freq=100e6, baudrate=115200, cd="uart")
+        if uart_name != "serial":
+            self.add_uartbone(name="serial", clk_freq=100e6, baudrate=115200, cd="uart")
 
         # Etherbone --------------------------------------------------------------------------------
         self.submodules.ethphy = LiteEthPHYRGMII(
