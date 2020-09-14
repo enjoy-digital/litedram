@@ -317,23 +317,17 @@ class Multiplexer(Module, AutoCSR):
             Cat(*all_wrdata_mask).eq(~interface.wdata_we)
         ]
 
-        def steerer_sel(steerer, r_w_n):
+        def steerer_sel(steerer, access):
+            assert access in ["read", "write"]
             r = []
             for i in range(settings.phy.nphases):
-                s = steerer.sel[i].eq(STEER_NOP)
-                if r_w_n == "read":
-                    if i == settings.phy.rdphase:
-                        s = steerer.sel[i].eq(STEER_REQ)
-                    elif i == settings.phy.rdcmdphase:
-                        s = steerer.sel[i].eq(STEER_CMD)
-                elif r_w_n == "write":
-                    if i == settings.phy.wrphase:
-                        s = steerer.sel[i].eq(STEER_REQ)
-                    elif i == settings.phy.wrcmdphase:
-                        s = steerer.sel[i].eq(STEER_CMD)
-                else:
-                    raise ValueError
-                r.append(s)
+                r.append(steerer.sel[i].eq(STEER_NOP))
+                if access == "read":
+                    r.append(If(i == settings.phy.rdphase,    steerer.sel[i].eq(STEER_REQ)))
+                    r.append(If(i == settings.phy.rdcmdphase, steerer.sel[i].eq(STEER_CMD)))
+                if access == "write":
+                    r.append(If(i == settings.phy.wrphase,    steerer.sel[i].eq(STEER_REQ)))
+                    r.append(If(i == settings.phy.wrcmdphase, steerer.sel[i].eq(STEER_CMD)))
             return r
 
         # Control FSM ------------------------------------------------------------------------------
@@ -348,7 +342,7 @@ class Multiplexer(Module, AutoCSR):
                 choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_req.cmd.ready.eq(cas_allowed)
             ),
-            steerer_sel(steerer, "read"),
+            steerer_sel(steerer, access="read"),
             If(write_available,
                 # TODO: switch only after several cycles of ~read_available?
                 If(~read_available | max_read_time,
@@ -369,7 +363,7 @@ class Multiplexer(Module, AutoCSR):
                 choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_req.cmd.ready.eq(cas_allowed),
             ),
-            steerer_sel(steerer, "write"),
+            steerer_sel(steerer, access="write"),
             If(read_available,
                 If(~write_available | max_write_time,
                     NextState("WTR")
