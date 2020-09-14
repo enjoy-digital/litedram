@@ -8,6 +8,9 @@
 # 1:2 frequency-ratio DDR3 PHY for Lattice's ECP5
 # DDR3: 800 MT/s
 
+from functools import reduce
+from operator import or_
+
 import math
 
 from migen import *
@@ -438,7 +441,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         # interface, the latency is the sum of the ODDRX2DQA, CAS, IDDRX2DQA latencies.
         rddata_en = Signal(self.settings.read_latency)
         rddata_en_last = Signal.like(rddata_en)
-        self.comb += rddata_en.eq(Cat(dfi.phases[self.settings.rdphase].rddata_en, rddata_en_last))
+        self.comb += rddata_en.eq(Cat(reduce(or_, [dfi.phases[i].rddata_en for i in range(nphases)]), rddata_en_last))
         self.sync += rddata_en_last.eq(rddata_en)
         self.sync += [phase.rddata_valid.eq(rddata_en[-1]) for phase in dfi.phases]
         self.comb += dqs_re.eq(rddata_en[cl_sys_latency + 1] | rddata_en[cl_sys_latency + 2])
@@ -452,7 +455,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         # Writes are then performed in 2 sys_clk cycles and data needs to be selected for each cycle.
         wrdata_en = Signal(cwl_sys_latency + 4)
         wrdata_en_last = Signal.like(wrdata_en)
-        self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
+        self.comb += wrdata_en.eq(Cat(reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]), wrdata_en_last))
         self.sync += wrdata_en_last.eq(wrdata_en)
         self.comb += dq_oe.eq(wrdata_en[cwl_sys_latency + 1] | wrdata_en[cwl_sys_latency + 2])
         self.comb += bl8_chunk.eq(wrdata_en[cwl_sys_latency + 1])

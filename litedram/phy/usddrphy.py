@@ -8,6 +8,9 @@
 # DDR3: 800, 1066, 1333 and 1600 MT/s
 # DDR4: 1600 MT/s
 
+from functools import reduce
+from operator import or_
+
 import math
 
 from migen import *
@@ -521,7 +524,7 @@ class USDDRPHY(Module, AutoCSR):
         # interface, the latency is the sum of the OSERDESE3, CAS, ISERDESE3 and Bitslip latencies.
         rddata_en      = Signal(self.settings.read_latency)
         rddata_en_last = Signal.like(rddata_en)
-        self.comb += rddata_en.eq(Cat(dfi.phases[self.settings.rdphase].rddata_en, rddata_en_last))
+        self.comb += rddata_en.eq(Cat(reduce(or_, [dfi.phases[i].rddata_en for i in range(nphases)]), rddata_en_last))
         self.sync += rddata_en_last.eq(rddata_en)
         self.sync += [phase.rddata_valid.eq(rddata_en[-1] | self._wlevel_en.storage) for phase in dfi.phases]
 
@@ -530,7 +533,7 @@ class USDDRPHY(Module, AutoCSR):
         # is used to control DQ/DQS tristates.
         wrdata_en = Signal(cwl_sys_latency + 2)
         wrdata_en_last = Signal.like(wrdata_en)
-        self.comb += wrdata_en.eq(Cat(dfi.phases[self.settings.wrphase].wrdata_en, wrdata_en_last))
+        self.comb += wrdata_en.eq(Cat(reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]), wrdata_en_last))
         self.sync += wrdata_en_last.eq(wrdata_en)
         self.comb += dq_oe.eq(wrdata_en[cwl_sys_latency])
         self.comb += If(self._wlevel_en.storage, dqs_oe.eq(1)).Else(dqs_oe.eq(dq_oe))
