@@ -172,6 +172,53 @@ def s7_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
 
     bus.close()
 
+def s7_load_bios(bios_filename):
+    from litex import RemoteClient
+
+    bus = RemoteClient()
+    bus.open()
+
+    # # #
+
+    # Load BIOS and reboot SoC.
+    print("Loading BIOS...")
+    ctrl = BenchController(bus)
+    ctrl.load_rom(bios_filename, delay=1e-4) # FIXME: delay needed @ 115200bauds.
+    ctrl.reboot()
+
+    # # #
+
+    bus.close()
+
+def s7_set_sys_clk(clk_freq, vco_freq):
+    import time
+    from litex import RemoteClient
+
+
+    bus = RemoteClient()
+    bus.open()
+
+    # # #
+
+    # (Re)Configuring sys_clk.
+    print("Configuring sys_clk to {:3.3f}...".format(clk_freq/1e6))
+    s7pll           = S7PLL(bus)
+    clkout0_clkreg1 = ClkReg1(s7pll.read(0x8))
+    vco_div = int(vco_freq/clk_freq)
+    clkout0_clkreg1.high_time = vco_div//2 + vco_div%2
+    clkout0_clkreg1.low_time  = vco_div//2
+    s7pll.write(0x08, clkout0_clkreg1.pack())
+    # Measure/verify sys_clk
+    duration = 1
+    start = bus.regs.crg_sys_clk_counter.read()
+    time.sleep(duration)
+    end = bus.regs.crg_sys_clk_counter.read()
+    print("Measured sys_clk: {:3.2f}MHz.".format((end-start)/(1e6*duration)))
+
+    # # #
+
+    bus.close()
+
 # Bench Test ---------------------------------------------------------------------------------------
 
 def us_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_timeout=40):
