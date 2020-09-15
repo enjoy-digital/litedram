@@ -30,11 +30,8 @@ class S7DDRPHY(Module, AutoCSR):
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
         cmd_latency      = 0,
-        cmd_delay        = None,
-        interface_type   = "NETWORKING"):
+        cmd_delay        = None):
         assert not (memtype == "DDR3" and nphases == 2)
-        assert interface_type in ["NETWORKING", "MEMORY"]
-        assert not (interface_type == "MEMORY" and nphases == 2)
         phytype     = self.__class__.__name__
         pads        = PHYPadsCombiner(pads)
         tck         = 2/(2*nphases*sys_clk_freq)
@@ -86,10 +83,6 @@ class S7DDRPHY(Module, AutoCSR):
         # PHY settings -----------------------------------------------------------------------------
         rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
         wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
-        iserdese2_latency  = {
-            "NETWORKING": 2,
-            "MEMORY":     1,
-        }
         self.settings = PhySettings(
             phytype       = phytype,
             memtype       = memtype,
@@ -103,7 +96,7 @@ class S7DDRPHY(Module, AutoCSR):
             wrcmdphase    = wrcmdphase,
             cl            = cl,
             cwl           = cwl - cmd_latency,
-            read_latency  = 2 + cl_sys_latency + iserdese2_latency[interface_type] + 2,
+            read_latency  = 2 + cl_sys_latency + 2 + 2,
             write_latency = cwl_sys_latency,
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
@@ -452,61 +445,31 @@ class S7DDRPHY(Module, AutoCSR):
                     o_OQ     = dq_o_nodelay,
                 )
             ]
-            if interface_type == "NETWORKING":
-                self.specials += [
-                    Instance("ISERDESE2",
-                        p_SERDES_MODE    = "MASTER",
-                        p_INTERFACE_TYPE = "NETWORKING",
-                        p_DATA_WIDTH     = 2*nphases,
-                        p_DATA_RATE      = "DDR",
-                        p_NUM_CE         = 1,
-                        p_IOBDELAY       = "IFD",
-                        i_RST     = ResetSignal() | self._rst.storage,
-                        i_CLK     = ClockSignal(ddr_clk),
-                        i_CLKB    = ~ClockSignal(ddr_clk),
-                        i_CLKDIV  = ClockSignal(),
-                        i_BITSLIP = 0,
-                        i_CE1     = 1,
-                        i_DDLY    = dq_i_delayed,
-                        o_Q8      = dq_i_data[0],
-                        o_Q7      = dq_i_data[1],
-                        o_Q6      = dq_i_data[2],
-                        o_Q5      = dq_i_data[3],
-                        o_Q4      = dq_i_data[4],
-                        o_Q3      = dq_i_data[5],
-                        o_Q2      = dq_i_data[6],
-                        o_Q1      = dq_i_data[7],
-                    )
-                ]
-            elif interface_type == "MEMORY":
-                _dq_i_data_sys2x = Signal(4)
-                self.specials += [
-                    Instance("ISERDESE2",
-                        p_SERDES_MODE    = "MASTER",
-                        p_INTERFACE_TYPE = "MEMORY",
-                        p_DATA_WIDTH     = nphases,
-                        p_DATA_RATE      = "DDR",
-                        p_NUM_CE         = 1,
-                        p_IOBDELAY       = "IFD",
-                        i_RST     = ResetSignal() | self._rst.storage,
-                        i_CLK     = dqs_i_delayed[i//8],
-                        i_CLKB    = ~dqs_i_delayed[i//8],
-                        i_OCLK    = ClockSignal("sys4x"),
-                        i_OCLKB   = ~ClockSignal("sys4x"),
-                        i_CLKDIV  = ClockSignal("sys2x"),
-                        i_BITSLIP = 0,
-                        i_CE1     = 1,
-                        i_DDLY    = dq_i_delayed,
-                        o_Q4      = _dq_i_data_sys2x[0],
-                        o_Q3      = _dq_i_data_sys2x[1],
-                        o_Q2      = _dq_i_data_sys2x[2],
-                        o_Q1      = _dq_i_data_sys2x[3],
-                    )
-                ]
-                self.sync.sys2x += [
-                    dq_i_data[:4].eq(dq_i_data[4:]),
-                    dq_i_data[4:].eq(_dq_i_data_sys2x),
-                ]
+            self.specials += [
+                Instance("ISERDESE2",
+                    p_SERDES_MODE    = "MASTER",
+                    p_INTERFACE_TYPE = "NETWORKING",
+                    p_DATA_WIDTH     = 2*nphases,
+                    p_DATA_RATE      = "DDR",
+                    p_NUM_CE         = 1,
+                    p_IOBDELAY       = "IFD",
+                    i_RST     = ResetSignal() | self._rst.storage,
+                    i_CLK     = ClockSignal(ddr_clk),
+                    i_CLKB    = ~ClockSignal(ddr_clk),
+                    i_CLKDIV  = ClockSignal(),
+                    i_BITSLIP = 0,
+                    i_CE1     = 1,
+                    i_DDLY    = dq_i_delayed,
+                    o_Q8      = dq_i_data[0],
+                    o_Q7      = dq_i_data[1],
+                    o_Q6      = dq_i_data[2],
+                    o_Q5      = dq_i_data[3],
+                    o_Q4      = dq_i_data[4],
+                    o_Q3      = dq_i_data[5],
+                    o_Q2      = dq_i_data[6],
+                    o_Q1      = dq_i_data[7],
+                )
+            ]
 
             dq_bitslip = BitSlip(8,
                 rst    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re,
