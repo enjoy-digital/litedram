@@ -64,8 +64,9 @@ class S7DDRPHY(Module, AutoCSR):
         self._wlevel_en     = CSRStorage()
         self._wlevel_strobe = CSR()
 
-        self._cdly_rst = CSR()
-        self._cdly_inc = CSR()
+        if with_odelay:
+            self._cdly_rst = CSR()
+            self._cdly_inc = CSR()
 
         self._dly_sel = CSRStorage(databits//8)
 
