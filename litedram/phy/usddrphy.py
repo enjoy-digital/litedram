@@ -425,7 +425,7 @@ class USDDRPHY(Module, AutoCSR):
             dq_bitslip = BitSlip(8,
                 rst    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re,
                 slp    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
-                cycles = 2)
+                cycles = 1)
             self.submodules += dq_bitslip
             self.specials += [
                 Instance("OSERDESE3",
