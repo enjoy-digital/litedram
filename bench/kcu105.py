@@ -22,6 +22,8 @@ from litex.soc.cores.led import LedChaser
 from litedram.modules import EDY4016A
 from litedram.phy import usddrphy
 
+from liteeth.phy.ku_1000basex import KU_1000BASEX
+
 # CRG ----------------------------------------------------------------------------------------------
 
 class _CRG(Module, AutoCSR):
@@ -32,6 +34,7 @@ class _CRG(Module, AutoCSR):
         self.clock_domains.cd_pll4x   = ClockDomain(reset_less=True)
         self.clock_domains.cd_clk200  = ClockDomain()
         self.clock_domains.cd_uart    = ClockDomain()
+        self.clock_domains.cd_eth     = ClockDomain()
 
         # # #
 
@@ -41,6 +44,7 @@ class _CRG(Module, AutoCSR):
         main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
         main_pll.create_clkout(self.cd_clk200, 200e6, with_reset=False)
         main_pll.create_clkout(self.cd_uart,   100e6)
+        main_pll.create_clkout(self.cd_eth,    200e6)
         main_pll.expose_drp()
 
         self.submodules.pll = pll = USMMCM(speedgrade=-2)
@@ -67,7 +71,7 @@ class _CRG(Module, AutoCSR):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, sys_clk_freq=int(175e6)):
+    def __init__(self, uart="crossover", sys_clk_freq=int(125e6)):
         platform = kcu105.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -75,7 +79,7 @@ class BenchSoC(SoCCore):
             integrated_rom_size = 0x8000,
             integrated_rom_mode = "rw",
             csr_data_width      = 32,
-            uart_name           = "crossover")
+            uart_name           = uart)
 
         # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = _CRG(platform, sys_clk_freq)
@@ -95,7 +99,17 @@ class BenchSoC(SoCCore):
         )
 
         # UARTBone ---------------------------------------------------------------------------------
-        self.add_uartbone(name="serial", clk_freq=100e6, baudrate=115200, cd="uart")
+        if uart != "serial":
+            self.add_uartbone(name="serial", clk_freq=100e6, baudrate=115200, cd="uart")
+
+        # Etherbone --------------------------------------------------------------------------------
+        self.submodules.ethphy = KU_1000BASEX(self.crg.cd_eth.clk,
+            data_pads    = self.platform.request("sfp", 0),
+            sys_clk_freq = self.clk_freq)
+        self.add_csr("ethphy")
+        self.comb += self.platform.request("sfp_tx_disable_n", 0).eq(1)
+        self.platform.add_platform_command("set_property SEVERITY {{Warning}} [get_drc_checks REQP-1753]")
+        self.add_etherbone(phy=self.ethphy)
 
         # Leds -------------------------------------------------------------------------------------
         self.submodules.leds = LedChaser(
@@ -107,18 +121,29 @@ class BenchSoC(SoCCore):
 
 def main():
     parser = argparse.ArgumentParser(description="LiteDRAM Bench on KCU105")
-    parser.add_argument("--build", action="store_true", help="Build bitstream")
-    parser.add_argument("--load",  action="store_true", help="Load bitstream")
-    parser.add_argument("--test",  action="store_true", help="Run Test")
+    parser.add_argument("--uart",        default="crossover", help="Selected UART: crossover (default) or serial")
+    parser.add_argument("--build",       action="store_true", help="Build bitstream")
+    parser.add_argument("--load",        action="store_true", help="Load bitstream")
+    parser.add_argument("--load-bios",   action="store_true", help="Load BIOS")
+    parser.add_argument("--set-sys-clk", default=None,        help="Set sys_clk")
+    parser.add_argument("--test",        action="store_true", help="Run Full Bench")
     args = parser.parse_args()
 
-    soc     = BenchSoC()
+    soc     = BenchSoC(uart=args.uart)
     builder = Builder(soc, csr_csv="csr.csv")
     builder.build(run=args.build)
 
     if args.load:
         prog = soc.platform.create_programmer()
         prog.load_bitstream(os.path.join(builder.gateware_dir, soc.build_name + ".bit"))
+
+    if args.load_bios:
+        from common import s7_load_bios
+        s7_load_bios("build/kcu105/software/bios/bios.bin")
+
+    if args.set_sys_clk is not None:
+        from common import us_set_sys_clk
+        us_set_sys_clk(clk_freq=float(args.config), vco_freq=soc.crg.main_pll.compute_config()["vco"])
 
     if args.test:
         from common import us_bench_test

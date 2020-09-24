@@ -59,7 +59,7 @@ class _CRG(Module, AutoCSR):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, uart="crossover", sys_clk_freq=int(175e6)):
+    def __init__(self, uart="crossover", sys_clk_freq=int(125e6)):
         platform = genesys2.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------

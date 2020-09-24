@@ -22,6 +22,8 @@ from litex.soc.integration.builder import *
 from litedram.phy import s7ddrphy
 from litedram.modules import MT8JTF12864
 
+from liteeth.phy import LiteEthPHY
+
 # CRG ----------------------------------------------------------------------------------------------
 
 class _CRG(Module, AutoCSR):
@@ -57,7 +59,7 @@ class _CRG(Module, AutoCSR):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, sys_clk_freq=int(175e6)):
+    def __init__(self, uart="crossover", sys_clk_freq=int(125e6)):
         platform = kc705.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -86,6 +88,14 @@ class BenchSoC(SoCCore):
         # UARTBone ---------------------------------------------------------------------------------
         self.add_uartbone(name="serial", clk_freq=100e6, baudrate=115200, cd="uart")
 
+        # Etherbone --------------------------------------------------------------------------------
+        self.submodules.ethphy = LiteEthPHY(
+            clock_pads = self.platform.request("eth_clocks"),
+            pads       = self.platform.request("eth"),
+            clk_freq   = self.clk_freq)
+        self.add_csr("ethphy")
+        self.add_etherbone(phy=self.ethphy)
+
         # Leds -------------------------------------------------------------------------------------
         from litex.soc.cores.led import LedChaser
         self.submodules.leds = LedChaser(
@@ -97,9 +107,12 @@ class BenchSoC(SoCCore):
 
 def main():
     parser = argparse.ArgumentParser(description="LiteDRAM Bench on KC705")
-    parser.add_argument("--build", action="store_true", help="Build bitstream")
-    parser.add_argument("--load",  action="store_true", help="Load bitstream")
-    parser.add_argument("--test",  action="store_true", help="Run Test")
+    parser.add_argument("--uart",        default="crossover", help="Selected UART: crossover (default) or serial")
+    parser.add_argument("--build",       action="store_true", help="Build bitstream")
+    parser.add_argument("--load",        action="store_true", help="Load bitstream")
+    parser.add_argument("--load-bios",   action="store_true", help="Load BIOS")
+    parser.add_argument("--set-sys-clk", default=None,        help="Set sys_clk")
+    parser.add_argument("--test",        action="store_true", help="Run Full Bench")
     args = parser.parse_args()
 
     soc     = BenchSoC()
@@ -109,6 +122,14 @@ def main():
     if args.load:
         prog = soc.platform.create_programmer()
         prog.load_bitstream(os.path.join(builder.gateware_dir, soc.build_name + ".bit"))
+
+    if args.load_bios:
+        from common import s7_load_bios
+        s7_load_bios("build/kc705/software/bios/bios.bin")
+
+    if args.set_sys_clk is not None:
+        from common import us_set_sys_clk
+        us_set_sys_clk(clk_freq=float(args.config), vco_freq=soc.crg.main_pll.compute_config()["vco"])
 
     if args.test:
         from common import s7_bench_test
