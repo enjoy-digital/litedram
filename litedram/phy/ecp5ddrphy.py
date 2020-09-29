@@ -207,12 +207,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                         o_Q    = getattr(pads, name)[i]
                     )
 
-        # DQ ---------------------------------------------------------------------------------------
-        dq_oe         = Signal()
+        # DQS/DM/DQ --------------------------------------------------------------------------------
         dqs_re        = Signal()
-        dqs_oe        = Signal()
-        dqs_postamble = Signal()
-        dqs_preamble  = Signal()
         for i in range(databits//8):
             # DQSBUFM
             dqs_i   = Signal()
@@ -276,7 +272,37 @@ class ECP5DDRPHY(Module, AutoCSR):
                 If(burstdet & ~burstdet_d, self._burstdet_seen.status[i].eq(1)),
             ]
 
-            # DQS and DM ---------------------------------------------------------------------------
+            # DQS ----------------------------------------------------------------------------------
+            dqs           = Signal()
+            dqs_oe        = Signal()
+            dqs_oe_n      = Signal()
+            dqs_postamble = Signal()
+            dqs_preamble  = Signal()
+            self.specials += [
+                Instance("ODDRX2DQSB",
+                    i_RST  = ResetSignal("sys"),
+                    i_SCLK = ClockSignal("sys"),
+                    i_ECLK = ClockSignal("sys2x"),
+                    i_DQSW = dqsw,
+                    i_D0   = 0,
+                    i_D1   = 1,
+                    i_D2   = 0,
+                    i_D3   = 1,
+                    o_Q    = dqs
+                ),
+                Instance("TSHX2DQSA",
+                    i_RST  = ResetSignal("sys"),
+                    i_SCLK = ClockSignal("sys"),
+                    i_ECLK = ClockSignal("sys2x"),
+                    i_DQSW = dqsw,
+                    i_T0   = ~(dqs_oe | dqs_postamble),
+                    i_T1   = ~(dqs_oe | dqs_preamble),
+                    o_Q    = dqs_oe_n
+                ),
+                Tristate(pads.dqs_p[i], dqs, ~dqs_oe_n, dqs_i)
+            ]
+
+            # DM -----------------------------------------------------------------------------------
             dm_o_data       = Signal(8)
             dm_o_data_d     = Signal(8)
             dm_o_data_muxed = Signal(4)
@@ -308,32 +334,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                 o_Q       = pads.dm[i]
             )
 
-            dqs      = Signal()
-            dqs_oe_n = Signal()
-            self.specials += [
-                Instance("ODDRX2DQSB",
-                    i_RST  = ResetSignal("sys"),
-                    i_SCLK = ClockSignal("sys"),
-                    i_ECLK = ClockSignal("sys2x"),
-                    i_DQSW = dqsw,
-                    i_D0   = 0,
-                    i_D1   = 1,
-                    i_D2   = 0,
-                    i_D3   = 1,
-                    o_Q    = dqs
-                ),
-                Instance("TSHX2DQSA",
-                    i_RST  = ResetSignal("sys"),
-                    i_SCLK = ClockSignal("sys"),
-                    i_ECLK = ClockSignal("sys2x"),
-                    i_DQSW = dqsw,
-                    i_T0   = ~(dqs_oe | dqs_postamble),
-                    i_T1   = ~(dqs_oe | dqs_preamble),
-                    o_Q    = dqs_oe_n
-                ),
-                Tristate(pads.dqs_p[i], dqs, ~dqs_oe_n, dqs_i)
-            ]
-
+            # DQ -----------------------------------------------------------------------------------
+            dq_oe = Signal()
             for j in range(8*i, 8*(i+1)):
                 dq_o            = Signal()
                 dq_i            = Signal()

@@ -161,7 +161,7 @@ class S7DDRPHY(Module, AutoCSR):
                     o_OB = pads.clk_n[i]
                 )
 
-            # Addresses and Commands -------------------------------------------------------------------
+            # Addresses and Commands ---------------------------------------------------------------
             for i in range(addressbits):
                 address = Signal()
                 self.specials += Instance("OSERDESE2",
@@ -289,7 +289,7 @@ class S7DDRPHY(Module, AutoCSR):
                             o_DATAOUT  = getattr(pads, name)[i],
                         )
 
-        # DQS and DM -------------------------------------------------------------------------------
+        # DQS --------------------------------------------------------------------------------------
         dqs_oe         = Signal()
         dqs_oe_delayed = Signal() # Tristate control is asynchronous, needs to be delayed.
         dqs_pattern    = DQSPattern(
@@ -298,47 +298,6 @@ class S7DDRPHY(Module, AutoCSR):
             register      = not with_odelay)
         self.submodules += dqs_pattern
         self.sync += dqs_oe_delayed.eq(dqs_pattern.preamble | dqs_oe | dqs_pattern.postamble)
-        for i in range(databits//8):
-            dm_o_nodelay = Signal()
-            self.specials += Instance("OSERDESE2",
-                p_SERDES_MODE    = "MASTER",
-                p_DATA_WIDTH     = 2*nphases,
-                p_TRISTATE_WIDTH = 1,
-                p_DATA_RATE_OQ   = "DDR",
-                p_DATA_RATE_TQ   = "BUF",
-                i_RST    = ResetSignal() | self._rst.storage,
-                i_CLK    = ClockSignal(ddr_clk),
-                i_CLKDIV = ClockSignal(),
-                i_D1     = dfi.phases[0].wrdata_mask[i],
-                i_D2     = dfi.phases[0].wrdata_mask[databits//8+i],
-                i_D3     = dfi.phases[1].wrdata_mask[i],
-                i_D4     = dfi.phases[1].wrdata_mask[databits//8+i],
-                i_D5     = dfi.phases[2].wrdata_mask[i],
-                i_D6     = dfi.phases[2].wrdata_mask[databits//8+i],
-                i_D7     = dfi.phases[3].wrdata_mask[i],
-                i_D8     = dfi.phases[3].wrdata_mask[databits//8+i],
-                i_OCE    = 1,
-                o_OQ     = dm_o_nodelay if with_odelay else pads.dm[i],
-            )
-            if with_odelay:
-                self.specials += Instance("ODELAYE2",
-                    p_SIGNAL_PATTERN        = "DATA",
-                    p_DELAY_SRC             = "ODATAIN",
-                    p_CINVCTRL_SEL          = "FALSE",
-                    p_HIGH_PERFORMANCE_MODE = "TRUE",
-                    p_PIPE_SEL              = "FALSE",
-                    p_REFCLK_FREQUENCY      = iodelay_clk_freq/1e6,
-                    p_ODELAY_TYPE           = "VARIABLE",
-                    p_ODELAY_VALUE          = 0,
-                    i_C        = ClockSignal(),
-                    i_LD       = (self._dly_sel.storage[i] & self._wdly_dq_rst.re) | self._rst.storage,
-                    i_LDPIPEEN = 0,
-                    i_CE       = self._dly_sel.storage[i] & self._wdly_dq_inc.re,
-                    i_INC      = 1,
-                    o_ODATAIN  = dm_o_nodelay,
-                    o_DATAOUT  = pads.dm[i],
-                )
-
         for i in range(databits//8):
             dqs_o_no_delay = Signal()
             dqs_o_delayed  = Signal()
@@ -391,6 +350,49 @@ class S7DDRPHY(Module, AutoCSR):
                 io_IO  = pads.dqs_p[i],
                 io_IOB = pads.dqs_n[i],
             )
+
+
+        # DM ---------------------------------------------------------------------------------------
+        for i in range(databits//8):
+            dm_o_nodelay = Signal()
+            self.specials += Instance("OSERDESE2",
+                p_SERDES_MODE    = "MASTER",
+                p_DATA_WIDTH     = 2*nphases,
+                p_TRISTATE_WIDTH = 1,
+                p_DATA_RATE_OQ   = "DDR",
+                p_DATA_RATE_TQ   = "BUF",
+                i_RST    = ResetSignal() | self._rst.storage,
+                i_CLK    = ClockSignal(ddr_clk),
+                i_CLKDIV = ClockSignal(),
+                i_D1     = dfi.phases[0].wrdata_mask[i],
+                i_D2     = dfi.phases[0].wrdata_mask[databits//8+i],
+                i_D3     = dfi.phases[1].wrdata_mask[i],
+                i_D4     = dfi.phases[1].wrdata_mask[databits//8+i],
+                i_D5     = dfi.phases[2].wrdata_mask[i],
+                i_D6     = dfi.phases[2].wrdata_mask[databits//8+i],
+                i_D7     = dfi.phases[3].wrdata_mask[i],
+                i_D8     = dfi.phases[3].wrdata_mask[databits//8+i],
+                i_OCE    = 1,
+                o_OQ     = dm_o_nodelay if with_odelay else pads.dm[i],
+            )
+            if with_odelay:
+                self.specials += Instance("ODELAYE2",
+                    p_SIGNAL_PATTERN        = "DATA",
+                    p_DELAY_SRC             = "ODATAIN",
+                    p_CINVCTRL_SEL          = "FALSE",
+                    p_HIGH_PERFORMANCE_MODE = "TRUE",
+                    p_PIPE_SEL              = "FALSE",
+                    p_REFCLK_FREQUENCY      = iodelay_clk_freq/1e6,
+                    p_ODELAY_TYPE           = "VARIABLE",
+                    p_ODELAY_VALUE          = 0,
+                    i_C        = ClockSignal(),
+                    i_LD       = (self._dly_sel.storage[i] & self._wdly_dq_rst.re) | self._rst.storage,
+                    i_LDPIPEEN = 0,
+                    i_CE       = self._dly_sel.storage[i] & self._wdly_dq_inc.re,
+                    i_INC      = 1,
+                    o_ODATAIN  = dm_o_nodelay,
+                    o_DATAOUT  = pads.dm[i],
+                )
 
         # DQ ---------------------------------------------------------------------------------------
         dq_oe         = Signal()
