@@ -339,8 +339,6 @@ class S7DDRPHY(Module, AutoCSR):
                     o_DATAOUT  = pads.dm[i],
                 )
 
-        dqs_i         = Signal(databits//8)
-        dqs_i_delayed = Signal(databits//8)
         for i in range(databits//8):
             dqs_o_no_delay = Signal()
             dqs_o_delayed  = Signal()
@@ -387,25 +385,9 @@ class S7DDRPHY(Module, AutoCSR):
                     o_ODATAIN  = dqs_o_no_delay,
                     o_DATAOUT  = dqs_o_delayed
                 )
-            self.specials += [
-                Instance("IDELAYE2",
-                    p_DELAY_SRC             = "IDATAIN",
-                    p_SIGNAL_PATTERN        = "DATA",
-                    p_CINVCTRL_SEL          = "FALSE",
-                    p_HIGH_PERFORMANCE_MODE = "TRUE",
-                    p_REFCLK_FREQUENCY      = iodelay_clk_freq/1e6,
-                    p_PIPE_SEL              = "FALSE",
-                    p_IDELAY_TYPE           = "FIXED",
-                    p_IDELAY_VALUE          = half_sys8x_taps,
-                    i_LD                    = self._rst.storage,
-                    i_IDATAIN               = dqs_i[i],
-                    o_DATAOUT               = dqs_i_delayed[i]
-                )
-            ]
             self.specials += Instance("IOBUFDS",
                 i_T    = dqs_t,
                 i_I    = dqs_o_delayed if with_odelay else dqs_o_no_delay,
-                o_O    = dqs_i[i],
                 io_IO  = pads.dqs_p[i],
                 io_IOB = pads.dqs_n[i],
             )
