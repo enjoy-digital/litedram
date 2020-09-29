@@ -40,7 +40,12 @@ def get_cl_cw(memtype, tck):
         f_to_cl_cwl[1333e6] = (10, 7)
         f_to_cl_cwl[1600e6] = (11, 8)
     elif memtype == "DDR4":
+        f_to_cl_cwl[1333e6] = (9,   9)
         f_to_cl_cwl[1600e6] = (11,  9)
+        f_to_cl_cwl[1866e6] = (13, 10)
+        f_to_cl_cwl[2133e6] = (15, 11)
+        f_to_cl_cwl[2400e6] = (16, 12)
+        f_to_cl_cwl[2666e6] = (18, 14)
     else:
         raise ValueError
     for f, (cl, cwl) in f_to_cl_cwl.items():
