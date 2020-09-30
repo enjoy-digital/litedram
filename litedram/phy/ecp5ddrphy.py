@@ -64,16 +64,16 @@ class ECP5DDRPHYInit(Module):
         self.sync.init += [
             # Wait DDRDLLA Lock
             timeline(new_lock, [
-                (1*t,  [freeze.eq(1)]), # Freeze DDRDLLA
-                (2*t,  [stop.eq(1)]),   # Stop ECLK domain
-                (3*t,  [reset.eq(1)]),  # Reset ECLK domain
-                (4*t,  [reset.eq(0)]),  # Release ECLK domain reset
-                (5*t,  [stop.eq(0)]),   # Release ECLK domain stop
-                (6*t,  [freeze.eq(0)]), # Release DDRDLLA freeze
-                (7*t,  [pause.eq(1)]),  # Pause DQSBUFM
-                (8*t,  [update.eq(1)]), # Update DDRDLLA
-                (9*t,  [update.eq(0)]), # Release DDRDMMA update
-                (10*t, [pause.eq(0)]),  # Release DQSBUFM pause
+                ( 1*t, [freeze.eq(1)]), # Freeze DDRDLLA
+                ( 2*t, [  stop.eq(1)]), # Stop ECLK domain
+                ( 3*t, [ reset.eq(1)]), # Reset ECLK domain
+                ( 4*t, [ reset.eq(0)]), # Release ECLK domain reset
+                ( 5*t, [  stop.eq(0)]), # Release ECLK domain stop
+                ( 6*t, [freeze.eq(0)]), # Release DDRDLLA freeze
+                ( 7*t, [ pause.eq(1)]), # Pause DQSBUFM
+                ( 8*t, [update.eq(1)]), # Update DDRDLLA
+                ( 9*t, [update.eq(0)]), # Release DDRDMMA update
+                (10*t, [ pause.eq(0)]), # Release DQSBUFM pause
             ])
         ]
 
@@ -159,52 +159,31 @@ class ECP5DDRPHY(Module, AutoCSR):
                     i_RST  = ResetSignal("sys"),
                     i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
-                    i_D0   = 0,
-                    i_D1   = 1,
-                    i_D2   = 0,
-                    i_D3   = 1,
+                    **{f"i_D{n}": (0b1010 >> n) & 0b1 for n in range(4)},
                     o_Q    = pads.clk_p[i]
                 )
 
-            # Addresses and Commands ---------------------------------------------------------------
-            for i in range(addressbits):
-                self.specials += Instance("ODDRX2F",
-                    i_RST  = ResetSignal("sys"),
-                    i_SCLK = ClockSignal("sys"),
-                    i_ECLK = ClockSignal("sys2x"),
-                    i_D0   = dfi.phases[0].address[i],
-                    i_D1   = dfi.phases[0].address[i],
-                    i_D2   = dfi.phases[1].address[i],
-                    i_D3   = dfi.phases[1].address[i],
-                    o_Q    = pads.a[i]
-                )
-            for i in range(bankbits):
-                self.specials += Instance("ODDRX2F",
-                    i_RST  = ResetSignal("sys"),
-                    i_SCLK = ClockSignal("sys"),
-                    i_ECLK = ClockSignal("sys2x"),
-                    i_D0   = dfi.phases[0].bank[i],
-                    i_D1   = dfi.phases[0].bank[i],
-                    i_D2   = dfi.phases[1].bank[i],
-                    i_D3   = dfi.phases[1].bank[i],
-                    o_Q    = pads.ba[i]
-                )
-            controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
-            if hasattr(pads, "reset_n"):
-                controls.append("reset_n")
-            if hasattr(pads, "cs_n"):
-                controls.append("cs_n")
-            for name in controls:
-                for i in range(len(getattr(pads, name))):
+            # Commands -----------------------------------------------------------------------------
+            commands = {
+                "a"    : "address",
+                "ba"   : "bank"   ,
+                "ras_n": "ras_n"  ,
+                "cas_n": "cas_n"  ,
+                "we_n" : "we_n"   ,
+                "cke"  : "cke"    ,
+                "odt"  : "odt"    ,
+            }
+            if hasattr(pads, "reset_n"): commands.update({"reset_n" : "reset_n"})
+            if hasattr(pads, "cs_n")   : commands.update({"cs_n"    : "cs_n"})
+            for pad_name, dfi_name in commands.items():
+                pad = getattr(pads, pad_name)
+                for i in range(len(pad)):
                     self.specials += Instance("ODDRX2F",
                         i_RST  = ResetSignal("sys"),
                         i_SCLK = ClockSignal("sys"),
                         i_ECLK = ClockSignal("sys2x"),
-                        i_D0   = getattr(dfi.phases[0], name)[i],
-                        i_D1   = getattr(dfi.phases[0], name)[i],
-                        i_D2   = getattr(dfi.phases[1], name)[i],
-                        i_D3   = getattr(dfi.phases[1], name)[i],
-                        o_Q    = getattr(pads, name)[i]
+                        **{f"i_D{n}": getattr(dfi.phases[n//2], dfi_name)[i] for n in range(4)},
+                        o_Q    = pad[i]
                     )
 
         # DQS/DM/DQ --------------------------------------------------------------------------------
@@ -251,17 +230,11 @@ class ECP5DDRPHY(Module, AutoCSR):
                 # Reads (generate shifted DQS clock for reads)
                 i_READ0          = dqs_re,
                 i_READ1          = dqs_re,
-                i_READCLKSEL0    = rdly[0],
-                i_READCLKSEL1    = rdly[1],
-                i_READCLKSEL2    = rdly[2],
+                **{f"i_READCLKSEL{n}": rdly[n] for n in range(3)},
                 i_DQSI           = dqs_i,
                 o_DQSR90         = dqsr90,
-                o_RDPNTR0        = rdpntr[0],
-                o_RDPNTR1        = rdpntr[1],
-                o_RDPNTR2        = rdpntr[2],
-                o_WRPNTR0        = wrpntr[0],
-                o_WRPNTR1        = wrpntr[1],
-                o_WRPNTR2        = wrpntr[2],
+                **{f"o_RDPNTR{n}": rdpntr[n] for n in range(3)},
+                **{f"o_WRPNTR{n}": wrpntr[n] for n in range(3)},
                 o_DATAVALID      = self.datavalid[i],
                 o_BURSTDET       = burstdet,
 
@@ -285,10 +258,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                     i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
                     i_DQSW = dqsw,
-                    i_D0   = 0,
-                    i_D1   = 1,
-                    i_D2   = 0,
-                    i_D3   = 1,
+                    **{f"i_D{n}": (0b1010 >> n) & 0b1 for n in range(4)},
                     o_Q    = dqs
                 ),
                 Instance("TSHX2DQSA",
@@ -307,17 +277,8 @@ class ECP5DDRPHY(Module, AutoCSR):
             dm_o_data       = Signal(8)
             dm_o_data_d     = Signal(8)
             dm_o_data_muxed = Signal(4)
-            self.comb += dm_o_data.eq(Cat(
-                dfi.phases[0].wrdata_mask[0*databits//8+i],
-                dfi.phases[0].wrdata_mask[1*databits//8+i],
-                dfi.phases[0].wrdata_mask[2*databits//8+i],
-                dfi.phases[0].wrdata_mask[3*databits//8+i],
-
-                dfi.phases[1].wrdata_mask[0*databits//8+i],
-                dfi.phases[1].wrdata_mask[1*databits//8+i],
-                dfi.phases[1].wrdata_mask[2*databits//8+i],
-                dfi.phases[1].wrdata_mask[3*databits//8+i]),
-            )
+            for n in range(8):
+                self.comb += dm_o_data[n].eq(dfi.phases[n//4].wrdata_mask[n%4*databits//8+i])
             self.sync += dm_o_data_d.eq(dm_o_data)
             dm_bl8_cases = {}
             dm_bl8_cases[0] = dm_o_data_muxed.eq(dm_o_data[:4])
@@ -328,10 +289,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                 i_SCLK    = ClockSignal("sys"),
                 i_ECLK    = ClockSignal("sys2x"),
                 i_DQSW270 = dqsw270,
-                i_D0      = dm_o_data_muxed[0],
-                i_D1      = dm_o_data_muxed[1],
-                i_D2      = dm_o_data_muxed[2],
-                i_D3      = dm_o_data_muxed[3],
+                **{f"i_D{n}": dm_o_data_muxed[n] for n in range(4)},
                 o_Q       = pads.dm[i]
             )
 
@@ -341,21 +299,12 @@ class ECP5DDRPHY(Module, AutoCSR):
                 dq_i            = Signal()
                 dq_oe_n         = Signal()
                 dq_i_delayed    = Signal()
-                dq_i_data       = Signal(4)
+                dq_i_data       = Signal(8)
                 dq_o_data       = Signal(8)
                 dq_o_data_d     = Signal(8)
                 dq_o_data_muxed = Signal(4)
-                self.comb += dq_o_data.eq(Cat(
-                    dfi.phases[0].wrdata[0*databits+j],
-                    dfi.phases[0].wrdata[1*databits+j],
-                    dfi.phases[0].wrdata[2*databits+j],
-                    dfi.phases[0].wrdata[3*databits+j],
-
-                    dfi.phases[1].wrdata[0*databits+j],
-                    dfi.phases[1].wrdata[1*databits+j],
-                    dfi.phases[1].wrdata[2*databits+j],
-                    dfi.phases[1].wrdata[3*databits+j])
-                )
+                for n in range(8):
+                    self.comb += dq_o_data[n].eq(dfi.phases[n//4].wrdata[n%4*databits+j])
                 self.sync += dq_o_data_d.eq(dq_o_data)
                 dq_bl8_cases = {}
                 dq_bl8_cases[0] = dq_o_data_muxed.eq(dq_o_data[:4])
@@ -367,12 +316,16 @@ class ECP5DDRPHY(Module, AutoCSR):
                         i_SCLK    = ClockSignal("sys"),
                         i_ECLK    = ClockSignal("sys2x"),
                         i_DQSW270 = dqsw270,
-                        i_D0      = dq_o_data_muxed[0],
-                        i_D1      = dq_o_data_muxed[1],
-                        i_D2      = dq_o_data_muxed[2],
-                        i_D3      = dq_o_data_muxed[3],
+                        **{f"i_D{n}": dq_o_data_muxed[n] for n in range(4)},
                         o_Q       = dq_o
-                    ),
+                    )
+                ]
+                dq_i_bitslip = BitSlip(4,
+                    rst    = self._dly_sel.storage[i] & self._rdly_dq_bitslip_rst.re,
+                    slp    = self._dly_sel.storage[i] & self._rdly_dq_bitslip.re,
+                    cycles = 1)
+                self.submodules += dq_i_bitslip
+                self.specials += [
                     Instance("DELAYF",
                         p_DEL_MODE  = "DQS_ALIGNED_X2",
                         i_LOADN     = 1,
@@ -386,38 +339,17 @@ class ECP5DDRPHY(Module, AutoCSR):
                         i_SCLK    = ClockSignal("sys"),
                         i_ECLK    = ClockSignal("sys2x"),
                         i_DQSR90  = dqsr90,
-                        i_RDPNTR0 = rdpntr[0],
-                        i_RDPNTR1 = rdpntr[1],
-                        i_RDPNTR2 = rdpntr[2],
-                        i_WRPNTR0 = wrpntr[0],
-                        i_WRPNTR1 = wrpntr[1],
-                        i_WRPNTR2 = wrpntr[2],
+                        **{f"i_RDPNTR{n}": rdpntr[n] for n in range(3)},
+                        **{f"i_WRPNTR{n}": wrpntr[n] for n in range(3)},
                         i_D       = dq_i_delayed,
-                        o_Q0      = dq_i_data[0],
-                        o_Q1      = dq_i_data[1],
-                        o_Q2      = dq_i_data[2],
-                        o_Q3      = dq_i_data[3],
+                        **{f"o_Q{n}": dq_i_bitslip.i[n] for n in range(4)},
                     )
                 ]
-
-                dq_i_bitslip = BitSlip(4,
-                    rst    = self._dly_sel.storage[i] & self._rdly_dq_bitslip_rst.re,
-                    slp    = self._dly_sel.storage[i] & self._rdly_dq_bitslip.re,
-                    cycles = 1)
-                self.submodules += dq_i_bitslip
                 dq_i_bitslip_o_d = Signal(4)
-                self.comb += dq_i_bitslip.i.eq(dq_i_data)
                 self.sync += dq_i_bitslip_o_d.eq(dq_i_bitslip.o)
-                self.comb += [
-                    dfi.phases[0].rddata[0*databits+j].eq(dq_i_bitslip_o_d[0]),
-                    dfi.phases[0].rddata[1*databits+j].eq(dq_i_bitslip_o_d[1]),
-                    dfi.phases[0].rddata[2*databits+j].eq(dq_i_bitslip_o_d[2]),
-                    dfi.phases[0].rddata[3*databits+j].eq(dq_i_bitslip_o_d[3]),
-                    dfi.phases[1].rddata[0*databits+j].eq(dq_i_bitslip.o[0]),
-                    dfi.phases[1].rddata[1*databits+j].eq(dq_i_bitslip.o[1]),
-                    dfi.phases[1].rddata[2*databits+j].eq(dq_i_bitslip.o[2]),
-                    dfi.phases[1].rddata[3*databits+j].eq(dq_i_bitslip.o[3]),
-                ]
+                self.comb += dq_i_data.eq(Cat(dq_i_bitslip_o_d, dq_i_bitslip.o))
+                for n in range(8):
+                    self.comb += dfi.phases[n//4].rddata[n%4*databits+j].eq(dq_i_data[n])
                 self.specials += [
                     Instance("TSHX2DQA",
                         i_RST     = ResetSignal("sys"),
