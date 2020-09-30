@@ -50,12 +50,11 @@ class S7DDRPHY(Module, AutoCSR):
         }
         half_sys8x_taps = math.floor(tck/(4*iodelay_tap_average[iodelay_clk_freq]))
 
-        cl, cwl             = get_cl_cw(memtype, tck)
-        cl_sys_latency      = get_sys_latency(nphases, cl)
-        cwl                 = cwl + cmd_latency
-        cwl_sys_latency     = get_sys_latency(nphases, cwl)
-        rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency,   cl)
-        wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
+        cl, cwl         = get_cl_cw(memtype, tck)
+        cl_sys_latency  = get_sys_latency(nphases, cl)
+        cwl_sys_latency = get_sys_latency(nphases, cwl)
+        rdphase         = get_sys_phase(nphases, cl_sys_latency,   cl + cmd_latency)
+        wrphase         = get_sys_phase(nphases, cwl_sys_latency, cwl + cmd_latency)
 
         # Registers --------------------------------------------------------------------------------
         self._rst             = CSRStorage()
@@ -106,7 +105,7 @@ class S7DDRPHY(Module, AutoCSR):
             rdcmdphase    = _rdcmdphase,
             wrcmdphase    = _wrcmdphase,
             cl            = cl,
-            cwl           = cwl - cmd_latency,
+            cwl           = cwl,
             read_latency  = cl_sys_latency + 6,
             write_latency = cwl_sys_latency,
             cmd_latency   = cmd_latency,
