@@ -49,10 +49,12 @@ class USDDRPHY(Module, AutoCSR):
         if phytype == "USDDRPHY":  assert iodelay_clk_freq >= 200e6
         if phytype == "USPDDRPHY": assert iodelay_clk_freq >= 300e6
 
-        cl, cwl         = get_cl_cw(memtype, tck)
-        cwl             = cwl + cmd_latency
-        cl_sys_latency  = get_sys_latency(nphases, cl)
-        cwl_sys_latency = get_sys_latency(nphases, cwl)
+        cl, cwl             = get_cl_cw(memtype, tck)
+        cwl                 = cwl + cmd_latency
+        cl_sys_latency      = get_sys_latency(nphases, cl)
+        cwl_sys_latency     = get_sys_latency(nphases, cwl)
+        rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency,   cl)
+        wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
 
         # Registers --------------------------------------------------------------------------------
         self._rst                 = CSRStorage()
@@ -80,9 +82,17 @@ class USDDRPHY(Module, AutoCSR):
         self._wdly_dqs_rst        = CSR()
         self._wdly_dqs_inc        = CSR()
 
+        self._rdphase = CSRStorage(2, reset=rdphase)
+        self._wrphase = CSRStorage(2, reset=wrphase)
+
         # PHY settings -----------------------------------------------------------------------------
-        rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency, cl)
-        wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
+        _rdphase    = self._rdphase.storage
+        _wrphase    = self._wrphase.storage
+        _rdcmdphase = Signal(2)
+        _wrcmdphase = Signal(2)
+        self.comb += _rdcmdphase.eq(_rdphase - 1)
+        self.comb += _wrcmdphase.eq(_wrphase - 1)
+
         self.settings = PhySettings(
             phytype       = phytype,
             memtype       = memtype,
@@ -96,7 +106,7 @@ class USDDRPHY(Module, AutoCSR):
             wrcmdphase    = wrcmdphase,
             cl            = cl,
             cwl           = cwl - cmd_latency,
-            read_latency  = 2 + cl_sys_latency + 1 + 2,
+            read_latency  = cl_sys_latency + 5,
             write_latency = cwl_sys_latency,
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
