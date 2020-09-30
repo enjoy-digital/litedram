@@ -179,11 +179,8 @@ class USDDRPHY(Module, AutoCSR):
                         i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
-                        i_D      = Cat(dfi.phases[0].address[i], dfi.phases[0].address[i],
-                                       dfi.phases[1].address[i], dfi.phases[1].address[i],
-                                       dfi.phases[2].address[i], dfi.phases[2].address[i],
-                                       dfi.phases[3].address[i], dfi.phases[3].address[i]),
-                         o_OQ     = a_o_nodelay,
+                        i_D      = Cat(*[dfi.phases[n//2].address[i] for n in range(8)]),
+                        o_OQ     = a_o_nodelay,
                     ),
                     Instance("ODELAYE3",
                         p_SIM_DEVICE       = device,
@@ -222,11 +219,7 @@ class USDDRPHY(Module, AutoCSR):
                         i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
-                        i_D      = Cat(
-                            dfi.phases[0].bank[i], dfi.phases[0].bank[i],
-                            dfi.phases[1].bank[i], dfi.phases[1].bank[i],
-                            dfi.phases[2].bank[i], dfi.phases[2].bank[i],
-                            dfi.phases[3].bank[i], dfi.phases[3].bank[i]),
+                        i_D      = Cat(*[dfi.phases[n//2].bank[i] for n in range(8)]),
                         o_OQ     = ba_o_nodelay,
                     ),
                     Instance("ODELAYE3",
@@ -267,11 +260,7 @@ class USDDRPHY(Module, AutoCSR):
                         i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
-                        i_D      = Cat(
-                            getattr(dfi.phases[0], name), getattr(dfi.phases[0], name),
-                            getattr(dfi.phases[1], name), getattr(dfi.phases[1], name),
-                            getattr(dfi.phases[2], name), getattr(dfi.phases[2], name),
-                            getattr(dfi.phases[3], name), getattr(dfi.phases[3], name)),
+                        i_D      = Cat(*[getattr(dfi.phases[n//2], name) for n in range(8)]),
                         o_OQ     = x_o_nodelay,
                     ),
                     Instance("ODELAYE3",
@@ -336,11 +325,7 @@ class USDDRPHY(Module, AutoCSR):
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
                         i_T      = ~dqs_oe_delayed,
-                        i_D      = Cat(
-                            dqs_pattern.o[0], dqs_pattern.o[1],
-                            dqs_pattern.o[2], dqs_pattern.o[3],
-                            dqs_pattern.o[4], dqs_pattern.o[5],
-                            dqs_pattern.o[6], dqs_pattern.o[7]),
+                        i_D      = Cat(*[dqs_pattern.o[n] for n in range(8)]),
                         o_OQ     = dqs_nodelay,
                         o_T_OUT  = dqs_t,
 
@@ -387,11 +372,7 @@ class USDDRPHY(Module, AutoCSR):
                         i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
-                        i_D      = Cat(
-                            dfi.phases[0].wrdata_mask[i], dfi.phases[0].wrdata_mask[databits//8+i],
-                            dfi.phases[1].wrdata_mask[i], dfi.phases[1].wrdata_mask[databits//8+i],
-                            dfi.phases[2].wrdata_mask[i], dfi.phases[2].wrdata_mask[databits//8+i],
-                            dfi.phases[3].wrdata_mask[i], dfi.phases[3].wrdata_mask[databits//8+i]),
+                        i_D      = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)]),
                         o_OQ     = dm_o_nodelay,
                     ),
                     Instance("ODELAYE3",
@@ -440,11 +421,7 @@ class USDDRPHY(Module, AutoCSR):
                     i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal("sys4x"),
                     i_CLKDIV = ClockSignal(),
-                    i_D     = Cat(
-                        dfi.phases[0].wrdata[i], dfi.phases[0].wrdata[databits+i],
-                        dfi.phases[1].wrdata[i], dfi.phases[1].wrdata[databits+i],
-                        dfi.phases[2].wrdata[i], dfi.phases[2].wrdata[databits+i],
-                        dfi.phases[3].wrdata[i], dfi.phases[3].wrdata[databits+i]),
+                    i_D      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
                     i_T      = ~dq_oe_delayed,
                     o_OQ     = dq_o_nodelay,
                     o_T_OUT  = dq_t,
@@ -506,6 +483,7 @@ class USDDRPHY(Module, AutoCSR):
                     io_IO = pads.dq[i],
                 )
             ]
+
             self.comb += [
                 dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]),
                 dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]),
