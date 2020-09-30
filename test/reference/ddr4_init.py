@@ -21,6 +21,6 @@ init_sequence = [
     ("Load Mode Register 4", 0, 4, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 0),
     ("Load Mode Register 2, CWL=9", 512, 2, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 0),
     ("Load Mode Register 1", 769, 1, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 0),
-    ("Load Mode Register 0, CL=11, BL=8", 272, 0, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 200),
+    ("Load Mode Register 0, CL=9, BL=8", 256, 0, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 200),
     ("ZQ Calibration", 1024, 0, dfii_command_we|dfii_command_cs, 200),
 ]

@@ -51,11 +51,11 @@ __attribute__((unused)) static void command_p3(int cmd)
 }
 
 
-#define sdram_dfii_pird_address_write(X) sdram_dfii_pi1_address_write(X)
+#define sdram_dfii_pird_address_write(X) sdram_dfii_pi3_address_write(X)
 #define sdram_dfii_piwr_address_write(X) sdram_dfii_pi2_address_write(X)
-#define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi1_baddress_write(X)
+#define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi3_baddress_write(X)
 #define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi2_baddress_write(X)
-#define command_prd(X) command_p1(X)
+#define command_prd(X) command_p3(X)
 #define command_pwr(X) command_p2(X)
 
 #define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE
@@ -120,8 +120,8 @@ static void init_sequence(void)
 	sdram_dfii_pi0_baddress_write(1);
 	command_p0(DFII_COMMAND_RAS|DFII_COMMAND_CAS|DFII_COMMAND_WE|DFII_COMMAND_CS);
 
-	/* Load Mode Register 0, CL=11, BL=8 */
-	sdram_dfii_pi0_address_write(0x110);
+	/* Load Mode Register 0, CL=9, BL=8 */
+	sdram_dfii_pi0_address_write(0x100);
 	sdram_dfii_pi0_baddress_write(0);
 	command_p0(DFII_COMMAND_RAS|DFII_COMMAND_CAS|DFII_COMMAND_WE|DFII_COMMAND_CS);
 	cdelay(200);
