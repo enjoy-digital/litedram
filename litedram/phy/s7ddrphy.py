@@ -126,14 +126,7 @@ class S7DDRPHY(Module, AutoCSR):
                     i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal(ddr_clk),
                     i_CLKDIV = ClockSignal(),
-                    i_D1     = 0,
-                    i_D2     = 1,
-                    i_D3     = 0,
-                    i_D4     = 1,
-                    i_D5     = 0,
-                    i_D6     = 1,
-                    i_D7     = 0,
-                    i_D8     = 1,
+                    **{f"i_D{n+1}": (0b10101010 >> n) & 0b1 for n in range(8)},
                     o_OQ     = sd_clk_se_nodelay,
                     i_OCE    = 1,
                 )
@@ -173,14 +166,7 @@ class S7DDRPHY(Module, AutoCSR):
                     i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal(ddr_clk),
                     i_CLKDIV = ClockSignal(),
-                    i_D1     = dfi.phases[0].address[i],
-                    i_D2     = dfi.phases[0].address[i],
-                    i_D3     = dfi.phases[1].address[i],
-                    i_D4     = dfi.phases[1].address[i],
-                    i_D5     = dfi.phases[2].address[i],
-                    i_D6     = dfi.phases[2].address[i],
-                    i_D7     = dfi.phases[3].address[i],
-                    i_D8     = dfi.phases[3].address[i],
+                    **{f"i_D{n+1}": dfi.phases[n//2].address[i] for n in range(8)},
                     i_OCE    = 1,
                     o_OQ     = address if with_odelay else pads.a[i],
                 )
@@ -213,14 +199,7 @@ class S7DDRPHY(Module, AutoCSR):
                     i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal(ddr_clk),
                     i_CLKDIV = ClockSignal(),
-                    i_D1     = dfi.phases[0].bank[i],
-                    i_D2     = dfi.phases[0].bank[i],
-                    i_D3     = dfi.phases[1].bank[i],
-                    i_D4     = dfi.phases[1].bank[i],
-                    i_D5     = dfi.phases[2].bank[i],
-                    i_D6     = dfi.phases[2].bank[i],
-                    i_D7     = dfi.phases[3].bank[i],
-                    i_D8     = dfi.phases[3].bank[i],
+                    **{f"i_D{n+1}": dfi.phases[n//2].bank[i] for n in range(8)},
                     i_OCE    = 1,
                     o_OQ     = bank if with_odelay else pads.ba[i],
                 )
@@ -259,14 +238,7 @@ class S7DDRPHY(Module, AutoCSR):
                         i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal(ddr_clk),
                         i_CLKDIV = ClockSignal(),
-                        i_D1     = getattr(dfi.phases[0], name)[i],
-                        i_D2     = getattr(dfi.phases[0], name)[i],
-                        i_D3     = getattr(dfi.phases[1], name)[i],
-                        i_D4     = getattr(dfi.phases[1], name)[i],
-                        i_D5     = getattr(dfi.phases[2], name)[i],
-                        i_D6     = getattr(dfi.phases[2], name)[i],
-                        i_D7     = getattr(dfi.phases[3], name)[i],
-                        i_D8     = getattr(dfi.phases[3], name)[i],
+                        **{f"i_D{n+1}": getattr(dfi.phases[n//2], name)[i] for n in range(8)},
                         i_OCE    = 1,
                         o_OQ     = cmd if with_odelay else getattr(pads, name)[i],
                     )
@@ -311,14 +283,7 @@ class S7DDRPHY(Module, AutoCSR):
                 i_RST    = ResetSignal() | self._rst.storage,
                 i_CLK    = ClockSignal(ddr_clk) if with_odelay else ClockSignal(ddr_clk+"_dqs"),
                 i_CLKDIV = ClockSignal(),
-                i_D1     = dqs_pattern.o[0],
-                i_D2     = dqs_pattern.o[1],
-                i_D3     = dqs_pattern.o[2],
-                i_D4     = dqs_pattern.o[3],
-                i_D5     = dqs_pattern.o[4],
-                i_D6     = dqs_pattern.o[5],
-                i_D7     = dqs_pattern.o[6],
-                i_D8     = dqs_pattern.o[7],
+                **{f"i_D{n+1}": dqs_pattern.o[n] for n in range(8)},
                 i_OCE    = 1,
                 o_OFB    = dqs_o_no_delay if with_odelay else Signal(),
                 o_OQ     = Signal() if with_odelay else dqs_o_no_delay,
@@ -364,14 +329,7 @@ class S7DDRPHY(Module, AutoCSR):
                 i_RST    = ResetSignal() | self._rst.storage,
                 i_CLK    = ClockSignal(ddr_clk),
                 i_CLKDIV = ClockSignal(),
-                i_D1     = dfi.phases[0].wrdata_mask[i],
-                i_D2     = dfi.phases[0].wrdata_mask[databits//8+i],
-                i_D3     = dfi.phases[1].wrdata_mask[i],
-                i_D4     = dfi.phases[1].wrdata_mask[databits//8+i],
-                i_D5     = dfi.phases[2].wrdata_mask[i],
-                i_D6     = dfi.phases[2].wrdata_mask[databits//8+i],
-                i_D7     = dfi.phases[3].wrdata_mask[i],
-                i_D8     = dfi.phases[3].wrdata_mask[databits//8+i],
+                **{f"i_D{n+1}": dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)},
                 i_OCE    = 1,
                 o_OQ     = dm_o_nodelay if with_odelay else pads.dm[i],
             )
@@ -415,14 +373,7 @@ class S7DDRPHY(Module, AutoCSR):
                     i_RST    = ResetSignal() | self._rst.storage,
                     i_CLK    = ClockSignal(ddr_clk),
                     i_CLKDIV = ClockSignal(),
-                    i_D1     = dfi.phases[0].wrdata[i],
-                    i_D2     = dfi.phases[0].wrdata[databits+i],
-                    i_D3     = dfi.phases[1].wrdata[i],
-                    i_D4     = dfi.phases[1].wrdata[databits+i],
-                    i_D5     = dfi.phases[2].wrdata[i],
-                    i_D6     = dfi.phases[2].wrdata[databits+i],
-                    i_D7     = dfi.phases[3].wrdata[i],
-                    i_D8     = dfi.phases[3].wrdata[databits+i],
+                    **{f"i_D{n+1}": dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)},
                     i_TCE    = 1,
                     i_T1     = ~dq_oe_delayed,
                     o_TQ     = dq_t,
@@ -430,6 +381,11 @@ class S7DDRPHY(Module, AutoCSR):
                     o_OQ     = dq_o_nodelay,
                 )
             ]
+            dq_i_bitslip = BitSlip(8,
+                rst    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re,
+                slp    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
+                cycles = 1)
+            self.submodules += dq_i_bitslip
             self.specials += [
                 Instance("ISERDESE2",
                     p_SERDES_MODE    = "MASTER",
@@ -445,34 +401,11 @@ class S7DDRPHY(Module, AutoCSR):
                     i_BITSLIP = 0,
                     i_CE1     = 1,
                     i_DDLY    = dq_i_delayed,
-                    o_Q8      = dq_i_data[0],
-                    o_Q7      = dq_i_data[1],
-                    o_Q6      = dq_i_data[2],
-                    o_Q5      = dq_i_data[3],
-                    o_Q4      = dq_i_data[4],
-                    o_Q3      = dq_i_data[5],
-                    o_Q2      = dq_i_data[6],
-                    o_Q1      = dq_i_data[7],
+                    **{f"o_Q{n+1}": dq_i_bitslip.i[8-1-n] for n in range(8)},
                 )
             ]
-
-            dq_bitslip = BitSlip(8,
-                rst    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re,
-                slp    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
-                cycles = 1)
-            self.submodules += dq_bitslip
-            self.comb += dq_bitslip.i.eq(dq_i_data)
-            self.comb += [
-                dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]),
-                dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]),
-                dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]),
-                dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]),
-                dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
-                dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
-                dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
-                dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7])
-            ]
-
+            for n in range(8):
+                self.comb += dfi.phases[n//2].rddata[n%2*databits+i].eq(dq_i_bitslip.o[n])
             if with_odelay:
                 self.specials += Instance("ODELAYE2",
                     p_SIGNAL_PATTERN        = "DATA",
