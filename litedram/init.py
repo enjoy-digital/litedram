@@ -9,7 +9,7 @@
 # Copyright (c) 2019 Gabriel L. Somlo <gsomlo@gmail.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
-from migen import log2_int
+from migen import *
 
 cmds = {
     "PRECHARGE_ALL": "DFII_COMMAND_RAS|DFII_COMMAND_WE|DFII_COMMAND_CS",
@@ -490,6 +490,14 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     if phy_settings.cmd_delay is not None:
         r += "#define SDRAM_PHY_CMD_DELAY "+str(phy_settings.cmd_delay)+"\n"
 
+    # Define PHY Read.Write phases
+    rdphase = phy_settings.rdphase
+    if isinstance(rdphase, Signal): rdphase = rdphase.reset.value
+    r += "#define SDRAM_PHY_RDPHASE "+str(rdphase)+"\n"
+    wrphase = phy_settings.wrphase
+    if isinstance(wrphase, Signal): wrphase = wrphase.reset.value
+    r += "#define SDRAM_PHY_WRPHASE "+str(wrphase)+"\n"
+
     # Define Read/Write Leveling capability
     if phytype in ["USDDRPHY", "USPDDRPHY", "K7DDRPHY", "V7DDRPHY"]:
         r += "#define SDRAM_PHY_WRITE_LEVELING_CAPABLE\n"
@@ -520,7 +528,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
 
     r += "static void cdelay(int i);\n"
 
-    # commands_px functions
+    # Commands functions
     for n in range(nphases):
         r += """
 __attribute__((unused)) static void command_p{n}(int cmd)
@@ -530,20 +538,7 @@ __attribute__((unused)) static void command_p{n}(int cmd)
 }}""".format(n=str(n))
     r += "\n\n"
 
-    # rd/wr access macros
-    r += """
-#define sdram_dfii_pird_address_write(X) sdram_dfii_pi{rdphase}_address_write(X)
-#define sdram_dfii_piwr_address_write(X) sdram_dfii_pi{wrphase}_address_write(X)
-#define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi{rdphase}_baddress_write(X)
-#define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi{wrphase}_baddress_write(X)
-#define command_prd(X) command_p{rdphase}(X)
-#define command_pwr(X) command_p{wrphase}(X)
-""".format(rdphase=str(phy_settings.rdphase), wrphase=str(phy_settings.wrphase))
-    r += "\n"
-
-    #
-    # sdrrd/sdrwr functions utilities
-    #
+    # Write/Read functions
     r += "#define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE\n"
     sdram_dfii_pix_wrdata_addr = []
     for n in range(nphases):
@@ -567,7 +562,7 @@ const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {{
     init_sequence, mr1 = get_sdram_phy_init_sequence(phy_settings, timing_settings)
 
     if phy_settings.memtype in ["DDR3", "DDR4"]:
-        # the value of MR1 needs to be modified during write leveling
+        # The value of MR1 needs to be modified during write leveling
         r += "#define DDRX_MR1 {}\n\n".format(mr1)
 
     r += "static void init_sequence(void)\n{\n"
