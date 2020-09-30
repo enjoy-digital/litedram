@@ -5,7 +5,7 @@
 # Copyright (c) 2020 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
-# 1:1 frequency-ratio Generic SDR PHY
+# 1:1, 1:2 frequency-ratio Generic SDR PHY
 
 from migen import *
 
@@ -52,16 +52,20 @@ class GENSDRPHY(Module):
         for pads_group in range(len(pads.groups)):
             pads.sel_group(pads_group)
 
-            # Addresses and Commands ---------------------------------------------------------------
-            self.specials += [SDROutput(i=dfi.p0.address[i], o=pads.a[i])  for i in range(len(pads.a))]
-            self.specials += [SDROutput(i=dfi.p0.bank[i], o=pads.ba[i]) for i in range(len(pads.ba))]
-            self.specials += SDROutput(i=dfi.p0.cas_n, o=pads.cas_n)
-            self.specials += SDROutput(i=dfi.p0.ras_n, o=pads.ras_n)
-            self.specials += SDROutput(i=dfi.p0.we_n, o=pads.we_n)
-            if hasattr(pads, "cke"):
-                self.specials += SDROutput(i=dfi.p0.cke, o=pads.cke)
-            if hasattr(pads, "cs_n"):
-                self.specials += SDROutput(i=dfi.p0.cs_n, o=pads.cs_n)
+            # Commands -----------------------------------------------------------------------------
+            commands = {
+                "a"    : "address",
+                "ba"   : "bank"   ,
+                "ras_n": "ras_n"  ,
+                "cas_n": "cas_n"  ,
+                "we_n" : "we_n"   ,
+            }
+            if hasattr(pads, "cke") : commands.update({"cke"  : "cke"})
+            if hasattr(pads, "cs_n"): commands.update({"cs_n" : "cs_n"})
+            for pad_name, dfi_name in commands.items():
+                pad = getattr(pads, pad_name)
+                for i in range(len(pad)):
+                    self.specials += SDROutput(i=getattr(dfi.p0, dfi_name)[i], o=pad[i])
 
         # DQ/DM Data Path --------------------------------------------------------------------------
         for i in range(len(pads.dq)):
@@ -73,7 +77,7 @@ class GENSDRPHY(Module):
             )
         if hasattr(pads, "dm"):
             for i in range(len(pads.dm)):
-                self.comb += pads.dm[i].eq(0) # FIXME
+                self.specials += SDROutput(i=dfi.p0.wrdata_en & dfi.p0.wrdata_mask[i], o=pads.dm[i])
 
         # DQ/DM Control Path -----------------------------------------------------------------------
         rddata_en = Signal(cl + cmd_latency)
