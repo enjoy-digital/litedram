@@ -421,18 +421,8 @@ class USDDRPHY(Module, AutoCSR):
                     io_IO = pads.dq[i],
                 )
             ]
-
-            self.comb += [
-                dfi.phases[0].rddata[i].eq(dq_bitslip.o[0]),
-                dfi.phases[1].rddata[i].eq(dq_bitslip.o[2]),
-                dfi.phases[2].rddata[i].eq(dq_bitslip.o[4]),
-                dfi.phases[3].rddata[i].eq(dq_bitslip.o[6]),
-
-                dfi.phases[0].rddata[databits+i].eq(dq_bitslip.o[1]),
-                dfi.phases[1].rddata[databits+i].eq(dq_bitslip.o[3]),
-                dfi.phases[2].rddata[databits+i].eq(dq_bitslip.o[5]),
-                dfi.phases[3].rddata[databits+i].eq(dq_bitslip.o[7]),
-            ]
+            for n in range(8):
+                self.comb += dfi.phases[n//2].rddata[n%2*databits+i].eq(dq_bitslip.o[n])
 
         # Read Control Path ------------------------------------------------------------------------
         # Creates a shift register of read commands coming from the DFI interface. This shift register
