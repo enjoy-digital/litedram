@@ -49,12 +49,11 @@ class USDDRPHY(Module, AutoCSR):
         if phytype == "USDDRPHY":  assert iodelay_clk_freq >= 200e6
         if phytype == "USPDDRPHY": assert iodelay_clk_freq >= 300e6
 
-        cl, cwl             = get_cl_cw(memtype, tck)
-        cwl                 = cwl + cmd_latency
-        cl_sys_latency      = get_sys_latency(nphases, cl)
-        cwl_sys_latency     = get_sys_latency(nphases, cwl)
-        rdcmdphase, rdphase = get_sys_phases(nphases, cl_sys_latency,   cl)
-        wrcmdphase, wrphase = get_sys_phases(nphases, cwl_sys_latency, cwl)
+        cl, cwl         = get_cl_cw(memtype, tck)
+        cl_sys_latency  = get_sys_latency(nphases, cl)
+        cwl_sys_latency = get_sys_latency(nphases, cwl)
+        rdphase         = get_sys_phase(nphases, cl_sys_latency,   cl + cmd_latency)
+        wrphase         = get_sys_phase(nphases, cwl_sys_latency, cwl + cmd_latency)
 
         # Registers --------------------------------------------------------------------------------
         self._rst                 = CSRStorage()
@@ -100,12 +99,12 @@ class USDDRPHY(Module, AutoCSR):
             dfi_databits  = 2*databits,
             nranks        = nranks,
             nphases       = nphases,
-            rdphase       = rdphase,
-            wrphase       = wrphase,
-            rdcmdphase    = rdcmdphase,
-            wrcmdphase    = wrcmdphase,
+            rdphase       = _rdphase,
+            wrphase       = _wrphase,
+            rdcmdphase    = _rdcmdphase,
+            wrcmdphase    = _wrcmdphase,
             cl            = cl,
-            cwl           = cwl - cmd_latency,
+            cwl           = cwl,
             read_latency  = cl_sys_latency + 5,
             write_latency = cwl_sys_latency,
             cmd_latency   = cmd_latency,
