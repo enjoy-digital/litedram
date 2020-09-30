@@ -20,6 +20,8 @@
 #define SDRAM_PHY_DATABITS 64
 #define SDRAM_PHY_PHASES 4
 #define SDRAM_PHY_CMD_LATENCY 1
+#define SDRAM_PHY_RDPHASE 1
+#define SDRAM_PHY_WRPHASE 1
 #define SDRAM_PHY_WRITE_LEVELING_CAPABLE
 #define SDRAM_PHY_READ_LEVELING_CAPABLE
 #define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2
@@ -48,14 +50,6 @@ __attribute__((unused)) static void command_p3(int cmd)
     sdram_dfii_pi3_command_write(cmd);
     sdram_dfii_pi3_command_issue_write(1);
 }
-
-
-#define sdram_dfii_pird_address_write(X) sdram_dfii_pi1_address_write(X)
-#define sdram_dfii_piwr_address_write(X) sdram_dfii_pi1_address_write(X)
-#define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi1_baddress_write(X)
-#define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi1_baddress_write(X)
-#define command_prd(X) command_p1(X)
-#define command_pwr(X) command_p1(X)
 
 #define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE
 

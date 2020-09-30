@@ -19,6 +19,8 @@
 #define SDRAM_PHY_XDR 1
 #define SDRAM_PHY_DATABITS 16
 #define SDRAM_PHY_PHASES 1
+#define SDRAM_PHY_RDPHASE 0
+#define SDRAM_PHY_WRPHASE 0
 
 static void cdelay(int i);
 
@@ -27,14 +29,6 @@ __attribute__((unused)) static void command_p0(int cmd)
     sdram_dfii_pi0_command_write(cmd);
     sdram_dfii_pi0_command_issue_write(1);
 }
-
-
-#define sdram_dfii_pird_address_write(X) sdram_dfii_pi0_address_write(X)
-#define sdram_dfii_piwr_address_write(X) sdram_dfii_pi0_address_write(X)
-#define sdram_dfii_pird_baddress_write(X) sdram_dfii_pi0_baddress_write(X)
-#define sdram_dfii_piwr_baddress_write(X) sdram_dfii_pi0_baddress_write(X)
-#define command_prd(X) command_p0(X)
-#define command_pwr(X) command_p0(X)
 
 #define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE
 
