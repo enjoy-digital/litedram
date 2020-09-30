@@ -165,121 +165,59 @@ class USDDRPHY(Module, AutoCSR):
                 )
             ]
 
-            # Addresses and Commands ---------------------------------------------------------------
-            for i in range(addressbits if memtype=="DDR3" else addressbits-3):
-                a_o_nodelay = Signal()
-                self.specials += [
-                    Instance("OSERDESE3",
-                        p_SIM_DEVICE         = device,
-                        p_DATA_WIDTH         = 8,
-                        p_INIT               = 0,
-                        p_IS_RST_INVERTED    = 0,
-                        p_IS_CLK_INVERTED    = 0,
-                        p_IS_CLKDIV_INVERTED = 0,
-                        i_RST    = ResetSignal() | self._rst.storage,
-                        i_CLK    = ClockSignal("sys4x"),
-                        i_CLKDIV = ClockSignal(),
-                        i_D      = Cat(*[dfi.phases[n//2].address[i] for n in range(8)]),
-                        o_OQ     = a_o_nodelay,
-                    ),
-                    Instance("ODELAYE3",
-                        p_SIM_DEVICE       = device,
-                        p_CASCADE          = "NONE",
-                        p_UPDATE_MODE      = "ASYNC",
-                        p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
-                        p_DELAY_FORMAT     = "TIME",
-                        p_DELAY_TYPE       = "VARIABLE",
-                        p_DELAY_VALUE      = 0,
-                        i_RST     = self._cdly_rst.re | self._rst.storage,
-                        i_CLK     = ClockSignal(),
-                        i_EN_VTC  = self._en_vtc.storage,
-                        i_CE      = self._cdly_inc.re,
-                        i_INC     = 1,
-                        i_ODATAIN = a_o_nodelay,
-                        o_DATAOUT = pads.a[i],
-                    )
-                ]
-
+            # Commands -----------------------------------------------------------------------------
             pads_ba = Signal(bankbits)
-            if memtype == "DDR3":
-                self.comb += pads.ba.eq(pads_ba)
-            else:
-                self.comb += pads.ba.eq(pads_ba[:len(pads.ba)])
-                self.comb += pads.bg.eq(pads_ba[len(pads.ba):])
-            for i in range(bankbits):
-                ba_o_nodelay = Signal()
-                self.specials += [
-                    Instance("OSERDESE3",
-                        p_SIM_DEVICE         = device,
-                        p_DATA_WIDTH         = 8,
-                        p_INIT               = 0,
-                        p_IS_RST_INVERTED    = 0,
-                        p_IS_CLK_INVERTED    = 0,
-                        p_IS_CLKDIV_INVERTED = 0,
-                        i_RST    = ResetSignal() | self._rst.storage,
-                        i_CLK    = ClockSignal("sys4x"),
-                        i_CLKDIV = ClockSignal(),
-                        i_D      = Cat(*[dfi.phases[n//2].bank[i] for n in range(8)]),
-                        o_OQ     = ba_o_nodelay,
-                    ),
-                    Instance("ODELAYE3",
-                        p_SIM_DEVICE       = device,
-                        p_CASCADE          = "NONE",
-                        p_UPDATE_MODE      = "ASYNC",
-                        p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
-                        p_DELAY_FORMAT     = "TIME",
-                        p_DELAY_TYPE       = "VARIABLE",
-                        p_DELAY_VALUE      = 0,
-                        i_RST     = self._cdly_rst.re | self._rst.storage,
-                        i_CLK     = ClockSignal(),
-                        i_EN_VTC  = self._en_vtc.storage,
-                        i_CE      = self._cdly_inc.re,
-                        i_INC     = 1,
-                        i_ODATAIN = ba_o_nodelay,
-                        o_DATAOUT = pads_ba[i],
-                    )
-                ]
+            commands = {
+                "a"     : "address",
+                pads_ba : "bank",
+                "ras_n" : "ras_n"  ,
+                "cas_n" : "cas_n"  ,
+                "we_n"  : "we_n"   ,
+                "cke"   : "cke"    ,
+                "odt"   : "odt"    ,
+            }
+            if hasattr(pads, "reset_n"): commands.update({"reset_n" : "reset_n"})
+            if hasattr(pads, "cs_n")   : commands.update({"cs_n"    : "cs_n"})
+            if hasattr(pads, "act_n")  : commands.update({"act_n"   : "act_n"})
+            for pad_name, dfi_name in commands.items():
+                pad = pad_name if isinstance(pad_name, Signal) else getattr(pads, pad_name)
+                for i in range(len(pad)):
+                    o_nodelay = Signal()
+                    self.specials += [
+                        Instance("OSERDESE3",
+                            p_SIM_DEVICE         = device,
+                            p_DATA_WIDTH         = 8,
+                            p_INIT               = 0,
+                            p_IS_RST_INVERTED    = 0,
+                            p_IS_CLK_INVERTED    = 0,
+                            p_IS_CLKDIV_INVERTED = 0,
+                            i_RST    = ResetSignal() | self._rst.storage,
+                            i_CLK    = ClockSignal("sys4x"),
+                            i_CLKDIV = ClockSignal(),
+                            i_D      = Cat(*[getattr(dfi.phases[n//2], dfi_name)[i] for n in range(8)]),
+                            o_OQ     = o_nodelay,
+                        ),
+                        Instance("ODELAYE3",
+                            p_SIM_DEVICE       = device,
+                            p_CASCADE          = "NONE",
+                            p_UPDATE_MODE      = "ASYNC",
+                            p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
+                            p_DELAY_FORMAT     = "TIME",
+                            p_DELAY_TYPE       = "VARIABLE",
+                            p_DELAY_VALUE      = 0,
+                            i_RST     = self._cdly_rst.re | self._rst.storage,
+                            i_CLK     = ClockSignal(),
+                            i_EN_VTC  = self._en_vtc.storage,
+                            i_CE      = self._cdly_inc.re,
+                            i_INC     = 1,
+                            i_ODATAIN = o_nodelay,
+                            o_DATAOUT = pad[i],
+                        )
+                    ]
 
-            controls = ["ras_n", "cas_n", "we_n", "cke", "odt"]
-            if hasattr(pads, "reset_n"):
-                controls.append("reset_n")
-            if hasattr(pads, "cs_n"):
-                controls.append("cs_n")
-            if hasattr(pads, "act_n"):
-                controls.append("act_n")
-            for name in controls:
-                x_o_nodelay = Signal()
-                self.specials += [
-                    Instance("OSERDESE3",
-                        p_SIM_DEVICE         = device,
-                        p_DATA_WIDTH         = 8,
-                        p_INIT               = 0,
-                        p_IS_RST_INVERTED    = 0,
-                        p_IS_CLK_INVERTED    = 0,
-                        p_IS_CLKDIV_INVERTED = 0,
-                        i_RST    = ResetSignal() | self._rst.storage,
-                        i_CLK    = ClockSignal("sys4x"),
-                        i_CLKDIV = ClockSignal(),
-                        i_D      = Cat(*[getattr(dfi.phases[n//2], name) for n in range(8)]),
-                        o_OQ     = x_o_nodelay,
-                    ),
-                    Instance("ODELAYE3",
-                        p_SIM_DEVICE       = device,
-                        p_CASCADE          = "NONE",
-                        p_UPDATE_MODE      = "ASYNC",
-                        p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
-                        p_DELAY_FORMAT     = "TIME",
-                        p_DELAY_TYPE       = "VARIABLE",
-                        p_DELAY_VALUE      = 0,
-                        i_RST     = self._cdly_rst.re | self._rst.storage,
-                        i_CLK     = ClockSignal(),
-                        i_EN_VTC  = self._en_vtc.storage,
-                        i_CE      = self._cdly_inc.re,
-                        i_INC     = 1,
-                        i_ODATAIN = x_o_nodelay,
-                        o_DATAOUT = getattr(pads, name),
-                    )
-                ]
+            self.comb += pads.ba.eq(pads_ba)
+            if hasattr(pads, "bg"):
+                self.comb += pads.bg.eq(pads_ba[len(pads.ba):])
 
             if hasattr(pads, "ten"):
                 self.comb += pads.ten.eq(0)
