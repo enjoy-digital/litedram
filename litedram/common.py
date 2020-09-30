@@ -56,10 +56,8 @@ def get_cl_cw(memtype, tck):
 def get_sys_latency(nphases, cas_latency):
     return math.ceil(cas_latency/nphases)
 
-def get_sys_phases(nphases, sys_latency, cas_latency):
-    dat_phase = sys_latency*nphases - cas_latency
-    cmd_phase = (dat_phase - 1)%nphases
-    return cmd_phase, dat_phase
+def get_sys_phase(nphases, sys_latency, cas_latency):
+    return sys_latency*nphases - cas_latency
 
 # PHY Pads Transformers ----------------------------------------------------------------------------
 
