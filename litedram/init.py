@@ -485,6 +485,10 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     r += "#define SDRAM_PHY_XDR "+str(1 if phy_settings.memtype == "SDR" else 2) + "\n"
     r += "#define SDRAM_PHY_DATABITS "+str(phy_settings.databits) + "\n"
     r += "#define SDRAM_PHY_PHASES "+str(nphases)+"\n"
+    if phy_settings.cl is not None:
+        r += "#define SDRAM_PHY_CL "+str(phy_settings.cl)+"\n"
+    if phy_settings.cwl is not None:
+        r += "#define SDRAM_PHY_CWL "+str(phy_settings.cwl)+"\n"
     if phy_settings.cmd_latency is not None:
         r += "#define SDRAM_PHY_CMD_LATENCY "+str(phy_settings.cmd_latency)+"\n"
     if phy_settings.cmd_delay is not None:
