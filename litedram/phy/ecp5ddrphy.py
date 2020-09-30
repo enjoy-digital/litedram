@@ -208,7 +208,11 @@ class ECP5DDRPHY(Module, AutoCSR):
                     )
 
         # DQS/DM/DQ --------------------------------------------------------------------------------
+        dq_oe         = Signal()
         dqs_re        = Signal()
+        dqs_oe        = Signal()
+        dqs_postamble = Signal()
+        dqs_preamble  = Signal()
         for i in range(databits//8):
             # DQSBUFM
             dqs_i   = Signal()
@@ -273,11 +277,8 @@ class ECP5DDRPHY(Module, AutoCSR):
             ]
 
             # DQS ----------------------------------------------------------------------------------
-            dqs           = Signal()
-            dqs_oe        = Signal()
-            dqs_oe_n      = Signal()
-            dqs_postamble = Signal()
-            dqs_preamble  = Signal()
+            dqs      = Signal()
+            dqs_oe_n = Signal()
             self.specials += [
                 Instance("ODDRX2DQSB",
                     i_RST  = ResetSignal("sys"),
@@ -335,7 +336,6 @@ class ECP5DDRPHY(Module, AutoCSR):
             )
 
             # DQ -----------------------------------------------------------------------------------
-            dq_oe = Signal()
             for j in range(8*i, 8*(i+1)):
                 dq_o            = Signal()
                 dq_i            = Signal()
