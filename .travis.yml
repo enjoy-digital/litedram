@@ -63,6 +63,8 @@ jobs:
     - env: SDRAM_MODULE=EDY4016A
     - env: SDRAM_MODULE=MT40A1G8
     - env: SDRAM_MODULE=MT40A512M16
+    - env: SDRAM_MODULE=AS4C267M27D4A
+    
 
     - stage: Benchmarks
       script:
