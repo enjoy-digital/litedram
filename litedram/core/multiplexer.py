@@ -226,6 +226,21 @@ class Multiplexer(Module, AutoCSR):
         ras_allowed = Signal(reset=1)
         cas_allowed = Signal(reset=1)
 
+        # Read/Write Cmd/Dat phases ----------------------------------------------------------------
+        nphases = settings.phy.nphases
+        rdphase = settings.phy.rdphase
+        wrphase = settings.phy.wrphase
+        if isinstance(rdphase, Signal):
+            rdcmdphase = Signal.like(rdphase)
+            self.comb += rdcmdphase.eq(rdphase - 1) # Implicit %nphases.
+        else:
+            rdcmdphase = (rdphase - 1)%nphases
+        if isinstance(rdphase, Signal):
+            wrcmdphase = Signal.like(wrphase)
+            self.comb += wrcmdphase.eq(wrphase - 1) # Implicit %nphases.
+        else:
+            wrcmdphase = (wrphase - 1)%nphases
+
         # Command choosing -------------------------------------------------------------------------
         requests = [bm.cmd for bm in bank_machines]
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
@@ -320,14 +335,14 @@ class Multiplexer(Module, AutoCSR):
         def steerer_sel(steerer, access):
             assert access in ["read", "write"]
             r = []
-            for i in range(settings.phy.nphases):
+            for i in range(nphases):
                 r.append(steerer.sel[i].eq(STEER_NOP))
                 if access == "read":
-                    r.append(If(i == settings.phy.rdphase,    steerer.sel[i].eq(STEER_REQ)))
-                    r.append(If(i == settings.phy.rdcmdphase, steerer.sel[i].eq(STEER_CMD)))
+                    r.append(If(i == rdphase,    steerer.sel[i].eq(STEER_REQ)))
+                    r.append(If(i == rdcmdphase, steerer.sel[i].eq(STEER_CMD)))
                 if access == "write":
-                    r.append(If(i == settings.phy.wrphase,    steerer.sel[i].eq(STEER_REQ)))
-                    r.append(If(i == settings.phy.wrcmdphase, steerer.sel[i].eq(STEER_CMD)))
+                    r.append(If(i == wrphase,    steerer.sel[i].eq(STEER_REQ)))
+                    r.append(If(i == wrcmdphase, steerer.sel[i].eq(STEER_CMD)))
             return r
 
         # Control FSM ------------------------------------------------------------------------------

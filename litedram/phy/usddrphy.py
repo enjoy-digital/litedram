@@ -85,13 +85,6 @@ class USDDRPHY(Module, AutoCSR):
         self._wrphase = CSRStorage(2, reset=wrphase)
 
         # PHY settings -----------------------------------------------------------------------------
-        _rdphase    = self._rdphase.storage
-        _wrphase    = self._wrphase.storage
-        _rdcmdphase = Signal(2)
-        _wrcmdphase = Signal(2)
-        self.comb += _rdcmdphase.eq(_rdphase - 1)
-        self.comb += _wrcmdphase.eq(_wrphase - 1)
-
         self.settings = PhySettings(
             phytype       = phytype,
             memtype       = memtype,
@@ -99,10 +92,8 @@ class USDDRPHY(Module, AutoCSR):
             dfi_databits  = 2*databits,
             nranks        = nranks,
             nphases       = nphases,
-            rdphase       = _rdphase,
-            wrphase       = _wrphase,
-            rdcmdphase    = _rdcmdphase,
-            wrcmdphase    = _wrcmdphase,
+            rdphase       = self._rdphase.storage,
+            wrphase       = self._wrphase.storage,
             cl            = cl,
             cwl           = cwl,
             read_latency  = cl_sys_latency + 5,

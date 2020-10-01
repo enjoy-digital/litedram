@@ -36,8 +36,6 @@ class GENSDRPHY(Module):
             nphases       = 1,
             rdphase       = 0,
             wrphase       = 0,
-            rdcmdphase    = 0,
-            wrcmdphase    = 0,
             cl            = cl,
             read_latency  = cl + cmd_latency,
             write_latency = 0
@@ -121,8 +119,6 @@ class HalfRateGENSDRPHY(Module):
             nphases       = nphases,
             rdphase       = 0,
             wrphase       = 0,
-            rdcmdphase    = 1,
-            wrcmdphase    = 1,
             cl            = cl,
             read_latency  = (cl + cmd_latency)//2 + 1,
             write_latency = 0

@@ -57,8 +57,6 @@ class S6HalfRateDDRPHY(Module):
                 nphases       = nphases,
                 rdphase       = 0,
                 wrphase       = 1,
-                rdcmdphase    = 1,
-                wrcmdphase    = 0,
                 cl            = 5,
                 cwl           = 6,
                 read_latency  = 6,
@@ -74,8 +72,6 @@ class S6HalfRateDDRPHY(Module):
                 nphases       = nphases,
                 rdphase       = 0,
                 wrphase       = 1,
-                rdcmdphase    = 1,
-                wrcmdphase    = 0,
                 cl            = 3,
                 read_latency  = 5,
                 write_latency = 0

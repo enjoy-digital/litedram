@@ -133,8 +133,6 @@ class ECP5DDRPHY(Module, AutoCSR):
             nphases       = nphases,
             rdphase       = rdphase,
             wrphase       = wrphase,
-            rdcmdphase    = (rdphase - 1)%nphases,
-            wrcmdphase    = (wrphase - 1)%nphases,
             cl            = cl,
             cwl           = cwl,
             read_latency  = cl_sys_latency + 10,

@@ -178,7 +178,6 @@ class PhySettings(Settings):
     def __init__(self, phytype, memtype, databits, dfi_databits,
                  nphases,
                  rdphase, wrphase,
-                 rdcmdphase, wrcmdphase,
                  cl, read_latency, write_latency, nranks=1, cwl=None,
                  cmd_latency=None, cmd_delay=None):
         self.set_attributes(locals())
