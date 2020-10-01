@@ -391,33 +391,39 @@ class S7DDRPHY(Module, AutoCSR):
             ]
 
         # Read Control Path ------------------------------------------------------------------------
-        # Creates a shift register of read commands coming from the DFI interface. This shift register
-        # is used to indicate to the DFI interface that the read data is valid.
+        # Creates a delay line of read commands coming from the DFI interface. The output is used to
+        # signal a valid read data to the DFI interface.
         #
         # The read data valid is asserted for 1 sys_clk cycle when the data is available on the DFI
         # interface, the latency is the sum of the OSERDESE2, CAS, ISERDESE2 and Bitslip latencies.
-        rddata_en      = Signal(self.settings.read_latency)
-        rddata_en_last = Signal.like(rddata_en)
-        self.comb += rddata_en.eq(Cat(reduce(or_, [dfi.phases[i].rddata_en for i in range(nphases)]), rddata_en_last))
-        self.sync += rddata_en_last.eq(rddata_en)
-        self.sync += [phase.rddata_valid.eq(rddata_en[-1] | self._wlevel_en.storage) for phase in dfi.phases]
+        rddata_en = TappedDelayLine(
+            signal = reduce(or_, [dfi.phases[i].rddata_en for i in range(nphases)]),
+            ntaps  = self.settings.read_latency
+        )
+        self.submodules += rddata_en
+
+        self.sync += [phase.rddata_valid.eq(rddata_en.output | self._wlevel_en.storage) for phase in dfi.phases]
 
         # Write Control Path -----------------------------------------------------------------------
-        # Creates a shift register of write commands coming from the DFI interface. This shift register
-        # is used to control DQ/DQS tristates.
-        wrdata_en = Signal(cwl_sys_latency + 2)
-        wrdata_en_last = Signal.like(wrdata_en)
-        self.comb += wrdata_en.eq(Cat(reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]), wrdata_en_last))
-        self.sync += wrdata_en_last.eq(wrdata_en)
-        self.comb += dq_oe.eq(wrdata_en[cwl_sys_latency])
+        dq_latency = cwl_sys_latency
+
+        # Create a delay line of write commands coming from the DFI interface. This taps are used to
+        # control DQ/DQS tristates.
+        wrdata_en = TappedDelayLine(
+            signal = reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]),
+            ntaps  = dq_latency + 2
+        )
+        self.submodules += wrdata_en
+
+        self.comb += dq_oe.eq(wrdata_en.taps[cwl_sys_latency])
         self.comb += If(self._wlevel_en.storage, dqs_oe.eq(1)).Else(dqs_oe.eq(dq_oe))
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
         # write. During writes, DQS tristate is configured as output for at least 3 sys_clk cycles:
         # 1 for Preamble, 1 for the Write and 1 for the Postamble.
-        self.comb += dqs_pattern.preamble.eq( wrdata_en[cwl_sys_latency - 1]  & ~wrdata_en[cwl_sys_latency])
-        self.comb += dqs_pattern.postamble.eq(wrdata_en[cwl_sys_latency + 1]  & ~wrdata_en[cwl_sys_latency])
+        self.comb += dqs_pattern.preamble.eq( wrdata_en.taps[dq_latency - 1]  & ~wrdata_en.taps[dq_latency])
+        self.comb += dqs_pattern.postamble.eq(wrdata_en.taps[dq_latency + 1]  & ~wrdata_en.taps[dq_latency])
 
 # Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 
