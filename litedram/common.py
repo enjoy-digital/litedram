@@ -136,6 +136,15 @@ class BitSlip(Module):
             cases[i] = self.o.eq(r[i:dw+i])
         self.comb += Case(value, cases)
 
+# TappedDelayLine ----------------------------------------------------------------------------------
+
+class TappedDelayLine(Module):
+    def __init__(self, signal, ntaps):
+        self.taps = Array(signal if i == 0 else Signal.like(signal) for i in range(ntaps))
+        for i in range(1, ntaps):
+            self.sync += self.taps[i].eq(self.taps[i-1])
+        self.output = self.taps[-1]
+
 # DQS Pattern --------------------------------------------------------------------------------------
 
 class DQSPattern(Module):
