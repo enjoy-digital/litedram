@@ -223,13 +223,17 @@ class USDDRPHY(Module, AutoCSR):
                 self.comb += pads.ten.eq(0)
 
         # DQS --------------------------------------------------------------------------------------
-        dqs_oe         = Signal()
-        dqs_oe_delayed = Signal() # Tristate control is asynchronous, needs to be delayed.
-        dqs_pattern    = DQSPattern(
+        dqs_oe        = Signal()
+        dqs_preamble  = Signal()
+        dqs_postamble = Signal()
+        dqs_oe_delay  = TappedDelayLine(ntaps=1)
+        dqs_pattern   = DQSPattern(
+            preamble      = dqs_preamble,
+            postamble     = dqs_postamble,
             wlevel_en     = self._wlevel_en.storage,
             wlevel_strobe = self._wlevel_strobe.re)
-        self.submodules += dqs_pattern
-        self.sync += dqs_oe_delayed.eq(dqs_pattern.preamble | dqs_oe | dqs_pattern.postamble)
+        self.submodules += dqs_oe_delay, dqs_pattern
+        self.comb += dqs_oe_delay.input.eq(dqs_preamble | dqs_oe | dqs_postamble)
         for i in range(databits//8):
             if i == 0:
                 # Store initial DQS DELAY_VALUE (in taps) to be able to reload DELAY_VALUE after reset.
@@ -262,7 +266,7 @@ class USDDRPHY(Module, AutoCSR):
                         i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
-                        i_T      = ~dqs_oe_delayed,
+                        i_T      = ~dqs_oe_delay.output,
                         i_D      = Cat(*[dqs_pattern.o[n] for n in range(8)]),
                         o_OQ     = dqs_nodelay,
                         o_T_OUT  = dqs_t,
@@ -334,9 +338,10 @@ class USDDRPHY(Module, AutoCSR):
                 ]
 
         # DQ ---------------------------------------------------------------------------------------
-        dq_oe         = Signal()
-        dq_oe_delayed = Signal() # Tristate control is asynchronous, needs to be delayed.
-        self.sync += dq_oe_delayed.eq(dqs_pattern.preamble | dq_oe | dqs_pattern.postamble)
+        dq_oe = Signal()
+        dq_oe_delay = TappedDelayLine(ntaps=1)
+        self.submodules += dq_oe_delay
+        self.comb += dq_oe_delay.input.eq(dqs_preamble | dq_oe | dqs_postamble)
         for i in range(databits):
             dq_o_nodelay = Signal()
             dq_o_delayed = Signal()
@@ -360,7 +365,7 @@ class USDDRPHY(Module, AutoCSR):
                     i_CLK    = ClockSignal("sys4x"),
                     i_CLKDIV = ClockSignal(),
                     i_D      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
-                    i_T      = ~dq_oe_delayed,
+                    i_T      = ~dq_oe_delay.output,
                     o_OQ     = dq_o_nodelay,
                     o_T_OUT  = dq_t,
                 ),
@@ -436,26 +441,28 @@ class USDDRPHY(Module, AutoCSR):
         )
         self.submodules += rddata_en
 
-        self.sync += [phase.rddata_valid.eq(rddata_en.output | self._wlevel_en.storage) for phase in dfi.phases]
+        self.comb += [phase.rddata_valid.eq(rddata_en.output | self._wlevel_en.storage) for phase in dfi.phases]
 
         # Write Control Path -----------------------------------------------------------------------
+        wrtap = cwl_sys_latency - 1
+
         # Create a delay line of write commands coming from the DFI interface. This taps are used to
         # control DQ/DQS tristates.
         wrdata_en = TappedDelayLine(
             signal = reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]),
-            ntaps  = cwl_sys_latency + 2
+            ntaps  = wrtap + 2
         )
         self.submodules += wrdata_en
 
-        self.comb += dq_oe.eq(wrdata_en.taps[cwl_sys_latency])
+        self.comb += dq_oe.eq(wrdata_en.taps[wrtap])
         self.comb += If(self._wlevel_en.storage, dqs_oe.eq(1)).Else(dqs_oe.eq(dq_oe))
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
         # write. During writes, DQS tristate is configured as output for at least 3 sys_clk cycles:
         # 1 for Preamble, 1 for the Write and 1 for the Postamble.
-        self.comb += dqs_pattern.preamble.eq( wrdata_en.taps[cwl_sys_latency - 1]  & ~wrdata_en.taps[cwl_sys_latency])
-        self.comb += dqs_pattern.postamble.eq(wrdata_en.taps[cwl_sys_latency + 1]  & ~wrdata_en.taps[cwl_sys_latency])
+        self.comb += dqs_preamble.eq( wrdata_en.taps[wrtap - 1]  & ~wrdata_en.taps[wrtap + 0])
+        self.comb += dqs_postamble.eq(wrdata_en.taps[wrtap + 1]  & ~wrdata_en.taps[wrtap + 0])
 
 # Xilinx Ultrascale Plus DDR3/DDR4 PHY -------------------------------------------------------------
 

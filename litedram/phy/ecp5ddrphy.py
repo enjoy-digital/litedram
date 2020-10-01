@@ -362,6 +362,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                 ]
 
         # Read Control Path ------------------------------------------------------------------------
+        rdtap = cl_sys_latency
+
         # Creates a delay line of read commands coming from the DFI interface. The taps are used to
         # control DQS read (internal read pulse of the DQSBUF) and the output of the delay is used
         # signal a valid read data to the DFI interface.
@@ -377,10 +379,12 @@ class ECP5DDRPHY(Module, AutoCSR):
         )
         self.submodules += rddata_en
 
-        self.sync += [phase.rddata_valid.eq(rddata_en.output) for phase in dfi.phases]
-        self.comb += dqs_re.eq(rddata_en.taps[cl_sys_latency + 1] | rddata_en.taps[cl_sys_latency + 2])
+        self.comb += [phase.rddata_valid.eq(rddata_en.output) for phase in dfi.phases]
+        self.comb += dqs_re.eq(rddata_en.taps[rdtap] | rddata_en.taps[rdtap + 1])
 
         # Write Control Path -----------------------------------------------------------------------
+        wrtap = cwl_sys_latency
+
         # Create a delay line of write commands coming from the DFI interface. This taps are used to
         # control DQ/DQS tristates and to select write data of the DRAM burst from the DFI interface.
         # The PHY is operating in halfrate mode (so provide 4 datas every sys_clk cycles: 2x for DDR,
@@ -388,17 +392,17 @@ class ECP5DDRPHY(Module, AutoCSR):
         # then performed in 2 sys_clk cycles and data needs to be selected for each cycle.
         wrdata_en = TappedDelayLine(
             signal = reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]),
-            ntaps  = cwl_sys_latency + 4
+            ntaps  = wrtap + 4
         )
         self.submodules += wrdata_en
 
-        self.comb += dq_oe.eq(wrdata_en.taps[cwl_sys_latency + 1] | wrdata_en.taps[cwl_sys_latency + 2])
-        self.comb += bl8_chunk.eq(wrdata_en.taps[cwl_sys_latency + 1])
+        self.comb += dq_oe.eq(wrdata_en.taps[wrtap] | wrdata_en.taps[wrtap + 1])
+        self.comb += bl8_chunk.eq(wrdata_en.taps[wrtap])
         self.comb += dqs_oe.eq(dq_oe)
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
         # write. During writes, DQS tristate is configured as output for at least 4 sys_clk cycles:
         # 1 for Preamble, 2 for the Write and 1 for the Postamble.
-        self.comb += dqs_preamble.eq( wrdata_en.taps[cwl_sys_latency + 0]  & ~wrdata_en.taps[cwl_sys_latency + 1])
-        self.comb += dqs_postamble.eq(wrdata_en.taps[cwl_sys_latency + 3]  & ~wrdata_en.taps[cwl_sys_latency + 2])
+        self.comb += dqs_preamble.eq( wrdata_en.taps[wrtap - 1]  & ~wrdata_en.taps[wrtap + 0])
+        self.comb += dqs_postamble.eq(wrdata_en.taps[wrtap + 2]  & ~wrdata_en.taps[wrtap + 1])

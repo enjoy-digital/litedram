@@ -139,10 +139,11 @@ class BitSlip(Module):
 # TappedDelayLine ----------------------------------------------------------------------------------
 
 class TappedDelayLine(Module):
-    def __init__(self, signal, ntaps):
-        self.taps = Array(signal if i == 0 else Signal.like(signal) for i in range(ntaps))
-        for i in range(1, ntaps):
-            self.sync += self.taps[i].eq(self.taps[i-1])
+    def __init__(self, signal=None, ntaps=1):
+        self.input = Signal() if signal is None else signal
+        self.taps  = Array(Signal.like(self.input) for i in range(ntaps))
+        for i in range(ntaps):
+            self.sync += self.taps[i].eq(self.input if i == 0 else self.taps[i-1])
         self.output = self.taps[-1]
 
 # DQS Pattern --------------------------------------------------------------------------------------
