@@ -206,7 +206,7 @@ class S7DDRPHY(Module, AutoCSR):
         dqs_oe        = Signal()
         dqs_preamble  = Signal()
         dqs_postamble = Signal()
-        dqs_oe_delay  = TappedDelayLine(ntaps=1)
+        dqs_oe_delay  = TappedDelayLine(ntaps=2)
         dqs_pattern   = DQSPattern(
             preamble      = dqs_preamble,
             postamble     = dqs_postamble,
@@ -298,7 +298,7 @@ class S7DDRPHY(Module, AutoCSR):
 
         # DQ ---------------------------------------------------------------------------------------
         dq_oe = Signal()
-        dq_oe_delay = TappedDelayLine(ntaps=1)
+        dq_oe_delay = TappedDelayLine(ntaps=2)
         self.submodules += dq_oe_delay
         self.comb += dq_oe_delay.input.eq(dqs_preamble | dq_oe | dqs_postamble)
         for i in range(databits):
