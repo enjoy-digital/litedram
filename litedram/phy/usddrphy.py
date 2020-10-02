@@ -267,7 +267,7 @@ class USDDRPHY(Module, AutoCSR):
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
                         i_T      = ~dqs_oe_delay.output,
-                        i_D      = Cat(*[dqs_pattern.o[n] for n in range(8)]),
+                        i_D      = dqs_pattern.o,
                         o_OQ     = dqs_nodelay,
                         o_T_OUT  = dqs_t,
 

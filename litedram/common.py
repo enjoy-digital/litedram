@@ -156,6 +156,8 @@ class DQSPattern(Module):
 
         # # #
 
+        # DQS Pattern transmitted as LSB-first.
+
         self.comb += [
             self.o.eq(0b01010101),
             If(self.preamble,
