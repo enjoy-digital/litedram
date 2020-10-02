@@ -308,47 +308,43 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_delayed = Signal()
             dq_t         = Signal()
             dq_i_data    = Signal(8)
-            self.specials += [
-                Instance("OSERDESE2",
-                    p_SERDES_MODE    = "MASTER",
-                    p_DATA_WIDTH     = 2*nphases,
-                    p_TRISTATE_WIDTH = 1,
-                    p_DATA_RATE_OQ   = "DDR",
-                    p_DATA_RATE_TQ   = "BUF",
-                    i_RST    = ResetSignal() | self._rst.storage,
-                    i_CLK    = ClockSignal(ddr_clk),
-                    i_CLKDIV = ClockSignal(),
-                    **{f"i_D{n+1}": dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)},
-                    i_TCE    = 1,
-                    i_T1     = ~dq_oe_delay.output,
-                    o_TQ     = dq_t,
-                    i_OCE    = 1,
-                    o_OQ     = dq_o_nodelay,
-                )
-            ]
+            self.specials += Instance("OSERDESE2",
+                p_SERDES_MODE    = "MASTER",
+                p_DATA_WIDTH     = 2*nphases,
+                p_TRISTATE_WIDTH = 1,
+                p_DATA_RATE_OQ   = "DDR",
+                p_DATA_RATE_TQ   = "BUF",
+                i_RST    = ResetSignal() | self._rst.storage,
+                i_CLK    = ClockSignal(ddr_clk),
+                i_CLKDIV = ClockSignal(),
+                **{f"i_D{n+1}": dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)},
+                i_TCE    = 1,
+                i_T1     = ~dq_oe_delay.output,
+                o_TQ     = dq_t,
+                i_OCE    = 1,
+                o_OQ     = dq_o_nodelay,
+            )
             dq_i_bitslip = BitSlip(8,
                 rst    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re,
                 slp    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
                 cycles = 1)
             self.submodules += dq_i_bitslip
-            self.specials += [
-                Instance("ISERDESE2",
-                    p_SERDES_MODE    = "MASTER",
-                    p_INTERFACE_TYPE = "NETWORKING",
-                    p_DATA_WIDTH     = 2*nphases,
-                    p_DATA_RATE      = "DDR",
-                    p_NUM_CE         = 1,
-                    p_IOBDELAY       = "IFD",
-                    i_RST     = ResetSignal() | self._rst.storage,
-                    i_CLK     = ClockSignal(ddr_clk),
-                    i_CLKB    = ~ClockSignal(ddr_clk),
-                    i_CLKDIV  = ClockSignal(),
-                    i_BITSLIP = 0,
-                    i_CE1     = 1,
-                    i_DDLY    = dq_i_delayed,
-                    **{f"o_Q{n+1}": dq_i_bitslip.i[8-1-n] for n in range(8)},
-                )
-            ]
+            self.specials += Instance("ISERDESE2",
+                p_SERDES_MODE    = "MASTER",
+                p_INTERFACE_TYPE = "NETWORKING",
+                p_DATA_WIDTH     = 2*nphases,
+                p_DATA_RATE      = "DDR",
+                p_NUM_CE         = 1,
+                p_IOBDELAY       = "IFD",
+                i_RST     = ResetSignal() | self._rst.storage,
+                i_CLK     = ClockSignal(ddr_clk),
+                i_CLKB    = ~ClockSignal(ddr_clk),
+                i_CLKDIV  = ClockSignal(),
+                i_BITSLIP = 0,
+                i_CE1     = 1,
+                i_DDLY    = dq_i_delayed,
+                **{f"o_Q{n+1}": dq_i_bitslip.i[8-1-n] for n in range(8)},
+            )
             for n in range(8):
                 self.comb += dfi.phases[n//2].rddata[n%2*databits+i].eq(dq_i_bitslip.o[n])
             if with_odelay:
@@ -369,31 +365,29 @@ class S7DDRPHY(Module, AutoCSR):
                     o_ODATAIN  = dq_o_nodelay,
                     o_DATAOUT  = dq_o_delayed,
                 )
-            self.specials += [
-                Instance("IDELAYE2",
-                    p_SIGNAL_PATTERN        = "DATA",
-                    p_DELAY_SRC             = "IDATAIN",
-                    p_CINVCTRL_SEL          = "FALSE",
-                    p_HIGH_PERFORMANCE_MODE = "TRUE",
-                    p_REFCLK_FREQUENCY      = iodelay_clk_freq/1e6,
-                    p_PIPE_SEL              = "FALSE",
-                    p_IDELAY_TYPE           = "VARIABLE",
-                    p_IDELAY_VALUE          = 0,
-                    i_C        = ClockSignal(),
-                    i_LD       = (self._dly_sel.storage[i//8] & self._rdly_dq_rst.re) | self._rst.storage,
-                    i_LDPIPEEN = 0,
-                    i_CE       = self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
-                    i_INC      = 1,
-                    i_IDATAIN  = dq_i_nodelay,
-                    o_DATAOUT  = dq_i_delayed
-                ),
-                Instance("IOBUF",
-                    i_I   = dq_o_delayed if with_odelay else dq_o_nodelay,
-                    o_O   = dq_i_nodelay,
-                    i_T   = dq_t,
-                    io_IO = pads.dq[i]
-                )
-            ]
+            self.specials += Instance("IDELAYE2",
+                p_SIGNAL_PATTERN        = "DATA",
+                p_DELAY_SRC             = "IDATAIN",
+                p_CINVCTRL_SEL          = "FALSE",
+                p_HIGH_PERFORMANCE_MODE = "TRUE",
+                p_REFCLK_FREQUENCY      = iodelay_clk_freq/1e6,
+                p_PIPE_SEL              = "FALSE",
+                p_IDELAY_TYPE           = "VARIABLE",
+                p_IDELAY_VALUE          = 0,
+                i_C        = ClockSignal(),
+                i_LD       = (self._dly_sel.storage[i//8] & self._rdly_dq_rst.re) | self._rst.storage,
+                i_LDPIPEEN = 0,
+                i_CE       = self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
+                i_INC      = 1,
+                i_IDATAIN  = dq_i_nodelay,
+                o_DATAOUT  = dq_i_delayed
+            )
+            self.specials += Instance("IOBUF",
+                i_I   = dq_o_delayed if with_odelay else dq_o_nodelay,
+                o_O   = dq_i_nodelay,
+                i_T   = dq_t,
+                io_IO = pads.dq[i]
+            )
 
         # Read Control Path ------------------------------------------------------------------------
         # Creates a delay line of read commands coming from the DFI interface. The output is used to
