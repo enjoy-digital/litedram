@@ -82,8 +82,8 @@ class S7DDRPHY(Module, AutoCSR):
             self._wdly_dqs_rst  = CSR()
             self._wdly_dqs_inc  = CSR()
 
-        self._rdphase = CSRStorage(2, reset=rdphase)
-        self._wrphase = CSRStorage(2, reset=wrphase)
+        self._rdphase = CSRStorage(int(math.log2(nphases)), reset=rdphase)
+        self._wrphase = CSRStorage(int(math.log2(nphases)), reset=wrphase)
 
         # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
@@ -206,7 +206,7 @@ class S7DDRPHY(Module, AutoCSR):
         dqs_oe        = Signal()
         dqs_preamble  = Signal()
         dqs_postamble = Signal()
-        dqs_oe_delay  = TappedDelayLine(ntaps=2)
+        dqs_oe_delay  = TappedDelayLine(ntaps=2 if nphases == 4 else 1)
         dqs_pattern   = DQSPattern(
             preamble      = dqs_preamble,
             postamble     = dqs_postamble,
@@ -298,7 +298,7 @@ class S7DDRPHY(Module, AutoCSR):
 
         # DQ ---------------------------------------------------------------------------------------
         dq_oe = Signal()
-        dq_oe_delay = TappedDelayLine(ntaps=2)
+        dq_oe_delay = TappedDelayLine(ntaps=2 if nphases == 4 else 1)
         self.submodules += dq_oe_delay
         self.comb += dq_oe_delay.input.eq(dqs_preamble | dq_oe | dqs_postamble)
         for i in range(databits):
