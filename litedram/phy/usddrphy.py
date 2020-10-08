@@ -81,6 +81,9 @@ class USDDRPHY(Module, AutoCSR):
         self._wdly_dqs_rst        = CSR()
         self._wdly_dqs_inc        = CSR()
 
+        self._wdly_dq_bitslip_rst = CSR()
+        self._wdly_dq_bitslip     = CSR()
+
         self._rdphase = CSRStorage(2, reset=rdphase)
         self._wrphase = CSRStorage(2, reset=wrphase)
 
@@ -97,7 +100,7 @@ class USDDRPHY(Module, AutoCSR):
             cl            = cl,
             cwl           = cwl,
             read_latency  = cl_sys_latency + 5,
-            write_latency = cwl_sys_latency,
+            write_latency = cwl_sys_latency - 1,
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
         )
@@ -228,8 +231,8 @@ class USDDRPHY(Module, AutoCSR):
         dqs_postamble = Signal()
         dqs_oe_delay  = TappedDelayLine(ntaps=1)
         dqs_pattern   = DQSPattern(
-            preamble      = dqs_preamble,
-            postamble     = dqs_postamble,
+            #preamble      = dqs_preamble,  # FIXME
+            #postamble     = dqs_postamble, # FIXME
             wlevel_en     = self._wlevel_en.storage,
             wlevel_strobe = self._wlevel_strobe.re)
         self.submodules += dqs_oe_delay, dqs_pattern
@@ -247,6 +250,12 @@ class USDDRPHY(Module, AutoCSR):
                         dqs_taps_done.eq(1),
                         self._half_sys8x_taps.status.eq(dqs_taps)
                     )
+            dqs_bitslip    = BitSlip(8,
+                i      = dqs_pattern.o,
+                rst    = self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re,
+                slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
+                cycles = 1)
+            self.submodules += dqs_bitslip
             if x4_dimm_mode:
                 dqs_pads = ((pads.dqs_p[i*2], pads.dqs_n[i*2]), (pads.dqs_p[i*2 + 1], pads.dqs_n[i*2 + 1]))
             else:
@@ -267,7 +276,7 @@ class USDDRPHY(Module, AutoCSR):
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
                         i_T      = ~dqs_oe_delay.output,
-                        i_D      = dqs_pattern.o,
+                        i_D      = dqs_bitslip.o,
                         o_OQ     = dqs_nodelay,
                         o_T_OUT  = dqs_t,
 
@@ -303,6 +312,12 @@ class USDDRPHY(Module, AutoCSR):
         for i in range(databits//8):
             if hasattr(pads, "dm"):
                 dm_o_nodelay = Signal()
+                dm_o_bitslip = BitSlip(8,
+                    i      = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)]),
+                    rst    = self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re,
+                    slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
+                    cycles = 1)
+                self.submodules += dm_o_bitslip
                 self.specials += [
                     Instance("OSERDESE3",
                         p_SIM_DEVICE         = device,
@@ -314,7 +329,7 @@ class USDDRPHY(Module, AutoCSR):
                         i_RST    = ResetSignal() | self._rst.storage,
                         i_CLK    = ClockSignal("sys4x"),
                         i_CLKDIV = ClockSignal(),
-                        i_D      = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)]),
+                        i_D      = dm_o_bitslip.o,
                         o_OQ     = dm_o_nodelay,
                     ),
                     Instance("ODELAYE3",
@@ -348,6 +363,12 @@ class USDDRPHY(Module, AutoCSR):
             dq_i_nodelay = Signal()
             dq_i_delayed = Signal()
             dq_t         = Signal()
+            dq_o_bitslip = BitSlip(8,
+                i      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
+                rst    = self._dly_sel.storage[i//8] & self._wdly_dq_bitslip_rst.re,
+                slp    = self._dly_sel.storage[i//8] & self._wdly_dq_bitslip.re,
+                cycles = 1)
+            self.submodules += dq_o_bitslip
             self.specials += Instance("OSERDESE3",
                 p_SIM_DEVICE         = device,
                 p_DATA_WIDTH         = 8,
@@ -358,7 +379,7 @@ class USDDRPHY(Module, AutoCSR):
                 i_RST    = ResetSignal() | self._rst.storage,
                 i_CLK    = ClockSignal("sys4x"),
                 i_CLKDIV = ClockSignal(),
-                i_D      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
+                i_D      = dq_o_bitslip.o,
                 i_T      = ~dq_oe_delay.output,
                 o_OQ     = dq_o_nodelay,
                 o_T_OUT  = dq_t,
