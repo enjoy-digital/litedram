@@ -128,7 +128,7 @@ class BitSlip(Module):
 
         value = Signal(max=cycles*dw, reset=cycles*dw-1)
         self.sync += If(self.slp, value.eq(value + 1))
-        self.sync += If(self.rst, value.eq(0))
+        self.sync += If(self.rst, value.eq(value.reset))
 
         r = Signal((cycles+1)*dw, reset_less=True)
         self.sync += r.eq(Cat(r[dw:], self.i))
