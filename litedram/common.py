@@ -122,6 +122,7 @@ class BitSlip(Module):
         self.o   = Signal(dw) if o is None else o
         self.rst = Signal()   if rst is None else rst
         self.slp = Signal()   if slp is None else slp
+        assert cycles >= 1
 
         # # #
 
