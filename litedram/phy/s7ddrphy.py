@@ -98,7 +98,7 @@ class S7DDRPHY(Module, AutoCSR):
             cl            = cl,
             cwl           = cwl,
             read_latency  = cl_sys_latency + 6,
-            write_latency = cwl_sys_latency,
+            write_latency = cwl_sys_latency - 1,
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
         )
@@ -264,6 +264,9 @@ class S7DDRPHY(Module, AutoCSR):
         # DM ---------------------------------------------------------------------------------------
         for i in range(databits//8):
             dm_o_nodelay = Signal()
+            _dm = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)])
+            dm = Signal(8)
+            self.sync += dm.eq(_dm)
             self.specials += Instance("OSERDESE2",
                 p_SERDES_MODE    = "MASTER",
                 p_DATA_WIDTH     = 2*nphases,
@@ -273,7 +276,7 @@ class S7DDRPHY(Module, AutoCSR):
                 i_RST    = ResetSignal() | self._rst.storage,
                 i_CLK    = ClockSignal(ddr_clk),
                 i_CLKDIV = ClockSignal(),
-                **{f"i_D{n+1}": dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)},
+                **{f"i_D{n+1}": dm[n] for n in range(8)},
                 i_OCE    = 1,
                 o_OQ     = dm_o_nodelay if with_odelay else pads.dm[i],
             )
@@ -308,6 +311,9 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_delayed = Signal()
             dq_t         = Signal()
             dq_i_data    = Signal(8)
+            _dq = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)])
+            dq = Signal(8)
+            self.sync += dq.eq(_dq)
             self.specials += Instance("OSERDESE2",
                 p_SERDES_MODE    = "MASTER",
                 p_DATA_WIDTH     = 2*nphases,
@@ -317,7 +323,7 @@ class S7DDRPHY(Module, AutoCSR):
                 i_RST    = ResetSignal() | self._rst.storage,
                 i_CLK    = ClockSignal(ddr_clk),
                 i_CLKDIV = ClockSignal(),
-                **{f"i_D{n+1}": dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)},
+                **{f"i_D{n+1}": dq[n] for n in range(8)},
                 i_TCE    = 1,
                 i_T1     = ~dq_oe_delay.output,
                 o_TQ     = dq_t,
