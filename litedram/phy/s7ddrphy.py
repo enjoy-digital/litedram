@@ -82,6 +82,9 @@ class S7DDRPHY(Module, AutoCSR):
             self._wdly_dqs_rst  = CSR()
             self._wdly_dqs_inc  = CSR()
 
+        self._wdly_dq_bitslip_rst = CSR()
+        self._wdly_dq_bitslip     = CSR()
+
         self._rdphase = CSRStorage(int(math.log2(nphases)), reset=rdphase)
         self._wrphase = CSRStorage(int(math.log2(nphases)), reset=wrphase)
 
@@ -208,18 +211,23 @@ class S7DDRPHY(Module, AutoCSR):
         dqs_postamble = Signal()
         dqs_oe_delay  = TappedDelayLine(ntaps=2 if nphases == 4 else 1)
         dqs_pattern   = DQSPattern(
-            preamble      = dqs_preamble,
-            postamble     = dqs_postamble,
+            #preamble      = dqs_preamble,  # FIXME
+            #postamble     = dqs_postamble, # FIXME
             wlevel_en     = self._wlevel_en.storage,
             wlevel_strobe = self._wlevel_strobe.re,
-            register      = False) # FIXME: fix not with_odelay case.
-        dqs_bitslip   = BitSlip(8, i=dqs_pattern.o, cycles=1)
-        self.submodules += dqs_oe_delay, dqs_pattern, dqs_bitslip
+            register      = not with_odelay)
+        self.submodules += dqs_oe_delay, dqs_pattern
         self.comb += dqs_oe_delay.input.eq(dqs_preamble | dqs_oe | dqs_postamble)
         for i in range(databits//8):
             dqs_o_no_delay = Signal()
             dqs_o_delayed  = Signal()
             dqs_t          = Signal()
+            dqs_bitslip    = BitSlip(8,
+                i      = dqs_pattern.o,
+                rst    = self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re,
+                slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
+                cycles = 1)
+            self.submodules += dqs_bitslip
             self.specials += Instance("OSERDESE2",
                 p_SERDES_MODE    = "MASTER",
                 p_DATA_WIDTH     = 2*nphases,
@@ -267,6 +275,8 @@ class S7DDRPHY(Module, AutoCSR):
             dm_o_nodelay = Signal()
             dm_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)]),
+                rst    = self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re,
+                slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
                 cycles = 1)
             self.submodules += dm_o_bitslip
             self.specials += Instance("OSERDESE2",
@@ -315,6 +325,8 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_data    = Signal(8)
             dq_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
+                rst    = self._dly_sel.storage[i//8] & self._wdly_dq_bitslip_rst.re,
+                slp    = self._dly_sel.storage[i//8] & self._wdly_dq_bitslip.re,
                 cycles = 1)
             self.submodules += dq_o_bitslip
             self.specials += Instance("OSERDESE2",
