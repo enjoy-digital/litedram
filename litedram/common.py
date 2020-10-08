@@ -126,7 +126,7 @@ class BitSlip(Module):
 
         # # #
 
-        value = Signal(max=cycles*dw)
+        value = Signal(max=cycles*dw, reset=cycles*dw-1)
         self.sync += If(self.slp, value.eq(value + 1))
         self.sync += If(self.rst, value.eq(0))
 
@@ -134,7 +134,7 @@ class BitSlip(Module):
         self.sync += r.eq(Cat(r[dw:], self.i))
         cases = {}
         for i in range(cycles*dw):
-            cases[i] = self.o.eq(r[i:dw+i])
+            cases[i] = self.o.eq(r[i+1:dw+i+1])
         self.comb += Case(value, cases)
 
 # TappedDelayLine ----------------------------------------------------------------------------------
