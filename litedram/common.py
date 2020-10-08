@@ -117,11 +117,11 @@ class PHYPadsCombiner:
 # BitSlip ------------------------------------------------------------------------------------------
 
 class BitSlip(Module):
-    def __init__(self, dw, rst=None, slp=None, cycles=1):
-        self.i = Signal(dw)
-        self.o = Signal(dw)
-        self.rst = Signal() if rst is None else rst
-        self.slp = Signal() if slp is None else slp
+    def __init__(self, dw, i=None, o=None, rst=None, slp=None, cycles=1):
+        self.i   = Signal(dw) if i is None else i
+        self.o   = Signal(dw) if o is None else o
+        self.rst = Signal()   if rst is None else rst
+        self.slp = Signal()   if slp is None else slp
 
         # # #
 
