@@ -98,7 +98,7 @@ class S7DDRPHY(Module, AutoCSR):
             cl            = cl,
             cwl           = cwl,
             read_latency  = cl_sys_latency + 6,
-            write_latency = cwl_sys_latency - 2,
+            write_latency = cwl_sys_latency - 1,
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
         )
