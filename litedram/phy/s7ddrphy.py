@@ -212,8 +212,9 @@ class S7DDRPHY(Module, AutoCSR):
             postamble     = dqs_postamble,
             wlevel_en     = self._wlevel_en.storage,
             wlevel_strobe = self._wlevel_strobe.re,
-            register      = not with_odelay)
-        self.submodules += dqs_oe_delay, dqs_pattern
+            register      = False) # FIXME: fix not with_odelay case.
+        dqs_bitslip   = BitSlip(8, i=dqs_pattern.o, cycles=1)
+        self.submodules += dqs_oe_delay, dqs_pattern, dqs_bitslip
         self.comb += dqs_oe_delay.input.eq(dqs_preamble | dqs_oe | dqs_postamble)
         for i in range(databits//8):
             dqs_o_no_delay = Signal()
@@ -228,7 +229,7 @@ class S7DDRPHY(Module, AutoCSR):
                 i_RST    = ResetSignal() | self._rst.storage,
                 i_CLK    = ClockSignal(ddr_clk) if with_odelay else ClockSignal(ddr_clk+"_dqs"),
                 i_CLKDIV = ClockSignal(),
-                **{f"i_D{n+1}": dqs_pattern.o[n] for n in range(8)},
+                **{f"i_D{n+1}": dqs_bitslip.o[n] for n in range(8)},
                 i_OCE    = 1,
                 o_OFB    = dqs_o_no_delay if with_odelay else Signal(),
                 o_OQ     = Signal() if with_odelay else dqs_o_no_delay,
@@ -264,7 +265,7 @@ class S7DDRPHY(Module, AutoCSR):
         # DM ---------------------------------------------------------------------------------------
         for i in range(databits//8):
             dm_o_nodelay = Signal()
-            dm_o_bitslip =  BitSlip(8,
+            dm_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)]),
                 cycles = 1)
             self.submodules += dm_o_bitslip
@@ -312,7 +313,7 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_delayed = Signal()
             dq_t         = Signal()
             dq_i_data    = Signal(8)
-            dq_o_bitslip =  BitSlip(8,
+            dq_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
                 cycles = 1)
             self.submodules += dq_o_bitslip
