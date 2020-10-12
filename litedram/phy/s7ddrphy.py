@@ -224,7 +224,7 @@ class S7DDRPHY(Module, AutoCSR):
             dqs_t          = Signal()
             dqs_bitslip    = BitSlip(8,
                 i      = dqs_pattern.o,
-                rst    = self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re,
+                rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
                 slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
                 cycles = 1)
             self.submodules += dqs_bitslip
@@ -275,7 +275,7 @@ class S7DDRPHY(Module, AutoCSR):
             dm_o_nodelay = Signal()
             dm_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)]),
-                rst    = self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re,
+                rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
                 slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
                 cycles = 1)
             self.submodules += dm_o_bitslip
@@ -325,7 +325,7 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_data    = Signal(8)
             dq_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
-                rst    = self._dly_sel.storage[i//8] & self._wdly_dq_bitslip_rst.re,
+                rst    = (self._dly_sel.storage[i//8] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
                 slp    = self._dly_sel.storage[i//8] & self._wdly_dq_bitslip.re,
                 cycles = 1)
             self.submodules += dq_o_bitslip
@@ -346,7 +346,7 @@ class S7DDRPHY(Module, AutoCSR):
                 o_OQ     = dq_o_nodelay,
             )
             dq_i_bitslip = BitSlip(8,
-                rst    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re,
+                rst    = (self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re) | self._rst.storage,
                 slp    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
                 cycles = 1)
             self.submodules += dq_i_bitslip
