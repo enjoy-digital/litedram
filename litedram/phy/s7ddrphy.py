@@ -29,7 +29,7 @@ class S7DDRPHY(Module, AutoCSR):
         nphases          = 4,
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
-        cmd_latency      = 0,
+        cmd_latency      = 1,
         cmd_delay        = None):
         assert not (memtype == "DDR3" and nphases == 2)
         phytype     = self.__class__.__name__
@@ -448,17 +448,17 @@ class S7DDRPHY(Module, AutoCSR):
 # Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 
 class V7DDRPHY(S7DDRPHY):
-    def __init__(self, pads, cmd_latency=1, **kwargs):
+    def __init__(self, pads, **kwargs):
         S7DDRPHY.__init__(self, pads, with_odelay=True, **kwargs)
 
 # Xilinx Kintex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 
 class K7DDRPHY(S7DDRPHY):
-    def __init__(self, pads, cmd_latency=1, **kwargs):
-        S7DDRPHY.__init__(self, pads, cmd_latency=cmd_latency, with_odelay=True, **kwargs)
+    def __init__(self, pads, **kwargs):
+        S7DDRPHY.__init__(self, pads, with_odelay=True, **kwargs)
 
 # Xilinx Artix7 (S7DDRPHY without odelay, sys2/4x_dqs generated in CRG with 90° phase vs sys2/4x) --
 
 class A7DDRPHY(S7DDRPHY):
-    def __init__(self, pads, cmd_latency=0, **kwargs):
-        S7DDRPHY.__init__(self, pads, cmd_latency=0, with_odelay=False, **kwargs)
+    def __init__(self, pads, **kwargs):
+        S7DDRPHY.__init__(self, pads, with_odelay=False, cmd_latency=0, **kwargs)

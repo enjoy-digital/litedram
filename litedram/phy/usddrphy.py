@@ -486,5 +486,5 @@ class USDDRPHY(Module, AutoCSR):
 # Xilinx Ultrascale Plus DDR3/DDR4 PHY -------------------------------------------------------------
 
 class USPDDRPHY(USDDRPHY):
-    def __init__(self, pads, cmd_latency=1, **kwargs):
-        USDDRPHY.__init__(self, pads, cmd_latency=cmd_latency, **kwargs)
+    def __init__(self, pads, **kwargs):
+        USDDRPHY.__init__(self, pads, **kwargs)
