@@ -117,23 +117,24 @@ class PHYPadsCombiner:
 # BitSlip ------------------------------------------------------------------------------------------
 
 class BitSlip(Module):
-    def __init__(self, dw, rst=None, slp=None, cycles=1):
-        self.i = Signal(dw)
-        self.o = Signal(dw)
-        self.rst = Signal() if rst is None else rst
-        self.slp = Signal() if slp is None else slp
+    def __init__(self, dw, i=None, o=None, rst=None, slp=None, cycles=1):
+        self.i   = Signal(dw) if i is None else i
+        self.o   = Signal(dw) if o is None else o
+        self.rst = Signal()   if rst is None else rst
+        self.slp = Signal()   if slp is None else slp
+        assert cycles >= 1
 
         # # #
 
-        value = Signal(max=cycles*dw)
+        value = Signal(max=cycles*dw, reset=cycles*dw-1)
         self.sync += If(self.slp, value.eq(value + 1))
-        self.sync += If(self.rst, value.eq(0))
+        self.sync += If(self.rst, value.eq(value.reset))
 
         r = Signal((cycles+1)*dw, reset_less=True)
         self.sync += r.eq(Cat(r[dw:], self.i))
         cases = {}
         for i in range(cycles*dw):
-            cases[i] = self.o.eq(r[i:dw+i])
+            cases[i] = self.o.eq(r[i+1:dw+i+1])
         self.comb += Case(value, cases)
 
 # TappedDelayLine ----------------------------------------------------------------------------------

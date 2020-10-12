@@ -97,6 +97,15 @@ class BenchSoC(SoCCore):
         self.add_csr("ethphy")
         self.add_etherbone(phy=self.ethphy)
 
+        # Analyzer ---------------------------------------------------------------------------------
+        from litescope import LiteScopeAnalyzer
+        analyzer_signals = [self.ddrphy.dfi]
+        self.submodules.analyzer = LiteScopeAnalyzer(analyzer_signals,
+            depth        = 512,
+            clock_domain = "sys",
+            csr_csv      = "analyzer.csv")
+        self.add_csr("analyzer")
+
         # Leds -------------------------------------------------------------------------------------
         from litex.soc.cores.led import LedChaser
         self.submodules.leds = LedChaser(
