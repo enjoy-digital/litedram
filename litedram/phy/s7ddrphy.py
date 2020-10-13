@@ -460,5 +460,5 @@ class K7DDRPHY(S7DDRPHY):
 # Xilinx Artix7 (S7DDRPHY without odelay, sys2/4x_dqs generated in CRG with 90° phase vs sys2/4x) --
 
 class A7DDRPHY(S7DDRPHY):
-    def __init__(self, pads, **kwargs):
-        S7DDRPHY.__init__(self, pads, with_odelay=False, cmd_latency=0, **kwargs)
+    def __init__(self, pads, cmd_latency=0, **kwargs):
+        S7DDRPHY.__init__(self, pads, with_odelay=False, cmd_latency=cmd_latency, **kwargs)
