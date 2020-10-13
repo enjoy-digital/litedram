@@ -398,7 +398,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
         def get_fine_speed(tck):
             # JESD82-31A page 83
             freq = 2/tck
-            fine_speed = (freq - 1240e6) // 20e6
+            fine_speed = int((freq - 1240e6) // 20e6)
             fine_speed = max(fine_speed, 0)
             fine_speed = min(fine_speed, 0b1100001)
             return fine_speed
