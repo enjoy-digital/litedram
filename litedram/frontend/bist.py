@@ -337,7 +337,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
         core = _LiteDRAMBISTGenerator(dram_port)
         core = ClockDomainsRenamer(clock_domain)(core)
-        self.submodules += core
+        self.submodules.core = core
 
         if clock_domain != "sys":
             control_layout = [
@@ -683,7 +683,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
         core = _LiteDRAMBISTChecker(dram_port)
         core = ClockDomainsRenamer(clock_domain)(core)
-        self.submodules += core
+        self.submodules.core = core
 
         if clock_domain != "sys":
             control_layout = [
