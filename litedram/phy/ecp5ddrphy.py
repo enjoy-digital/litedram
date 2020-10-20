@@ -350,7 +350,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                 self.specials += [
                     Instance("DELAYF",
                         p_DEL_MODE  = "DQS_ALIGNED_X2",
-                        i_LOADN     = 1,
+                        i_LOADN     = 0,
                         i_MOVE      = 0,
                         i_DIRECTION = 0,
                         i_A         = dq_i,
