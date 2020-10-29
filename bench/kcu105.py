@@ -14,10 +14,10 @@ from migen import *
 from litex.boards.platforms import kcu105
 
 from litex.soc.cores.clock import *
+from litex.soc.interconnect.csr import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.soc_sdram import *
 from litex.soc.integration.builder import *
-from litex.soc.cores.led import LedChaser
 
 from litedram.modules import EDY4016A
 from litedram.phy import usddrphy
@@ -71,12 +71,12 @@ class _CRG(Module, AutoCSR):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, uart="crossover", sys_clk_freq=int(125e6)):
+    def __init__(self, uart="crossover", sys_clk_freq=int(125e6), with_bist=False):
         platform = kcu105.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
-        SoCCore.__init__(self, platform, sys_clk_freq,
-            integrated_rom_size = 0x8000,
+        SoCCore.__init__(self, platform, clk_freq=sys_clk_freq,
+            integrated_rom_size = 0x10000,
             integrated_rom_mode = "rw",
             csr_data_width      = 32,
             uart_name           = uart)
@@ -98,6 +98,13 @@ class BenchSoC(SoCCore):
             size   = 0x40000000,
         )
 
+        # BIST -------------------------------------------------------------------------------------
+        from litedram.frontend.bist import  LiteDRAMBISTGenerator, LiteDRAMBISTChecker
+        self.submodules.sdram_generator = LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
+        self.add_csr("sdram_generator")
+        self.submodules.sdram_checker = LiteDRAMBISTChecker(self.sdram.crossbar.get_port())
+        self.add_csr("sdram_checker")
+
         # UARTBone ---------------------------------------------------------------------------------
         if uart != "serial":
             self.add_uartbone(name="serial", clk_freq=100e6, baudrate=115200, cd="uart")
@@ -112,6 +119,7 @@ class BenchSoC(SoCCore):
         self.add_etherbone(phy=self.ethphy)
 
         # Leds -------------------------------------------------------------------------------------
+        from litex.soc.cores.led import LedChaser
         self.submodules.leds = LedChaser(
             pads         = platform.request_all("user_led"),
             sys_clk_freq = sys_clk_freq)
@@ -123,13 +131,14 @@ def main():
     parser = argparse.ArgumentParser(description="LiteDRAM Bench on KCU105")
     parser.add_argument("--uart",        default="crossover", help="Selected UART: crossover (default) or serial")
     parser.add_argument("--build",       action="store_true", help="Build bitstream")
+    parser.add_argument("--with-bist",   action="store_true", help="Add BIST Generator/Checker")
     parser.add_argument("--load",        action="store_true", help="Load bitstream")
     parser.add_argument("--load-bios",   action="store_true", help="Load BIOS")
     parser.add_argument("--set-sys-clk", default=None,        help="Set sys_clk")
     parser.add_argument("--test",        action="store_true", help="Run Full Bench")
     args = parser.parse_args()
 
-    soc     = BenchSoC(uart=args.uart)
+    soc     = BenchSoC(uart=args.uart, with_bist=args.with_bist)
     builder = Builder(soc, csr_csv="csr.csv")
     builder.build(run=args.build)
 

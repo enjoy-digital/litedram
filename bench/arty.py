@@ -61,12 +61,12 @@ class _CRG(Module, AutoCSR):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, uart="crossover", sys_clk_freq=int(125e6)):
+    def __init__(self, uart="crossover", sys_clk_freq=int(125e6), with_bist=False):
         platform = arty.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, clk_freq=sys_clk_freq,
-            integrated_rom_size = 0x8000,
+            integrated_rom_size = 0x10000,
             integrated_rom_mode = "rw",
             csr_data_width      = 32,
             uart_name           = uart)
@@ -86,6 +86,13 @@ class BenchSoC(SoCCore):
             module = MT41K128M16(sys_clk_freq, "1:4"),
             origin = self.mem_map["main_ram"]
         )
+
+        # BIST -------------------------------------------------------------------------------------
+        from litedram.frontend.bist import  LiteDRAMBISTGenerator, LiteDRAMBISTChecker
+        self.submodules.sdram_generator = LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
+        self.add_csr("sdram_generator")
+        self.submodules.sdram_checker = LiteDRAMBISTChecker(self.sdram.crossbar.get_port())
+        self.add_csr("sdram_checker")
 
         # UARTBone ---------------------------------------------------------------------------------
         if uart != "serial":
@@ -112,13 +119,14 @@ def main():
     parser = argparse.ArgumentParser(description="LiteDRAM Bench on Arty A7")
     parser.add_argument("--uart",        default="crossover", help="Selected UART: crossover (default) or serial")
     parser.add_argument("--build",       action="store_true", help="Build bitstream")
+    parser.add_argument("--with-bist",   action="store_true", help="Add BIST Generator/Checker")
     parser.add_argument("--load",        action="store_true", help="Load bitstream")
     parser.add_argument("--load-bios",   action="store_true", help="Load BIOS")
     parser.add_argument("--set-sys-clk", default=None,        help="Set sys_clk")
     parser.add_argument("--test",        action="store_true", help="Run Full Bench")
     args = parser.parse_args()
 
-    soc     = BenchSoC(uart=args.uart)
+    soc     = BenchSoC(uart=args.uart, with_bist=args.with_bist)
     builder = Builder(soc, csr_csv="csr.csv")
     builder.build(run=args.build)
 
