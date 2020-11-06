@@ -88,20 +88,14 @@ class BenchSoC(SoCCore):
             iodelay_clk_freq = 500e6)
         self.add_csr("ddrphy")
         self.add_sdram("sdram",
-            phy    = self.ddrphy,
-            module = MT40A512M8(sys_clk_freq, "1:4"),
-            origin = self.mem_map["main_ram"],
-            size   = 0x40000000,
+            phy       = self.ddrphy,
+            module    = MT40A512M8(sys_clk_freq, "1:4"),
+            origin    = self.mem_map["main_ram"],
+            size      = 0x40000000,
+            with_bist = with_bist,
         )
         # Workadound for Vivado 2018.2 DRC, can be ignored and probably fixed on newer Vivado versions.
         platform.add_platform_command("set_property SEVERITY {{Warning}} [get_drc_checks PDCN-2736]")
-
-        # BIST -------------------------------------------------------------------------------------
-        from litedram.frontend.bist import  LiteDRAMBISTGenerator, LiteDRAMBISTChecker
-        self.submodules.sdram_generator = LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
-        self.add_csr("sdram_generator")
-        self.submodules.sdram_checker = LiteDRAMBISTChecker(self.sdram.crossbar.get_port())
-        self.add_csr("sdram_checker")
 
         # UARTBone ---------------------------------------------------------------------------------
         if uart != "serial":

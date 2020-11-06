@@ -92,18 +92,12 @@ class BenchSoC(SoCCore):
             iodelay_clk_freq = 200e6)
         self.add_csr("ddrphy")
         self.add_sdram("sdram",
-            phy    = self.ddrphy,
-            module = EDY4016A(sys_clk_freq, "1:4"),
-            origin = self.mem_map["main_ram"],
-            size   = 0x40000000,
+            phy       = self.ddrphy,
+            module    = EDY4016A(sys_clk_freq, "1:4"),
+            origin    = self.mem_map["main_ram"],
+            size      = 0x40000000,
+            with_bist = with_bist,
         )
-
-        # BIST -------------------------------------------------------------------------------------
-        from litedram.frontend.bist import  LiteDRAMBISTGenerator, LiteDRAMBISTChecker
-        self.submodules.sdram_generator = LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
-        self.add_csr("sdram_generator")
-        self.submodules.sdram_checker = LiteDRAMBISTChecker(self.sdram.crossbar.get_port())
-        self.add_csr("sdram_checker")
 
         # UARTBone ---------------------------------------------------------------------------------
         if uart != "serial":

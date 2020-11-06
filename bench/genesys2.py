@@ -80,17 +80,11 @@ class BenchSoC(SoCCore):
             sys_clk_freq = sys_clk_freq)
         self.add_csr("ddrphy")
         self.add_sdram("sdram",
-            phy    = self.ddrphy,
-            module = MT41J256M16(sys_clk_freq, "1:4"),
-            origin = self.mem_map["main_ram"]
+            phy       = self.ddrphy,
+            module    = MT41J256M16(sys_clk_freq, "1:4"),
+            origin    = self.mem_map["main_ram"],
+            with_bist = with_bist,
         )
-
-        # BIST -------------------------------------------------------------------------------------
-        from litedram.frontend.bist import  LiteDRAMBISTGenerator, LiteDRAMBISTChecker
-        self.submodules.sdram_generator = LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
-        self.add_csr("sdram_generator")
-        self.submodules.sdram_checker = LiteDRAMBISTChecker(self.sdram.crossbar.get_port())
-        self.add_csr("sdram_checker")
 
         # UARTBone ---------------------------------------------------------------------------------
         if uart != "serial":
