@@ -123,7 +123,7 @@ def main():
     args = parser.parse_args()
 
     soc     = BenchSoC(uart=args.uart, channel=int(args.channel, 0), with_bist=args.with_bist)
-    builder = Builder(soc, csr_csv="csr.csv")
+    builder = Builder(soc, output_dir="build/xcu1525_ch{}".format(args.channel), csr_csv="csr.csv")
     builder.build(run=args.build)
 
     if args.load:
