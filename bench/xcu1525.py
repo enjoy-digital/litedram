@@ -49,11 +49,17 @@ class _CRG(Module, AutoCSR):
         pll.create_clkout(self.cd_pll4x,  sys_clk_freq*4, buf=None, with_reset=False)
 
         self.specials += [
-            Instance("BUFGCE_DIV", name="main_bufgce_div",
-                p_BUFGCE_DIVIDE=4,
-                i_CE=1, i_I=self.cd_pll4x.clk, o_O=self.cd_sys.clk),
-            Instance("BUFGCE", name="main_bufgce",
-                i_CE=1, i_I=self.cd_pll4x.clk, o_O=self.cd_sys4x.clk),
+            Instance("BUFGCE_DIV",
+                p_BUFGCE_DIVIDE = 4,
+                i_CE = 1,
+                i_I  = self.cd_pll4x.clk,
+                o_O  = self.cd_sys.clk,
+            ),
+            Instance("BUFGCE",
+                i_CE = 1,
+                i_I  = self.cd_pll4x.clk,
+                o_O  = self.cd_sys4x.clk,
+            ),
             AsyncResetSynchronizer(self.cd_idelay, ~pll.locked),
         ]
 
@@ -94,7 +100,7 @@ class BenchSoC(SoCCore):
             size      = 0x40000000,
             with_bist = with_bist,
         )
-        # Workadound for Vivado 2018.2 DRC, can be ignored and probably fixed on newer Vivado versions.
+        # Workaround for Vivado 2018.2 DRC, can be ignored and probably fixed on newer Vivado versions.
         platform.add_platform_command("set_property SEVERITY {{Warning}} [get_drc_checks PDCN-2736]")
 
         # UARTBone ---------------------------------------------------------------------------------
