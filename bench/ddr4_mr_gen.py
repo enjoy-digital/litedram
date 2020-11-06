@@ -10,7 +10,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description="DDR4 Mode Register settings generator for LiteDRAM.")
 parser.add_argument("--list",        action="store_true", help="List supported DDR4 settings.")
-parser.add_argument("--cl",          default="11",        help="CAS Latency.")
+parser.add_argument("--cl",          default="9",         help="CAS Latency.")
 parser.add_argument("--cwl",         default="9",         help="CAS Write Latency.")
 parser.add_argument("--rtt_nom",     default="40ohm",     help="RTT_NOM value.")
 parser.add_argument("--rtt_wr",      default="120ohm",    help="RTT_WR value.")
