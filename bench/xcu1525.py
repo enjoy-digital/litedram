@@ -26,7 +26,7 @@ from litedram.phy import usddrphy
 # CRG ----------------------------------------------------------------------------------------------
 
 class _CRG(Module, AutoCSR):
-    def __init__(self, platform, sys_clk_freq, ddram_channel):
+    def __init__(self, platform, sys_clk_freq, channel):
         self.clock_domains.cd_sys_pll = ClockDomain()
         self.clock_domains.cd_sys     = ClockDomain()
         self.clock_domains.cd_sys4x   = ClockDomain(reset_less=True)
@@ -37,7 +37,7 @@ class _CRG(Module, AutoCSR):
         # # #
 
         self.submodules.main_pll = main_pll = USPMMCM(speedgrade=-2)
-        main_pll.register_clkin(platform.request("clk300", ddram_channel), 300e6)
+        main_pll.register_clkin(platform.request("clk300", channel), 300e6)
         main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
         main_pll.create_clkout(self.cd_idelay, 500e6, with_reset=False)
         main_pll.create_clkout(self.cd_uart,   100e6)
@@ -67,7 +67,7 @@ class _CRG(Module, AutoCSR):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, uart="crossover", sys_clk_freq=int(125e6), ddram_channel=0, with_bist=False):
+    def __init__(self, uart="crossover", sys_clk_freq=int(125e6), channel=0, with_bist=False):
         platform = xcu1525.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -78,11 +78,11 @@ class BenchSoC(SoCCore):
             uart_name           = uart)
 
         # CRG --------------------------------------------------------------------------------------
-        self.submodules.crg = _CRG(platform, sys_clk_freq, ddram_channel)
+        self.submodules.crg = _CRG(platform, sys_clk_freq, channel)
         self.add_csr("crg")
 
         # DDR4 SDRAM -------------------------------------------------------------------------------
-        self.submodules.ddrphy = usddrphy.USPDDRPHY(platform.request("ddram", ddram_channel),
+        self.submodules.ddrphy = usddrphy.USPDDRPHY(platform.request("ddram", channel),
             memtype          = "DDR4",
             sys_clk_freq     = sys_clk_freq,
             iodelay_clk_freq = 500e6)
@@ -114,7 +114,7 @@ def main():
     parser = argparse.ArgumentParser(description="LiteDRAM Bench on XCU1525")
     parser.add_argument("--uart",          default="crossover", help="Selected UART: crossover (default) or serial")
     parser.add_argument("--build",         action="store_true", help="Build bitstream")
-    parser.add_argument("--ddram-channel", default="0",         help="DDRAM channel")
+    parser.add_argument("--channel",       default="0",         help="DDRAM channel 0 (default), 1, 2 or 3")
     parser.add_argument("--with-bist",     action="store_true", help="Add BIST Generator/Checker")
     parser.add_argument("--load",          action="store_true", help="Load bitstream")
     parser.add_argument("--load-bios",     action="store_true", help="Load BIOS")
@@ -122,7 +122,7 @@ def main():
     parser.add_argument("--test",          action="store_true", help="Run Full Bench")
     args = parser.parse_args()
 
-    soc     = BenchSoC(uart=args.uart, ddram_channel=int(args.ddram_channel, 0), with_bist=args.with_bist)
+    soc     = BenchSoC(uart=args.uart, channel=int(args.channel, 0), with_bist=args.with_bist)
     builder = Builder(soc, csr_csv="csr.csv")
     builder.build(run=args.build)
 
