@@ -243,21 +243,6 @@ def data_layout(data_width):
         ("rdata",       data_width, DIR_S_TO_M)
     ]
 
-def cmd_description(address_width):
-    return [
-        ("we",   1),
-        ("addr", address_width)
-    ]
-
-def wdata_description(data_width):
-    return [
-        ("data", data_width),
-        ("we",   data_width//8)
-    ]
-
-def rdata_description(data_width):
-    return [("data", data_width)]
-
 def cmd_request_layout(a, ba):
     return [
         ("a",     a),
@@ -290,6 +275,21 @@ class LiteDRAMInterface(Record):
         Record.__init__(self, layout)
 
 # Ports --------------------------------------------------------------------------------------------
+
+def cmd_description(address_width):
+    return [
+        ("we",               1), # Write (1) or Read (0).
+        ("addr", address_width)  # Address (in Controller's words).
+    ]
+
+def wdata_description(data_width):
+    return [
+        ("data",    data_width), # Write Data.
+        ("we",   data_width//8), # Write Data byte enable.
+    ]
+
+def rdata_description(data_width):
+    return [("data", data_width)] # Read Data.
 
 class LiteDRAMNativePort(Settings):
     def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0):
