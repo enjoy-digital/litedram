@@ -98,7 +98,7 @@ static void init_sequence(void)
 	command_p0(DFII_COMMAND_RAS|DFII_COMMAND_CAS|DFII_COMMAND_WE|DFII_COMMAND_CS);
 
 	/* Load Mode Register 5 */
-	sdram_dfii_pi0_address_write(0x0);
+	sdram_dfii_pi0_address_write(0x400);
 	sdram_dfii_pi0_baddress_write(5);
 	command_p0(DFII_COMMAND_RAS|DFII_COMMAND_CAS|DFII_COMMAND_WE|DFII_COMMAND_CS);
 

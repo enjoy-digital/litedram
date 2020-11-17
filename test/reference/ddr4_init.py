@@ -17,7 +17,7 @@ init_sequence = [
     ("Bring CKE high", 0, 0, dfii_control_cke|dfii_control_odt|dfii_control_reset_n, 10000),
     ("Load Mode Register 3", 0, 3, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 0),
     ("Load Mode Register 6", 0, 6, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 0),
-    ("Load Mode Register 5", 0, 5, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 0),
+    ("Load Mode Register 5", 1024, 5, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 0),
     ("Load Mode Register 4", 0, 4, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 0),
     ("Load Mode Register 2, CWL=9", 512, 2, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 0),
     ("Load Mode Register 1", 769, 1, dfii_command_ras|dfii_command_cas|dfii_command_we|dfii_command_cs, 0),
