@@ -311,9 +311,12 @@ class USDDRPHY(Module, AutoCSR):
         # DM ---------------------------------------------------------------------------------------
         for i in range(databits//8):
             if hasattr(pads, "dm"):
+                dm_i = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)])
+                if memtype == "DDR4":  # Inverted polarity for DDR4
+                    dm_i = ~dm_i
                 dm_o_nodelay = Signal()
                 dm_o_bitslip = BitSlip(8,
-                    i      = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)]),
+                    i      = dm_i,
                     rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
                     slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
                     cycles = 1)

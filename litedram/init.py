@@ -355,6 +355,8 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     rtt_wr  = "120ohm"
     ron     = "34ohm"
     tdqs    = 0
+    dm      = 1
+    assert not (dm and tdqs)
 
     # override electrical settings if specified
     if hasattr(phy_settings, "rtt_nom"):
@@ -372,7 +374,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
     mr3 = format_mr3(timing_settings.fine_refresh_mode)
     mr4 = 0
-    mr5 = 0
+    mr5 = (dm << 10)
     mr6 = format_mr6(4) # FIXME: tCCD
 
     rdimm_init = []
