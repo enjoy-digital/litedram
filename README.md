@@ -9,7 +9,7 @@
                                         powered by Migen & LiteX
 ```
 
-[![](https://travis-ci.com/enjoy-digital/litedram.svg?branch=master)](https://travis-ci.com/enjoy-digital/litedram) ![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)
+[![](https://github.com/enjoy-digital/litedram/workflows/ci/badge.svg)](https://github.com/enjoy-digital/litedram/actions) ![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)
 
 
 [> Intro
