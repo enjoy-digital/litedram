@@ -28,7 +28,7 @@ class USDDRPHY(Module, AutoCSR):
         memtype          = "DDR3",
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
-        cmd_latency      = 1,
+        cmd_latency      = 0,
         cmd_delay        = None,
         is_rdimm         = False):
         phytype     = self.__class__.__name__
