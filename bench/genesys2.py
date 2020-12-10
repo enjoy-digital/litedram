@@ -127,7 +127,7 @@ def main():
     parser.add_argument("--with-analyzer", action="store_true", help="Add Analyzer")
     parser.add_argument("--load",          action="store_true", help="Load bitstream")
     parser.add_argument("--load-bios",     action="store_true", help="Load BIOS")
-    parser.add_argument("--set-sys-clk",   default=None,        help="Set sys_clk")
+    parser.add_argument("--sys-clk-freq",  default=None,        help="Set sys_clk_freq")
     parser.add_argument("--test",          action="store_true", help="Run Full Bench")
     args = parser.parse_args()
 
@@ -143,9 +143,9 @@ def main():
         from common import load_bios
         load_bios("build/genesys2/software/bios/bios.bin")
 
-    if args.set_sys_clk is not None:
+    if args.sys_clk_freq is not None:
         from common import s7_set_sys_clk
-        s7_set_sys_clk(clk_freq=float(args.config), vco_freq=soc.crg.main_pll.compute_config()["vco"])
+        s7_set_sys_clk(clk_freq=float(args.sys_clk_freq), vco_freq=soc.crg.main_pll.compute_config()["vco"])
 
     if args.test:
         from common import s7_bench_test
