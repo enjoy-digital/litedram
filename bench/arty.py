@@ -34,6 +34,7 @@ class _CRG(Module, AutoCSR):
         self.clock_domains.cd_sys4x_dqs = ClockDomain(reset_less=True)
         self.clock_domains.cd_clk200    = ClockDomain()
         self.clock_domains.cd_uart      = ClockDomain()
+        self.clock_domains.cd_eth       = ClockDomain()
 
         # # #
 
@@ -43,8 +44,11 @@ class _CRG(Module, AutoCSR):
         main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
         main_pll.create_clkout(self.cd_clk200,  200e6)
         main_pll.create_clkout(self.cd_uart,    100e6)
+        main_pll.create_clkout(self.cd_eth,     25e6)
         main_pll.expose_drp()
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_clk200)
+
+        self.comb += platform.request("eth_ref_clk").eq(self.cd_eth.clk)
 
         self.submodules.pll = pll = S7PLL(speedgrade=-1)
         self.comb += pll.reset.eq(~main_pll.locked)
