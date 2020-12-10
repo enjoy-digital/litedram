@@ -104,7 +104,9 @@ class BenchController:
         rom_data = get_mem_data(filename, "little")
         for i, data in enumerate(rom_data):
             self.bus.write(self.bus.mems.rom.base + 4*i, data)
+            print(f"{(i+1)*4}/{len(rom_data*4)} bytes\r", end="")
             time.sleep(delay)
+        print("")
 
 def load_bios(bios_filename):
     from litex import RemoteClient
