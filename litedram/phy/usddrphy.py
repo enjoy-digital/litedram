@@ -6,7 +6,7 @@
 
 # 1:4 frequency-ratio DDR3/DDR4 PHY for Kintex/Virtex Ultrascale (Plus)
 # DDR3: 800, 1066, 1333 and 1600 MT/s
-# DDR4: 1600 MT/s
+# DDR4: 1333, 1600, 1866 MT/s
 
 from functools import reduce
 from operator import or_
