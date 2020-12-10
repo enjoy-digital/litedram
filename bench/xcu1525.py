@@ -10,6 +10,7 @@ import os
 import argparse
 
 from migen import *
+from migen.genlib.resetsync import AsyncResetSynchronizer
 
 from litex_boards.platforms import xcu1525
 
@@ -73,7 +74,7 @@ class _CRG(Module, AutoCSR):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, uart="crossover", sys_clk_freq=int(125e6), channel=0, with_bist=False):
+    def __init__(self, uart="crossover", sys_clk_freq=int(125e6), channel=0, with_bist=False, with_analyzer=False):
         platform = xcu1525.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -107,6 +108,16 @@ class BenchSoC(SoCCore):
         if uart != "serial":
             self.add_uartbone(name="serial", clk_freq=100e6, baudrate=115200, cd="uart")
 
+        # Analyzer ---------------------------------------------------------------------------------
+        if with_analyzer:
+            from litescope import LiteScopeAnalyzer
+            analyzer_signals = [self.ddrphy.dfi]
+            self.submodules.analyzer = LiteScopeAnalyzer(analyzer_signals,
+                depth        = 256,
+                clock_domain = "sys",
+                csr_csv      = "analyzer.csv")
+            self.add_csr("analyzer")
+
         # Leds -------------------------------------------------------------------------------------
         from litex.soc.cores.led import LedChaser
         self.submodules.leds = LedChaser(
@@ -122,13 +133,14 @@ def main():
     parser.add_argument("--build",         action="store_true", help="Build bitstream")
     parser.add_argument("--channel",       default="0",         help="DDRAM channel 0 (default), 1, 2 or 3")
     parser.add_argument("--with-bist",     action="store_true", help="Add BIST Generator/Checker")
+    parser.add_argument("--with-analyzer", action="store_true", help="Add Analyzer")
     parser.add_argument("--load",          action="store_true", help="Load bitstream")
     parser.add_argument("--load-bios",     action="store_true", help="Load BIOS")
     parser.add_argument("--set-sys-clk",   default=None,        help="Set sys_clk")
     parser.add_argument("--test",          action="store_true", help="Run Full Bench")
     args = parser.parse_args()
 
-    soc     = BenchSoC(uart=args.uart, channel=int(args.channel, 0), with_bist=args.with_bist)
+    soc     = BenchSoC(uart=args.uart, channel=int(args.channel, 0), with_bist=args.with_bist, with_analyzer=args.with_analyzer)
     builder = Builder(soc, output_dir="build/xcu1525_ch{}".format(args.channel), csr_csv="csr.csv")
     builder.build(run=args.build)
 

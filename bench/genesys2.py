@@ -59,7 +59,7 @@ class _CRG(Module, AutoCSR):
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
-    def __init__(self, uart="crossover", sys_clk_freq=int(125e6), with_bist=False):
+    def __init__(self, uart="crossover", sys_clk_freq=int(125e6), with_bist=False, with_analyzer=False):
         platform = genesys2.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -99,13 +99,14 @@ class BenchSoC(SoCCore):
         self.add_etherbone(phy=self.ethphy)
 
         # Analyzer ---------------------------------------------------------------------------------
-        from litescope import LiteScopeAnalyzer
-        analyzer_signals = [self.ddrphy.dfi]
-        self.submodules.analyzer = LiteScopeAnalyzer(analyzer_signals,
-            depth        = 512,
-            clock_domain = "sys",
-            csr_csv      = "analyzer.csv")
-        self.add_csr("analyzer")
+        if with_analyzer:
+            from litescope import LiteScopeAnalyzer
+            analyzer_signals = [self.ddrphy.dfi]
+            self.submodules.analyzer = LiteScopeAnalyzer(analyzer_signals,
+                depth        = 512,
+                clock_domain = "sys",
+                csr_csv      = "analyzer.csv")
+            self.add_csr("analyzer")
 
         # Leds -------------------------------------------------------------------------------------
         from litex.soc.cores.led import LedChaser
@@ -118,16 +119,17 @@ class BenchSoC(SoCCore):
 
 def main():
     parser = argparse.ArgumentParser(description="LiteDRAM Bench on Genesys2")
-    parser.add_argument("--uart",        default="crossover", help="Selected UART: crossover (default) or serial")
-    parser.add_argument("--build",       action="store_true", help="Build bitstream")
-    parser.add_argument("--with-bist",   action="store_true", help="Add BIST Generator/Checker")
-    parser.add_argument("--load",        action="store_true", help="Load bitstream")
-    parser.add_argument("--load-bios",   action="store_true", help="Load BIOS")
-    parser.add_argument("--set-sys-clk", default=None,        help="Set sys_clk")
-    parser.add_argument("--test",        action="store_true", help="Run Full Bench")
+    parser.add_argument("--uart",          default="crossover", help="Selected UART: crossover (default) or serial")
+    parser.add_argument("--build",         action="store_true", help="Build bitstream")
+    parser.add_argument("--with-bist",     action="store_true", help="Add BIST Generator/Checker")
+    parser.add_argument("--with-analyzer", action="store_true", help="Add Analyzer")
+    parser.add_argument("--load",          action="store_true", help="Load bitstream")
+    parser.add_argument("--load-bios",     action="store_true", help="Load BIOS")
+    parser.add_argument("--set-sys-clk",   default=None,        help="Set sys_clk")
+    parser.add_argument("--test",          action="store_true", help="Run Full Bench")
     args = parser.parse_args()
 
-    soc     = BenchSoC(uart=args.uart, with_bist=args.with_bist)
+    soc     = BenchSoC(uart=args.uart, with_bist=args.with_bist, with_analyzer=args.with_analyzer)
     builder = Builder(soc, csr_csv="csr.csv")
     builder.build(run=args.build)
 
