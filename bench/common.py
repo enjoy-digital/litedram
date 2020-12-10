@@ -106,6 +106,24 @@ class BenchController:
             self.bus.write(self.bus.mems.rom.base + 4*i, data)
             time.sleep(delay)
 
+def load_bios(bios_filename):
+    from litex import RemoteClient
+
+    bus = RemoteClient()
+    bus.open()
+
+    # # #
+
+    # Load BIOS and reboot SoC.
+    print("Loading BIOS...")
+    ctrl = BenchController(bus)
+    ctrl.load_rom(bios_filename, delay=1e-4) # FIXME: delay needed @ 115200bauds.
+    ctrl.reboot()
+
+    # # #
+
+    bus.close()
+
 # Bench Test ---------------------------------------------------------------------------------------
 
 def s7_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_timeout=40):
@@ -167,24 +185,6 @@ def s7_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
                 for c in bus.read(bus.regs.uart_xover_rxtx.addr, 16, burst="fixed"):
                     print("{:c}".format(c), end="")
         print("")
-
-    # # #
-
-    bus.close()
-
-def s7_load_bios(bios_filename):
-    from litex import RemoteClient
-
-    bus = RemoteClient()
-    bus.open()
-
-    # # #
-
-    # Load BIOS and reboot SoC.
-    print("Loading BIOS...")
-    ctrl = BenchController(bus)
-    ctrl.load_rom(bios_filename, delay=1e-4) # FIXME: delay needed @ 115200bauds.
-    ctrl.reboot()
 
     # # #
 
@@ -280,6 +280,7 @@ def us_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
                 for c in bus.read(bus.regs.uart_xover_rxtx.addr, 1, burst="fixed"):
                     print("{:c}".format(c), end="")
         print("")
+
     # # #
 
     bus.close()

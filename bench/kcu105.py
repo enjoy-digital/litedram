@@ -161,8 +161,8 @@ def main():
         prog.load_bitstream(os.path.join(builder.gateware_dir, soc.build_name + ".bit"))
 
     if args.load_bios:
-        from common import s7_load_bios
-        s7_load_bios("build/kcu105/software/bios/bios.bin")
+        from common import load_bios
+        load_bios("build/kcu105/software/bios/bios.bin")
 
     if args.set_sys_clk is not None:
         from common import us_set_sys_clk
