@@ -28,9 +28,8 @@ jobs:
         run: |
           wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
           python3 litex_setup.py gcc
-          ls $PWD/../riscv64-*/bin/
-          export PATH=$PATH:$(echo $PWD/../riscv64-*/bin/)
-          riscv64-unknown-elf-gcc --version
+          sudo mkdir /usr/local/riscv
+          sudo cp -r $PWD/../riscv64-*/* /usr/local/riscv
 
       # Install Project
       - name: Install Project
@@ -38,4 +37,6 @@ jobs:
 
       # Test
       - name: Run Tests
-        run: python3 setup.py test
+        run: |
+          export PATH=/usr/local/riscv/bin:$PATH
+          python3 setup.py test
