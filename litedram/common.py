@@ -18,12 +18,13 @@ from litex.soc.interconnect import stream
 # Helpers ------------------------------------------------------------------------------------------
 
 burst_lengths = {
-    "SDR":   1,
-    "DDR":   4,
-    "LPDDR": 4,
-    "DDR2":  4,
-    "DDR3":  8,
-    "DDR4":  8
+    "SDR":    1,
+    "DDR":    4,
+    "LPDDR":  4,
+    "DDR2":   4,
+    "DDR3":   8,
+    "DDR4":   8,
+    "LPDDR4": 16,
 }
 
 def get_default_cl_cwl(memtype, tck):
