@@ -538,6 +538,30 @@ class MemoryTestDataMixin:
                     0x00440000,  # 0x1c
                 ]
             ),
+            "8bit_to_32bit_not_sequential": dict(
+                pattern=[
+                    # address, data
+                    (0x03, 0x00),
+                    (0x02, 0x11),
+                    (0x01, 0x22),
+                    (0x00, 0x33),
+                    (0x12, 0x44),
+                    (0x11, 0x55),
+                    (0x13, 0x66),
+                    (0x10, 0x77),
+                ],
+                expected=[
+                    # data, address
+                    0x00112233,  # 0x00
+                    0x00000000,  # 0x04
+                    0x00000000,  # 0x08
+                    0x00000000,  # 0x0c
+                    0x66445577,  # 0x10
+                    0x00000000,  # 0x14
+                    0x00000000,  # 0x18
+                    0x00000000,  # 0x1c
+                ]
+            ),
             "32bit_to_256bit":  dict(
                 pattern=[
                     # address, data

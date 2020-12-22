@@ -76,7 +76,8 @@ class LiteDRAMCrossbar(Module):
 
         self.masters = []
 
-    def get_port(self, mode="both", data_width=None, clock_domain="sys", reverse=False):
+    def get_port(self, mode="both", data_width=None, clock_domain="sys", reverse=False,
+            rx_buffer_depth=4, tx_buffer_depth=4, cmd_buffer_depth=4, priority=0):
         if self.finalized:
             raise FinalizeError
 
@@ -117,7 +118,8 @@ class LiteDRAMCrossbar(Module):
                 clock_domain  = clock_domain,
                 id            = port.id)
             self.submodules += ClockDomainsRenamer(clock_domain)(
-                LiteDRAMNativePortConverter(new_port, port, reverse))
+                LiteDRAMNativePortConverter(new_port, port, reverse,
+                    rx_buffer_depth, tx_buffer_depth, cmd_buffer_depth))
             port = new_port
 
         return port
