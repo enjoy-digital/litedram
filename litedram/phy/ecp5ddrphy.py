@@ -127,7 +127,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         self.submodules.init = ECP5DDRPHYInit()
 
         # Parameters -------------------------------------------------------------------------------
-        cl, cwl         = get_cl_cw(memtype, tck)
+        cl, cwl         = get_default_cl_cwl(memtype, tck)
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
 

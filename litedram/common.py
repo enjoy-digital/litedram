@@ -26,7 +26,7 @@ burst_lengths = {
     "DDR4":  8
 }
 
-def get_cl_cw(memtype, tck):
+def get_default_cl_cwl(memtype, tck):
     f_to_cl_cwl = OrderedDict()
     if memtype == "DDR2":
         f_to_cl_cwl[400e6]  = (3, 2)
@@ -52,6 +52,14 @@ def get_cl_cw(memtype, tck):
         if tck >= 2/f:
             return cl, cwl
     raise ValueError
+
+def get_default_cl(memtype, tck):
+    cl, _ = get_default_cl_cwl(memtype, tck)
+    return cl
+
+def get_default_cwl(memtype, tck):
+    _, cwl = get_default_cl_cwl(memtype, tck)
+    return cwl
 
 def get_sys_latency(nphases, cas_latency):
     return math.ceil(cas_latency/nphases)

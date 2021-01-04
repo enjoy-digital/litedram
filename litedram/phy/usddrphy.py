@@ -49,7 +49,7 @@ class USDDRPHY(Module, AutoCSR):
         if phytype == "USDDRPHY":  assert iodelay_clk_freq >= 200e6
         if phytype == "USPDDRPHY": assert iodelay_clk_freq >= 300e6
 
-        cl, cwl         = get_cl_cw(memtype, tck)
+        cl, cwl         = get_default_cl_cwl(memtype, tck)
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
         rdphase         = get_sys_phase(nphases, cl_sys_latency,   cl + cmd_latency)
