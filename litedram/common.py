@@ -28,7 +28,10 @@ burst_lengths = {
 
 def get_default_cl_cwl(memtype, tck):
     f_to_cl_cwl = OrderedDict()
-    if memtype == "DDR2":
+    if memtype == "SDR":
+        f_to_cl_cwl[100e6] = (2, None)
+        f_to_cl_cwl[133e6] = (3, None)
+    elif memtype == "DDR2":
         f_to_cl_cwl[400e6]  = (3, 2)
         f_to_cl_cwl[533e6]  = (4, 3)
         f_to_cl_cwl[677e6]  = (5, 4)
@@ -49,7 +52,8 @@ def get_default_cl_cwl(memtype, tck):
     else:
         raise ValueError
     for f, (cl, cwl) in f_to_cl_cwl.items():
-        if tck >= 2/f:
+        m = 2 if "DDR" in memtype else 1
+        if tck >= m/f:
             return cl, cwl
     raise ValueError
 

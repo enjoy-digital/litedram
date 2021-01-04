@@ -17,14 +17,16 @@ from litedram.phy.dfi import *
 # Generic SDR PHY ----------------------------------------------------------------------------------
 
 class GENSDRPHY(Module):
-    def __init__(self, pads, cl=2):
+    def __init__(self, pads, sys_clk_freq=100e6, cl=None):
         pads        = PHYPadsCombiner(pads)
         addressbits = len(pads.a)
         bankbits    = len(pads.ba)
         nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits    = len(pads.dq)
-        assert cl in [2, 3]
         assert databits%8 == 0
+
+        # Parameters -------------------------------------------------------------------------------
+        cl = get_default_cl(memtype="SDR", tck=1/sys_clk_freq) if cl is None else cl
 
         # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
@@ -85,7 +87,7 @@ class GENSDRPHY(Module):
 # Half-rate Generic SDR PHY ------------------------------------------------------------------------
 
 class HalfRateGENSDRPHY(Module):
-    def __init__(self, pads, cl=2):
+    def __init__(self, pads, sys_clk_freq=100e6, cl=None):
         pads        = PHYPadsCombiner(pads)
         addressbits = len(pads.a)
         bankbits    = len(pads.ba)
@@ -93,8 +95,12 @@ class HalfRateGENSDRPHY(Module):
         databits    = len(pads.dq)
         nphases     = 2
 
+
+        # Parameters -------------------------------------------------------------------------------
+        cl = get_default_cl(memtype="SDR", tck=1/sys_clk_freq) if cl is None else cl
+
         # FullRate PHY -----------------------------------------------------------------------------
-        full_rate_phy = GENSDRPHY(pads, cl)
+        full_rate_phy = GENSDRPHY(pads, 2*sys_clk_freq, cl)
         self.submodules += ClockDomainsRenamer("sys2x")(full_rate_phy)
 
         # Clocking ---------------------------------------------------------------------------------
