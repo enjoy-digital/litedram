@@ -28,6 +28,8 @@ class USDDRPHY(Module, AutoCSR):
         memtype          = "DDR3",
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
+        cl               = None,
+        cwl              = None,
         cmd_latency      = 0,
         cmd_delay        = None,
         is_rdimm         = False):
@@ -49,7 +51,8 @@ class USDDRPHY(Module, AutoCSR):
         if phytype == "USDDRPHY":  assert iodelay_clk_freq >= 200e6
         if phytype == "USPDDRPHY": assert iodelay_clk_freq >= 300e6
 
-        cl, cwl         = get_default_cl_cwl(memtype, tck)
+        cl              = get_default_cl( memtype, tck) if cl  is None else cl
+        cwl             = get_default_cwl(memtype, tck) if cwl is None else cwl
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
         rdphase         = get_sys_phase(nphases, cl_sys_latency,   cl + cmd_latency)

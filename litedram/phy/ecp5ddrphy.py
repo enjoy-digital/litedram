@@ -112,7 +112,7 @@ class ECP5DDRPHYInit(Module):
 # Lattice ECP5 DDR PHY -----------------------------------------------------------------------------
 
 class ECP5DDRPHY(Module, AutoCSR):
-    def __init__(self, pads, sys_clk_freq=100e6, dm_remapping={}):
+    def __init__(self, pads, sys_clk_freq=100e6, cl=None, cwl=None, dm_remapping={}):
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
         tck         = 2/(2*2*sys_clk_freq)
@@ -127,7 +127,8 @@ class ECP5DDRPHY(Module, AutoCSR):
         self.submodules.init = ECP5DDRPHYInit()
 
         # Parameters -------------------------------------------------------------------------------
-        cl, cwl         = get_default_cl_cwl(memtype, tck)
+        cl  = get_default_cl( memtype, tck) if cl  is None else cl
+        cwl = get_default_cwl(memtype, tck) if cwl is None else cwl
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
 

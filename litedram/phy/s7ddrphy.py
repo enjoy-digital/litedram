@@ -29,6 +29,8 @@ class S7DDRPHY(Module, AutoCSR):
         nphases          = 4,
         sys_clk_freq     = 100e6,
         iodelay_clk_freq = 200e6,
+        cl               = None,
+        cwl              = None,
         cmd_latency      = 0,
         cmd_delay        = None):
         assert not (memtype == "DDR3" and nphases == 2)
@@ -50,7 +52,8 @@ class S7DDRPHY(Module, AutoCSR):
         }
         half_sys8x_taps = math.floor(tck/(4*iodelay_tap_average[iodelay_clk_freq]))
 
-        cl, cwl         = get_default_cl_cwl(memtype, tck)
+        cl              = get_default_cl( memtype, tck) if cl  is None else cl
+        cwl             = get_default_cwl(memtype, tck) if cwl is None else cwl
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
         rdphase         = get_sys_phase(nphases, cl_sys_latency,   cl + cmd_latency)
