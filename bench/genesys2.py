@@ -11,7 +11,7 @@ import argparse
 
 from migen import *
 
-from litex.boards.platforms import genesys2
+from litex_boards.platforms import genesys2
 
 from litex.soc.cores.clock import *
 from litex.soc.interconnect.csr import *

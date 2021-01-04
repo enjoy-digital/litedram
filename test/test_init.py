@@ -22,7 +22,7 @@ def compare_with_reference(content, filename):
 
 class TestInit(unittest.TestCase):
     def test_sdr(self):
-        from litex.boards.targets.minispartan6 import BaseSoC
+        from litex_boards.targets.minispartan6 import BaseSoC
         soc       = BaseSoC()
         c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
@@ -30,7 +30,7 @@ class TestInit(unittest.TestCase):
         self.assertEqual(compare_with_reference(py_header, "sdr_init.py"), True)
 
     def test_ddr3(self):
-        from litex.boards.targets.kc705 import BaseSoC
+        from litex_boards.targets.kc705 import BaseSoC
         soc       = BaseSoC()
         c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
@@ -38,7 +38,7 @@ class TestInit(unittest.TestCase):
         self.assertEqual(compare_with_reference(py_header, "ddr3_init.py"), True)
 
     def test_ddr4(self):
-        from litex.boards.targets.kcu105 import BaseSoC
+        from litex_boards.targets.kcu105 import BaseSoC
         soc       = BaseSoC(max_sdram_size=0x4000000)
         c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)

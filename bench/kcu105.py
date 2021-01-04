@@ -12,7 +12,7 @@ import argparse
 from migen import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
-from litex.boards.platforms import kcu105
+from litex_boards.platforms import kcu105
 
 from litex.soc.cores.clock import *
 from litex.soc.interconnect.csr import *
