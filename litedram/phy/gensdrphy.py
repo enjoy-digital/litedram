@@ -17,7 +17,7 @@ from litedram.phy.dfi import *
 # Generic SDR PHY ----------------------------------------------------------------------------------
 
 class GENSDRPHY(Module):
-    def __init__(self, pads, cl=2, cmd_latency=1):
+    def __init__(self, pads, cl=2):
         pads        = PHYPadsCombiner(pads)
         addressbits = len(pads.a)
         bankbits    = len(pads.ba)
@@ -37,7 +37,7 @@ class GENSDRPHY(Module):
             rdphase       = 0,
             wrphase       = 0,
             cl            = cl,
-            read_latency  = cl + cmd_latency,
+            read_latency  = cl + 1,
             write_latency = 0
         )
 
@@ -78,14 +78,14 @@ class GENSDRPHY(Module):
                 self.specials += SDROutput(i=dfi.p0.wrdata_en & dfi.p0.wrdata_mask[i], o=pads.dm[i])
 
         # DQ/DM Control Path -----------------------------------------------------------------------
-        rddata_en = Signal(cl + cmd_latency)
+        rddata_en = Signal(self.settings.read_latency)
         self.sync += rddata_en.eq(Cat(dfi.p0.rddata_en, rddata_en))
         self.sync += dfi.p0.rddata_valid.eq(rddata_en[-1])
 
 # Half-rate Generic SDR PHY ------------------------------------------------------------------------
 
 class HalfRateGENSDRPHY(Module):
-    def __init__(self, pads, cl=2, cmd_latency=1):
+    def __init__(self, pads, cl=2):
         pads        = PHYPadsCombiner(pads)
         addressbits = len(pads.a)
         bankbits    = len(pads.ba)
@@ -94,7 +94,7 @@ class HalfRateGENSDRPHY(Module):
         nphases     = 2
 
         # FullRate PHY -----------------------------------------------------------------------------
-        full_rate_phy = GENSDRPHY(pads, cl, cmd_latency)
+        full_rate_phy = GENSDRPHY(pads, cl)
         self.submodules += ClockDomainsRenamer("sys2x")(full_rate_phy)
 
         # Clocking ---------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ class HalfRateGENSDRPHY(Module):
             rdphase       = 0,
             wrphase       = 0,
             cl            = cl,
-            read_latency  = (cl + cmd_latency)//2 + 1,
+            read_latency  = full_rate_phy.settings.read_latency//2 + 1,
             write_latency = 0
         )
 
