@@ -112,7 +112,13 @@ class ECP5DDRPHYInit(Module):
 # Lattice ECP5 DDR PHY -----------------------------------------------------------------------------
 
 class ECP5DDRPHY(Module, AutoCSR):
-    def __init__(self, pads, sys_clk_freq=100e6, cl=None, cwl=None, dm_remapping={}):
+    def __init__(self, pads,
+        sys_clk_freq = 100e6,
+        cl           = None,
+        cwl          = None,
+        cmd_delay    = 0,
+        dm_remapping = {}):
+        assert isinstance(cmd_delay, int) and cmd_delay < 128
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
         tck         = 2/(2*2*sys_clk_freq)
@@ -177,13 +183,18 @@ class ECP5DDRPHY(Module, AutoCSR):
 
             # Clock --------------------------------------------------------------------------------
             for i in range(len(pads.clk_p)):
-                sd_clk_se = Signal()
+                pad_oddrx2f = Signal()
                 self.specials += Instance("ODDRX2F",
                     i_RST  = ResetSignal("sys"),
                     i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
                     **{f"i_D{n}": (0b1010 >> n) & 0b1 for n in range(4)},
-                    o_Q    = pads.clk_p[i]
+                    o_Q    = pad_oddrx2f
+                )
+                self.specials += Instance("DELAYG",
+                    p_DEL_VALUE = cmd_delay,
+                    i_A         = pad_oddrx2f,
+                    o_Z         = pads.clk_p[i]
                 )
 
             # Commands -----------------------------------------------------------------------------
@@ -201,12 +212,18 @@ class ECP5DDRPHY(Module, AutoCSR):
             for pad_name, dfi_name in commands.items():
                 pad = getattr(pads, pad_name)
                 for i in range(len(pad)):
+                    pad_oddrx2f = Signal()
                     self.specials += Instance("ODDRX2F",
                         i_RST  = ResetSignal("sys"),
                         i_SCLK = ClockSignal("sys"),
                         i_ECLK = ClockSignal("sys2x"),
                         **{f"i_D{n}": getattr(dfi.phases[n//2], dfi_name)[i] for n in range(4)},
-                        o_Q    = pad[i]
+                        o_Q    = pad_oddrx2f
+                    )
+                    self.specials += Instance("DELAYG",
+                        p_DEL_VALUE = cmd_delay,
+                        i_A         = pad_oddrx2f,
+                        o_Z         = pad[i]
                     )
 
         # DQS/DM/DQ --------------------------------------------------------------------------------
