@@ -349,13 +349,10 @@ class ECP5DDRPHY(Module, AutoCSR):
                     cycles = 1)
                 self.submodules += dq_i_bitslip
                 self.specials += [
-                    Instance("DELAYF",
-                        p_DEL_MODE  = "DQS_ALIGNED_X2",
-                        i_LOADN     = 0,
-                        i_MOVE      = 0,
-                        i_DIRECTION = 0,
-                        i_A         = dq_i,
-                        o_Z         = dq_i_delayed
+                    Instance("DELAYG",
+                        p_DEL_MODE = "DQS_ALIGNED_X2",
+                        i_A        = dq_i,
+                        o_Z        = dq_i_delayed
                     ),
                     Instance("IDDRX2DQA",
                         i_RST     = ResetSignal("sys"),
