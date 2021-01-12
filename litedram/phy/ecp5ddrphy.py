@@ -165,7 +165,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         )
 
         # DFI Interface ----------------------------------------------------------------------------
-        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 4*databits, 4)
+        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 4*databits, nphases)
 
         # # #
 
