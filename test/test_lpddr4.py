@@ -10,7 +10,7 @@ from typing import Mapping, Sequence
 from migen import *
 
 from litedram.phy import dfi
-from litedram.phy.lpddr4phy import SimulationPHY, Serializer, Deserializer
+from litedram.phy.lpddr4.simphy import LPDDR4SimPHY, Serializer, Deserializer
 
 from litex.gen.sim import run_simulation as _run_simulation
 
@@ -422,7 +422,7 @@ class TestLPDDR4(unittest.TestCase):
     def test_lpddr4_cs_phase_0(self):
         # Test that CS is serialized correctly when sending command on phase 0
         latency = '00000000' * self.CMD_LATENCY
-        self.run_test(SimulationPHY(),
+        self.run_test(LPDDR4SimPHY(),
             dfi_sequence = [
                 {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},  # p0: READ
             ],
@@ -434,7 +434,7 @@ class TestLPDDR4(unittest.TestCase):
     def test_lpddr4_clk(self):
         # Test clock serialization, first few cycles are undefined so ignore them
         latency = 'xxxxxxxx' * self.CMD_LATENCY
-        self.run_test(SimulationPHY(),
+        self.run_test(LPDDR4SimPHY(),
             dfi_sequence = [
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
             ],
@@ -446,7 +446,7 @@ class TestLPDDR4(unittest.TestCase):
     def test_lpddr4_cs_multiple_phases(self):
         # Test that CS is serialized on different phases and that overlapping commands are handled
         latency = '00000000' * self.CMD_LATENCY
-        self.run_test(SimulationPHY(),
+        self.run_test(LPDDR4SimPHY(),
             dfi_sequence = [
                 {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
@@ -479,7 +479,7 @@ class TestLPDDR4(unittest.TestCase):
         # Test proper serialization of commands to CA pads and that overlapping commands are handled
         latency = '00000000' * self.CMD_LATENCY
         read = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)
-        self.run_test(SimulationPHY(),
+        self.run_test(LPDDR4SimPHY(),
             dfi_sequence = [
                 {0: read, 3: read},  # p4 should be ignored
                 {0: read, 4: read},
@@ -508,7 +508,7 @@ class TestLPDDR4(unittest.TestCase):
         mrw        = dict(cs_n=0, cas_n=0, ras_n=0, we_n=0, bank=0,     address=(0b110011 << 8) | 0b10101010)  # 6-bit address | 8-bit op code
         zqc_start  = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,     address=0b1001111)  # MPC with ZQCAL START operand
         zqc_latch  = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,     address=0b1010001)  # MPC with ZQCAL LATCH operand
-        self.run_test(SimulationPHY(),
+        self.run_test(LPDDR4SimPHY(),
             dfi_sequence = [
                 {0: read, 4: write_ap},
                 {0: activate, 4: refresh_ab},
@@ -532,7 +532,7 @@ class TestLPDDR4(unittest.TestCase):
         # Test serialization of DFI command pins (cs/cke/odt/reset_n)
         latency = '00000000' * self.CMD_LATENCY
         read = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)
-        self.run_test(SimulationPHY(),
+        self.run_test(LPDDR4SimPHY(),
             dfi_sequence = [
                 {
                     0: dict(cke=1, odt=1, reset_n=1, **read),
@@ -552,7 +552,7 @@ class TestLPDDR4(unittest.TestCase):
 
     def test_lpddr4_dq_out(self):
         # Test serialization of dfi wrdata to DQ pads
-        dut = SimulationPHY()
+        dut = LPDDR4SimPHY()
         zero = '00000000' * 2  # zero for 1 sysclk clock in sys8x_ddr clock domain
 
         dfi_data = {
@@ -576,7 +576,7 @@ class TestLPDDR4(unittest.TestCase):
 
     def test_lpddr4_dq_only_1cycle(self):
         # Test that DQ data is sent to pads only during expected cycle, on other cycles there is no data
-        dut = SimulationPHY()
+        dut = LPDDR4SimPHY()
         zero = '00000000' * 2
 
         dfi_data = {
@@ -603,7 +603,7 @@ class TestLPDDR4(unittest.TestCase):
         # Test serialization of DQS pattern in relation to DQ data, with proper preamble and postamble
         zero = '00000000' * 2
 
-        self.run_test(SimulationPHY(),
+        self.run_test(LPDDR4SimPHY(),
             dfi_sequence = [
                 {0: dict(wrdata_en=1)},
                 {},
@@ -634,7 +634,7 @@ class TestLPDDR4(unittest.TestCase):
         # Test proper output on DMI pads. We don't implement masking now, so nothing should be sent to DMI pads
         zero = '00000000' * 2
 
-        self.run_test(SimulationPHY(),
+        self.run_test(LPDDR4SimPHY(),
             dfi_sequence = [
                 {0: dict(wrdata_en=1)},
                 {},
@@ -670,7 +670,7 @@ class TestLPDDR4(unittest.TestCase):
             {},
         ]
 
-        self.run_test(SimulationPHY(),
+        self.run_test(LPDDR4SimPHY(),
             dfi_sequence = dfi_sequence,
             pad_checkers = {},
             pad_generators = {},
@@ -710,7 +710,7 @@ class TestLPDDR4(unittest.TestCase):
             {},
         ]
 
-        self.run_test(SimulationPHY(),
+        self.run_test(LPDDR4SimPHY(),
             dfi_sequence = dfi_sequence,
             pad_checkers = {},
             pad_generators = {
@@ -720,7 +720,7 @@ class TestLPDDR4(unittest.TestCase):
 
     def test_lpddr4_cmd_write(self):
         # Test whole WRITE command sequence verifying data on pads and write_latency from MC perspective
-        phy = SimulationPHY()
+        phy = LPDDR4SimPHY()
         zero = '00000000' * 2
         write_latency = phy.settings.write_latency
         wrphase = phy.settings.wrphase.reset.value
@@ -770,7 +770,7 @@ class TestLPDDR4(unittest.TestCase):
 
     def test_lpddr4_cmd_read(self):
         # Test whole READ command sequence simulating DRAM response and verifying read_latency from MC perspective
-        phy = SimulationPHY()
+        phy = LPDDR4SimPHY()
         zero = '00000000' * 2
         read_latency = phy.settings.read_latency
         rdphase = phy.settings.rdphase.reset.value

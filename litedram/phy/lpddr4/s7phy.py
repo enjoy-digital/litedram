@@ -4,8 +4,12 @@ from litex.soc.interconnect.csr import *
 
 from litedram.common import *
 from litedram.phy.dfi import *
-from litedram.phy.lpddr4phy import LPDDR4PHY, delayed
 
+from litedram.phy.lpddr4.utils import delayed
+from litedram.phy.lpddr4.basephy import LPDDR4PHY
+
+
+# TODO: add option to avoid ODELAYE2, for now it won't work on Artix7
 class S7LPDDR4PHY(LPDDR4PHY):
     def __init__(self, pads, *, iodelay_clk_freq, **kwargs):
         self.iodelay_clk_freq = iodelay_clk_freq

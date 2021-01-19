@@ -554,9 +554,9 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
         ba = 0
         return ("Load More Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
 
-    from litedram.phy.lpddr4phy import DFIPhaseAdapter
-    zqc_start = DFIPhaseAdapter.MPC["ZQC-START"]
-    zqc_latch = DFIPhaseAdapter.MPC["ZQC-LATCH"]
+    from litedram.phy.lpddr4.commands import MPC
+    zqc_start = MPC["ZQC-START"]
+    zqc_latch = MPC["ZQC-LATCH"]
 
     init_sequence = [
         ("Release reset", 0x0000, 0, cmds["UNRESET"], 50000),
