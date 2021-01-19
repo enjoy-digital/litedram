@@ -554,11 +554,16 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
         ba = 0
         return ("Load More Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
 
+    from litedram.phy.lpddr4phy import DFIPhaseAdapter
+    zqc_start = DFIPhaseAdapter.MPC["ZQC-START"]
+    zqc_latch = DFIPhaseAdapter.MPC["ZQC-LATCH"]
+
     init_sequence = [
         ("Release reset", 0x0000, 0, cmds["UNRESET"], 50000),
         ("Bring CKE high", 0x0000, 0, cmds["CKE"], 10000),
         *[cmd_mr(ma) for ma in sorted(mr.keys())],
-        # TODO: ZQ calibration
+        ("ZQ Calibration start", zqc_start, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", 1000),  # > tZQCAL=1us
+        ("ZQ Calibration latch", zqc_latch, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", 200),  # > tZQLAT=max(8ck, 30ns)
     ]
 
     return init_sequence, mr

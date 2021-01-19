@@ -506,22 +506,25 @@ class TestLPDDR4(unittest.TestCase):
         refresh_ab = dict(cs_n=0, cas_n=0, ras_n=0, we_n=1, bank=0b100, address=0b10000000000)
         precharge  = dict(cs_n=0, cas_n=1, ras_n=0, we_n=0, bank=0b011, address=0)
         mrw        = dict(cs_n=0, cas_n=0, ras_n=0, we_n=0, bank=0,     address=(0b110011 << 8) | 0b10101010)  # 6-bit address | 8-bit op code
+        zqc_start  = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,     address=0b1001111)  # MPC with ZQCAL START operand
+        zqc_latch  = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,     address=0b1010001)  # MPC with ZQCAL LATCH operand
         self.run_test(SimulationPHY(),
             dfi_sequence = [
                 {0: read, 4: write_ap},
                 {0: activate, 4: refresh_ab},
                 {0: precharge, 4: mrw},
+                {0: zqc_start, 4: zqc_latch},
             ],
             pad_checkers = {"sys8x_90": {
                 # note that refresh and precharge have a single command so these go as cmd2
-                #                 rd     wr       act    ref      pre    mrw
-                'cs':  latency + '1010'+'1010' + '1010'+'0010' + '0010'+'1010',
-                'ca0': latency + '0100'+'0100' + '1011'+'0000' + '0001'+'0100',
-                'ca1': latency + '1010'+'0110' + '0110'+'0000' + '0001'+'1111',
-                'ca2': latency + '0101'+'1100' + '0010'+'0001' + '0000'+'1010',
-                'ca3': latency + '0x01'+'0x00' + '1110'+'001x' + '000x'+'0001',
-                'ca4': latency + '0110'+'0010' + '1010'+'000x' + '001x'+'0110',
-                'ca5': latency + '0010'+'0100' + '1001'+'001x' + '000x'+'1101',
+                #                 rd     wr       act    ref      pre    mrw      zqcs   zqcl
+                'cs':  latency + '1010'+'1010' + '1010'+'0010' + '0010'+'1010' + '0010'+'0010',
+                'ca0': latency + '0100'+'0100' + '1011'+'0000' + '0001'+'0100' + '0001'+'0001',
+                'ca1': latency + '1010'+'0110' + '0110'+'0000' + '0001'+'1111' + '0001'+'0000',
+                'ca2': latency + '0101'+'1100' + '0010'+'0001' + '0000'+'1010' + '0001'+'0000',
+                'ca3': latency + '0x01'+'0x00' + '1110'+'001x' + '000x'+'0001' + '0001'+'0000',
+                'ca4': latency + '0110'+'0010' + '1010'+'000x' + '001x'+'0110' + '0000'+'0001',
+                'ca5': latency + '0010'+'0100' + '1001'+'001x' + '000x'+'1101' + '0010'+'0010',
             }},
         )
 

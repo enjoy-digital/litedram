@@ -384,6 +384,22 @@ class DFIPhaseAdapter(Module):
     # Then most "big commands" consist of 2 "small commands" (e.g. ACTIVATE-1, ACTIVATE-2).
     # If a command uses 1 "small command", then it shall go as cmd2 so that all command
     # timings can be counted from the same moment (cycle of cmd2 CS low).
+
+    # MPC (multipurpose command) can be used to perform different actions
+    # We use ZQC with BA=0 to issue MPC, where OP[6:0] = A[6:0]
+    MPC = {
+        "NOP":           0b0000000,  # only OP[6] must be 0
+        "READ-FIFO":     0b1000001,
+        "READ-DQ-CAL":   0b1000011,
+        # RFU:           0b1000101
+        "WRITE-FIFO":    0b1000111,
+        # RFU:           0b1001001
+        "START-DQS-OSC": 0b1001011,
+        "STOP-DQS-OSC":  0b1001101,
+        "ZQC-START":     0b1001111,
+        "ZQC-LATCH":     0b1010001,
+    }
+
     def __init__(self, dfi_phase):
         # CS/CA values for 4 SDR cycles
         self.cs = Signal(4)
@@ -426,11 +442,7 @@ class DFIPhaseAdapter(Module):
                 _cmd["WR"]:  cmds("WRITE-1",    "CAS-2"),  # TODO: masked write
                 _cmd["PRE"]: cmds("DESELECT",   "PRECHARGE"),
                 _cmd["REF"]: cmds("DESELECT",   "REFRESH"),
-                # TODO: ZQC init/short/long? start/latch?
-                # _cmd["ZQC"]: [
-                #     *cmds("DESELECT", "MPC"),
-                #     self.cmd2.mpc.eq(0b1001111),
-                # ],
+                _cmd["ZQC"]: cmds("DESELECT",   "MPC"),
                 _cmd["MRS"]: cmds("MRW-1",      "MRW-2"),
                 "default":   cmds("DESELECT",   "DESELECT", valid=0),
             })
@@ -462,7 +474,6 @@ class Command(Module):
     def __init__(self, dfi_phase):
         self.cs = Signal(2)
         self.ca = Array([Signal(6), Signal(6)])  # CS high, CS low
-        self.mpc = Signal(7)  # special OP values for multipurpose command
         self.dfi = dfi_phase
 
     def set(self, cmd):
@@ -487,8 +498,7 @@ class Command(Module):
             "R(\d+)":  lambda i: self.dfi.address[i],  # row
             "C(\d+)":  lambda i: self.dfi.address[i],  # column
             "MA(\d+)": lambda i: self.dfi.address[8+i],  # mode register address
-            # mode register value, or op code for MPC
-            "OP(\d+)": lambda i: self.mpc[i] if is_mpc else self.dfi.address[i],
+            "OP(\d+)": lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
         }
         for pattern, value in rules.items():
             m = re.match(pattern, bit)
