@@ -5,19 +5,20 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 import os
-import filecmp
+import difflib
 import unittest
-
-from litex.build.tools import write_to_file
 
 from litedram.init import get_sdram_phy_c_header, get_sdram_phy_py_header
 
 
-def compare_with_reference(content, filename):
-    write_to_file(filename, content)
-    r = filecmp.cmp(filename, os.path.join("test", "reference", filename))
-    os.remove(filename)
-    return r
+def compare_with_reference(test_case, content, filename):
+    ref_filename = os.path.join("test", "reference", filename)
+    with open(ref_filename, "r") as f:
+        reference = f.read().split("\n")
+    content = content.split("\n")
+    diff = list(difflib.unified_diff(content, reference, fromfile=filename, tofile=ref_filename))
+    msg = "Unified diff:\n" + "\n".join(diff)
+    test_case.assertEqual(len(diff), 0, msg=msg)
 
 
 class TestInit(unittest.TestCase):
@@ -26,21 +27,21 @@ class TestInit(unittest.TestCase):
         soc       = BaseSoC()
         c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
-        self.assertEqual(compare_with_reference(c_header, "sdr_init.h"), True)
-        self.assertEqual(compare_with_reference(py_header, "sdr_init.py"), True)
+        compare_with_reference(self, c_header, "sdr_init.h")
+        compare_with_reference(self, py_header, "sdr_init.py")
 
     def test_ddr3(self):
         from litex_boards.targets.kc705 import BaseSoC
         soc       = BaseSoC()
         c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
-        self.assertEqual(compare_with_reference(c_header, "ddr3_init.h"), True)
-        self.assertEqual(compare_with_reference(py_header, "ddr3_init.py"), True)
+        compare_with_reference(self, c_header, "ddr3_init.h")
+        compare_with_reference(self, py_header, "ddr3_init.py")
 
     def test_ddr4(self):
         from litex_boards.targets.kcu105 import BaseSoC
         soc       = BaseSoC(max_sdram_size=0x4000000)
         c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
-        self.assertEqual(compare_with_reference(c_header, "ddr4_init.h"), True)
-        self.assertEqual(compare_with_reference(py_header, "ddr4_init.py"), True)
+        compare_with_reference(self, c_header, "ddr4_init.h")
+        compare_with_reference(self, py_header, "ddr4_init.py")
