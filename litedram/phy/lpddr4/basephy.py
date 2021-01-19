@@ -93,8 +93,6 @@ class LPDDR4PHY(Module, AutoCSR):
         # Registers --------------------------------------------------------------------------------
         self._rst             = CSRStorage()
 
-        self._dly_sel         = CSRStorage(databits//8)
-
         self._wlevel_en     = CSRStorage()
         self._wlevel_strobe = CSR()
 
