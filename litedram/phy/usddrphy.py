@@ -59,7 +59,7 @@ class USDDRPHY(Module, AutoCSR):
         wrphase         = get_sys_phase(nphases, cwl_sys_latency, cwl + cmd_latency)
 
         # Registers --------------------------------------------------------------------------------
-        self._rst                 = CSRStorage()
+        self._rst                 = CSRStorage(reset=1)
 
         self._en_vtc              = CSRStorage(reset=1)
 
@@ -125,6 +125,18 @@ class USDDRPHY(Module, AutoCSR):
             self.submodules += DDR4DFIMux(self.dfi, dfi)
 
         # # #
+
+        # tCK reference ----------------------------------------------------------------------------
+        self.specials += Instance("ODELAYE3",
+            p_SIM_DEVICE       = device,
+            p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
+            p_DELAY_FORMAT     = "TIME",
+            p_DELAY_TYPE       = "FIXED",
+            p_DELAY_VALUE      = int(tck*1e12/4),
+            i_CLK         = ClockSignal(),
+            i_EN_VTC      = self._en_vtc.storage,
+            o_CNTVALUEOUT = self._half_sys8x_taps.status,
+        )
 
         # Iterate on pads groups -------------------------------------------------------------------
         for pads_group in range(len(pads.groups)):
@@ -241,18 +253,6 @@ class USDDRPHY(Module, AutoCSR):
         self.submodules += dqs_oe_delay, dqs_pattern
         self.comb += dqs_oe_delay.input.eq(dqs_preamble | dqs_oe | dqs_postamble)
         for i in range(databits//8):
-            if i == 0:
-                # Store initial DQS DELAY_VALUE (in taps) to be able to reload DELAY_VALUE after reset.
-                dqs_taps       = Signal(9)
-                dqs_taps_timer = WaitTimer(2**16)
-                dqs_taps_done  = Signal()
-                self.submodules += dqs_taps_timer
-                self.comb += dqs_taps_timer.wait.eq(~dqs_taps_done)
-                self.sync += \
-                    If(dqs_taps_timer.done,
-                        dqs_taps_done.eq(1),
-                        self._half_sys8x_taps.status.eq(dqs_taps)
-                    )
             dqs_bitslip    = BitSlip(8,
                 i      = dqs_pattern.o,
                 rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
@@ -282,7 +282,6 @@ class USDDRPHY(Module, AutoCSR):
                         i_D      = dqs_bitslip.o,
                         o_OQ     = dqs_nodelay,
                         o_T_OUT  = dqs_t,
-
                     ),
                     Instance("ODELAYE3",
                         p_SIM_DEVICE       = device,
@@ -299,7 +298,6 @@ class USDDRPHY(Module, AutoCSR):
                         i_EN_VTC      = self._en_vtc.storage,
                         i_CE          = self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
                         i_INC         = 1,
-                        o_CNTVALUEOUT = Signal(9) if i != 0 or j != 0 else dqs_taps,
                         i_ODATAIN     = dqs_nodelay,
                         o_DATAOUT     = dqs_delayed,
                     ),
