@@ -715,6 +715,18 @@ class IS43TR16128B(DDR3Module):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
+class IS43TR16256A(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 260), tFAW=(None, 30), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
 
 # DDR3 (SO-DIMM) -----------------------------------------------------------------------------------
 
