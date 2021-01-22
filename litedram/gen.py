@@ -364,6 +364,45 @@ class LiteDRAMUSDDRPHYCRG(Module):
         # IODelay Ctrl
         self.submodules.idelayctrl = USIDELAYCTRL(self.cd_iodelay, cd_sys=self.cd_sys)
 
+class LiteDRAMUSPDDRPHYCRG(Module):
+    def __init__(self, platform, core_config):
+        assert core_config["memtype"] in ["DDR4"]
+        self.clock_domains.cd_por       = ClockDomain(reset_less=True)
+        self.clock_domains.cd_sys       = ClockDomain()
+        self.clock_domains.cd_sys4x     = ClockDomain()
+        self.clock_domains.cd_sys4x_pll = ClockDomain()
+        self.clock_domains.cd_iodelay   = ClockDomain()
+
+        # # #
+
+        clk = platform.request("clk")
+        rst = platform.request("rst")
+
+        # Power On Reset
+        por_count = Signal(32, reset=int(core_config["input_clk_freq"]*100/1e3)) # 100ms
+        por_done  = Signal()
+        self.comb += self.cd_por.clk.eq(clk)
+        self.comb += por_done.eq(por_count == 0)
+        self.sync.por += If(~por_done, por_count.eq(por_count - 1))
+
+        # Sys PLL
+        self.submodules.sys_pll = sys_pll = USPMMCM(speedgrade=core_config["speedgrade"])
+        self.comb += sys_pll.reset.eq(rst)
+        sys_pll.register_clkin(clk, core_config["input_clk_freq"])
+        sys_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
+        sys_pll.create_clkout(self.cd_sys4x_pll, 4*core_config["sys_clk_freq"], buf=None)
+        self.comb += platform.request("pll_locked").eq(sys_pll.locked)
+        self.specials += [
+            Instance("BUFGCE_DIV", name="main_bufgce_div",
+                p_BUFGCE_DIVIDE=4,
+                i_CE=por_done, i_I=self.cd_sys4x_pll.clk, o_O=self.cd_sys.clk),
+            Instance("BUFGCE", name="main_bufgce",
+                i_CE=por_done, i_I=self.cd_sys4x_pll.clk, o_O=self.cd_sys4x.clk),
+        ]
+
+        # IODelay Ctrl
+        self.submodules.idelayctrl = USPIDELAYCTRL(self.cd_iodelay, cd_sys=self.cd_sys)
+
 # LiteDRAMCoreControl ------------------------------------------------------------------------------
 
 class LiteDRAMCoreControl(Module, AutoCSR):
@@ -403,8 +442,10 @@ class LiteDRAMCore(SoCCore):
             self.submodules.crg = crg = LiteDRAMECP5DDRPHYCRG(platform, core_config)
         elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             self.submodules.crg = LiteDRAMS7DDRPHYCRG(platform, core_config)
-        elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:
+        elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY]:
             self.submodules.crg = LiteDRAMUSDDRPHYCRG(platform, core_config)
+        elif core_config["sdram_phy"] in [litedram_phys.USPDDRPHY]:
+            self.submodules.crg = LiteDRAMUSPDDRPHYCRG(platform, core_config)
 
         # DRAM -------------------------------------------------------------------------------------
         platform.add_extension(get_dram_ios(core_config))

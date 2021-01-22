@@ -1,0 +1,51 @@
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2021 Florent Kermarrec <florent@enjoy-digital.fr>
+# SPDX-License-Identifier: BSD-2-Clause
+
+{
+    # General ------------------------------------------------------------------
+    "cpu":        "vexriscv", # Type of CPU used for init/calib (vexriscv, lm32)
+    "speedgrade": -2,         # FPGA speedgrade
+    "memtype":    "DDR4",     # DRAM type
+
+    # PHY ----------------------------------------------------------------------
+    "cmd_latency":     1,            # Command additional latency
+    "sdram_module":    "MT40A512M8", # SDRAM modules of the board or SO-DIMM
+    "sdram_module_nb": 8,            # Number of byte groups
+    "sdram_rank_nb":   1,            # Number of ranks
+    "sdram_phy":       "USPDDRPHY",  # Type of FPGA PHY
+
+    # Electrical ---------------------------------------------------------------
+    "rtt_nom": "40ohm", # Nominal termination
+    "rtt_wr":  "120ohm", # Write termination
+    "ron":     "34ohm", # Output driver impedance
+
+    # Frequency ----------------------------------------------------------------
+    "input_clk_freq":   150e6, # Input clock frequency
+    "sys_clk_freq":     150e6, # System clock frequency (DDR_clk = 4 x sys_clk)
+    "iodelay_clk_freq": 300e6, # IODELAYs reference clock frequency
+
+    # Core ---------------------------------------------------------------------
+    "cmd_buffer_depth": 16,    # Depth of the command buffer
+
+    # User Ports ---------------------------------------------------------------
+    "user_ports": {
+        "axi_0" : {
+            "type": "axi",
+            "id_width": 32,
+        },
+        "wishbone_0" : {
+            "type": "wishbone",
+        },
+        "native_0" : {
+            "type": "native",
+        },
+        "fifo_0" : {
+            "type":  "fifo",
+            "base":  0x00000000,
+            "depth": 0x01000000,
+        },
+    },
+}
