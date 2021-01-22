@@ -188,7 +188,7 @@ class ECP5DDRPHY(Module, AutoCSR):
                     i_RST  = ResetSignal("sys"),
                     i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
-                    **{f"i_D{n}": (0b1010 >> n) & 0b1 for n in range(4)},
+                    **{f"i_D{n}": ((0b0101 if pads.clk_p.inverted else 0b1010) >> n) & 0b1 for n in range(4)},
                     o_Q    = pad_oddrx2f
                 )
                 self.specials += Instance("DELAYG",
