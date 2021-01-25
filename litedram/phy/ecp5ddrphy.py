@@ -116,8 +116,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         sys_clk_freq = 100e6,
         cl           = None,
         cwl          = None,
-        cmd_delay    = 0,
-        dm_remapping = {}):
+        cmd_delay    = 0):
         assert isinstance(cmd_delay, int) and cmd_delay < 128
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
@@ -318,7 +317,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             dm_o_data_d     = Signal(8)
             dm_o_data_muxed = Signal(4)
             for n in range(8):
-                self.comb += dm_o_data[n].eq(dfi.phases[n//4].wrdata_mask[n%4*databits//8+dm_remapping.get(i, i)])
+                self.comb += dm_o_data[n].eq(dfi.phases[n//4].wrdata_mask[n%4*databits//8 + i])
             self.sync += dm_o_data_d.eq(dm_o_data)
             dm_bl8_cases = {}
             dm_bl8_cases[0] = dm_o_data_muxed.eq(dm_o_data[:4])
