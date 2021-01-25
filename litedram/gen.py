@@ -504,7 +504,8 @@ class LiteDRAMCore(SoCCore):
         for name, port in core_config["user_ports"].items():
             # Native -------------------------------------------------------------------------------
             if port["type"] == "native":
-                user_port = self.sdram.crossbar.get_port()
+                user_port = self.sdram.crossbar.get_port(
+                    data_width=port.get("data_width", None))
                 platform.add_extension(get_native_user_port_ios(name,
                     user_port.address_width,
                     user_port.data_width))
@@ -529,7 +530,8 @@ class LiteDRAMCore(SoCCore):
                 ]
             # Wishbone -----------------------------------------------------------------------------
             elif port["type"] == "wishbone":
-                user_port = self.sdram.crossbar.get_port()
+                user_port = self.sdram.crossbar.get_port(
+                    data_width=port.get("data_width", None))
                 wb_port = wishbone.Interface(
                     user_port.data_width,
                     user_port.address_width)
@@ -552,7 +554,8 @@ class LiteDRAMCore(SoCCore):
                 ]
             # AXI ----------------------------------------------------------------------------------
             elif port["type"] == "axi":
-                user_port = self.sdram.crossbar.get_port()
+                user_port = self.sdram.crossbar.get_port(
+                    data_width=port.get("data_width", None))
                 axi_port  = LiteDRAMAXIPort(
                     user_port.data_width,
                     user_port.address_width + log2_int(user_port.data_width//8),
