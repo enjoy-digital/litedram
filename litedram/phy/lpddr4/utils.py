@@ -78,6 +78,98 @@ class DQSPattern(Module):
             self.o = o
 
 
+class Serializer(Module):
+    """Serialize given input signal
+
+    The parallel part uses `clkdiv` to latch the data. Output data counter `cnt` is incremented
+    on rising edges of `clk` and it determines current slice of `i` that is presented on `o`.
+    `LATENCY` is specified in `clkdiv` cycles.
+
+    NOTE: both `clk` and `clkdiv` should be phase aligned.
+    NOTE: `reset_value` is set to `ratio - 1` so that on the first clock edge after reset it is 0
+    """
+    LATENCY = 1
+
+    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_value=-1, name=None):
+        assert i_dw > o_dw
+        assert i_dw % o_dw == 0
+        ratio = i_dw // o_dw
+
+        sd_clk = getattr(self.sync, clk)
+        sd_clkdiv = getattr(self.sync, clkdiv)
+
+        if i is None: i = Signal(i_dw)
+        if o is None: o = Signal(o_dw)
+        if reset is None: reset = Signal()
+
+        self.i = i
+        self.o = o
+        self.reset = reset
+
+        if reset_value < 0:
+            reset_value = ratio + reset_value
+
+        # Serial part
+        cnt = Signal(max=ratio, reset=reset_value, name='{}_cnt'.format(name) if name is not None else None)
+        sd_clk += If(reset | cnt == ratio - 1, cnt.eq(0)).Else(cnt.eq(cnt + 1))
+
+        # Parallel part
+        i_d = Signal.like(self.i)
+        sd_clkdiv += i_d.eq(self.i)
+        i_array = Array([i_d[n*o_dw:(n+1)*o_dw] for n in range(ratio)])
+        self.comb += self.o.eq(i_array[cnt])
+
+
+class Deserializer(Module):
+    """Deserialize given input signal
+
+    The serial part latches the input data on rising edges of `clk` and stores them in the `o_pre`
+    buffer. The parallel part presents the data on `clkdiv` rising edges. `LATENCY` is expressed in
+    `clkdiv` cycles. The additional latency cycle (compared to Serializer) is used to ensure that
+    the last input bit is deserialized correctly.
+
+    NOTE: both `clk` and `clkdiv` should be phase aligned.
+    NOTE: `reset_value` is set to `ratio - 1` so that on the first clock edge after reset it is 0
+    """
+    LATENCY = 2
+
+    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_value=-1, name=None):
+        assert i_dw < o_dw
+        assert o_dw % i_dw == 0
+        ratio = o_dw // i_dw
+
+        sd_clk = getattr(self.sync, clk)
+        sd_clkdiv = getattr(self.sync, clkdiv)
+
+        if i is None: i = Signal(i_dw)
+        if o is None: o = Signal(o_dw)
+        if reset is None: reset = Signal()
+
+        self.i = i
+        self.o = o
+        self.reset = reset
+
+        if reset_value < 0:
+            reset_value = ratio + reset_value
+
+        # Serial part
+        cnt = Signal(max=ratio, reset=reset_value, name='{}_cnt'.format(name) if name is not None else None)
+        sd_clk += If(reset, cnt.eq(0)).Else(cnt.eq(cnt + 1))
+
+        def as_array(out):
+            return Array([out[n*i_dw:(n+1)*i_dw] for n in range(ratio)])
+
+        o_pre = Signal.like(self.o)
+        sd_clk += as_array(o_pre)[cnt].eq(self.i)
+
+        # Parallel part
+        # we need to ensure that the last chunk will be correct if clocks are phase aligned
+        o_pre_d = Signal.like(self.o)
+        sd_clkdiv += o_pre_d.eq(o_pre)
+        # would work as self.comb (at least in simulation)
+        sd_clkdiv += self.o.eq(Cat(as_array(o_pre_d)[:-1], as_array(o_pre)[-1]))
+
+
 class SimLogger(Module, AutoCSR):
     # Allows to use Display inside FSM and to filter log messages by level (statically or dynamically)
     DEBUG = 0

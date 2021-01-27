@@ -4,13 +4,17 @@ import pprint
 import random
 import unittest
 import itertools
+import subprocess
 from collections import defaultdict
 from typing import Mapping, Sequence
 
 from migen import *
 
+
 from litedram.phy import dfi
-from litedram.phy.lpddr4.simphy import LPDDR4SimPHY, Serializer, Deserializer
+from litedram.phy.lpddr4.simphy import Serializer, Deserializer
+from litedram.phy.lpddr4.simphy import LPDDR4SimPHY, DoubleRateLPDDR4SimPHY
+from litedram.phy.lpddr4 import simsoc
 
 from litex.gen.sim import run_simulation as _run_simulation
 
@@ -46,6 +50,7 @@ def run_simulation(dut, generators, debug_clocks=False, **kwargs):
     clocks = {
         "sys":          (64, 31),
         "sys_11_25":    (64, 29),  # aligned to sys8x_90 (phase shift of 11.25)
+        "sys2x":        (32, 15),
         "sys8x":        ( 8,  3),
         "sys8x_ddr":    ( 4,  1),
         "sys8x_90":     ( 8,  1),
@@ -90,8 +95,8 @@ class TestSimSerializers(unittest.TestCase):
         yield
 
     def serializer_test(self, *, data_width, datas, clk, clkdiv, latency, clkgen=None, clkcheck=None, **kwargs):
-        clkgen = clkgen if clkgen is not None else clk
-        clkcheck = clkcheck if clkcheck is not None else clkdiv
+        clkgen = clkgen if clkgen is not None else clkdiv
+        clkcheck = clkcheck if clkcheck is not None else clk
 
         received = []
         dut = Serializer(clk=clk, clkdiv=clkdiv, i_dw=data_width, o_dw=1)
@@ -106,8 +111,8 @@ class TestSimSerializers(unittest.TestCase):
         self.assertEqual(received, datas)
 
     def deserializer_test(self, *, data_width, datas, clk, clkdiv, latency, clkgen=None, clkcheck=None, **kwargs):
-        clkgen = clkgen if clkgen is not None else clkdiv
-        clkcheck = clkcheck if clkcheck is not None else clk
+        clkgen = clkgen if clkgen is not None else clk
+        clkcheck = clkcheck if clkcheck is not None else clkdiv
 
         datas = [[bit(i, d) for i in range(data_width)] for d in datas]
 
@@ -129,16 +134,16 @@ class TestSimSerializers(unittest.TestCase):
     ARGS_8 = dict(
         data_width = 8,
         datas = DATA_8,
-        clk = "sys",
-        clkdiv = "sys8x",
+        clkdiv = "sys",
+        clk = "sys8x",
         latency = Serializer.LATENCY,
     )
 
     ARGS_16 = dict(
         data_width = 16,
         datas = DATA_16,
-        clk = "sys",
-        clkdiv = "sys8x_ddr",
+        clkdiv = "sys",
+        clk = "sys8x_ddr",
         latency = Serializer.LATENCY,
     )
 
@@ -158,28 +163,28 @@ class TestSimSerializers(unittest.TestCase):
         return test
 
     test_sim_serializer_8 = _s(ARGS_8)
-    test_sim_serializer_8_phase90 = _s(ARGS_8, clk="sys_11_25", clkdiv="sys8x_90")
-    # when clkgen and clk are not phase aligned  (clk is delayed), there will be lower latency
-    test_sim_serializer_8_phase90_gen0 = _s(ARGS_8, clk="sys_11_25", clkdiv="sys8x_90", clkgen="sys", latency=Serializer.LATENCY - 1)
-    test_sim_serializer_8_phase90_check0 = _s(ARGS_8, clk="sys_11_25", clkdiv="sys8x_90", clkcheck="sys8x")
+    test_sim_serializer_8_phase90 = _s(ARGS_8, clkdiv="sys_11_25", clk="sys8x_90")
+    # when clkgen and clkdiv are not phase aligned (clkdiv is delayed), there will be lower latency
+    test_sim_serializer_8_phase90_gen0 = _s(ARGS_8, clkdiv="sys_11_25", clk="sys8x_90", clkgen="sys", latency=Serializer.LATENCY - 1)
+    test_sim_serializer_8_phase90_check0 = _s(ARGS_8, clkdiv="sys_11_25", clk="sys8x_90", clkcheck="sys8x")
 
     test_sim_serializer_16 = _s(ARGS_16)
-    test_sim_serializer_16_phase90 = _s(ARGS_16, clk="sys_11_25", clkdiv="sys8x_90_ddr")
-    test_sim_serializer_16_phase90_gen0 = _s(ARGS_16, clk="sys_11_25", clkdiv="sys8x_90_ddr", clkgen="sys", latency=Serializer.LATENCY - 1)
-    test_sim_serializer_16_phase90_check0 = _s(ARGS_16, clk="sys_11_25", clkdiv="sys8x_90_ddr", clkcheck="sys8x_ddr")
+    test_sim_serializer_16_phase90 = _s(ARGS_16, clkdiv="sys_11_25", clk="sys8x_90_ddr")
+    test_sim_serializer_16_phase90_gen0 = _s(ARGS_16, clkdiv="sys_11_25", clk="sys8x_90_ddr", clkgen="sys", latency=Serializer.LATENCY - 1)
+    test_sim_serializer_16_phase90_check0 = _s(ARGS_16, clkdiv="sys_11_25", clk="sys8x_90_ddr", clkcheck="sys8x_ddr")
 
     # for phase aligned clocks the latency will be bigger (preferably avoid phase aligned reading?)
     test_sim_deserializer_8 = _d(ARGS_8, latency=Deserializer.LATENCY + 1)
     test_sim_deserializer_8_check90 = _d(ARGS_8, clkcheck="sys_11_25")
     test_sim_deserializer_8_gen90_check90 = _d(ARGS_8, clkcheck="sys_11_25", clkgen="sys8x_90")
-    test_sim_deserializer_8_phase90 = _d(ARGS_8, clk="sys_11_25", clkdiv="sys8x_90", latency=Deserializer.LATENCY + 1)
-    test_sim_deserializer_8_phase90_check0 = _d(ARGS_8, clk="sys_11_25", clkdiv="sys8x_90", clkcheck="sys", latency=Deserializer.LATENCY + 1)
+    test_sim_deserializer_8_phase90 = _d(ARGS_8, clkdiv="sys_11_25", clk="sys8x_90", latency=Deserializer.LATENCY + 1)
+    test_sim_deserializer_8_phase90_check0 = _d(ARGS_8, clkdiv="sys_11_25", clk="sys8x_90", clkcheck="sys", latency=Deserializer.LATENCY + 1)
 
     test_sim_deserializer_16 = _d(ARGS_16, latency=Deserializer.LATENCY + 1)
     test_sim_deserializer_16_check90 = _d(ARGS_16, clkcheck="sys_11_25")
     test_sim_deserializer_16_gen90_check90 = _d(ARGS_16, clkcheck="sys_11_25", clkgen="sys8x_90_ddr")
-    test_sim_deserializer_16_phase90 = _d(ARGS_16, clk="sys_11_25", clkdiv="sys8x_90_ddr", latency=Deserializer.LATENCY + 1)
-    test_sim_deserializer_16_phase90_check0 = _d(ARGS_16, clk="sys_11_25", clkdiv="sys8x_90_ddr", clkcheck="sys", latency=Deserializer.LATENCY + 1)
+    test_sim_deserializer_16_phase90 = _d(ARGS_16, clkdiv="sys_11_25", clk="sys8x_90_ddr", latency=Deserializer.LATENCY + 1)
+    test_sim_deserializer_16_phase90_check0 = _d(ARGS_16, clkdiv="sys_11_25", clk="sys8x_90_ddr", clkcheck="sys", latency=Deserializer.LATENCY + 1)
 
 
 BOLD = '\033[1m'
@@ -398,7 +403,8 @@ def dq_pattern(i, dfi_data, dfi_name):
     return ''.join(str(v) for v in dfi_data_to_dq(i, dfi_data, dfi_name))
 
 
-class TestLPDDR4(unittest.TestCase):
+class LPDDR4Tests(unittest.TestCase):
+    SYS_CLK_FREQ = 100e6
     CMD_LATENCY = 2
 
     def run_test(self, dut, dfi_sequence, pad_checkers: Mapping[str, Mapping[str, str]], pad_generators=None, **kwargs):
@@ -422,7 +428,7 @@ class TestLPDDR4(unittest.TestCase):
     def test_lpddr4_cs_phase_0(self):
         # Test that CS is serialized correctly when sending command on phase 0
         latency = '00000000' * self.CMD_LATENCY
-        self.run_test(LPDDR4SimPHY(),
+        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
             dfi_sequence = [
                 {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},  # p0: READ
             ],
@@ -434,7 +440,7 @@ class TestLPDDR4(unittest.TestCase):
     def test_lpddr4_clk(self):
         # Test clock serialization, first few cycles are undefined so ignore them
         latency = 'xxxxxxxx' * self.CMD_LATENCY
-        self.run_test(LPDDR4SimPHY(),
+        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
             dfi_sequence = [
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
             ],
@@ -446,7 +452,7 @@ class TestLPDDR4(unittest.TestCase):
     def test_lpddr4_cs_multiple_phases(self):
         # Test that CS is serialized on different phases and that overlapping commands are handled
         latency = '00000000' * self.CMD_LATENCY
-        self.run_test(LPDDR4SimPHY(),
+        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
             dfi_sequence = [
                 {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
@@ -479,7 +485,7 @@ class TestLPDDR4(unittest.TestCase):
         # Test proper serialization of commands to CA pads and that overlapping commands are handled
         latency = '00000000' * self.CMD_LATENCY
         read = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)
-        self.run_test(LPDDR4SimPHY(),
+        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
             dfi_sequence = [
                 {0: read, 3: read},  # p4 should be ignored
                 {0: read, 4: read},
@@ -511,7 +517,7 @@ class TestLPDDR4(unittest.TestCase):
         for masked_write in [True, False]:
             with self.subTest(masked_write=masked_write):
                 wr_ca3 = '{}x00'.format('0' if not masked_write else '1')
-                self.run_test(LPDDR4SimPHY(masked_write=masked_write),
+                self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ, masked_write=masked_write),
                     dfi_sequence = [
                         {0: read, 4: write_ap},
                         {0: activate, 4: refresh_ab},
@@ -535,7 +541,7 @@ class TestLPDDR4(unittest.TestCase):
         # Test serialization of DFI command pins (cs/cke/odt/reset_n)
         latency = '00000000' * self.CMD_LATENCY
         read = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)
-        self.run_test(LPDDR4SimPHY(),
+        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
             dfi_sequence = [
                 {
                     0: dict(cke=1, odt=1, reset_n=1, **read),
@@ -555,7 +561,7 @@ class TestLPDDR4(unittest.TestCase):
 
     def test_lpddr4_dq_out(self):
         # Test serialization of dfi wrdata to DQ pads
-        dut = LPDDR4SimPHY()
+        dut = LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
         zero = '00000000' * 2  # zero for 1 sysclk clock in sys8x_ddr clock domain
 
         dfi_data = {
@@ -579,7 +585,7 @@ class TestLPDDR4(unittest.TestCase):
 
     def test_lpddr4_dq_only_1cycle(self):
         # Test that DQ data is sent to pads only during expected cycle, on other cycles there is no data
-        dut = LPDDR4SimPHY()
+        dut = LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
         zero = '00000000' * 2
 
         dfi_data = {
@@ -606,7 +612,7 @@ class TestLPDDR4(unittest.TestCase):
         # Test serialization of DQS pattern in relation to DQ data, with proper preamble and postamble
         zero = '00000000' * 2
 
-        self.run_test(LPDDR4SimPHY(),
+        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
             dfi_sequence = [
                 {0: dict(wrdata_en=1)},
                 {},
@@ -637,7 +643,7 @@ class TestLPDDR4(unittest.TestCase):
         # Test proper output on DMI pads. We don't implement masking now, so nothing should be sent to DMI pads
         zero = '00000000' * 2
 
-        self.run_test(LPDDR4SimPHY(),
+        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
             dfi_sequence = [
                 {0: dict(wrdata_en=1)},
                 {},
@@ -673,7 +679,7 @@ class TestLPDDR4(unittest.TestCase):
             {},
         ]
 
-        self.run_test(LPDDR4SimPHY(),
+        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
             dfi_sequence = dfi_sequence,
             pad_checkers = {},
             pad_generators = {},
@@ -713,7 +719,7 @@ class TestLPDDR4(unittest.TestCase):
             {},
         ]
 
-        self.run_test(LPDDR4SimPHY(),
+        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
             dfi_sequence = dfi_sequence,
             pad_checkers = {},
             pad_generators = {
@@ -725,7 +731,7 @@ class TestLPDDR4(unittest.TestCase):
         # Test whole WRITE command sequence verifying data on pads and write_latency from MC perspective
         for masked_write in [True, False]:
             with self.subTest(masked_write=masked_write):
-                phy = LPDDR4SimPHY(masked_write=masked_write)
+                phy = LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ, masked_write=masked_write)
                 zero = '00000000' * 2
                 write_latency = phy.settings.write_latency
                 wrphase = phy.settings.wrphase.reset.value
@@ -776,7 +782,7 @@ class TestLPDDR4(unittest.TestCase):
 
     def test_lpddr4_cmd_read(self):
         # Test whole READ command sequence simulating DRAM response and verifying read_latency from MC perspective
-        phy = LPDDR4SimPHY()
+        phy = LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
         zero = '00000000' * 2
         read_latency = phy.settings.read_latency
         rdphase = phy.settings.rdphase.reset.value
@@ -894,3 +900,91 @@ class TestLPDDR4(unittest.TestCase):
                 "sys8x_90": sim.cmd_checker,
             },
         )
+
+    def test_lpddr4_double_rate_phy_write(self):
+        # Verify that double rate PHY works as normal one with half sys clock more latency
+        phy = DoubleRateLPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ, serdes_reset_value=-1)
+        zero = '00000000' * 2  # DDR
+        half = '0000'  # double rate PHY introduces latency of 4 sys8x clocks
+        init_ddr_latency = (self.CMD_LATENCY + 1) * zero + half*2  # half*2 for DDR
+        write_latency = phy.settings.write_latency
+        wrphase = phy.settings.wrphase.reset.value
+
+        dfi_data = {
+            0: dict(wrdata=0x11112222),
+            1: dict(wrdata=0x33334444),
+            2: dict(wrdata=0x55556666),
+            3: dict(wrdata=0x77778888),
+            4: dict(wrdata=0x9999aaaa),
+            5: dict(wrdata=0xbbbbcccc),
+            6: dict(wrdata=0xddddeeee),
+            7: dict(wrdata=0xffff0000),
+        }
+        dfi_sequence = [
+            {wrphase: dict(cs_n=0, cas_n=0, ras_n=1, we_n=0, wrdata_en=1)},
+            *[{} for _ in range(write_latency - 1)],
+            dfi_data,
+            {},
+            {},
+            {},
+            {},
+            {},
+        ]
+
+        self.run_test(phy,
+            dfi_sequence = dfi_sequence,
+            pad_checkers = {
+                "sys8x_90": {
+                    "cs":  half + "00000000"*2 + "00001010" + "00000000"*2,
+                    "ca0": half + "00000000"*2 + "00000000" + "00000000"*2,
+                    "ca1": half + "00000000"*2 + "00000010" + "00000000"*2,
+                    "ca2": half + "00000000"*2 + "00001000" + "00000000"*2,
+                    "ca3": half + "00000000"*2 + "00001000" + "00000000"*2,
+                    "ca4": half + "00000000"*2 + "00000010" + "00000000"*2,
+                    "ca5": half + "00000000"*2 + "00000000" + "00000000"*2,
+                },
+                "sys8x_90_ddr": {
+                    f'dq{i}': init_ddr_latency + zero + dq_pattern(i, dfi_data, "wrdata") + zero
+                    for i in range(16)
+                },
+                "sys8x_ddr": {
+                    "dqs0": init_ddr_latency + '01010101'+'01010100' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
+                },
+            },
+        )
+
+
+class VerilatorLPDDR4Tests(unittest.TestCase):
+    def run_python(self, script, args, **kwargs):
+        command = ["python3", script, *args]
+        proc = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
+        return proc.stdout.decode(), proc.stderr.decode()
+
+    def error_msg(self, stdout, stderr):
+        return """
+======================= STDERR =============================
+{}
+======================= STDOUT =============================
+{}
+============================================================
+        """.strip().format(stderr, stdout)
+
+    def run_test(self, args, **kwargs):
+        stdout, stderr = self.run_python(simsoc.__file__, args, **kwargs)
+        self.assertTrue("Memtest OK" in stdout, msg=self.error_msg(stdout, stderr))
+
+    @unittest.skip
+    def test_lpddr4_sim_default(self):
+        self.run_test(["--finish-after-memtest", "--disable-delay", "--log-level", "warn"])
+
+    @unittest.skip
+    def test_lpddr4_sim_no_l2_cache(self):
+        self.run_test(["--finish-after-memtest", "--disable-delay", "--log-level", "warn", "--l2-size", "0"])
+
+    @unittest.skip
+    def test_lpddr4_sim_double_rate(self):
+        self.run_test(["--finish-after-memtest", "--disable-delay", "--log-level", "warn", "--double-rate-phy"])
+
+    @unittest.skip
+    def test_lpddr4_sim_double_rate_no_l2_cache(self):
+        self.run_test(["--finish-after-memtest", "--disable-delay", "--log-level", "warn", "--double-rate-phy", "--l2-size", "0"])

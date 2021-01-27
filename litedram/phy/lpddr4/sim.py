@@ -430,7 +430,7 @@ class DataSim(Module, AutoCSR):  # clock domain: ddr
         nrows, ncols = 32768, 1024
         mems = [Memory(len(pads.dq), depth=nrows * ncols) for _ in range(8)]
         ports = [mem.get_port(write_capable=True, we_granularity=8, async_read=True) for mem in mems]
-        self.specials += *mems, *ports
+        self.specials += mems + ports
         ports = Array(ports)
 
         bank = Signal(3)
