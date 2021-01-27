@@ -116,7 +116,8 @@ class ECP5DDRPHY(Module, AutoCSR):
         sys_clk_freq = 100e6,
         cl           = None,
         cwl          = None,
-        cmd_delay    = 0):
+        cmd_delay    = 0,
+        clk_polarity = 0):
         assert isinstance(cmd_delay, int) and cmd_delay < 128
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
@@ -181,13 +182,14 @@ class ECP5DDRPHY(Module, AutoCSR):
             pads.sel_group(pads_group)
 
             # Clock --------------------------------------------------------------------------------
+            clk_pattern = {0: 0b1010, 1: 0b0101}[clk_polarity]
             for i in range(len(pads.clk_p)):
                 pad_oddrx2f = Signal()
                 self.specials += Instance("ODDRX2F",
                     i_RST  = ResetSignal("sys"),
                     i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
-                    **{f"i_D{n}": (0b1010 >> n) & 0b1 for n in range(4)},
+                    **{f"i_D{n}": (clk_pattern >> n) & 0b1 for n in range(4)},
                     o_Q    = pad_oddrx2f
                 )
                 self.specials += Instance("DELAYG",
