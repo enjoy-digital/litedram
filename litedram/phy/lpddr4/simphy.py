@@ -36,14 +36,15 @@ class LPDDR4SimulationPads(Module):
 
 
 class LPDDR4SimPHY(LPDDR4PHY):
-    def __init__(self, sys_clk_freq=100e6, aligned_reset_zero=False):
+    def __init__(self, sys_clk_freq=100e6, aligned_reset_zero=False, **kwargs):
         pads = LPDDR4SimulationPads()
         self.submodules += pads
         super().__init__(pads,
-                         sys_clk_freq       = sys_clk_freq,
-                         write_ser_latency  = Serializer.LATENCY,
-                         read_des_latency   = Deserializer.LATENCY,
-                         phytype            = "LPDDR4SimPHY")
+            sys_clk_freq       = sys_clk_freq,
+            write_ser_latency  = Serializer.LATENCY,
+            read_des_latency   = Deserializer.LATENCY,
+            phytype            = "LPDDR4SimPHY",
+            **kwargs)
 
         def add_reset_value(phase, kwargs):
             if aligned_reset_zero and phase == 0:

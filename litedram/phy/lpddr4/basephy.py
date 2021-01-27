@@ -15,7 +15,8 @@ from litedram.phy.lpddr4.commands import DFIPhaseAdapter
 
 class LPDDR4PHY(Module, AutoCSR):
     def __init__(self, pads, *,
-                 sys_clk_freq, write_ser_latency, read_des_latency, phytype, cmd_delay=None):
+                 sys_clk_freq, write_ser_latency, read_des_latency, phytype,
+                 masked_write=True, cmd_delay=None):
         self.pads        = pads
         self.memtype     = memtype     = "LPDDR4"
         self.nranks      = nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
@@ -132,7 +133,7 @@ class LPDDR4PHY(Module, AutoCSR):
 
         # # #
 
-        adapters = [DFIPhaseAdapter(phase) for phase in self.dfi.phases]
+        adapters = [DFIPhaseAdapter(phase, masked_write=masked_write) for phase in self.dfi.phases]
         self.submodules += adapters
 
         # Now prepare the data by converting the sequences on adapters into sequences on the pads.
@@ -258,8 +259,8 @@ class LPDDR4PHY(Module, AutoCSR):
             self.submodules += BitSlip(
                 dw     = 2*nphases,
                 cycles = bitslip_cycles,
-                rst    = (self._dly_sel.storage[bit//8] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
-                slp    = self._dly_sel.storage[bit//8] & self._wdly_dq_bitslip.re,
+                rst    = (self._dly_sel.storage[bit] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
+                slp    = self._dly_sel.storage[bit] & self._wdly_dq_bitslip.re,
                 i      = dqs_pattern.o,
                 o      = self.ck_dqs_o[bit],
             )
@@ -268,10 +269,21 @@ class LPDDR4PHY(Module, AutoCSR):
         # DMI signal is used for Data Mask or Data Bus Invertion depending on Mode Registers values.
         # With DM and DBI disabled, this signal is a Don't Care.
         # With DM enabled, masking is performed only when the command used is WRITE-MASKED.
-        # TODO: use WRITE-MASKED for all write commands, and configure Mode Registers for that
-        #       during DRAM initialization (we don't want to support DBI).
-        for bin in range(self.databits//8):
-            self.comb += self.ck_dmi_o[bit].eq(0)
+        # We don't support DBI, DM support is configured statically with `masked_write`.
+        for bit in range(self.databits//8):
+            if not masked_write:
+                self.comb += self.ck_dmi_o[bit].eq(0)
+                self.comb += self.dmi_oe.eq(0)
+            else:
+                self.comb += self.dmi_oe.eq(self.dq_oe)
+                self.submodules += BitSlip(
+                    dw     = 2*nphases,
+                    cycles = bitslip_cycles,
+                    rst    = (self._dly_sel.storage[bit] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
+                    slp    = self._dly_sel.storage[bit] & self._wdly_dq_bitslip.re,
+                    i      = Cat(*[self.dfi.phases[i//2] .wrdata_mask[i%2 * self.databits//8 + bit] for i in range(2*nphases)]),
+                    o      = self.ck_dmi_o[bit],
+                )
 
         # Read Control Path ------------------------------------------------------------------------
         # Creates a delay line of read commands coming from the DFI interface. The output is used to

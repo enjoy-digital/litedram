@@ -64,7 +64,6 @@ class Clocks(dict):  # FORMAT: {name: {"freq_hz": _, "phase_deg": _}, ...}
 
     def add_io(self, io):
         for name in self.names():
-            print((name + "_clk", 0, Pins(1)))
             io.append((name + "_clk", 0, Pins(1)))
 
     def add_clockers(self, sim_config):
@@ -105,7 +104,7 @@ def get_clocks(sys_clk_freq):
 
 class SimSoC(SoCCore):
     def __init__(self, clocks, log_level, auto_precharge=False, with_refresh=True, trace_reset=0,
-            disable_delay=False, **kwargs):
+            disable_delay=False, masked_write=True, **kwargs):
         platform     = Platform()
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
@@ -126,7 +125,11 @@ class SimSoC(SoCCore):
         # LPDDR4 -----------------------------------------------------------------------------------
         sdram_module = litedram_modules.MT53E256M16D1(sys_clk_freq, "1:8")
         pads = platform.request("lpddr4")
-        self.submodules.ddrphy = LPDDR4SimPHY(sys_clk_freq=sys_clk_freq, aligned_reset_zero=True)
+        self.submodules.ddrphy = LPDDR4SimPHY(
+            sys_clk_freq       = sys_clk_freq,
+            aligned_reset_zero = True,
+            masked_write       = masked_write,
+        )
         # fake delays (make no nsense in simulation, but sdram.c expects them)
         self.ddrphy._rdly_dq_rst         = CSR()
         self.ddrphy._rdly_dq_inc         = CSR()
@@ -444,6 +447,11 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             sorter     = dfi_sorter(),
             colorer    = dfi_per_phase_colorer())
         gtkw.add(soc.ddrphy.dfi,
+            group_name = "dfi wrdata_mask",
+            filter     = regex_filter(suffixes2re(["wrdata_mask"])),
+            sorter     = dfi_sorter(),
+            colorer    = dfi_per_phase_colorer())
+        gtkw.add(soc.ddrphy.dfi,
             group_name = "dfi rddata",
             filter     = regex_filter(suffixes2re(["rddata"])),
             sorter     = dfi_sorter(),
@@ -475,6 +483,8 @@ def main():
     parser.add_argument("--log-level",            default="all=INFO",      help="Set simulation logging level")
     parser.add_argument("--disable-delay",        action="store_true",     help="Disable CPU delays")
     parser.add_argument("--gtkw-savefile",        action="store_true",     help="Generate GTKWave savefile")
+    parser.add_argument("--no-masked-write",      action="store_true",     help="Use LPDDR4 WRITE instead of MASKED-WRITE")
+    parser.add_argument("--no-run",               action="store_true",     help="Don't run the simulation, just generate files")
     args = parser.parse_args()
 
     soc_kwargs     = soc_sdram_argdict(args)
@@ -503,6 +513,7 @@ def main():
         trace_reset    = int(args.trace_reset),
         log_level      = args.log_level,
         disable_delay  = args.disable_delay,
+        masked_write   = not args.no_masked_write,
         **soc_kwargs)
 
     # Build/Run ------------------------------------------------------------------------------------
@@ -520,7 +531,8 @@ def main():
     if args.gtkw_savefile:
         generate_gtkw_savefile(builder, vns, trace_fst=args.trace_fst)
 
-    builder.build(build=False, **build_kwargs)
+    if not args.no_run:
+        builder.build(build=False, **build_kwargs)
 
 if __name__ == "__main__":
     main()

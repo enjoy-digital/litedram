@@ -518,8 +518,8 @@ class DQWrite(DQBurst):
                 NextValue(masked, self.masked),
             ],
             ops = [
-                self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, data=0x%04x",
-                    self.burst_counter, bank, row, self.col_burst, dq, once=False),
+                self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%04x dm=0x%02b",
+                    self.burst_counter, bank, row, self.col_burst, dq, dmi, once=False),
                 If(masked,
                     ports[bank].we.eq(~dmi),  # DMI high masks the beat
                 ).Else(
@@ -534,7 +534,7 @@ class DQRead(DQBurst):
     def __init__(self, *, dq, ports, nrows, ncols, bank, row, col, **kwargs):
         super().__init__(nrows=nrows, ncols=ncols, row=row, col=col, **kwargs)
         self.add_fsm([
-            self.log.debug("READ[%d]: bank=%d, row=%d, col=%d, data=0x%04x",
+            self.log.debug("READ[%d]: bank=%d, row=%d, col=%d, dq=0x%04x",
                 self.burst_counter, bank, row, self.col_burst, dq, once=False),
             ports[bank].we.eq(0),
             ports[bank].adr.eq(self.addr),

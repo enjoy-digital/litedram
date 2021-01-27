@@ -508,25 +508,28 @@ class TestLPDDR4(unittest.TestCase):
         mrw        = dict(cs_n=0, cas_n=0, ras_n=0, we_n=0, bank=0,     address=(0b110011 << 8) | 0b10101010)  # 6-bit address | 8-bit op code
         zqc_start  = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,     address=0b1001111)  # MPC with ZQCAL START operand
         zqc_latch  = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,     address=0b1010001)  # MPC with ZQCAL LATCH operand
-        self.run_test(LPDDR4SimPHY(),
-            dfi_sequence = [
-                {0: read, 4: write_ap},
-                {0: activate, 4: refresh_ab},
-                {0: precharge, 4: mrw},
-                {0: zqc_start, 4: zqc_latch},
-            ],
-            pad_checkers = {"sys8x_90": {
-                # note that refresh and precharge have a single command so these go as cmd2
-                #                 rd     wr       act    ref      pre    mrw      zqcs   zqcl
-                'cs':  latency + '1010'+'1010' + '1010'+'0010' + '0010'+'1010' + '0010'+'0010',
-                'ca0': latency + '0100'+'0100' + '1011'+'0000' + '0001'+'0100' + '0001'+'0001',
-                'ca1': latency + '1010'+'0110' + '0110'+'0000' + '0001'+'1111' + '0001'+'0000',
-                'ca2': latency + '0101'+'1100' + '0010'+'0001' + '0000'+'1010' + '0001'+'0000',
-                'ca3': latency + '0x01'+'0x00' + '1110'+'001x' + '000x'+'0001' + '0001'+'0000',
-                'ca4': latency + '0110'+'0010' + '1010'+'000x' + '001x'+'0110' + '0000'+'0001',
-                'ca5': latency + '0010'+'0100' + '1001'+'001x' + '000x'+'1101' + '0010'+'0010',
-            }},
-        )
+        for masked_write in [True, False]:
+            with self.subTest(masked_write=masked_write):
+                wr_ca3 = '{}x00'.format('0' if not masked_write else '1')
+                self.run_test(LPDDR4SimPHY(masked_write=masked_write),
+                    dfi_sequence = [
+                        {0: read, 4: write_ap},
+                        {0: activate, 4: refresh_ab},
+                        {0: precharge, 4: mrw},
+                        {0: zqc_start, 4: zqc_latch},
+                    ],
+                    pad_checkers = {"sys8x_90": {
+                        # note that refresh and precharge have a single command so these go as cmd2
+                        #                 rd     wr       act    ref      pre    mrw      zqcs   zqcl
+                        'cs':  latency + '1010'+'1010' + '1010'+'0010' + '0010'+'1010' + '0010'+'0010',
+                        'ca0': latency + '0100'+'0100' + '1011'+'0000' + '0001'+'0100' + '0001'+'0001',
+                        'ca1': latency + '1010'+'0110' + '0110'+'0000' + '0001'+'1111' + '0001'+'0000',
+                        'ca2': latency + '0101'+'1100' + '0010'+'0001' + '0000'+'1010' + '0001'+'0000',
+                        'ca3': latency + '0x01'+wr_ca3 + '1110'+'001x' + '000x'+'0001' + '0001'+'0000',
+                        'ca4': latency + '0110'+'0010' + '1010'+'000x' + '001x'+'0110' + '0000'+'0001',
+                        'ca5': latency + '0010'+'0100' + '1001'+'001x' + '000x'+'1101' + '0010'+'0010',
+                    }},
+                )
 
     def test_lpddr4_command_pads(self):
         # Test serialization of DFI command pins (cs/cke/odt/reset_n)
@@ -720,53 +723,56 @@ class TestLPDDR4(unittest.TestCase):
 
     def test_lpddr4_cmd_write(self):
         # Test whole WRITE command sequence verifying data on pads and write_latency from MC perspective
-        phy = LPDDR4SimPHY()
-        zero = '00000000' * 2
-        write_latency = phy.settings.write_latency
-        wrphase = phy.settings.wrphase.reset.value
+        for masked_write in [True, False]:
+            with self.subTest(masked_write=masked_write):
+                phy = LPDDR4SimPHY(masked_write=masked_write)
+                zero = '00000000' * 2
+                write_latency = phy.settings.write_latency
+                wrphase = phy.settings.wrphase.reset.value
 
-        dfi_data = {
-            0: dict(wrdata=0x11112222),
-            1: dict(wrdata=0x33334444),
-            2: dict(wrdata=0x55556666),
-            3: dict(wrdata=0x77778888),
-            4: dict(wrdata=0x9999aaaa),
-            5: dict(wrdata=0xbbbbcccc),
-            6: dict(wrdata=0xddddeeee),
-            7: dict(wrdata=0xffff0000),
-        }
-        dfi_sequence = [
-            {wrphase: dict(cs_n=0, cas_n=0, ras_n=1, we_n=0, wrdata_en=1)},
-            *[{} for _ in range(write_latency - 1)],
-            dfi_data,
-            {},
-            {},
-            {},
-            {},
-            {},
-        ]
+                dfi_data = {
+                    0: dict(wrdata=0x11112222),
+                    1: dict(wrdata=0x33334444),
+                    2: dict(wrdata=0x55556666),
+                    3: dict(wrdata=0x77778888),
+                    4: dict(wrdata=0x9999aaaa),
+                    5: dict(wrdata=0xbbbbcccc),
+                    6: dict(wrdata=0xddddeeee),
+                    7: dict(wrdata=0xffff0000),
+                }
+                dfi_sequence = [
+                    {wrphase: dict(cs_n=0, cas_n=0, ras_n=1, we_n=0, wrdata_en=1)},
+                    *[{} for _ in range(write_latency - 1)],
+                    dfi_data,
+                    {},
+                    {},
+                    {},
+                    {},
+                    {},
+                ]
 
-        self.run_test(phy,
-            dfi_sequence = dfi_sequence,
-            pad_checkers = {
-                "sys8x_90": {
-                    "cs":  "00000000"*2 + "00001010" + "00000000"*2,
-                    "ca0": "00000000"*2 + "00000000" + "00000000"*2,
-                    "ca1": "00000000"*2 + "00000010" + "00000000"*2,
-                    "ca2": "00000000"*2 + "00001000" + "00000000"*2,
-                    "ca3": "00000000"*2 + "00000000" + "00000000"*2,
-                    "ca4": "00000000"*2 + "00000010" + "00000000"*2,
-                    "ca5": "00000000"*2 + "00000000" + "00000000"*2,
-                },
-                "sys8x_90_ddr": {
-                    f'dq{i}': (self.CMD_LATENCY+1)*zero + zero + dq_pattern(i, dfi_data, "wrdata") + zero
-                    for i in range(16)
-                },
-                "sys8x_ddr": {
-                    "dqs0": (self.CMD_LATENCY+1)*zero + '01010101'+'01010100' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
-                },
-            },
-        )
+                wr_ca3 = "0000{}000".format('0' if not masked_write else '1')
+                self.run_test(phy,
+                    dfi_sequence = dfi_sequence,
+                    pad_checkers = {
+                        "sys8x_90": {
+                            "cs":  "00000000"*2 + "00001010" + "00000000"*2,
+                            "ca0": "00000000"*2 + "00000000" + "00000000"*2,
+                            "ca1": "00000000"*2 + "00000010" + "00000000"*2,
+                            "ca2": "00000000"*2 + "00001000" + "00000000"*2,
+                            "ca3": "00000000"*2 +  wr_ca3    + "00000000"*2,
+                            "ca4": "00000000"*2 + "00000010" + "00000000"*2,
+                            "ca5": "00000000"*2 + "00000000" + "00000000"*2,
+                        },
+                        "sys8x_90_ddr": {
+                            f'dq{i}': (self.CMD_LATENCY+1)*zero + zero + dq_pattern(i, dfi_data, "wrdata") + zero
+                            for i in range(16)
+                        },
+                        "sys8x_ddr": {
+                            "dqs0": (self.CMD_LATENCY+1)*zero + '01010101'+'01010100' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
+                        },
+                    },
+                )
 
     def test_lpddr4_cmd_read(self):
         # Test whole READ command sequence simulating DRAM response and verifying read_latency from MC perspective

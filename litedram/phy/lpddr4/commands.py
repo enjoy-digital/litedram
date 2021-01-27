@@ -30,7 +30,7 @@ class DFIPhaseAdapter(Module):
     are then counted starting from CS low on the 4th cycle.
     """
 
-    def __init__(self, dfi_phase):
+    def __init__(self, dfi_phase, masked_write=True):
         # CS/CA values for 4 SDR cycles
         self.cs = Signal(4)
         self.ca = Array([Signal(6) for _ in range(4)])
@@ -65,11 +65,12 @@ class DFIPhaseAdapter(Module):
         def cmds(cmd1, cmd2, valid=1):
             return self.cmd1.set(cmd1) + self.cmd2.set(cmd2) + [self.valid.eq(valid)]
 
+        write1 = "MASK WRITE-1" if masked_write else "WRITE-1"
         self.comb += If(dfi_phase.cs_n == 0,  # require dfi.cs_n
             Case(dfi_cmd, {
                 _cmd["ACT"]: cmds("ACTIVATE-1", "ACTIVATE-2"),
                 _cmd["RD"]:  cmds("READ-1",     "CAS-2"),
-                _cmd["WR"]:  cmds("WRITE-1",    "CAS-2"),  # TODO: masked write
+                _cmd["WR"]:  cmds(write1,       "CAS-2"),
                 _cmd["PRE"]: cmds("DESELECT",   "PRECHARGE"),
                 _cmd["REF"]: cmds("DESELECT",   "REFRESH"),
                 _cmd["ZQC"]: cmds("DESELECT",   "MPC"),
