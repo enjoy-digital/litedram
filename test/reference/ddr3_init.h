@@ -70,7 +70,9 @@ const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {
 	CSR_SDRAM_DFII_PI3_RDDATA_ADDR
 };
 
-#define DDRX_MR1 6
+#define DDRX_MR_WRLVL_ADDRESS 1
+#define DDRX_MR_WRLVL_RESET 6
+#define DDRX_MR_WRLVL_BIT 7
 
 static void init_sequence(void)
 {
