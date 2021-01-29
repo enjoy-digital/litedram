@@ -294,6 +294,12 @@ def parse_spd_hexdump(filename):
 
 # SDRAMModule --------------------------------------------------------------------------------------
 
+Frac = namedtuple("Frac", ["num", "denom"])
+
+class Timing(namedtuple("Timing", ["ck", "ns"])):
+    def __add__(self, other):
+        return Timing(self.ck + other.ck, self.ns + other.ns)
+
 class SDRAMModule:
     """SDRAM module geometry and timings.
 
@@ -320,68 +326,82 @@ class SDRAMModule:
         if (fine_refresh_mode is None) and (self.memtype == "DDR4"):
             fine_refresh_mode = "1x"
         self.timing_settings = TimingSettings(
-            tRP   = self.ns_to_cycles(self.get("tRP")),
-            tRCD  = self.ns_to_cycles(self.get("tRCD")),
-            tWR   = self.ns_to_cycles(self.get("tWR")),
-            tREFI = self.ns_to_cycles(self.get("tREFI", fine_refresh_mode), False),
-            tRFC  = self.ck_ns_to_cycles(*self.get("tRFC", fine_refresh_mode)),
-            tWTR  = self.ck_ns_to_cycles(*self.get("tWTR")),
-            tFAW  = None if self.get("tFAW") is None else self.ck_ns_to_cycles(*self.get("tFAW")),
-            tCCD  = None if self.get("tCCD") is None else self.ck_ns_to_cycles(*self.get("tCCD")),
-            tRRD  = None if self.get("tRRD") is None else self.ck_ns_to_cycles(*self.get("tRRD")),
-            tRC   = None  if self.get("tRAS") is None else self.ns_to_cycles(self.get("tRP") + self.get("tRAS")),
-            tRAS  = None if self.get("tRAS") is None else self.ns_to_cycles(self.get("tRAS")),
-            tZQCS = None if self.get("tZQCS") is None else self.ck_ns_to_cycles(*self.get("tZQCS"))
+            tRP   = self.ck_ns_to_cycles(self.get("tRP")),
+            tRCD  = self.ck_ns_to_cycles(self.get("tRCD")),
+            tWR   = self.ck_ns_to_cycles(self.get("tWR")),
+            tREFI = self.ck_ns_to_cycles(self.get("tREFI", fine_refresh_mode), margin=False),
+            tRFC  = self.ck_ns_to_cycles(self.get("tRFC", fine_refresh_mode)),
+            tWTR  = self.ck_ns_to_cycles(self.get("tWTR")),
+            tFAW  = None if self.get("tFAW") is None else self.ck_ns_to_cycles(self.get("tFAW")),
+            tCCD  = None if self.get("tCCD") is None else self.ck_ns_to_cycles(self.get("tCCD")),
+            tRRD  = None if self.get("tRRD") is None else self.ck_ns_to_cycles(self.get("tRRD")),
+            tRC   = None if self.get("tRAS") is None else self.ck_ns_to_cycles(self.get("tRP") + self.get("tRAS")),
+            tRAS  = None if self.get("tRAS") is None else self.ck_ns_to_cycles(self.get("tRAS")),
+            tZQCS = None if self.get("tZQCS") is None else self.ck_ns_to_cycles(self.get("tZQCS"))
         )
         self.timing_settings.fine_refresh_mode = fine_refresh_mode
 
     def get(self, name, key=None):
-        r = None
-        if name in _speedgrade_timings:
-            if hasattr(self, "speedgrade_timings"):
-                speedgrade = "default" if self.speedgrade is None else self.speedgrade
-                r = getattr(self.speedgrade_timings[speedgrade], name)
-            else:
-                name = name + "_" + self.speedgrade if self.speedgrade is not None else name
-                try:
-                    r = getattr(self, name)
-                except:
-                    pass
+        assert name in _speedgrade_timings + _technology_timings, "Unknown name: {}".format(name)
+        timing = self.get_timing(name)
+        if timing is None:
+            return None
+        if (timing is not None) and (key is not None):
+            timing = timing[key]
+        if isinstance(timing, tuple):
+            ck, ns = timing
         else:
-            if hasattr(self, "technology_timings"):
-                r = getattr(self.technology_timings, name)
-            else:
-                try:
-                    r = getattr(self, name)
-                except:
-                    pass
-        if (r is not None) and (key is not None):
-            r = r[key]
-        return r
+            ck, ns = 0, timing
+        ck = ck or 0
+        ns = ns or 0
+        return Timing(ck, ns)
+
+    def get_timing(self, name):
+        if name in _speedgrade_timings:
+            return self.get_speedgrade_timing(name)
+        return self.get_technology_timing(name)
+
+    def get_speedgrade_timing(self, name):
+        if hasattr(self, "speedgrade_timings"):
+            speedgrade = "default" if self.speedgrade is None else self.speedgrade
+            return getattr(self.speedgrade_timings[speedgrade], name)
+        name = name + "_" + self.speedgrade if self.speedgrade is not None else name
+        try:
+            return getattr(self, name)
+        except:
+            pass
+
+    def get_technology_timing(self, name):
+        if hasattr(self, "technology_timings"):
+            return getattr(self.technology_timings, name)
+        else:
+            try:
+                return getattr(self, name)
+            except:
+                pass
 
     def ns_to_cycles(self, t, margin=True):
         clk_period_ns = 1e9/self.clk_freq
-        if margin:
-            margins = {
-                "1:1" : 0,
-                "1:2" : clk_period_ns/2,
-                "1:4" : 3*clk_period_ns/4
-            }
-            t += margins[self.rate]
+        t += self.margin if margin else 0
         return ceil(t/clk_period_ns)
 
     def ck_to_cycles(self, c):
-        d = {
-            "1:1" : 1,
-            "1:2" : 2,
-            "1:4" : 4
-        }
-        return ceil(c/d[self.rate])
+        return ceil(c/self.rate_frac.denom)
 
-    def ck_ns_to_cycles(self, c, t):
-        c = 0 if c is None else c
-        t = 0 if t is None else t
-        return max(self.ck_to_cycles(c), self.ns_to_cycles(t))
+    def ck_ns_to_cycles(self, timing, **kwargs):
+        return max(self.ck_to_cycles(timing.ck), self.ns_to_cycles(timing.ns, **kwargs))
+
+    @property
+    def rate_frac(self):
+        num, denom = map(int, self.rate.split(":"))
+        assert num == 1, "Rate: numerator must be 1: {}".format(self.rate)
+        return Frac(num, denom)
+
+    @property
+    def margin(self):
+        clk_period_ns = 1e9 / self.clk_freq
+        frac = self.rate_frac
+        return clk_period_ns * (1 - frac.num/frac.denom)
 
     @classmethod
     def from_spd_data(cls, spd_data, clk_freq, fine_refresh_mode=None):
