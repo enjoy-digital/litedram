@@ -572,8 +572,8 @@ const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {{
 
     if phy_settings.memtype in ["DDR3", "DDR4"]:
         # The value of MR1[7] needs to be modified during write leveling
-        r += "#define DDRX_MR_WRLVL_ADDRESS {}\n\n".format(1)
-        r += "#define DDRX_MR_WRLVL_RESET {}\n\n".format(mr[1])
+        r += "#define DDRX_MR_WRLVL_ADDRESS {}\n".format(1)
+        r += "#define DDRX_MR_WRLVL_RESET {}\n".format(mr[1])
         r += "#define DDRX_MR_WRLVL_BIT {}\n\n".format(7)
 
     r += "static void init_sequence(void)\n{\n"
