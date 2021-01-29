@@ -52,18 +52,24 @@ class GENSDRPHY(Module):
         for pads_group in range(len(pads.groups)):
             pads.sel_group(pads_group)
 
+
             # Commands -----------------------------------------------------------------------------
             commands = {
-                "a"    : "address",
-                "ba"   : "bank"   ,
-                "ras_n": "ras_n"  ,
-                "cas_n": "cas_n"  ,
-                "we_n" : "we_n"   ,
+                # Pad name: (DFI name,   Pad type (required or optional))
+                "cs_n"    : ("cs_n",    "optional"),
+                "a"       : ("address", "required"),
+                "ba"      : ("bank"   , "required"),
+                "ras_n"   : ("ras_n"  , "required"),
+                "cas_n"   : ("cas_n"  , "required"),
+                "we_n"    : ("we_n"   , "required"),
+                "cke"     : ("cke"    , "optional"),
             }
-            if hasattr(pads, "cke") : commands.update({"cke"  : "cke"})
-            if hasattr(pads, "cs_n"): commands.update({"cs_n" : "cs_n"})
-            for pad_name, dfi_name in commands.items():
-                pad = getattr(pads, pad_name)
+            for pad_name, (dfi_name, pad_type) in commands.items():
+                pad = getattr(pads, pad_name, None)
+                if (pad is None):
+                    if (pad_type == "required"):
+                        raise ValueError(f"DRAM pad {pad_name} required but not found in pads.")
+                    continue
                 for i in range(len(pad)):
                     self.specials += SDROutput(i=getattr(dfi.p0, dfi_name)[i], o=pad[i])
 

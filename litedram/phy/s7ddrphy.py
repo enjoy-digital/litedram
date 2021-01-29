@@ -162,18 +162,23 @@ class S7DDRPHY(Module, AutoCSR):
 
             # Commands -----------------------------------------------------------------------------
             commands = {
-                "a"    : "address",
-                "ba"   : "bank"   ,
-                "ras_n": "ras_n"  ,
-                "cas_n": "cas_n"  ,
-                "we_n" : "we_n"   ,
-                "cke"  : "cke"    ,
-                "odt"  : "odt"    ,
+                # Pad name: (DFI name,   Pad type (required or optional))
+                "reset_n" : ("reset_n", "optional"),
+                "cs_n"    : ("cs_n",    "optional"),
+                "a"       : ("address", "required"),
+                "ba"      : ("bank"   , "required"),
+                "ras_n"   : ("ras_n"  , "required"),
+                "cas_n"   : ("cas_n"  , "required"),
+                "we_n"    : ("we_n"   , "required"),
+                "cke"     : ("cke"    , "optional"),
+                "odt"     : ("odt"    , "optional"),
             }
-            if hasattr(pads, "reset_n"): commands.update({"reset_n" : "reset_n"})
-            if hasattr(pads, "cs_n")   : commands.update({"cs_n"    : "cs_n"})
-            for pad_name, dfi_name in commands.items():
-                pad = getattr(pads, pad_name)
+            for pad_name, (dfi_name, pad_type) in commands.items():
+                pad = getattr(pads, pad_name, None)
+                if (pad is None):
+                    if (pad_type == "required"):
+                        raise ValueError(f"DRAM pad {pad_name} required but not found in pads.")
+                    continue
                 for i in range(len(pad)):
                     oq  = Signal()
                     self.specials += Instance("OSERDESE2",
