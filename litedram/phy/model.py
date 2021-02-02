@@ -212,10 +212,10 @@ class DFITimingsChecker(Module):
 
             if val is None:
                 val = 0
-            elif key in CK_NS:
-                val = self.ck_ns_to_ps(val, tck)
-            else:
+            elif key == "tCK":
                 val = self.ns_to_ps(val)
+            else:
+                val = self.ck_ns_to_ps(val, tck)
 
             new_timings[key] = val
 
