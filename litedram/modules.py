@@ -964,3 +964,18 @@ class MTA18ASF2G72PZ(DDR4RegisteredModule):
         "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
+
+# LPDDR4 -------------------------------------------------------------------------------------------
+
+class MT53E256M16D1(SDRAMModule):
+    memtype = "LPDDR4"
+
+    nbanks = 8
+    nrows = 32768
+    ncols = 1024
+
+    technology_timings = _TechnologyTimings(tREFI=32e6/8192, tWTR=(8, 10), tCCD=(8, None), tRRD=(4, 10), tZQCS=None)  # TODO: tZQCS
+    speedgrade_timings = {
+        "1866": _SpeedgradeTimings(tRP=(3, 21), tRCD=(4, 18), tWR=(4, 18), tRFC=180, tFAW=40, tRAS=(3, 42)),  # TODO: tRAS_max
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1866"]
