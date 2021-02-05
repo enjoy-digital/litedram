@@ -42,6 +42,7 @@ def get_default_cl_cwl(memtype, tck):
         f_to_cl_cwl[1066e6] = ( 7, 6)
         f_to_cl_cwl[1333e6] = (10, 7)
         f_to_cl_cwl[1600e6] = (11, 8)
+        f_to_cl_cwl[1866e6] = (13, 9)
     elif memtype == "DDR4":
         f_to_cl_cwl[1333e6] = (9,   9)
         f_to_cl_cwl[1600e6] = (11,  9)
