@@ -51,23 +51,23 @@ class _LPDDR4SimPHYMixin:
         self.submodules += des
 
     def do_serialization(self, clkdiv, delay, aligned_reset_zero):
-        def add_reset_value(phase, kwargs):
+        def add_reset_cnt(phase, kwargs):
             if aligned_reset_zero and phase == 0:
-                kwargs["reset_value"] = 0
+                kwargs["reset_cnt"] = 0
 
         def ser_sdr(phase=0, **kwargs):
-            add_reset_value(phase, kwargs)
+            add_reset_cnt(phase, kwargs)
             clk = {0: "sys8x", 90: "sys8x_90"}[phase]
             self._serialize(clk=clk, clkdiv=clkdiv, i_dw=len(kwargs["i"]), **kwargs)
 
         def ser_ddr(phase=0, **kwargs):
-            add_reset_value(phase, kwargs)
+            add_reset_cnt(phase, kwargs)
             # for simulation we require sys8x_ddr clock (=sys16x)
             clk = {0: "sys8x_ddr", 90: "sys8x_90_ddr"}[phase]
             self._serialize(clk=clk, clkdiv=clkdiv, i_dw=len(kwargs["i"]), **kwargs)
 
         def des_ddr(phase=0, **kwargs):
-            add_reset_value(phase, kwargs)
+            add_reset_cnt(phase, kwargs)
             clk = {0: "sys8x_ddr", 90: "sys8x_90_ddr"}[phase]
             self._deserialize(clk=clk, clkdiv=clkdiv, o_dw=len(kwargs["o"]), **kwargs)
 

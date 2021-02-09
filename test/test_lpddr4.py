@@ -1,15 +1,12 @@
 import re
 import copy
 import pprint
-import random
 import unittest
 import itertools
-import subprocess
 from collections import defaultdict
 from typing import Mapping, Sequence
 
 from migen import *
-
 
 from litedram.phy import dfi
 from litedram.phy.lpddr4.simphy import Serializer, Deserializer
@@ -903,7 +900,7 @@ class LPDDR4Tests(unittest.TestCase):
 
     def test_lpddr4_double_rate_phy_write(self):
         # Verify that double rate PHY works as normal one with half sys clock more latency
-        phy = DoubleRateLPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ, serdes_reset_value=-1)
+        phy = DoubleRateLPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ, serdes_reset_cnt=-1)
         zero = '00000000' * 2  # DDR
         half = '0000'  # double rate PHY introduces latency of 4 sys8x clocks
         init_ddr_latency = (self.CMD_LATENCY + 1) * zero + half*2  # half*2 for DDR
@@ -954,37 +951,61 @@ class LPDDR4Tests(unittest.TestCase):
         )
 
 
-class VerilatorLPDDR4Tests(unittest.TestCase):
-    def run_python(self, script, args, **kwargs):
-        command = ["python3", script, *args]
-        proc = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
-        return proc.stdout.decode(), proc.stderr.decode()
+# Named regex group
+def ng(name, regex):
+    return r"(?P<{}>{})".format(name, regex)
 
-    def error_msg(self, stdout, stderr):
-        return """
-======================= STDERR =============================
-{}
-======================= STDOUT =============================
-{}
-============================================================
-        """.strip().format(stderr, stdout)
+
+class VerilatorLPDDR4Tests(unittest.TestCase):
+    LOG_PATTERN = re.compile(r"\[\s*{time} ps] \[{level}]\s*{msg}".format(
+        time  = ng("time", r"[0-9]+"),
+        level = ng("level", r"DEBUG|INFO|WARN|ERROR"),
+        msg   = ng("msg", ".*"),
+    ))
+
+    # We ignore these 2 warnings, they appear due to the fact that litedram starts
+    # in hardware control mode which holds reset_n=1 all the time. PHY will later
+    # set reset_n=0 once again and then perform proper init sequence.
+    ALLOWED = [
+        ("WARN", "tINIT1 violated: RESET deasserted too fast"),
+        ("WARN", "tINIT3 violated: CKE set HIGH too fast after RESET being released"),
+    ]
+
+    def check_logs(self, logs):
+        for match in self.LOG_PATTERN.finditer(logs):
+            if match.group("level") in ["WARN", "ERROR"]:
+                allowed = any(
+                    lvl == match.group("level") and msg in match.group("msg")
+                    for lvl, msg in self.ALLOWED
+                )
+                self.assertTrue(allowed, msg=match.group(0))
 
     def run_test(self, args, **kwargs):
-        stdout, stderr = self.run_python(simsoc.__file__, args, **kwargs)
-        self.assertTrue("Memtest OK" in stdout, msg=self.error_msg(stdout, stderr))
+        import pexpect
 
-    @unittest.skip
-    def test_lpddr4_sim_default(self):
-        self.run_test(["--finish-after-memtest", "--disable-delay", "--log-level", "warn"])
+        command = ["python3", simsoc.__file__, *args]
+        timeout = 12 * 60  # give more than enough time
+        p = pexpect.spawn(" ".join(command), timeout=timeout, **kwargs)
 
-    @unittest.skip
-    def test_lpddr4_sim_no_l2_cache(self):
-        self.run_test(["--finish-after-memtest", "--disable-delay", "--log-level", "warn", "--l2-size", "0"])
+        res = p.expect(["Memtest OK", "Memtest KO"])
+        self.assertEqual(res, 0, msg="{}\nGot '{}'".format(p.before.decode(), p.after.decode()))
 
-    @unittest.skip
-    def test_lpddr4_sim_double_rate(self):
-        self.run_test(["--finish-after-memtest", "--disable-delay", "--log-level", "warn", "--double-rate-phy"])
+        self.check_logs(p.before.decode())
 
-    @unittest.skip
-    def test_lpddr4_sim_double_rate_no_l2_cache(self):
-        self.run_test(["--finish-after-memtest", "--disable-delay", "--log-level", "warn", "--double-rate-phy", "--l2-size", "0"])
+    def test_lpddr4_sim_x2rate_no_cache(self):
+        # Test simulation with regular delays, intermediate serialization stage,
+        # refresh and no L2 cache (masked write must work)
+        self.run_test([
+            "--finish-after-memtest", "--log-level", "warn",
+            "--double-rate-phy",
+            "--l2-size", "0",
+            "--no-refresh",  # FIXME: LiteDRAM sends refresh commands when only MRW/MRR are allowed
+        ])
+
+    def test_lpddr4_sim_fast(self):
+        # Fast test of simulation with L2 cache (so no data masking is required)
+        self.run_test([
+            "--finish-after-memtest", "--log-level", "warn",
+            "--disable-delay",
+            "--no-refresh",
+        ])

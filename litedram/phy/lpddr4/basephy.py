@@ -253,7 +253,7 @@ class LPDDR4PHY(Module, AutoCSR):
         dqs_preamble  = Signal()
         dqs_postamble = Signal()
         dqs_pattern   = DQSPattern(
-            preamble      = dqs_preamble,  # FIXME: are defined the opposite way (common.py) ???
+            preamble      = dqs_preamble,
             postamble     = dqs_postamble,
             wlevel_en     = self._wlevel_en.storage,
             wlevel_strobe = self._wlevel_strobe.re)
@@ -353,7 +353,7 @@ class DoubleRateLPDDR4PHY(LPDDR4PHY):
 
     Needed for targets that only have hardware serialization blocks up to 8:1.
     """
-    def __init__(self, pads, *, ser_latency, des_latency, serdes_reset_value=0, **kwargs):
+    def __init__(self, pads, *, ser_latency, des_latency, serdes_reset_cnt=0, **kwargs):
         super().__init__(pads,
             ser_latency = ser_latency + Latency(sys=Serializer.LATENCY),
             des_latency = des_latency + Latency(sys=Deserializer.LATENCY),
@@ -365,25 +365,25 @@ class DoubleRateLPDDR4PHY(LPDDR4PHY):
         def ser(i, o):
             assert len(o) == len(i)//2
             self.submodules += Serializer(
-                clkdiv      = "sys",
-                clk         = "sys2x",
-                i_dw        = len(i),
-                o_dw        = len(o),
-                i           = i,
-                o           = o,
-                reset_value = serdes_reset_value,
+                clkdiv    = "sys",
+                clk       = "sys2x",
+                i_dw      = len(i),
+                o_dw      = len(o),
+                i         = i,
+                o         = o,
+                reset_cnt = serdes_reset_cnt,
             )
 
         def des(i, o):
             assert len(i) == len(o)//2
             self.submodules += Deserializer(
-                clkdiv      = "sys",
-                clk         = "sys2x",
-                i_dw        = len(i),
-                o_dw        = len(o),
-                i           = i,
-                o           = o,
-                reset_value = serdes_reset_value,
+                clkdiv    = "sys",
+                clk       = "sys2x",
+                i_dw      = len(i),
+                o_dw      = len(o),
+                i         = i,
+                o         = o,
+                reset_cnt = serdes_reset_cnt,
             )
 
         # handle ser/des for both the lists (like dq) and just Signal (like cs)

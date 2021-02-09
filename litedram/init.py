@@ -9,6 +9,8 @@
 # Copyright (c) 2019 Gabriel L. Somlo <gsomlo@gmail.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import math
+
 from migen import *
 
 cmds = {
@@ -558,12 +560,21 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
     zqc_start = MPC["ZQC-START"]
     zqc_latch = MPC["ZQC-LATCH"]
 
+    def ck(sec):
+        # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
+        fmax = 200e6
+        return int(math.ceil(sec * fmax))
+
     init_sequence = [
-        ("Release reset", 0x0000, 0, cmds["UNRESET"], 50000),
-        ("Bring CKE high", 0x0000, 0, cmds["CKE"], 10000),
+        # Perform "Reset Initialization with Stable Power"
+        # We assume that loading the bistream will take at least tINIT1 (200us)
+        # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
+        ("Assert reset", 0x0000, 0, "DFII_CONTROL_ODT", ck(100e-9)),
+        ("Release reset", 0x0000, 0, cmds["UNRESET"], ck(2e-3)),
+        ("Bring CKE high", 0x0000, 0, cmds["CKE"], ck(2e-6)),
         *[cmd_mr(ma) for ma in sorted(mr.keys())],
-        ("ZQ Calibration start", zqc_start, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", 1000),  # > tZQCAL=1us
-        ("ZQ Calibration latch", zqc_latch, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", 200),  # > tZQLAT=max(8ck, 30ns)
+        ("ZQ Calibration start", zqc_start, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
+        ("ZQ Calibration latch", zqc_latch, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
     ]
 
     return init_sequence, mr

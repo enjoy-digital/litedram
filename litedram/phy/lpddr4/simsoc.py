@@ -170,7 +170,7 @@ class SimSoC(SoCCore):
 
         self.add_constant("CONFIG_SIM_DISABLE_BIOS_PROMPT")
         if disable_delay:
-            self.add_constant("CONFIG_SIM_DISABLE_DELAYS")
+            self.add_constant("CONFIG_DISABLE_DELAYS")
         if finish_after_memtest:
             self.submodules.ddrctrl = LiteDRAMCoreControl()
             self.add_csr("ddrctrl")

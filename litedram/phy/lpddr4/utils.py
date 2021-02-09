@@ -19,8 +19,8 @@ def bitpattern(s):
     s = s.translate(s.maketrans("_-", "01"))
     return int(s[::-1], 2)  # LSB first, so reverse the string
 
-def delayed(mod, sig, cycles=1):
-    delay = TappedDelayLine(signal=sig, ntaps=cycles)
+def delayed(mod, sig, cycles=1, **kwargs):
+    delay = TappedDelayLine(signal=sig, ntaps=cycles, **kwargs)
     mod.submodules += delay
     return delay.output
 
@@ -86,11 +86,11 @@ class Serializer(Module):
     `LATENCY` is specified in `clkdiv` cycles.
 
     NOTE: both `clk` and `clkdiv` should be phase aligned.
-    NOTE: `reset_value` is set to `ratio - 1` so that on the first clock edge after reset it is 0
+    NOTE: `reset_cnt` is set to `ratio - 1` so that on the first clock edge after reset it is 0
     """
     LATENCY = 1
 
-    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_value=-1, name=None):
+    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None):
         assert i_dw > o_dw
         assert i_dw % o_dw == 0
         ratio = i_dw // o_dw
@@ -106,11 +106,11 @@ class Serializer(Module):
         self.o = o
         self.reset = reset
 
-        if reset_value < 0:
-            reset_value = ratio + reset_value
+        if reset_cnt < 0:
+            reset_cnt = ratio + reset_cnt
 
         # Serial part
-        cnt = Signal(max=ratio, reset=reset_value, name='{}_cnt'.format(name) if name is not None else None)
+        cnt = Signal(max=ratio, reset=reset_cnt, name='{}_cnt'.format(name) if name is not None else None)
         sd_clk += If(reset | cnt == ratio - 1, cnt.eq(0)).Else(cnt.eq(cnt + 1))
 
         # Parallel part
@@ -129,11 +129,11 @@ class Deserializer(Module):
     the last input bit is deserialized correctly.
 
     NOTE: both `clk` and `clkdiv` should be phase aligned.
-    NOTE: `reset_value` is set to `ratio - 1` so that on the first clock edge after reset it is 0
+    NOTE: `reset_cnt` is set to `ratio - 1` so that on the first clock edge after reset it is 0
     """
     LATENCY = 2
 
-    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_value=-1, name=None):
+    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None):
         assert i_dw < o_dw
         assert o_dw % i_dw == 0
         ratio = o_dw // i_dw
@@ -149,11 +149,11 @@ class Deserializer(Module):
         self.o = o
         self.reset = reset
 
-        if reset_value < 0:
-            reset_value = ratio + reset_value
+        if reset_cnt < 0:
+            reset_cnt = ratio + reset_cnt
 
         # Serial part
-        cnt = Signal(max=ratio, reset=reset_value, name='{}_cnt'.format(name) if name is not None else None)
+        cnt = Signal(max=ratio, reset=reset_cnt, name='{}_cnt'.format(name) if name is not None else None)
         sd_clk += If(reset, cnt.eq(0)).Else(cnt.eq(cnt + 1))
 
         def as_array(out):

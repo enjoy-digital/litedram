@@ -1,7 +1,7 @@
 import math
 from operator import or_
 from functools import reduce
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from migen import *
 
@@ -60,6 +60,32 @@ class LPDDR4Sim(Module, AutoCSR):
 
 # Commands -----------------------------------------------------------------------------------------
 
+class PulseTiming(Module):
+    # Works like tXXDController with the following differences:
+    # * countdown triggered by a low to high pulse on `trigger`
+    # * `ready` is initially low, only after a trigger it can become high
+    # * provides `ready_p` which is high only for 1 cycle when `ready` becomes high
+    def __init__(self, t):
+        self.trigger = Signal()
+        self.ready   = Signal()
+        self.ready_p = Signal()
+
+        ready_d = Signal()
+        triggered = Signal()
+        tctrl = tXXDController(t)
+        self.submodules += tctrl
+
+        self.sync += [
+            If(self.trigger, triggered.eq(1)),
+            ready_d.eq(tctrl.ready),
+        ]
+        self.comb += [
+            self.ready.eq(triggered & tctrl.ready),
+            self.ready_p.eq(self.ready & ~ready_d),
+            once(self, self.trigger, tctrl.valid.eq(1)),
+        ]
+
+
 class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
     def __init__(self, pads, data_cdc, *, clk_freq, log_level, init_delays=False):
         self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
@@ -86,14 +112,14 @@ class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
         self.mpc_op     = Signal(7)
 
         cmds_enabled = Signal()
-        cmd_handlers = {
-            "MRW": self.mrw_handler(),
-            "REF": self.refresh_handler(),
-            "ACT": self.activate_handler(),
-            "PRE": self.precharge_handler(),
-            "CAS": self.cas_handler(),
-            "MPC": self.mpc_handler(),
-        }
+        cmd_handlers = OrderedDict(
+            MRW = self.mrw_handler(),
+            REF = self.refresh_handler(),
+            ACT = self.activate_handler(),
+            PRE = self.precharge_handler(),
+            CAS = self.cas_handler(),
+            MPC = self.mpc_handler(),
+        )
         self.comb += [
             If(cmds_enabled,
                 If(Cat(cs.taps) == 0b10,
@@ -110,18 +136,29 @@ class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
         def ck(t):
             return math.ceil(t * clk_freq)
 
-        self.submodules.tinit0 = tXXDController(ck(20e-3))
-        self.submodules.tinit1 = tXXDController(ck(200e-6))
-        self.submodules.tinit2 = tXXDController(ck(10e-9))
-        self.submodules.tinit3 = tXXDController(ck(2e-3))
-        self.submodules.tinit4 = tXXDController(5)  # TODO: would require counting pads.clk_p ticks
-        self.submodules.tinit5 = tXXDController(ck(2e-6))
-        self.submodules.tzqcal = tXXDController(ck(1e-6))
-        self.submodules.tzqlat = tXXDController(max(8, ck(30e-9)))
+        self.submodules.tinit0 = PulseTiming(ck(20e-3))  # makes no sense in simulation
+        self.submodules.tinit1 = PulseTiming(ck(200e-6))
+        self.submodules.tinit2 = PulseTiming(ck(10e-9))
+        self.submodules.tinit3 = PulseTiming(ck(2e-3))
+        self.submodules.tinit4 = PulseTiming(5)  # TODO: would require counting pads.clk_p ticks
+        self.submodules.tinit5 = PulseTiming(ck(2e-6))
+        self.submodules.tzqcal = PulseTiming(ck(1e-6))
+        self.submodules.tzqlat = PulseTiming(max(8, ck(30e-9)))
+        self.submodules.tpw_reset = PulseTiming(ck(100e-9))
 
         self.comb += [
+            self.tinit1.trigger.eq(1),
+            self.tinit2.trigger.eq(~pads.cke),
+            self.tinit3.trigger.eq(pads.reset_n),
+            self.tpw_reset.trigger.eq(~pads.reset_n),
             If(~delayed(self, pads.reset_n) & pads.reset_n,
                 self.log.info("RESET released"),
+                If(~self.tinit1.ready,
+                    self.log.warn("tINIT1 violated: RESET deasserted too fast")
+                ),
+                If(~self.tinit2.ready,
+                    self.log.warn("tINIT2 violated: CKE LOW too short before RESET being released")
+                ),
             ),
             If(delayed(self, pads.reset_n) & ~pads.reset_n,
                 self.log.info("RESET asserted"),
@@ -131,48 +168,35 @@ class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
             ),
             If(~delayed(self, pads.cke) & pads.cke,
                 self.log.info("CKE rising edge"),
+                If(~self.tinit3.ready,
+                    self.log.warn("tINIT3 violated: CKE set HIGH too fast after RESET being released")
+                ),
             ),
         ]
 
-        self.submodules.fsm = fsm = FSM()
-        fsm.act("POWER-RAMP",
-            self.tinit0.valid.eq(1),
-            If(~pads.reset_n,
-                If(self.tinit0.ready,  # tINIT0 is MAX, so should be not ready
-                    self.log.warn("tINIT0 violated")
-                ),
-                NextState("RESET")  # Tb
+        self.submodules.fsm = fsm = ResetInserter()(FSM())
+        self.comb += [
+            If(self.tpw_reset.ready_p,
+                fsm.reset.eq(1),
+                self.log.info("FSM reset")
             )
-        )
+        ]
         fsm.act("RESET",
-            self.tinit1.valid.eq(1),
-            self.tinit2.valid.eq(~pads.cke),
-            If(pads.reset_n,
-                If(~self.tinit1.ready,
-                    self.log.warn("tINIT1 violated")
-                ),
-                If(~self.tinit2.ready,
-                    self.log.warn("tINIT2 violated")
-                ),
-                NextState("WAIT-PD"),  # Tc
-            )
-        )
-        fsm.act("WAIT-PD",
-            self.tinit3.valid.eq(1),
-            If(self.tinit3.ready | (not init_delays),
+            If(self.tinit3.ready_p | (not init_delays),
                 NextState("EXIT-PD")  # Td
             )
         )
         fsm.act("EXIT-PD",
-            self.tinit5.valid.eq(1),
-            If(self.tinit5.ready | (not init_delays),
+            self.tinit5.trigger.eq(1),
+            If(self.tinit5.ready_p | (not init_delays),
                 NextState("MRW")  # Te
             )
         )
         fsm.act("MRW",
             cmds_enabled.eq(1),
             If(self.handle_cmd & ~cmd_handlers["MRW"] & ~cmd_handlers["MPC"],
-                self.log.warn("Only MRW/MRR commands expected before ZQ calibration")
+                self.log.warn("Only MRW/MRR commands expected before ZQ calibration"),
+                self.log.warn(" ".join("{}=%d".format(cmd) for cmd in cmd_handlers.keys()), *cmd_handlers.values()),
             ),
             If(cmd_handlers["MPC"],
                 If(self.mpc_op != MPC["ZQC-START"],
@@ -183,24 +207,23 @@ class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
             ),
         )
         fsm.act("ZQC",
-            self.tzqcal.valid.eq(1),
+            self.tzqcal.trigger.eq(1),
             cmds_enabled.eq(1),
             If(self.handle_cmd,
                 If(~(cmd_handlers["MPC"] & (self.mpc_op == MPC["ZQC-LATCH"])),
                     self.log.error("Expected ZQC-LATCH")
                 ).Else(
-                    If(~self.tzqcal.ready,
+                    If(init_delays & ~self.tzqcal.ready,
                         self.log.warn("tZQCAL violated")
                     ),
                     NextState("NORMAL")  # Tg
                 )
             ),
         )
-        # TODO: Bus training currently is not performed in the simulation
         fsm.act("NORMAL",
             cmds_enabled.eq(1),
-            self.tzqlat.valid.eq(1),
-            once(self, self.handle_cmd & ~self.tzqlat.ready,
+            self.tzqlat.trigger.eq(1),
+            once(self, init_delays & self.handle_cmd & ~self.tzqlat.ready,
                 self.log.warn("tZQLAT violated")
             ),
         )
