@@ -230,7 +230,7 @@ class LPDDR4PHY(Module, AutoCSR):
                 dw     = 2*nphases,
                 cycles = bitslip_cycles,
                 rst    = self.get_rst(bit//8, self._wdly_dq_bitslip_rst),
-                slp    = self.get_slp(bit//8, self._wdly_dq_bitslip),
+                slp    = self.get_inc(bit//8, self._wdly_dq_bitslip),
                 i      = Cat(*wrdata),
                 o      = self.out.dq_o[bit],
             )
@@ -241,7 +241,7 @@ class LPDDR4PHY(Module, AutoCSR):
                 dw     = 2*nphases,
                 cycles = bitslip_cycles,
                 rst    = self.get_rst(bit//8, self._rdly_dq_bitslip_rst),
-                slp    = self.get_slp(bit//8, self._rdly_dq_bitslip),
+                slp    = self.get_inc(bit//8, self._rdly_dq_bitslip),
                 i      = self.out.dq_i[bit],
                 o      = dq_i_bs,
             )
@@ -268,7 +268,7 @@ class LPDDR4PHY(Module, AutoCSR):
                 dw     = 2*nphases,
                 cycles = bitslip_cycles,
                 rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst),
-                slp    = self.get_slp(byte, self._wdly_dq_bitslip),
+                slp    = self.get_inc(byte, self._wdly_dq_bitslip),
                 i      = dqs_pattern.o,
                 o      = self.out.dqs_o[byte],
             )
@@ -292,7 +292,7 @@ class LPDDR4PHY(Module, AutoCSR):
                     dw     = 2*nphases,
                     cycles = bitslip_cycles,
                     rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst),
-                    slp    = self.get_slp(byte, self._wdly_dq_bitslip),
+                    slp    = self.get_inc(byte, self._wdly_dq_bitslip),
                     i      = Cat(*wrdata_mask),
                     o      = self.out.dmi_o[byte],
                 )
@@ -340,10 +340,12 @@ class LPDDR4PHY(Module, AutoCSR):
         self.comb += dqs_postamble.eq(wrdata_en_tap(wrtap + 1)  & ~wrdata_en_tap(wrtap + 0))
 
     def get_rst(self, byte, rst_csr):
+        assert isinstance(rst_csr, CSR) and rst_csr.name.endswith("rst"), rst_csr
         return (self._dly_sel.storage[byte] & rst_csr.re) | self._rst.storage
 
-    def get_slp(self, byte, slp_csr):
-        return self._dly_sel.storage[byte] & slp_csr.re
+    def get_inc(self, byte, inc_csr):
+        assert isinstance(inc_csr, CSR) and not inc_csr.name.endswith("rst"), inc_csr
+        return self._dly_sel.storage[byte] & inc_csr.re
 
 
 class DoubleRateLPDDR4PHY(LPDDR4PHY):
