@@ -1,22 +1,26 @@
 import re
+import enum
 
 from migen import *
 
 
-# MPC (multipurpose command) can be used to perform different actions
-# We use ZQC with BA=0 to issue MPC, where OP[6:0] = A[6:0]
-MPC = {
-    "NOP":           0b0000000,  # only OP[6] must be 0
-    "READ-FIFO":     0b1000001,
-    "READ-DQ-CAL":   0b1000011,
-    # RFU:           0b1000101
-    "WRITE-FIFO":    0b1000111,
-    # RFU:           0b1001001
-    "START-DQS-OSC": 0b1001011,
-    "STOP-DQS-OSC":  0b1001101,
-    "ZQC-START":     0b1001111,
-    "ZQC-LATCH":     0b1010001,
-}
+@enum.unique
+class MPC(enum.IntEnum):
+    """Op codes for LPDDR4 multipurpose command
+
+    DFI ZQC command is used to send LPDDR4 MPC. DFI address A[6:0] is
+    translated to MPC op code OP[6:0]. DFI bank address BA should be 0.
+    """
+    NOP           = 0b0000000  # only OP[6] must be 0
+    READ_FIFO     = 0b1000001
+    READ_DQ_CAL   = 0b1000011
+    # RFU           0b1000101
+    WRITE_FIFO    = 0b1000111
+    # RFU           0b1001001
+    START_DQS_OSC = 0b1001011
+    STOP_DQS_OSC  = 0b1001101
+    ZQC_START     = 0b1001111
+    ZQC_LATCH     = 0b1010001
 
 
 class DFIPhaseAdapter(Module):
@@ -129,7 +133,7 @@ class Command(Module):
             ops.append(self.cs[0].eq(1))
         return ops
 
-    def parse_bit(self, bit, is_mpc=False):
+    def parse_bit(self, bit):
         rules = {
             "H":       lambda: 1,  # high
             "L":       lambda: 0,  # low

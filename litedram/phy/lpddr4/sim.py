@@ -199,7 +199,7 @@ class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
                 self.log.warn(" ".join("{}=%d".format(cmd) for cmd in cmd_handlers.keys()), *cmd_handlers.values()),
             ),
             If(cmd_handlers["MPC"],
-                If(self.mpc_op != MPC["ZQC-START"],
+                If(self.mpc_op != MPC.ZQC_START,
                     self.log.error("ZQC-START expected, got op=0b%07b", self.mpc_op)
                 ).Else(
                     NextState("ZQC")  # Tf
@@ -210,7 +210,7 @@ class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
             self.tzqcal.trigger.eq(1),
             cmds_enabled.eq(1),
             If(self.handle_cmd,
-                If(~(cmd_handlers["MPC"] & (self.mpc_op == MPC["ZQC-LATCH"])),
+                If(~(cmd_handlers["MPC"] & (self.mpc_op == MPC.ZQC_LATCH)),
                     self.log.error("Expected ZQC-LATCH")
                 ).Else(
                     If(init_delays & ~self.tzqcal.ready,
@@ -361,7 +361,7 @@ class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
         )
 
     def mpc_handler(self):
-        cases = {value: self.log.info(f"MPC: {name}") for name, value in MPC.items()}
+        cases = {value: self.log.info(f"MPC: {name}") for name, value in MPC.__members__.items()}
         cases["default"] = self.log.error("Invalid MPC op=0b%07b", self.mpc_op)
         return self.cmd_one_step("MPC",
             cond = self.cs_high[:5] == 0b00000,

@@ -556,14 +556,12 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
         ba = 0
         return ("Load More Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
 
-    from litedram.phy.lpddr4.commands import MPC
-    zqc_start = MPC["ZQC-START"]
-    zqc_latch = MPC["ZQC-LATCH"]
-
     def ck(sec):
         # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
         fmax = 200e6
         return int(math.ceil(sec * fmax))
+
+    from litedram.phy.lpddr4.commands import MPC
 
     init_sequence = [
         # Perform "Reset Initialization with Stable Power"
@@ -573,8 +571,8 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
         ("Release reset", 0x0000, 0, cmds["UNRESET"], ck(2e-3)),
         ("Bring CKE high", 0x0000, 0, cmds["CKE"], ck(2e-6)),
         *[cmd_mr(ma) for ma in sorted(mr.keys())],
-        ("ZQ Calibration start", zqc_start, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
-        ("ZQ Calibration latch", zqc_latch, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
+        ("ZQ Calibration start", MPC.ZQC_START, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
+        ("ZQ Calibration latch", MPC.ZQC_LATCH, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
     ]
 
     return init_sequence, mr
