@@ -172,6 +172,14 @@ class Deserializer(Module):
 
 
 class SimLogger(Module, AutoCSR):
+    """Logger for use in simulation
+
+    This module allows for easier message logging when running simulation designs.
+    The logger can be used from `comb` context so it the methods can be directly
+    used inside `FSM` code. It also provides logging levels that can be used to
+    filter messages, either by specifying the default `log_level` or in runtime
+    by driving to the `level` signal or using a corresponding CSR.
+    """
     # Allows to use Display inside FSM and to filter log messages by level (statically or dynamically)
     DEBUG = 0
     INFO  = 1

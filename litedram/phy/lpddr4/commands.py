@@ -32,8 +32,25 @@ class DFIPhaseAdapter(Module):
     consist only of a single "small command". To make counting DRAM timings easier, such
     a "small command" shall be sent on the 2nd slot (i.e. 3rd and 4th cycle). All timings
     are then counted starting from CS low on the 4th cycle.
-    """
 
+    Parameters
+    ----------
+    dfi_phase : Record(dfi.phase_description), in
+        Input from a single DFI phase.
+    masked_write : bool
+        Specifies how DFI write command (cas_n=0, ras_n=1, we_n=0) is interpreted, either
+        as LPDDR4 WRITE or MASKED-WRITE. MASKED-WRITE requires larger tCCD, but WRITE does
+        not permit masking of data, so if masking is needed MASKED-WRITE has to be used.
+
+    Attributes
+    ----------
+    cs : Signal(4), out
+        Values of CS on 4 subsequent DRAM SDR clock cycles.
+    ca : Array(4, Signal(6)), out
+        Values of CA[5:0] on 4 subsequent DRAM SDR clock cycles.
+    valid : Signal, out
+        Indicates that a valid command is presented on the `cs` and `ca` outputs.
+    """
     def __init__(self, dfi_phase, masked_write=True):
         # CS/CA values for 4 SDR cycles
         self.cs = Signal(4)
@@ -90,11 +107,20 @@ class Command(Module):
     Decodes a command from single DFI phase into LPDDR4 "small command"
     consisting of 2 CS values and 2 CA[5:0] values.
 
-    LPDDR4 "small commands" are transmited over 2 clock cycles. In first
+    LPDDR4 "small commands" are transmited over 2 clock cycles. In the first
     cycle CS is driven high and in the second cycle it stays low. In each
     of the cycles the bits on CA[5:0] are latched and interpreted differently.
     This module translates a DFI command into the values of CS/CA that shall
     be transmitted over 2 DRAM clock cycles.
+
+    Attributes
+    ----------
+    dfi : Record(dfi.phase_description), in
+        Input from single DFI phase.
+    cs : Signal(2), out
+        CS values over 2 subsequent DRAM SDR clock cycles.
+    ca : Array(2, Signal(6)), out
+        CA[5:0] values over 2 subsequent DRAM SDR clock cycles.
     """
 
     # String description of 1st and 2nd edge of each command, later parsed to
@@ -126,9 +152,9 @@ class Command(Module):
 
     def set(self, cmd):
         ops = []
-        for i, description in enumerate(self.TRUTH_TABLE[cmd]):
-            for j, bit in enumerate(description.split()):
-                ops.append(self.ca[i][j].eq(self.parse_bit(bit, is_mpc=cmd == "MPC")))
+        for cyc, description in enumerate(self.TRUTH_TABLE[cmd]):
+            for bit, bit_desc in enumerate(description.split()):
+                ops.append(self.ca[cyc][bit].eq(self.parse_bit(bit_desc)))
         if cmd != "DESELECT":
             ops.append(self.cs[0].eq(1))
         return ops

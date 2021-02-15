@@ -14,18 +14,58 @@ from litedram.phy.lpddr4.commands import MPC
 
 
 def log_level_getter(log_level):
+    """Parse logging level description
+
+    Log level can be presented in a simple form (e.g. `--log-level=DEBUG`) to specify
+    the same level for all modules, or can set different levels for different modules
+    e.g. `--log-level=all=INFO,data=DEBUG`.
+    """
     def get_level(name):
         return getattr(SimLogger, name.upper())
-    # simple log_level, e.g. "INFO"
-    if "=" not in log_level:
+
+    if "=" not in log_level:  # simple log_level, e.g. "INFO"
         return lambda _: get_level(log_level)
+
     # parse log_level in the per-module form, e.g. "--log-level=all=INFO,data=DEBUG"
     per_module = dict(part.split("=") for part in log_level.strip().split(","))
     return lambda module: get_level(per_module.get(module, per_module.get("all", None)))
 
 
 class LPDDR4Sim(Module, AutoCSR):
-    def __init__(self, pads, *, sys_clk_freq, disable_delay, settings, log_level):
+    """LPDDR4 DRAM simulator
+
+    This module simulates an LPDDR4 DRAM chip to aid LPDDR4 PHY development/testing.
+    It does not aim to simulate the internals of an LPDDR4 chip, rather it's behavior
+    as seen by the PHY.
+
+    The simulator monitors CS/CA pads listening for LPDDR4 commands and updates the module
+    state depending on the command received. Any unexpected sequences are logged in simulation
+    as errors/warnings. On read/write commands the data simulation module is triggered
+    after CL/CWL and a data burst is handled, updating memory state.
+
+    The simulator requires the following clock domains:
+        sys8x:        8x the memory controller clock frequency, phase aligned.
+        sys8x_90:     Phase shifted by 90 degrees vs sys8x.
+        sys8x_ddr:    Phase aligned with sys8x, double the frequency.
+        sys8x_90_ddr: Phase aligned with sys8x_90, double the frequency.
+
+    Parameters
+    ----------
+    pads : LPDDR4SimulationPads
+        DRAM pads
+    sys_clk_freq : float
+        System clock frequency
+    cl : int
+        LPDDR4 read latency (RL).
+    cwl : int
+        LPDDR4 write latency (WL).
+    disable_delay : bool
+        Disable checking of timings that rely on long CPU delays (mostly init sequence
+        timings). This is useful when running LiteX BIOS with CONFIG_DISABLE_DELAYS on.
+    log_level : str
+        SimLogger initial logging level (formatted for parsing with `log_level_getter`).
+    """
+    def __init__(self, pads, *, sys_clk_freq, cl, cwl, disable_delay, log_level):
         log_level = log_level_getter(log_level)
 
         cd_cmd    = "sys8x_90"
@@ -34,12 +74,12 @@ class LPDDR4Sim(Module, AutoCSR):
         cd_dq_rd  = "sys8x_90_ddr"
         cd_dqs_rd = "sys8x_ddr"
 
-        self.submodules.data = ClockDomainCrossing(
+        self.submodules.data_cdc = ClockDomainCrossing(
             [("we", 1), ("masked", 1), ("bank", 3), ("row", 17), ("col", 10)],
             cd_from=cd_cmd, cd_to=cd_dq_wr)
 
         cmd = CommandsSim(pads,
-            data_cdc    = self.data,
+            data_cdc    = self.data_cdc,
             clk_freq    = 8*sys_clk_freq,
             log_level   = log_level("cmd"),
             init_delays = not disable_delay,
@@ -52,8 +92,8 @@ class LPDDR4Sim(Module, AutoCSR):
             cd_dq_rd  = cd_dq_rd,
             cd_dqs_rd = cd_dqs_rd,
             clk_freq  = 2*8*sys_clk_freq,
-            cl        = settings.phy.cl,
-            cwl       = settings.phy.cwl,
+            cl        = cl,
+            cwl       = cwl,
             log_level = log_level("data"),
         )
         self.submodules.data = ClockDomainsRenamer(cd_dq_wr)(data)
@@ -61,10 +101,14 @@ class LPDDR4Sim(Module, AutoCSR):
 # Commands -----------------------------------------------------------------------------------------
 
 class PulseTiming(Module):
-    # Works like tXXDController with the following differences:
-    # * countdown triggered by a low to high pulse on `trigger`
-    # * `ready` is initially low, only after a trigger it can become high
-    # * provides `ready_p` which is high only for 1 cycle when `ready` becomes high
+    """Timing monitor with pulse input/output
+
+    This module works like `tXXDController` with the following differences:
+
+    * countdown triggered by a low to high pulse on `trigger`
+    * `ready` is initially low, only after a trigger it can become high
+    * provides `ready_p` which is high only for 1 cycle when `ready` becomes high
+    """
     def __init__(self, t):
         self.trigger = Signal()
         self.ready   = Signal()
@@ -83,7 +127,16 @@ class PulseTiming(Module):
         ]
 
 
-class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
+class CommandsSim(Module, AutoCSR):
+    """Command simulation
+
+    This module interprets LPDDR4 commands found on the CS/CA pads. It keeps track of currently
+    opened rows (per bank) and stores the values of Mode Registers. It also checks that the DRAM
+    initialization sequence is performed according to specification. On any read/write commands
+    signals indicating a burst are sent to the data simulator for handling.
+
+    Command simulator should work in the clock domain of `pads.clk_p` (SDR).
+    """
     def __init__(self, pads, data_cdc, *, clk_freq, log_level, init_delays=False):
         self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
         self.log.add_csrs()
@@ -439,7 +492,15 @@ class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
 
 # Data ---------------------------------------------------------------------------------------------
 
-class DataSim(Module, AutoCSR):  # clock domain: ddr
+class DataSim(Module, AutoCSR):
+    """Data simulator
+
+    This module is responsible for handling read/write bursts. It's operation has to be triggered
+    by the command simulator. Data is stored in an internal memory, no state is verified (row
+    open/closed, etc.), this must be checked by command simulation.
+
+    This module runs with DDR clocks (simulation clocks with double the frequency of `pads.clk_p`).
+    """
     def __init__(self, pads, cmds_sim, *, cd_dq_wr, cd_dq_rd, cd_dqs_wr, cd_dqs_rd, cl, cwl, clk_freq, log_level):
         self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
         self.log.add_csrs()

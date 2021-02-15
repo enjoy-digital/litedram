@@ -103,9 +103,13 @@ def get_clocks(sys_clk_freq):
 # SoC ----------------------------------------------------------------------------------------------
 
 class SimSoC(SoCCore):
-    def __init__(self, clocks, log_level, auto_precharge=False, with_refresh=True, trace_reset=0,
-            disable_delay=False, masked_write=True, double_rate_phy=False, finish_after_memtest=False,
-            **kwargs):
+    """Simulation of SoC with LPDDR4 DRAM
+
+    This is a SoC used to run Verilator-based simulations of LiteDRAM with a simulated LPDDR4 chip.
+    """
+    def __init__(self, clocks, log_level,
+            auto_precharge=False, with_refresh=True, trace_reset=0, disable_delay=False,
+            masked_write=True, double_rate_phy=False, finish_after_memtest=False, **kwargs):
         platform     = Platform()
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
@@ -161,7 +165,8 @@ class SimSoC(SoCCore):
         # LPDDR4 Sim -------------------------------------------------------------------------------
         self.submodules.lpddr4sim = LPDDR4Sim(
             pads          = self.ddrphy.pads,
-            settings      = self.sdram.controller.settings,
+            cl            = self.sdram.controller.settings.phy.cl,
+            cwl           = self.sdram.controller.settings.phy.cwl,
             sys_clk_freq  = sys_clk_freq,
             log_level     = log_level,
             disable_delay = disable_delay,

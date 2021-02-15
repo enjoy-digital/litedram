@@ -5,6 +5,13 @@ from litedram.phy.lpddr4.basephy import LPDDR4PHY, DoubleRateLPDDR4PHY, Latency
 
 
 class LPDDR4SimulationPads(Module):
+    """Pads for simulation purpose
+
+    To avoid simulate tristate behavior of DQ/DQS/DMI pins separate input and output
+    pins (_i/_o) are provided. Output pins are to be driven by the PHY and input pins
+    are to be driven by the DRAM simulator. This module sets the actual values on pins
+    `dq`, `dqs` and `dmi` based on output enable signals.
+    """
     def __init__(self, databits=16):
         self.clk_p   = Signal()
         self.clk_n   = Signal()
@@ -36,6 +43,17 @@ class LPDDR4SimulationPads(Module):
 
 
 class _LPDDR4SimPHYMixin:
+    """Common serialization logic for simulation PHYs
+
+    This mixin provides `do_serialization` method for constructing the boilerplate
+    serialization/deserialization paths for a simulation PHY. This can serve as a
+    reference for implemeing PHYs for concrete FPGAs.
+
+    To make the (de-)serialization work in simulation two additional clock domains
+    are required: `sys8x_ddr` and `sys8x_90_ddr`. These correspond to `sys8x` and
+    `sys8x_90`, are phase aligned with them and at twice their frequency. These
+    clock domains are requried to implement DDR (de-)serialization at 8x sys clock.
+    """
     def _add_name(self, prefix, kwargs):
         name = prefix + "_" + kwargs.pop("name", "")
         kwargs["name"] = name.strip("_")
@@ -102,6 +120,7 @@ class _LPDDR4SimPHYMixin:
 
 
 class LPDDR4SimPHY(_LPDDR4SimPHYMixin, LPDDR4PHY):
+    """LPDDR4 simulation PHY with direct 16:1 serializers"""
     def __init__(self, aligned_reset_zero=False, **kwargs):
         pads = LPDDR4SimulationPads()
         self.submodules += pads
@@ -119,6 +138,11 @@ class LPDDR4SimPHY(_LPDDR4SimPHYMixin, LPDDR4PHY):
 
 
 class DoubleRateLPDDR4SimPHY(_LPDDR4SimPHYMixin, DoubleRateLPDDR4PHY):
+    """LPDDR4 simulation PHY basing of DoubleRateLPDDR4PHY
+
+    `DoubleRateLPDDR4PHY` performs a single serialization step between `sys` and `sys2x`,
+    so this PHY wrapper has to do the serialization between `sys2x` and `sys8x` (SDR/DDR).
+    """
     def __init__(self, aligned_reset_zero=False, **kwargs):
         pads = LPDDR4SimulationPads()
         self.submodules += pads

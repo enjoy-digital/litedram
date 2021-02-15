@@ -14,6 +14,7 @@ from litedram.phy.lpddr4.commands import DFIPhaseAdapter
 
 
 class Latency:
+    """Used to specify latency for LPDDR4PHY"""
     def __init__(self, sys, sys8x=0):
         self.sys = sys + sys8x//8
         self.sys8x = sys8x % 8
@@ -47,6 +48,42 @@ class LPDDR4Output:
 
 
 class LPDDR4PHY(Module, AutoCSR):
+    """Core of LPDDR4 PHYs.
+
+    This class implements all the logic required to convert DFI to/from pads.
+    It works in a single clock domain. Signals for DRAM pads are stored in
+    LPDDR4Output (self.out). Concrete implementations of LPDDR4 PHYs derive
+    from this class and perform (de-)serialization of LPDDR4Output to pads.
+
+    DFI commands
+    ------------
+    Not all LPDDR4 commands map directly to DFI commands. For this reason ZQC
+    is treated specially in that DFI ZQC is translated into LPDDR4 MPC and has
+    different interpretation depending on DFI.address.
+
+    Also, due to the fact that LPDDR4 has 256-bit Mode Register space, the DFI
+    MRS command encodes both register address *and* value in DFI.address (instead
+    of the default in LiteDRAM to split them between DFI.address and DFI.bank).
+
+    Refer to the documentation in `commands.py` for further information.
+
+    Parameters
+    ----------
+    pads : object
+        Object containing LPDDR4 pads.
+    sys_clk_freq : float
+        Frequency of memory controller's clock.
+    ser_latency : Latency
+        Additional latency introduced due to signal serialization.
+    des_latency : Latency
+        Additional latency introduced during signal deserialization.
+    phytype : str
+        Name of the PHY (concrete implementation).
+    masked_write : bool
+        Use MASKED-WRITE commands if True else use WRITE commands (data masking will not work).
+    cmd_delay : int
+        Used to force cmd delay during initialization in BIOS.
+    """
     def __init__(self, pads, *,
                  sys_clk_freq, ser_latency, des_latency, phytype,
                  masked_write=True, cmd_delay=None):
