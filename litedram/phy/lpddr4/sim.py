@@ -9,7 +9,7 @@ from litex.soc.interconnect.stream import ClockDomainCrossing
 from litex.soc.interconnect.csr import AutoCSR
 
 from litedram.common import TappedDelayLine, tXXDController
-from litedram.phy.lpddr4.utils import delayed, once, SimLogger
+from litedram.phy.lpddr4.utils import delayed, edge, SimLogger
 from litedram.phy.lpddr4.commands import MPC
 
 
@@ -75,14 +75,11 @@ class PulseTiming(Module):
         tctrl = tXXDController(t)
         self.submodules += tctrl
 
-        self.sync += [
-            If(self.trigger, triggered.eq(1)),
-            ready_d.eq(tctrl.ready),
-        ]
+        self.sync += If(self.trigger, triggered.eq(1)),
         self.comb += [
             self.ready.eq(triggered & tctrl.ready),
-            self.ready_p.eq(self.ready & ~ready_d),
-            once(self, self.trigger, tctrl.valid.eq(1)),
+            self.ready_p.eq(edge(self, self.ready)),
+            tctrl.valid.eq(edge(self, self.trigger)),
         ]
 
 
@@ -223,7 +220,7 @@ class CommandsSim(Module, AutoCSR):  # clock domain: clk_p
         fsm.act("NORMAL",
             cmds_enabled.eq(1),
             self.tzqlat.trigger.eq(1),
-            once(self, init_delays & self.handle_cmd & ~self.tzqlat.ready,
+            If(init_delays & self.handle_cmd & ~self.tzqlat.ready,
                 self.log.warn("tZQLAT violated")
             ),
         )

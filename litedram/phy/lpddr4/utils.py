@@ -24,10 +24,11 @@ def delayed(mod, sig, cycles=1, **kwargs):
     mod.submodules += delay
     return delay.output
 
-def once(mod, cond, *ops):
-    sig = Signal()
-    mod.sync += If(cond, sig.eq(1))
-    return If(~sig & cond, *ops)
+def edge(mod, cond):
+    """Get a signal that is high on a rising edge of `cond`"""
+    cond_d = Signal()
+    mod.sync += cond_d.eq(cond)
+    return  ~cond_d & cond
 
 class ConstBitSlip(Module):
     def __init__(self, dw, i=None, o=None, slp=None, cycles=1):
@@ -203,9 +204,7 @@ class SimLogger(Module, AutoCSR):
     def log(self, fmt, *args, level=DEBUG, once=True):
         cond = Signal()
         if once:  # make the condition be triggered only on rising edge
-            cond_d = Signal()
-            self.sync += cond_d.eq(cond)
-            condition = ~cond_d & cond
+            condition = edge(self, cond)
         else:
             condition = cond
 
