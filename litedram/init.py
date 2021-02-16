@@ -507,8 +507,6 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     # Define Read/Write Leveling capability
     if phytype in ["USDDRPHY", "USPDDRPHY", "K7DDRPHY", "V7DDRPHY"]:
         r += "#define SDRAM_PHY_WRITE_LEVELING_CAPABLE\n"
-    if phytype in ["USDDRPHY", "USPDDRPHY"]:
-        r += "#define SDRAM_PHY_WRITE_LEVELING_REINIT\n"
     if phytype in ["USDDRPHY", "USPDDRPHY", "A7DDRPHY", "K7DDRPHY", "V7DDRPHY"]:
         r += "#define SDRAM_PHY_WRITE_LATENCY_CALIBRATION_CAPABLE\n"
         r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
