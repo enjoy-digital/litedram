@@ -14,7 +14,7 @@ from litex.soc.interconnect import wishbone
 from litedram.frontend.wishbone import LiteDRAMWishbone2Native
 from litedram.common import LiteDRAMNativePort
 
-from test.common import DRAMMemory, MemoryTestDataMixin
+from test.common import *
 
 
 class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
@@ -40,6 +40,7 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
             main_generator(dut),
             dut.mem.write_handler(dut.port),
             dut.mem.read_handler(dut.port),
+            timeout_generator(10000)
         ]
         run_simulation(dut, generators, vcd_name='sim.vcd')
         self.assertEqual(dut.mem.mem, mem_expected)

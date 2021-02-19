@@ -186,6 +186,7 @@ class LiteDRAMNativePortUpConverter(Module):
         send_inner_cmd_addr = Signal.like(port_to.cmd.addr)
         send_inner_cmd_we   = Signal.like(port_to.cmd.we)
 
+        send_wdata_latch    = Signal(reset=1)
         self.cmd_buffer     = cmd_buffer    = stream.SyncFIFO([ ("cmd_addr", send_cmd_addr.nbits),
                                                                 ("cmd_we", send_cmd_we.nbits)],
                                                                 cmd_buffer_depth)
@@ -207,10 +208,10 @@ class LiteDRAMNativePortUpConverter(Module):
             )
         )
         send_fsm.act("SEND",
-            port_to.cmd.valid.eq(1),
+            port_to.cmd.valid.eq(~send_inner_cmd_we | (port_to.wdata.valid & send_wdata_latch)),
             port_to.cmd.addr.eq(send_inner_cmd_addr),
             port_to.cmd.we.eq(send_inner_cmd_we),
-            If(port_to.cmd.ready,
+            If(port_to.cmd.ready & port_to.cmd.valid,
                 If(cmd_buffer.source.valid,
                     cmd_buffer.source.ready.eq(1),
                     NextValue(send_inner_cmd_addr, cmd_buffer.source.cmd_addr),
@@ -221,6 +222,18 @@ class LiteDRAMNativePortUpConverter(Module):
                 )
             )
         )
+
+        # send_latch keeps track if we have already send write command to valid wdata
+        self.sync += [
+            If(port_to.cmd.ready & port_to.cmd.valid & send_inner_cmd_we & ~wdata_finished,
+                # we have avlid cmd and wdata, but port_to is not ready to recive data, send cmd
+                # and lock out further write commands until we send our wdata
+                send_wdata_latch.eq(0),
+            ).Elif(wdata_finished,
+                # we have send our wdata, unlock send
+                send_wdata_latch.eq(1),
+            )
+        ]
         # Command flow is quite complicate, nonlinear and it depends on type read/write,
         # so here is summary:
         # This FSM receives commands from `port_from` and pushes them to `cmd_buffer` queue,
@@ -293,6 +306,7 @@ class LiteDRAMNativePortUpConverter(Module):
         fsm.act("WAIT-FOR-CMD",
             If(port_from.cmd.valid,
                 NextValue(counter, 0),
+                NextValue(cmd_last, 0),
                 NextValue(cmd_addr, port_from.cmd.addr[log2_int(ratio):]),
                 NextValue(cmd_we, port_from.cmd.we),
                 If(port_from.cmd.we,
@@ -485,14 +499,12 @@ class LiteDRAMNativePortUpConverter(Module):
                 ]
 
             self.sync += [
-                If(wdata_fifo.source.valid & wdata_fifo.source.ready,
-                    Case(write_chunk, cases)
-                ),
                 If(wdata_finished,
                     write_inner_counter.eq(0),
                     wdata_buffer.we.eq(0),
                 ).Elif(wdata_fifo.source.valid & wdata_fifo.source.ready,
-                    write_inner_counter.eq(write_inner_counter + 1)
+                    write_inner_counter.eq(write_inner_counter + 1),
+                    Case(write_chunk, cases)
                 )
             ]
 
@@ -509,10 +521,16 @@ class LiteDRAMNativePortUpConverter(Module):
                 If(self.send_cmd_busy,
                     NextState("WAIT-TO-SEND")
                 ).Else(
+                    NextValue(counter, 0),
+                    NextValue(cmd_last, 0),
                     If(port_from.cmd.valid & port_from.cmd.we,
-                        NextValue(counter, 0),
                         NextValue(cmd_addr, port_from.cmd.addr[log2_int(self.ratio):]),
                         NextValue(cmd_we, port_from.cmd.we),
+                        port_from.cmd.ready.eq(1),
+                        NextValue(counter, 1),
+                        NextValue(ordering[:1 * log2_int(self.ratio)],
+                                     port_from.cmd.addr[:log2_int(self.ratio)]),
+                        NextValue(cmd_last, port_from.cmd.last),
                         NextState("FILL")
                     ).Else(
                         NextState("WAIT-FOR-CMD")
@@ -536,8 +554,9 @@ class LiteDRAMNativePortUpConverter(Module):
                     self.send_cmd_we.eq(port_from.cmd.we),
                     NextValue(cmd_addr, port_from.cmd.addr[log2_int(self.ratio):]),
                     NextValue(cmd_we, port_from.cmd.we),
+                    NextValue(counter, 0),
+                    NextValue(cmd_last, 0),
                     If(self.send_cmd_busy,
-                        NextValue(counter, 0),
                         NextState("WAIT-TO-SEND")
                     ).Else(
                         port_from.cmd.ready.eq(1),
