@@ -681,8 +681,8 @@ def main():
     builder_args(parser)
     parser.set_defaults(output_dir="build")
     parser.add_argument("config", help="YAML config file")
-    parser.add_argument("--sim", action='store_true', help="Integrate SDRAMPHYModel in core for simulation")
-    parser.add_argument("--module-name", default="litedram_core", help="Set Verilog module name")
+    parser.add_argument("--sim",  action='store_true',     help="Integrate SDRAMPHYModel in core for simulation")
+    parser.add_argument("--name", default="litedram_core", help="Standalone core/module name")
     args = parser.parse_args()
     core_config = yaml.load(open(args.config).read(), Loader=yaml.Loader)
 
@@ -716,15 +716,15 @@ def main():
 
     soc     = LiteDRAMCore(platform, core_config, integrated_rom_size=0x8000)
     builder = Builder(soc, **builder_arguments)
-    builder.build(build_name=args.module_name, regular_comb=False)
+    builder.build(build_name=args.name, regular_comb=False)
 
     if soc.cpu_type is not None:
         init_filename = "mem.init"
         os.system("mv {} {}".format(
             os.path.join(builder.gateware_dir, init_filename),
-            os.path.join(builder.gateware_dir, "litedram_core.init"),
+            os.path.join(builder.gateware_dir, f"{args.name}.init"),
         ))
-        replace_in_file(os.path.join(builder.gateware_dir, "litedram_core.v"), init_filename, "litedram_core.init")
+        replace_in_file(os.path.join(builder.gateware_dir, f"{args.name}.v"), init_filename, f"{args.name}.init")
 
 if __name__ == "__main__":
     main()
