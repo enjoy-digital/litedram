@@ -9,6 +9,8 @@
 
 """Direct Memory Access (DMA) reader and writer modules."""
 
+from math import log2
+
 from migen import *
 
 from litex.soc.interconnect.csr import *
@@ -73,6 +75,8 @@ class LiteDRAMDMAReader(Module, AutoCSR):
 
         if is_native:
             self.comb += cmd.we.eq(0)
+        if is_axi:
+            self.comb += cmd.size.eq(int(log2(port.data_width//8)))
         self.comb += [
             cmd.addr.eq(sink.address),
             cmd.valid.eq(sink.valid & request_enable),
@@ -191,6 +195,8 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
 
         if is_native:
             self.comb += cmd.we.eq(1)
+        if is_axi:
+            self.comb += cmd.size.eq(int(log2(port.data_width//8)))
         self.comb += [
             cmd.addr.eq(sink.address),
             cmd.valid.eq(fifo.sink.ready & sink.valid),
