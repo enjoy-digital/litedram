@@ -108,12 +108,12 @@ class LiteDRAMDMAReader(Module, AutoCSR):
             data_dequeued.eq(source.valid & source.ready)
         ]
 
-    def add_csr(self):
-        self._base   = CSRStorage(32)
-        self._length = CSRStorage(32)
-        self._start  = CSR()
+    def add_csr(self, default_base=0, default_length=0, default_start=0, default_loop=0):
+        self._base   = CSRStorage(32, reset=default_base)
+        self._length = CSRStorage(32, reset=default_length)
+        self._start  = CSRStorage(reset=default_start)
         self._done   = CSRStatus()
-        self._loop   = CSRStorage()
+        self._loop   = CSRStorage(reset=default_loop)
 
         # # #
 
@@ -129,7 +129,7 @@ class LiteDRAMDMAReader(Module, AutoCSR):
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
             self._done.status.eq(1),
-            If(self._start.re,
+            If(self._start.storage & (default_start != 0 | self._start.re),
                 NextValue(offset, 0),
                 NextState("RUN"),
             )
@@ -215,15 +215,15 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             wdata.data.eq(fifo.source.data)
         ]
 
-    def add_csr(self):
+    def add_csr(self, default_base=0, default_length=0, default_start=0, default_loop=0):
         self._sink = self.sink
         self.sink  = stream.Endpoint([("data", self.port.data_width)])
 
-        self._base   = CSRStorage(32)
-        self._length = CSRStorage(32)
-        self._start  = CSR()
+        self._base   = CSRStorage(32, reset=default_base)
+        self._length = CSRStorage(32, reset=default_length)
+        self._start  = CSRStorage(reset=default_start)
         self._done   = CSRStatus()
-        self._loop   = CSRStorage()
+        self._loop   = CSRStorage(reset=default_loop)
 
         # # #
 
@@ -239,7 +239,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
             self._done.status.eq(1),
-            If(self._start.re,
+            If(self._start.storage & (default_start != 0 | self._start.re),
                 NextValue(offset, 0),
                 NextState("RUN"),
             )
