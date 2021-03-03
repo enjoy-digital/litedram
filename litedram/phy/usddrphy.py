@@ -83,6 +83,7 @@ class USDDRPHY(Module, AutoCSR):
         self._wdly_dq_inc         = CSR()
         self._wdly_dqs_rst        = CSR()
         self._wdly_dqs_inc        = CSR()
+        self._wdly_dqs_inc_count  = CSRStatus(9)
 
         self._wdly_dq_bitslip_rst = CSR()
         self._wdly_dq_bitslip     = CSR()
@@ -125,18 +126,6 @@ class USDDRPHY(Module, AutoCSR):
             self.submodules += DDR4DFIMux(self.dfi, dfi)
 
         # # #
-
-        # tCK reference ----------------------------------------------------------------------------
-        self.specials += Instance("ODELAYE3",
-            p_SIM_DEVICE       = device,
-            p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
-            p_DELAY_FORMAT     = "TIME",
-            p_DELAY_TYPE       = "FIXED",
-            p_DELAY_VALUE      = int(tck*1e12/4),
-            i_CLK         = ClockSignal(),
-            i_EN_VTC      = 1,
-            o_CNTVALUEOUT = self._half_sys8x_taps.status,
-        )
 
         # Iterate on pads groups -------------------------------------------------------------------
         for pads_group in range(len(pads.groups)):
@@ -296,11 +285,9 @@ class USDDRPHY(Module, AutoCSR):
                         p_IS_CLK_INVERTED  = 0,
                         p_IS_RST_INVERTED  = 0,
                         p_DELAY_FORMAT     = "TIME",
-                        p_DELAY_TYPE       = "VAR_LOAD",
-                        p_DELAY_VALUE      = 0,
-                        i_RST              = ResetSignal("ic") | self._rst.storage,
-                        i_LOAD             = self._dly_sel.storage[i] & self._wdly_dqs_rst.re,
-                        i_CNTVALUEIN       = self._half_sys8x_taps.status,
+                        p_DELAY_TYPE       = "VARIABLE",
+                        p_DELAY_VALUE      = int(tck*1e12/4),
+                        o_CNTVALUEOUT      = self._half_sys8x_taps.status if (i == 0) and (j == 0) else Signal(),
                         i_CLK              = ClockSignal(),
                         i_EN_VTC           = self._en_vtc.storage,
                         i_CE               = self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
@@ -315,6 +302,9 @@ class USDDRPHY(Module, AutoCSR):
                         io_IOB = dqs_n,
                     )
                 ]
+                wdly_dqs_inc_count = Signal(9)
+                self.sync += If(self._dly_sel.storage[i] & self._wdly_dqs_inc.re, wdly_dqs_inc_count.eq(wdly_dqs_inc_count + 1))
+                self.comb += If(self._dly_sel.storage[i], self._wdly_dqs_inc_count.status.eq(wdly_dqs_inc_count))
 
         # DM ---------------------------------------------------------------------------------------
         for i in range(databits//8):
