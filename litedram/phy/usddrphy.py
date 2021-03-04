@@ -288,6 +288,7 @@ class USDDRPHY(Module, AutoCSR):
                         p_DELAY_TYPE       = "VARIABLE",
                         p_DELAY_VALUE      = int(tck*1e12/4),
                         o_CNTVALUEOUT      = self._half_sys8x_taps.status if (i == 0) and (j == 0) else Signal(),
+                        i_RST              = ResetSignal("ic"),
                         i_CLK              = ClockSignal(),
                         i_EN_VTC           = self._en_vtc.storage,
                         i_CE               = self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
