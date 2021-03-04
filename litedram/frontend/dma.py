@@ -1,8 +1,8 @@
 #
 # This file is part of LiteDRAM.
 #
+# Copyright (c) 2016-2021 Florent Kermarrec <florent@enjoy-digital.fr>
 # Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
-# Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
 # Copyright (c) 2018 John Sully <john@csquare.ca>
 # Copyright (c) 2016 Tim 'mithro' Ansell <mithro@mithis.com>
 # SPDX-License-Identifier: BSD-2-Clause
@@ -51,7 +51,7 @@ class LiteDRAMDMAReader(Module, AutoCSR):
         FIFO reservation level counter
     """
 
-    def __init__(self, port, fifo_depth=16, fifo_buffered=False):
+    def __init__(self, port, fifo_depth=16, fifo_buffered=False, with_csr=False):
         assert isinstance(port, (LiteDRAMNativePort, LiteDRAMAXIPort))
         self.port   = port
         self.sink   = sink   = stream.Endpoint([("address", port.address_width)])
@@ -108,46 +108,52 @@ class LiteDRAMDMAReader(Module, AutoCSR):
             data_dequeued.eq(source.valid & source.ready)
         ]
 
-    def add_csr(self, default_base=0, default_length=0, default_start=0, default_loop=0):
+        if with_csr:
+            self.add_csr()
+
+    def add_csr(self, default_base=0, default_length=0, default_enable=0, default_loop=0):
         self._base   = CSRStorage(32, reset=default_base)
         self._length = CSRStorage(32, reset=default_length)
-        self._start  = CSRStorage(reset=default_start)
+        self._enable = CSRStorage(reset=default_enable)
         self._done   = CSRStatus()
         self._loop   = CSRStorage(reset=default_loop)
+        self._offset = CSRStatus(32)
 
         # # #
 
-        shift   = log2_int(self.port.data_width//8)
-        base    = Signal(self.port.address_width)
-        offset  = Signal(self.port.address_width)
-        length  = Signal(self.port.address_width)
-        self.comb += [
-            base.eq(self._base.storage[shift:]),
-            length.eq(self._length.storage[shift:]),
-        ]
+        shift  = log2_int(self.port.data_width//8)
+        base   = Signal(self.port.address_width)
+        offset = Signal(self.port.address_width)
+        length = Signal(self.port.address_width)
+        self.comb += base.eq(self._base.storage[shift:])
+        self.comb += length.eq(self._length.storage[shift:])
 
-        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
+        self.comb += self._offset.status.eq(offset)
+
+        fsm = FSM(reset_state="IDLE")
+        fsm = ResetInserter()(fsm)
+        self.submodules.fsm = fsm
+        self.comb += fsm.reset.eq(~self._enable.storage)
         fsm.act("IDLE",
-            self._done.status.eq(1),
-            If(self._start.storage & (default_start != 0 | self._start.re),
-                NextValue(offset, 0),
-                NextState("RUN"),
-            )
+            NextValue(offset, 0),
+            NextState("RUN"),
         )
         fsm.act("RUN",
             self.sink.valid.eq(1),
+            self.sink.last.eq(offset == (length - 1)),
             self.sink.address.eq(base + offset),
             If(self.sink.ready,
                 NextValue(offset, offset + 1),
-                If(offset == (length - 1),
+                If(self.sink.last,
                     If(self._loop.storage,
                         NextValue(offset, 0)
                     ).Else(
-                        NextState("IDLE")
+                        NextState("DONE")
                     )
                 )
             )
         )
+        fsm.act("DONE", self._done.status.eq(1))
 
 # LiteDRAMDMAWriter --------------------------------------------------------------------------------
 
@@ -171,7 +177,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
     sink : Record("address", "data")
         Sink for DRAM addresses and DRAM data word to be written too.
     """
-    def __init__(self, port, fifo_depth=16, fifo_buffered=False):
+    def __init__(self, port, fifo_depth=16, fifo_buffered=False, with_csr=False):
         assert isinstance(port, (LiteDRAMNativePort, LiteDRAMAXIPort))
         self.port = port
         self.sink = sink = stream.Endpoint([("address", port.address_width),
@@ -215,43 +221,49 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             wdata.data.eq(fifo.source.data)
         ]
 
-    def add_csr(self, default_base=0, default_length=0, default_start=0, default_loop=0):
+        if with_csr:
+            self.add_csr()
+
+    def add_csr(self, default_base=0, default_length=0, default_enable=0, default_loop=0):
         self._sink = self.sink
         self.sink  = stream.Endpoint([("data", self.port.data_width)])
 
         self._base   = CSRStorage(32, reset=default_base)
         self._length = CSRStorage(32, reset=default_length)
-        self._start  = CSRStorage(reset=default_start)
+        self._enable = CSRStorage(reset=default_enable)
         self._done   = CSRStatus()
         self._loop   = CSRStorage(reset=default_loop)
+        self._offset = CSRStatus(32)
 
         # # #
 
-        shift   = log2_int(self.port.data_width//8)
-        base    = Signal(self.port.address_width)
-        offset  = Signal(self.port.address_width)
-        length  = Signal(self.port.address_width)
-        self.comb += [
-            base.eq(self._base.storage[shift:]),
-            length.eq(self._length.storage[shift:]),
-        ]
+        shift  = log2_int(self.port.data_width//8)
+        base   = Signal(self.port.address_width)
+        offset = Signal(self.port.address_width)
+        length = Signal(self.port.address_width)
+        self.comb += base.eq(self._base.storage[shift:])
+        self.comb += length.eq(self._length.storage[shift:])
 
-        self.submodules.fsm = fsm = FSM(reset_state="IDLE")
+        self.comb += self._offset.status.eq(offset)
+
+        fsm = FSM(reset_state="IDLE")
+        fsm = ResetInserter()(fsm)
+        self.submodules.fsm = fsm
+        self.comb += fsm.reset.eq(~self._enable.storage)
         fsm.act("IDLE",
-            self._done.status.eq(1),
-            If(self._start.storage & (default_start != 0 | self._start.re),
-                NextValue(offset, 0),
-                NextState("RUN"),
-            )
+            self.sink.ready.eq(1),
+            NextValue(offset, 0),
+            NextState("RUN"),
         )
         fsm.act("RUN",
             self._sink.valid.eq(self.sink.valid),
-            self._sink.data.eq(self.sink.data),
+            self._sink.last.eq(offset == (length - 1)),
             self._sink.address.eq(base + offset),
+            self._sink.data.eq(self.sink.data),
             self.sink.ready.eq(self._sink.ready),
             If(self.sink.valid & self.sink.ready,
                 NextValue(offset, offset + 1),
-                If(offset == (length - 1),
+                If(self._sink.last,
                     If(self._loop.storage,
                         NextValue(offset, 0)
                     ).Else(
@@ -260,3 +272,4 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
                 )
             )
         )
+        fsm.act("DONE", self._done.status.eq(1))
