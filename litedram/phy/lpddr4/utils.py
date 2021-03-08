@@ -61,7 +61,8 @@ class DQSPattern(Module):
         self.comb += [
             self.o.eq(0b0101010101010101),
             If(self.preamble,
-                self.o.eq(0b0001010101010101)
+                # FIXME: using 2tCK write preamble, but it depends on mode registers
+                self.o.eq(0b0101000001010101)
             ),
             If(self.postamble,
                 self.o.eq(0b0101010101010100)
@@ -69,7 +70,8 @@ class DQSPattern(Module):
             If(wlevel_en,
                 self.o.eq(0b0000000000000000),
                 If(wlevel_strobe,
-                    self.o.eq(0b0000000000000001)
+                    # use 2 toggles as, according to datasheet, the first one may not be registered
+                    self.o.eq(0b0000000000000101)
                 )
             )
         ]

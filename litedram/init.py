@@ -453,9 +453,8 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
     cwl = phy_settings.cwl
     bl = 16
-    # TODO: on-die termination values
-    dq_odt = "disable"
-    ca_odt = "disable"
+    dq_odt = "RZQ/2"
+    ca_odt = "RZQ/2"
 
     def get_nwr():
         frequency_ranges = [  # Table 28. Frequency Ranges for RL, WL, nWR, and nRTP Settings
@@ -547,21 +546,21 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
     # MR12, MR14 - default Vref 50.3% Vddq
     # MR13 - defaults (data mask enabled)
 
+    from litedram.phy.lpddr4.commands import MPC, MRS
+
     def cmd_mr(ma):
         # Convert Mode Register Write command to DFI as expected by PHY
         op = mr[ma]
         assert ma < 2**6, "MR address to big: {}".format(ma)
         assert op < 2**8, "MR opcode to big: {}".format(op)
         a = op | (ma << 8)
-        ba = 0
+        ba = MRS.MRW
         return ("Load More Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
 
     def ck(sec):
         # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
         fmax = 200e6
         return int(math.ceil(sec * fmax))
-
-    from litedram.phy.lpddr4.commands import MPC
 
     init_sequence = [
         # Perform "Reset Initialization with Stable Power"
@@ -656,7 +655,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     elif phytype in ["A7DDRPHY", "K7DDRPHY", "V7DDRPHY", "S7LPDDR4PHY"]:
         r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2\n"
         r += "#define SDRAM_PHY_DELAYS 32\n"
-        r += "#define SDRAM_PHY_BITSLIPS 8\n"
+        r += "#define SDRAM_PHY_BITSLIPS 16\n"
     elif phytype in ["ECP5DDRPHY"]:
         r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/4\n"
         r += "#define SDRAM_PHY_DELAYS 8\n"

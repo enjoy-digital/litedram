@@ -1,4 +1,5 @@
 from migen import *
+from migen.genlib.cdc import PulseSynchronizer
 
 from litex.soc.interconnect.csr import *
 
@@ -19,8 +20,9 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
         _sys2x = 4
         super().__init__(pads,
             ser_latency = Latency(sys=0, sys8x=1*_sys2x),  # OSERDESE2 8:1 DDR (4 full-rate clocks)
-            des_latency = Latency(sys=2, sys8x=2*_sys2x),  # ISERDESE2 NETWORKING
+            des_latency = Latency(sys=0, sys8x=2*_sys2x),  # ISERDESE2 NETWORKING
             phytype     = self.__class__.__name__,
+            serdes_reset_cnt=-1,
             **kwargs
         )
 
@@ -33,6 +35,7 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
         assert iodelay_clk_freq in [200e6, 300e6, 400e6]
         iodelay_tap_average = 1 / (2*32 * iodelay_clk_freq)
         half_sys8x_taps = math.floor(self.tck / (4 * iodelay_tap_average))
+        assert half_sys8x_taps < 32, "Exceeded ODELAYE2 max value: {} >= 32".format(half_sys8x_taps)
 
         # Registers --------------------------------------------------------------------------------
         self._half_sys8x_taps = CSRStorage(5, reset=half_sys8x_taps)
@@ -42,20 +45,58 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
         self._cdly_inc     = CSR()
         self._rdly_dq_rst  = CSR()
         self._rdly_dq_inc  = CSR()
+        self._rdly_dqs_rst = CSR()
+        self._rdly_dqs_inc = CSR()
         self._wdly_dq_rst  = CSR()
         self._wdly_dq_inc  = CSR()
         self._wdly_dqs_rst = CSR()
         self._wdly_dqs_inc = CSR()
 
-        cdly_rst = self._cdly_rst.re | self._rst.storage
-        cdly_inc = self._cdly_inc.re
+        def cdc(i):
+            o = Signal()
+            psync = PulseSynchronizer("sys", "sys2x")
+            self.submodules += psync
+            self.comb += [
+                psync.i.eq(i),
+                o.eq(psync.o),
+            ]
+            return o
+
+        cdly_rst     = cdc(self._cdly_rst.re) | self._rst.storage
+        cdly_inc     = cdc(self._cdly_inc.re)
+        rdly_dq_rst  = cdc(self._rdly_dq_rst.re)
+        rdly_dq_inc  = cdc(self._rdly_dq_inc.re)
+        rdly_dqs_rst = cdc(self._rdly_dqs_rst.re)
+        rdly_dqs_inc = cdc(self._rdly_dqs_inc.re)
+        wdly_dq_rst  = cdc(self._wdly_dq_rst.re)
+        wdly_dq_inc  = cdc(self._wdly_dq_inc.re)
+        wdly_dqs_rst = cdc(self._wdly_dqs_rst.re)
+        wdly_dqs_inc = cdc(self._wdly_dqs_inc.re)
+
+        # with DATA_RATE_TQ=BUF tristate is asynchronous, so we need to delay it
+        class OEDelay(Module, AutoCSR):
+            def __init__(self, oe, reset=0b010):
+                self.o = Signal()
+                self.mask = CSRStorage(3, reset=reset)
+                delay = Array([Signal() for _ in range(3)])
+
+                self.comb += delay[0].eq(oe)
+                self.sync += delay[1].eq(delay[0])
+                self.sync += delay[2].eq(delay[1])
+                self.comb += self.o.eq(reduce(or_, [delay[i] & self.mask.storage[i] for i in range(3)]))
+
+        self.submodules.dqs_oe_delay = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dqs_oe))
+        self.submodules.dq_oe_delay  = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dq_oe, reset=0b110))
+        self.submodules.dmi_oe_delay = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dmi_oe, reset=0b110))
 
         # Serialization ----------------------------------------------------------------------------
 
         # Clock
         clk_ser = Signal()
         clk_dly = Signal()
-        self.oserdese2_ddr(din=self.out.clk, dout=clk_ser, clk="sys8x")
+        # Invert clk to have it phase shifted in relation to CS/CA, because we serialize it with DDR,
+        # rising edge will then be in the middle of a data bit.
+        self.oserdese2_ddr(din=~self.out.clk, dout=clk_ser, clk="sys8x")
         self.odelaye2(din=clk_ser, dout=clk_dly, rst=cdly_rst, inc=cdly_inc)
         self.obufds(din=clk_dly, dout=self.pads.clk_p, dout_b=self.pads.clk_n)
 
@@ -77,29 +118,42 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
         # DQS
         for byte in range(self.databits//8):
             # DQS
-            dqs_t   = Signal()
-            dqs_ser = Signal()
-            dqs_dly = Signal()
+            dqs_t     = Signal()
+            dqs_ser   = Signal()
+            dqs_dly   = Signal()
+            dqs_i     = Signal()
+            dqs_i_dly = Signal()
             self.oserdese2_ddr(
                 din     = self.out.dqs_o[byte],
                 dout_fb = dqs_ser,
-                tin     = ~self.out.dqs_oe,
+                tin     = ~self.dqs_oe_delay.o,
                 tout    = dqs_t,
                 clk     = "sys8x",  # TODO: if odelay is not avaiable need to use sys8x_90
             )
             self.odelaye2(
                 din  = dqs_ser,
                 dout = dqs_dly,
-                rst  = self.get_rst(byte, self._wdly_dqs_rst),
-                inc  = self.get_inc(byte, self._wdly_dqs_inc),
+                rst  = self.get_rst(byte, wdly_dqs_rst),
+                inc  = self.get_inc(byte, wdly_dqs_inc),
                 init = half_sys8x_taps,  # shifts by 90 degrees
             )
             self.iobufds(
                 din      = dqs_dly,
-                dout     = Signal(),  # TODO: DQS input path
+                dout     = dqs_i,
                 tin      = dqs_t,
                 dinout   = self.pads.dqs_p[byte],
                 dinout_b = self.pads.dqs_n[byte],
+            )
+            self.idelaye2(
+                din  = dqs_i,
+                dout = dqs_i_dly,
+                rst  = self.get_rst(byte, rdly_dqs_rst),
+                inc  = self.get_inc(byte, rdly_dqs_inc),
+            )
+            self.iserdese2_ddr(
+                din  = dqs_i_dly,
+                dout = self.out.dqs_i[byte],
+                clk  = "sys8x",
             )
 
         # DMI
@@ -110,15 +164,15 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
             self.oserdese2_ddr(
                 din     = self.out.dmi_o[byte],
                 dout_fb = dmi_ser,
-                tin     = ~self.out.dmi_oe,
+                tin     = ~self.dmi_oe_delay.o,
                 tout    = dmi_t,
                 clk     = "sys8x",
             )
             self.odelaye2(
                 din  = dmi_ser,
                 dout = dmi_dly,
-                rst  = self.get_rst(byte, self._wdly_dq_rst),
-                inc  = self.get_inc(byte, self._wdly_dq_inc),
+                rst  = self.get_rst(byte, wdly_dq_rst),
+                inc  = self.get_inc(byte, wdly_dq_inc),
             )
             self.iobuf(
                 din    = dmi_dly,
@@ -137,15 +191,15 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
             self.oserdese2_ddr(
                 din     = self.out.dq_o[bit],
                 dout_fb = dq_ser,  # TODO: compare: S7DDRPHY uses OQ not OFB
-                tin     = ~self.out.dq_oe,
+                tin     = ~self.dq_oe_delay.o,
                 tout    = dq_t,
                 clk     = "sys8x",
             )
             self.odelaye2(
                 din  = dq_ser,
                 dout = dq_dly,
-                rst  = self.get_rst(bit//8, self._wdly_dq_rst),
-                inc  = self.get_inc(bit//8, self._wdly_dq_inc),
+                rst  = self.get_rst(bit//8, wdly_dq_rst),
+                inc  = self.get_inc(bit//8, wdly_dq_inc),
             )
             self.iobuf(
                 din    = dq_dly,
@@ -156,8 +210,8 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
             self.idelaye2(
                 din  = dq_i,
                 dout = dq_i_dly,
-                rst  = self.get_rst(bit//8, self._rdly_dq_rst),
-                inc  = self.get_inc(bit//8, self._rdly_dq_inc)
+                rst  = self.get_rst(bit//8, rdly_dq_rst),
+                inc  = self.get_inc(bit//8, rdly_dq_inc)
             )
             self.iserdese2_ddr(
                 din  = dq_i_dly,
@@ -188,7 +242,7 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
         if not fixed:
             params.update(dict(
                 p_IDELAY_TYPE  = "VARIABLE",
-                i_C        = ClockSignal(),
+                i_C        = ClockSignal("sys2x"),  # must be same as in ODELAYE2
                 i_LD       = rst,
                 i_CE       = inc,
                 i_LDPIPEEN = 0,
@@ -197,10 +251,9 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
 
         self.specials += Instance("IDELAYE2", **params)
 
-    def odelaye2(self, *, din, dout, clk=None, init=0, rst=None, inc=None):  # Not available for Artix7
+    def odelaye2(self, *, din, dout, init=0, rst=None, inc=None):  # Not available for Artix7
         assert not ((rst is None) ^ (inc is None))
-        fixed = rst is not None
-        assert clk is not None or fixed
+        fixed = rst is None
 
         params = dict(
             p_SIGNAL_PATTERN        = "DATA",
@@ -218,7 +271,7 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
         if not fixed:
             params.update(dict(
                 p_ODELAY_TYPE  = "VARIABLE",
-                i_C        = ClockSignal(clk),
+                i_C        = ClockSignal("sys2x"),  # must be same as CLKDIV in OSERDESE2
                 i_LD       = rst,
                 i_CE       = inc,
                 i_LDPIPEEN = 0,
@@ -254,8 +307,8 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
             params[f"i_D{i+1}"] = din[i]
 
         if tin is not None:
-            # with DATA_RATE_TQ=BUF tristate is asynchronous, so we need to delay it
-            params.update(dict(i_TCE=1, i_T1=self.delayed_sys2x(tin), o_TQ=tout))
+            # with DATA_RATE_TQ=BUF tristate is asynchronous, so it should be delayed by OSERDESE2 latency
+            params.update(dict(i_TCE=1, i_T1=tin, o_TQ=tout))
 
         self.specials += Instance("OSERDESE2", **params)
 

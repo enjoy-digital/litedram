@@ -23,6 +23,17 @@ class MPC(enum.IntEnum):
     ZQC_LATCH     = 0b1010001
 
 
+@enum.unique
+class MRS(enum.IntEnum):
+    """Codes for commands encoded in DFI MRS command
+
+    DFI MRS is used for both LPDDR4 MRW and MRR. The command is selected
+    basing on DFI.bank which can be one of the following.
+    """
+    MRW = 0
+    MRR = 1
+
+
 class DFIPhaseAdapter(Module):
     """Translates DFI phase into LPDDR4 command (2- or 4-cycle)
 
@@ -52,6 +63,12 @@ class DFIPhaseAdapter(Module):
         Indicates that a valid command is presented on the `cs` and `ca` outputs.
     """
     def __init__(self, dfi_phase, masked_write=True):
+        assert isinstance(masked_write, (bool, Signal)), "Use boolean (static) or Signal (dynamic)"
+        if isinstance(masked_write, bool):
+            masked_write = int(masked_write)
+        else:
+            assert len(masked_write) == 1
+
         # CS/CA values for 4 SDR cycles
         self.cs = Signal(4)
         self.ca = Array([Signal(6) for _ in range(4)])
@@ -86,17 +103,24 @@ class DFIPhaseAdapter(Module):
         def cmds(cmd1, cmd2, valid=1):
             return self.cmd1.set(cmd1) + self.cmd2.set(cmd2) + [self.valid.eq(valid)]
 
-        write1 = "MASK WRITE-1" if masked_write else "WRITE-1"
         self.comb += If(dfi_phase.cs_n == 0,  # require dfi.cs_n
             Case(dfi_cmd, {
                 _cmd["ACT"]: cmds("ACTIVATE-1", "ACTIVATE-2"),
                 _cmd["RD"]:  cmds("READ-1",     "CAS-2"),
-                _cmd["WR"]:  cmds(write1,       "CAS-2"),
+                _cmd["WR"]:  Case(masked_write, {
+                    0: cmds("WRITE-1",      "CAS-2"),
+                    1: cmds("MASK WRITE-1", "CAS-2"),
+                }),
                 _cmd["PRE"]: cmds("DESELECT",   "PRECHARGE"),
                 _cmd["REF"]: cmds("DESELECT",   "REFRESH"),
                 _cmd["ZQC"]: cmds("DESELECT",   "MPC"),
-                _cmd["MRS"]: cmds("MRW-1",      "MRW-2"),
-                "default":   cmds("DESELECT",   "DESELECT", valid=0),
+                # Use bank address to select command type
+                _cmd["MRS"]: Case(dfi_phase.bank, {
+                    MRS.MRW:   cmds("MRW-1",    "MRW-2"),
+                    MRS.MRR:   cmds("MRR-1",    "CAS-2"),
+                    "default": cmds("DESELECT", "DESELECT", valid=0),
+                }),
+                "default": cmds("DESELECT", "DESELECT", valid=0),
             })
         )
 

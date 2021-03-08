@@ -511,6 +511,7 @@ class LPDDR4Tests(unittest.TestCase):
         mrw        = dict(cs_n=0, cas_n=0, ras_n=0, we_n=0, bank=0,     address=(0b110011 << 8) | 0b10101010)  # 6-bit address | 8-bit op code
         zqc_start  = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,     address=0b1001111)  # MPC with ZQCAL START operand
         zqc_latch  = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,     address=0b1010001)  # MPC with ZQCAL LATCH operand
+        mrr        = dict(cs_n=0, cas_n=0, ras_n=0, we_n=0, bank=1,     address=0b101101 << 8)  # 6-bit address (bank=1 selects MRR instead of MRW)
         for masked_write in [True, False]:
             with self.subTest(masked_write=masked_write):
                 wr_ca3 = '{}x00'.format('0' if not masked_write else '1')
@@ -520,17 +521,19 @@ class LPDDR4Tests(unittest.TestCase):
                         {0: activate, 4: refresh_ab},
                         {0: precharge, 4: mrw},
                         {0: zqc_start, 4: zqc_latch},
+                        {0: mrr},
                     ],
                     pad_checkers = {"sys8x_90": {
                         # note that refresh and precharge have a single command so these go as cmd2
-                        #                 rd     wr       act    ref      pre    mrw      zqcs   zqcl
-                        'cs':  latency + '1010'+'1010' + '1010'+'0010' + '0010'+'1010' + '0010'+'0010',
-                        'ca0': latency + '0100'+'0100' + '1011'+'0000' + '0001'+'0100' + '0001'+'0001',
-                        'ca1': latency + '1010'+'0110' + '0110'+'0000' + '0001'+'1111' + '0001'+'0000',
-                        'ca2': latency + '0101'+'1100' + '0010'+'0001' + '0000'+'1010' + '0001'+'0000',
-                        'ca3': latency + '0x01'+wr_ca3 + '1110'+'001x' + '000x'+'0001' + '0001'+'0000',
-                        'ca4': latency + '0110'+'0010' + '1010'+'000x' + '001x'+'0110' + '0000'+'0001',
-                        'ca5': latency + '0010'+'0100' + '1001'+'001x' + '000x'+'1101' + '0010'+'0010',
+                        # here MRR is sent with C8=1 as it is taken from bit 0 of MA (both are taken from dfi.address)
+                        #                 rd     wr       act    ref      pre    mrw      zqcs   zqcl     mrr
+                        'cs':  latency + '1010'+'1010' + '1010'+'0010' + '0010'+'1010' + '0010'+'0010' + '1010'+'0000',
+                        'ca0': latency + '0100'+'0100' + '1011'+'0000' + '0001'+'0100' + '0001'+'0001' + '0100'+'0000',
+                        'ca1': latency + '1010'+'0110' + '0110'+'0000' + '0001'+'1111' + '0001'+'0000' + '1010'+'0000',
+                        'ca2': latency + '0101'+'1100' + '0010'+'0001' + '0000'+'1010' + '0001'+'0000' + '1100'+'0000',
+                        'ca3': latency + '0x01'+wr_ca3 + '1110'+'001x' + '000x'+'0001' + '0001'+'0000' + '1100'+'0000',
+                        'ca4': latency + '0110'+'0010' + '1010'+'000x' + '001x'+'0110' + '0000'+'0001' + '0010'+'0000',
+                        'ca5': latency + '0010'+'0100' + '1001'+'001x' + '000x'+'1101' + '0010'+'0010' + 'x110'+'0000',
                     }},
                 )
 

@@ -61,9 +61,11 @@ class LPDDR4PHY(Module, AutoCSR):
     is treated specially in that DFI ZQC is translated into LPDDR4 MPC and has
     different interpretation depending on DFI.address.
 
-    Also, due to the fact that LPDDR4 has 256-bit Mode Register space, the DFI
-    MRS command encodes both register address *and* value in DFI.address (instead
+    Due to the fact that LPDDR4 has 256-bit Mode Register space, the DFI MRS
+    command encodes both register address *and* value in DFI.address (instead
     of the default in LiteDRAM to split them between DFI.address and DFI.bank).
+    The MRS command is used both for Mode Register Write and Mode Register Read.
+    The command is selected based on the value of DFI.bank.
 
     Refer to the documentation in `commands.py` for further information.
 
@@ -114,8 +116,11 @@ class LPDDR4PHY(Module, AutoCSR):
                     return cl, cwl
             raise ValueError
 
-        # Bitslip introduces latency between from `cycles` up to `cycles + 1`
+        # Bitslip introduces latency from 1 up to `cycles + 1`
+        # FIXME: (check if True) from tests on hardware it seems we need 1 more cycle
+        #   of read_latency, probably to have space for manipulating bitslip values
         bitslip_cycles  = 1
+        bitslip_range   = 1
         # Commands are sent over 4 DRAM clocks (sys8x) and we count cl/cwl from last bit
         cmd_latency     = 4  # FIXME: or should it be 3?
         # Commands read from adapters are delayed on ConstBitSlips
@@ -141,7 +146,7 @@ class LPDDR4PHY(Module, AutoCSR):
 
         # Read latency
         read_data_delay = ca_latency + ser_latency.sys + cl_sys_latency  # DFI cmd -> read data on DQ
-        read_des_delay  = des_latency.sys + bitslip_cycles  # data on DQ -> data on DFI rddata
+        read_des_delay  = des_latency.sys + bitslip_cycles+bitslip_range  # data on DQ -> data on DFI rddata
         read_latency    = read_data_delay + read_des_delay
 
         # Write latency
@@ -266,8 +271,8 @@ class LPDDR4PHY(Module, AutoCSR):
             self.submodules += BitSlip(
                 dw     = 2*nphases,
                 cycles = bitslip_cycles,
-                rst    = self.get_rst(bit//8, self._wdly_dq_bitslip_rst),
-                slp    = self.get_inc(bit//8, self._wdly_dq_bitslip),
+                rst    = self.get_rst(bit//8, self._wdly_dq_bitslip_rst.re),
+                slp    = self.get_inc(bit//8, self._wdly_dq_bitslip.re),
                 i      = Cat(*wrdata),
                 o      = self.out.dq_o[bit],
             )
@@ -277,8 +282,8 @@ class LPDDR4PHY(Module, AutoCSR):
             self.submodules += BitSlip(
                 dw     = 2*nphases,
                 cycles = bitslip_cycles,
-                rst    = self.get_rst(bit//8, self._rdly_dq_bitslip_rst),
-                slp    = self.get_inc(bit//8, self._rdly_dq_bitslip),
+                rst    = self.get_rst(bit//8, self._rdly_dq_bitslip_rst.re),
+                slp    = self.get_inc(bit//8, self._rdly_dq_bitslip.re),
                 i      = self.out.dq_i[bit],
                 o      = dq_i_bs,
             )
@@ -304,8 +309,8 @@ class LPDDR4PHY(Module, AutoCSR):
             self.submodules += BitSlip(
                 dw     = 2*nphases,
                 cycles = bitslip_cycles,
-                rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst),
-                slp    = self.get_inc(byte, self._wdly_dq_bitslip),
+                rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
+                slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
                 i      = dqs_pattern.o,
                 o      = self.out.dqs_o[byte],
             )
@@ -316,10 +321,7 @@ class LPDDR4PHY(Module, AutoCSR):
         # With DM enabled, masking is performed only when the command used is WRITE-MASKED.
         # We don't support DBI, DM support is configured statically with `masked_write`.
         for byte in range(self.databits//8):
-            if not masked_write:
-                self.comb += self.out.dmi_o[byte].eq(0)
-                self.comb += self.out.dmi_oe.eq(0)
-            else:
+            if isinstance(masked_write, Signal) or masked_write:
                 self.comb += self.out.dmi_oe.eq(self.out.dq_oe)
                 wrdata_mask = [
                     self.dfi.phases[i//2] .wrdata_mask[i%2 * self.databits//8 + byte]
@@ -328,11 +330,14 @@ class LPDDR4PHY(Module, AutoCSR):
                 self.submodules += BitSlip(
                     dw     = 2*nphases,
                     cycles = bitslip_cycles,
-                    rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst),
-                    slp    = self.get_inc(byte, self._wdly_dq_bitslip),
+                    rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
+                    slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
                     i      = Cat(*wrdata_mask),
                     o      = self.out.dmi_o[byte],
                 )
+            else:
+                self.comb += self.out.dmi_o[byte].eq(0)
+                self.comb += self.out.dmi_oe.eq(0)
 
         # Read Control Path ------------------------------------------------------------------------
         # Creates a delay line of read commands coming from the DFI interface. The output is used to
@@ -376,13 +381,11 @@ class LPDDR4PHY(Module, AutoCSR):
         self.comb += dqs_preamble.eq( wrdata_en_tap(wrtap - 1)  & ~wrdata_en_tap(wrtap + 0))
         self.comb += dqs_postamble.eq(wrdata_en_tap(wrtap + 1)  & ~wrdata_en_tap(wrtap + 0))
 
-    def get_rst(self, byte, rst_csr):
-        assert isinstance(rst_csr, CSR) and rst_csr.name.endswith("rst"), rst_csr
-        return (self._dly_sel.storage[byte] & rst_csr.re) | self._rst.storage
+    def get_rst(self, byte, rst):
+        return (self._dly_sel.storage[byte] & rst) | self._rst.storage
 
-    def get_inc(self, byte, inc_csr):
-        assert isinstance(inc_csr, CSR) and not inc_csr.name.endswith("rst"), inc_csr
-        return self._dly_sel.storage[byte] & inc_csr.re
+    def get_inc(self, byte, inc):
+        return self._dly_sel.storage[byte] & inc
 
 
 class DoubleRateLPDDR4PHY(LPDDR4PHY):
