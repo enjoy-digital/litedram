@@ -140,7 +140,7 @@ def main():
     args = parser.parse_args()
 
     soc     = BenchSoC(uart=args.uart, channel=int(args.channel, 0), with_bist=args.with_bist, with_analyzer=args.with_analyzer)
-    builder = Builder(soc, output_dir="build/xcu1525_ch{}".format(args.channel), csr_csv="csr.csv")
+    builder = Builder(soc, output_dir=f"build/xcu1525_ch{args.channel}", csr_csv="csr.csv")
     builder.build(run=args.build)
 
     if args.load:
@@ -149,7 +149,7 @@ def main():
 
     if args.load_bios:
         from common import load_bios
-        load_bios("build/xcu1525/software/bios/bios.bin")
+        load_bios(f"build/xcu1525_ch{args.channel}/software/bios/bios.bin")
 
     if args.sys_clk_freq is not None:
         from common import us_set_sys_clk
@@ -162,7 +162,7 @@ def main():
             freq_max      = 180e6,
             freq_step     = 1e6,
             vco_freq      = soc.crg.pll.compute_config()["vco"],
-            bios_filename = "build/xcu1525/software/bios/bios.bin")
+            bios_filename = f"build/xcu1525_ch{args.channel}/software/bios/bios.bin")
 
 if __name__ == "__main__":
     main()
