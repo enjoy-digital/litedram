@@ -74,7 +74,6 @@ class BenchSoC(SoCCore):
             ident_version       = True,
             integrated_rom_size = 0x10000,
             integrated_rom_mode = "rw",
-            csr_data_width      = 32,
             uart_name           = uart)
 
         # CRG --------------------------------------------------------------------------------------
@@ -91,8 +90,7 @@ class BenchSoC(SoCCore):
             phy       = self.ddrphy,
             module    = MT41K128M16(sys_clk_freq, "1:4"),
             origin    = self.mem_map["main_ram"],
-            with_bist = with_bist,
-        )
+            with_bist = with_bist)
 
         # UARTBone ---------------------------------------------------------------------------------
         if uart != "serial":

@@ -40,7 +40,7 @@ class _CRG(Module, AutoCSR):
         self.submodules.main_pll = main_pll = USPMMCM(speedgrade=-2)
         main_pll.register_clkin(platform.request("clk300", channel), 300e6)
         main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
-        main_pll.create_clkout(self.cd_idelay, 500e6, with_reset=False)
+        main_pll.create_clkout(self.cd_idelay, 500e6)
         main_pll.create_clkout(self.cd_uart,   100e6)
         main_pll.expose_drp()
 
@@ -61,7 +61,6 @@ class _CRG(Module, AutoCSR):
                 i_I  = self.cd_pll4x.clk,
                 o_O  = self.cd_sys4x.clk,
             ),
-            AsyncResetSynchronizer(self.cd_idelay, ~pll.locked),
         ]
 
         self.submodules.idelayctrl = USIDELAYCTRL(cd_ref=self.cd_idelay, cd_sys=self.cd_sys)
@@ -83,7 +82,6 @@ class BenchSoC(SoCCore):
             ident_version       = True,
             integrated_rom_size = 0x10000,
             integrated_rom_mode = "rw",
-            csr_data_width      = 32,
             uart_name           = uart)
 
         # CRG --------------------------------------------------------------------------------------
@@ -101,8 +99,7 @@ class BenchSoC(SoCCore):
             module    = MT40A512M8(sys_clk_freq, "1:4"),
             origin    = self.mem_map["main_ram"],
             size      = 0x40000000,
-            with_bist = with_bist,
-        )
+            with_bist = with_bist)
         # Workaround for Vivado 2018.2 DRC, can be ignored and probably fixed on newer Vivado versions.
         platform.add_platform_command("set_property SEVERITY {{Warning}} [get_drc_checks PDCN-2736]")
 
