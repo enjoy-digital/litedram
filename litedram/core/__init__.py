@@ -17,8 +17,8 @@ from litedram.core.crossbar import LiteDRAMCrossbar
 class LiteDRAMCore(Module, AutoCSR):
     def __init__(self, phy, geom_settings, timing_settings, clk_freq, **kwargs):
         self.submodules.dfii = DFIInjector(
-            addressbits = geom_settings.addressbits,
-            bankbits    = geom_settings.bankbits,
+            addressbits = max(geom_settings.addressbits, getattr(phy, "addressbits", 0)),
+            bankbits    = max(geom_settings.bankbits, getattr(phy, "bankbits", 0)),
             nranks      = phy.settings.nranks,
             databits    = phy.settings.dfi_databits,
             nphases     = phy.settings.nphases)
