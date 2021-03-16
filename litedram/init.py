@@ -546,15 +546,15 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
     # MR12, MR14 - default Vref 50.3% Vddq
     # MR13 - defaults (data mask enabled)
 
-    from litedram.phy.lpddr4.commands import MPC, MRS
+    from litedram.phy.lpddr4.commands import SpecialCmd, MPC
 
     def cmd_mr(ma):
         # Convert Mode Register Write command to DFI as expected by PHY
         op = mr[ma]
         assert ma < 2**6, "MR address to big: {}".format(ma)
         assert op < 2**8, "MR opcode to big: {}".format(op)
-        a = op | (ma << 8)
-        ba = MRS.MRW
+        a = op
+        ba = ma
         return ("Load More Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
 
     def ck(sec):
@@ -570,8 +570,8 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
         ("Release reset", 0x0000, 0, cmds["UNRESET"], ck(2e-3)),
         ("Bring CKE high", 0x0000, 0, cmds["CKE"], ck(2e-6)),
         *[cmd_mr(ma) for ma in sorted(mr.keys())],
-        ("ZQ Calibration start", MPC.ZQC_START, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
-        ("ZQ Calibration latch", MPC.ZQC_LATCH, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
+        ("ZQ Calibration start", MPC.ZQC_START, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
+        ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
     ]
 
     return init_sequence, mr

@@ -3,6 +3,22 @@ import enum
 
 from migen import *
 
+@enum.unique
+class SpecialCmd(enum.IntEnum):
+    """Codes for special commands encoded in DFI ZQC command
+
+    The number of possible commands in LPDDR4 is too big to encode them
+    in DFI in the regular way. Currently the DFI ZQC command is used to
+    encode several LPDDR4 commands depending on the value of DFI.bank.
+
+    NOTE: This encoding is still subject to change if needed.
+
+    The following commands are possible:
+    * MPC - uses DFI.address as the op code for LPDDR4 MPC command
+    * MRR - uses DFI.address as Moder Register address to be read
+    """
+    MPC = 0
+    MRR = 1
 
 @enum.unique
 class MPC(enum.IntEnum):
@@ -21,17 +37,6 @@ class MPC(enum.IntEnum):
     STOP_DQS_OSC  = 0b1001101
     ZQC_START     = 0b1001111
     ZQC_LATCH     = 0b1010001
-
-
-@enum.unique
-class MRS(enum.IntEnum):
-    """Codes for commands encoded in DFI MRS command
-
-    DFI MRS is used for both LPDDR4 MRW and MRR. The command is selected
-    basing on DFI.bank which can be one of the following.
-    """
-    MRW = 0
-    MRR = 1
 
 
 class DFIPhaseAdapter(Module):
@@ -113,13 +118,13 @@ class DFIPhaseAdapter(Module):
                 }),
                 _cmd["PRE"]: cmds("DESELECT",   "PRECHARGE"),
                 _cmd["REF"]: cmds("DESELECT",   "REFRESH"),
-                _cmd["ZQC"]: cmds("DESELECT",   "MPC"),
                 # Use bank address to select command type
-                _cmd["MRS"]: Case(dfi_phase.bank, {
-                    MRS.MRW:   cmds("MRW-1",    "MRW-2"),
-                    MRS.MRR:   cmds("MRR-1",    "CAS-2"),
+                _cmd["ZQC"]: Case(dfi_phase.bank, {
+                    SpecialCmd.MPC: cmds("DESELECT", "MPC"),
+                    SpecialCmd.MRR: cmds("MRR-1",    "CAS-2"),
                     "default": cmds("DESELECT", "DESELECT", valid=0),
                 }),
+                _cmd["MRS"]: cmds("MRW-1",    "MRW-2"),
                 "default": cmds("DESELECT", "DESELECT", valid=0),
             })
         )
@@ -178,12 +183,15 @@ class Command(Module):
         ops = []
         for cyc, description in enumerate(self.TRUTH_TABLE[cmd]):
             for bit, bit_desc in enumerate(description.split()):
-                ops.append(self.ca[cyc][bit].eq(self.parse_bit(bit_desc)))
+                ops.append(self.ca[cyc][bit].eq(self.parse_bit(bit_desc, is_mrw=cmd.startswith("MRW"))))
         if cmd != "DESELECT":
             ops.append(self.cs[0].eq(1))
         return ops
 
-    def parse_bit(self, bit):
+    def parse_bit(self, bit, is_mrw):
+        assert len(self.dfi.bank) >= 6, "At least 6 DFI bankbits needed for Mode Register address"
+        assert len(self.dfi.address) >= 17, "At least 17 DFI addressbits needed for row address"
+        mr_address = self.dfi.bank if is_mrw else self.dfi.address
         rules = {
             "H":       lambda: 1,  # high
             "L":       lambda: 0,  # low
@@ -195,7 +203,7 @@ class Command(Module):
             "BA(\d+)": lambda i: self.dfi.bank[i],
             "R(\d+)":  lambda i: self.dfi.address[i],  # row
             "C(\d+)":  lambda i: self.dfi.address[i],  # column
-            "MA(\d+)": lambda i: self.dfi.address[8+i],  # mode register address
+            "MA(\d+)": lambda i: mr_address[i],  # mode register address
             "OP(\d+)": lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
         }
         for pattern, value in rules.items():

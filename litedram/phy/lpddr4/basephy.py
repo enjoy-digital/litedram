@@ -94,7 +94,7 @@ class LPDDR4PHY(Module, AutoCSR):
         self.nranks      = nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         self.databits    = databits    = len(pads.dq)
         self.addressbits = addressbits = 17  # for activate row address
-        self.bankbits    = bankbits    = 3
+        self.bankbits    = bankbits    = 6  # 3 bankbits, but we use 6 for Mode Register address in MRS
         self.nphases     = nphases     = 8
         self.tck         = tck         = 1 / (nphases*sys_clk_freq)
         assert databits % 8 == 0
