@@ -530,9 +530,10 @@ class DataSim(Module, AutoCSR):
         write = Signal()
         read = Signal()
 
+        read_skew = 1  # shift the read data as in hardware it will be coming with a delay
         self.comb += [
             write.eq(cmds_sim.data_en.taps[cwl-1] & cmds_sim.data.source.valid & cmds_sim.data.source.we),
-            read.eq(cmds_sim.data_en.taps[cl-1] & cmds_sim.data.source.valid & ~cmds_sim.data.source.we),
+            read.eq(cmds_sim.data_en.taps[cl-1 + read_skew] & cmds_sim.data.source.valid & ~cmds_sim.data.source.we),
             cmds_sim.data.source.ready.eq(write | read),
             self.dq_wr.masked.eq(write & cmds_sim.data.source.masked),
             self.dq_wr.trigger.eq(write),

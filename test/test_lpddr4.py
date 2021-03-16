@@ -633,8 +633,8 @@ class LPDDR4Tests(unittest.TestCase):
                     'dq1':  (self.CMD_LATENCY+1)*zero + '00000000'+'00000000' + '11111111'+'11111111' + '00000000'+'00000000' + zero,
                 },
                 "sys8x_ddr": {  # preamble, pattern, preamble
-                    'dqs0': (self.CMD_LATENCY+1)*zero + '01010101'+'01010100' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
-                    'dqs1': (self.CMD_LATENCY+1)*zero + '01010101'+'01010100' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
+                    'dqs0': (self.CMD_LATENCY+1)*zero + '01010101'+'00000101' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
+                    'dqs1': (self.CMD_LATENCY+1)*zero + '01010101'+'00000101' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
                 }
             },
         )
@@ -671,7 +671,7 @@ class LPDDR4Tests(unittest.TestCase):
 
     def test_lpddr4_dq_in_rddata_valid(self):
         # Test that rddata_valid is set with correct delay
-        read_latency = 8  # settings.read_latency
+        read_latency = 9  # settings.read_latency
         dfi_sequence = [
             {0: dict(rddata_en=1)},  # command is issued by MC (appears on next cycle)
             *[{p: dict(rddata_valid=0) for p in range(8)} for _ in range(read_latency - 1)],  # nothing is sent during write latency
@@ -775,7 +775,7 @@ class LPDDR4Tests(unittest.TestCase):
                             for i in range(16)
                         },
                         "sys8x_ddr": {
-                            "dqs0": (self.CMD_LATENCY+1)*zero + '01010101'+'01010100' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
+                            "dqs0": (self.CMD_LATENCY+1)*zero + '01010101'+'00000101' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
                         },
                     },
                 )
@@ -787,21 +787,35 @@ class LPDDR4Tests(unittest.TestCase):
         read_latency = phy.settings.read_latency
         rdphase = phy.settings.rdphase.reset.value
 
+        # FIXME: The data will appear 1 cycle before rddata_valid. This is because we have one more cycle
+        # of read latency that is needed for bitslips to be usable, and here we're not doing read leveling
+        # so the bitslip is configured incorrectly. If we increased cl by 1 in Simulator and did a single
+        # bitslip increment before the test, it should work, but this would unnecessarily complicate the test.
         dfi_data = {
-            0: dict(rddata=0x11112222, rddata_valid=1),
-            1: dict(rddata=0x33334444, rddata_valid=1),
-            2: dict(rddata=0x55556666, rddata_valid=1),
-            3: dict(rddata=0x77778888, rddata_valid=1),
-            4: dict(rddata=0x9999aaaa, rddata_valid=1),
-            5: dict(rddata=0xbbbbcccc, rddata_valid=1),
-            6: dict(rddata=0xddddeeee, rddata_valid=1),
-            7: dict(rddata=0xffff0000, rddata_valid=1),
+            0: dict(rddata=0x11112222),
+            1: dict(rddata=0x33334444),
+            2: dict(rddata=0x55556666),
+            3: dict(rddata=0x77778888),
+            4: dict(rddata=0x9999aaaa),
+            5: dict(rddata=0xbbbbcccc),
+            6: dict(rddata=0xddddeeee),
+            7: dict(rddata=0xffff0000),
+        }
+        dfi_data_valid = {
+            0: dict(rddata_valid=1),
+            1: dict(rddata_valid=1),
+            2: dict(rddata_valid=1),
+            3: dict(rddata_valid=1),
+            4: dict(rddata_valid=1),
+            5: dict(rddata_valid=1),
+            6: dict(rddata_valid=1),
+            7: dict(rddata_valid=1),
         }
         dfi_sequence = [
             {rdphase: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, rddata_en=1)},
-            *[{} for _ in range(read_latency - 1)],
+            *[{} for _ in range(read_latency - 1 - 1)],
             dfi_data,
-            {},
+            dfi_data_valid,
             {},
             {},
             {},
@@ -948,7 +962,7 @@ class LPDDR4Tests(unittest.TestCase):
                     for i in range(16)
                 },
                 "sys8x_ddr": {
-                    "dqs0": init_ddr_latency + '01010101'+'01010100' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
+                    "dqs0": init_ddr_latency + '01010101'+'00000101' + '01010101'+'01010101' + '00010101'+'01010101' + zero,
                 },
             },
         )
