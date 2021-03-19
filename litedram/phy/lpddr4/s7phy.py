@@ -75,19 +75,20 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
 
         # with DATA_RATE_TQ=BUF tristate is asynchronous, so we need to delay it
         class OEDelay(Module, AutoCSR):
-            def __init__(self, oe, reset=0b010):
+            def __init__(self, oe, reset):
                 self.o = Signal()
-                self.mask = CSRStorage(3, reset=reset)
-                delay = Array([Signal() for _ in range(3)])
+                self.mask = CSRStorage(4, reset=reset)
+                delay = Array([Signal() for _ in range(4)])
 
                 self.comb += delay[0].eq(oe)
                 self.sync += delay[1].eq(delay[0])
                 self.sync += delay[2].eq(delay[1])
-                self.comb += self.o.eq(reduce(or_, [delay[i] & self.mask.storage[i] for i in range(3)]))
+                self.sync += delay[3].eq(delay[2])
+                self.comb += self.o.eq(reduce(or_, [dly & self.mask.storage[i] for i, dly in enumerate(delay)]))
 
-        self.submodules.dqs_oe_delay = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dqs_oe))
-        self.submodules.dq_oe_delay  = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dq_oe, reset=0b110))
-        self.submodules.dmi_oe_delay = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dmi_oe, reset=0b110))
+        self.submodules.dqs_oe_delay = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dqs_oe, reset=0b0110))
+        self.submodules.dq_oe_delay  = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dq_oe, reset=0b1110))
+        self.submodules.dmi_oe_delay = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dmi_oe, reset=0b1110))
 
         # Serialization ----------------------------------------------------------------------------
 
