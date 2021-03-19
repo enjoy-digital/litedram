@@ -583,11 +583,11 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
         (4, 3, odt_map[ca_odt]),
     ])
     mr[12] = reg([
-        (0, 6, vref_ranges[1][27.2]),  # Vref(CA) 27.2% VDD2
+        (0, 6, vref_ranges[1][30.4]),  # Vref(CA) % of VDD2
         (6, 1, 1),  # range[1]
     ])
     mr[14] = reg([
-        (0, 6, vref_ranges[1][27.2]),  # Vref(DQ) 27.2% VDDQ
+        (0, 6, vref_ranges[1][30.4]),  # Vref(DQ) % of VDDQ
         (6, 1, 1),  # range[1]
     ])
     mr[13] = 0  # defaults (data mask enabled, frequency set point 0)
