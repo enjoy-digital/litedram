@@ -633,6 +633,20 @@ class MT41K64M16(DDR3Module):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
+class MT41J256M8(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "800":  _SpeedgradeTimings(tRP=13.1,  tRCD=13.1,  tWR=15,  tRFC=(64, None),  tFAW=(None, 50), tRAS=37.5),
+        "1066": _SpeedgradeTimings(tRP=13.1,  tRCD=13.1,  tWR=15,  tRFC=(86, None),  tFAW=(None, 50), tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5,  tRCD=13.5,  tWR=15,  tRFC=(107, None), tFAW=(None, 45), tRAS=36),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1333"]
+
 class MT41J128M16(DDR3Module):
     # geometry
     nbanks = 8
