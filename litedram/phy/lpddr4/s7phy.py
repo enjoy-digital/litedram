@@ -26,12 +26,10 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
             **kwargs
         )
 
-        self.submodules.sys2x_delay = ClockDomainsRenamer("sys2x")(Module())
-
         # Parameters -------------------------------------------------------------------------------
         # Calculate value of taps needed to shift a signal by 90 degrees.
         # Using iodelay_clk_freq of 300MHz/400MHz is only valid for -3 and -2/2E speed grades.
-        # FIXME: this should be named sys16x, but using sys8x due to a name hard-coded in BIOS
+        # Note: this should be named sys16x, but using sys8x due to a name hard-coded in BIOS
         assert iodelay_clk_freq in [200e6, 300e6, 400e6]
         iodelay_tap_average = 1 / (2*32 * iodelay_clk_freq)
         half_sys8x_taps = math.floor(self.tck / (4 * iodelay_tap_average))
@@ -73,22 +71,21 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
         wdly_dqs_rst = cdc(self._wdly_dqs_rst.re)
         wdly_dqs_inc = cdc(self._wdly_dqs_inc.re)
 
-        # with DATA_RATE_TQ=BUF tristate is asynchronous, so we need to delay it
-        class OEDelay(Module, AutoCSR):
-            def __init__(self, oe, reset):
-                self.o = Signal()
-                self.mask = CSRStorage(4, reset=reset)
-                delay = Array([Signal() for _ in range(4)])
+        # In theory we should only need to delay by 2 cycles, but sometimes it happened that
+        # DQ/DMI were transmitted incomplete due to OE being asserted too late/released too
+        # early. For this reason we add OE margin extending it 1 cycle before and 1 after.
+        # For DQS we already have margin so there should be no need for this.
+        def oe_delay_data(oe):
+            oe_d = Signal()
+            delay = TappedDelayLine(oe, 3)
+            self.submodules += ClockDomainsRenamer("sys2x")(delay)
+            self.comb += oe_d.eq(reduce(or_, delay.taps))
+            return oe_d
 
-                self.comb += delay[0].eq(oe)
-                self.sync += delay[1].eq(delay[0])
-                self.sync += delay[2].eq(delay[1])
-                self.sync += delay[3].eq(delay[2])
-                self.comb += self.o.eq(reduce(or_, [dly & self.mask.storage[i] for i, dly in enumerate(delay)]))
-
-        self.submodules.dqs_oe_delay = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dqs_oe, reset=0b0110))
-        self.submodules.dq_oe_delay  = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dq_oe, reset=0b1110))
-        self.submodules.dmi_oe_delay = ClockDomainsRenamer("sys2x")(OEDelay(self.out.dmi_oe, reset=0b1110))
+        def oe_delay_dqs(oe):
+            delay = TappedDelayLine(oe, 2)
+            self.submodules += ClockDomainsRenamer("sys2x")(delay)
+            return delay.output
 
         # Serialization ----------------------------------------------------------------------------
 
@@ -101,7 +98,6 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
         self.odelaye2(din=clk_ser, dout=clk_dly, rst=cdly_rst, inc=cdly_inc)
         self.obufds(din=clk_dly, dout=self.pads.clk_p, dout_b=self.pads.clk_n)
 
-        # FIXME: probably no need to serialize those
         for cmd in ["cke", "odt", "reset_n"]:
             cmd_ser = Signal()
             self.oserdese2_sdr(din=getattr(self.out, cmd), dout=cmd_ser, clk="sys8x")
@@ -127,7 +123,7 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
             self.oserdese2_ddr(
                 din     = self.out.dqs_o[byte],
                 dout_fb = dqs_ser,
-                tin     = ~self.dqs_oe_delay.o,
+                tin     = ~oe_delay_dqs(self.out.dqs_oe),
                 tout    = dqs_t,
                 clk     = "sys8x",  # TODO: if odelay is not avaiable need to use sys8x_90
             )
@@ -165,7 +161,7 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
             self.oserdese2_ddr(
                 din     = self.out.dmi_o[byte],
                 dout_fb = dmi_ser,
-                tin     = ~self.dmi_oe_delay.o,
+                tin     = ~oe_delay_data(self.out.dmi_oe),
                 tout    = dmi_t,
                 clk     = "sys8x",
             )
@@ -191,8 +187,8 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
             dq_i_dly = Signal()
             self.oserdese2_ddr(
                 din     = self.out.dq_o[bit],
-                dout_fb = dq_ser,  # TODO: compare: S7DDRPHY uses OQ not OFB
-                tin     = ~self.dq_oe_delay.o,
+                dout_fb = dq_ser,
+                tin     = ~oe_delay_data(self.out.dmi_oe),
                 tout    = dq_t,
                 clk     = "sys8x",
             )
@@ -219,9 +215,6 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
                 dout = self.out.dq_i[bit],
                 clk  = "sys8x"
             )
-
-    def delayed_sys2x(self, sig, **kwargs):
-        return delayed(self.sys2x_delay, sig, **kwargs)
 
     def idelaye2(self, *, din, dout, init=0, rst=None, inc=None):
         assert not ((rst is None) ^ (inc is None))
@@ -327,7 +320,7 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
 
         params = dict(
             p_SERDES_MODE    = "MASTER",
-            p_INTERFACE_TYPE = "NETWORKING",  # TODO: try using MEMORY mode?
+            p_INTERFACE_TYPE = "NETWORKING",
             p_DATA_WIDTH     = data_width,
             p_DATA_RATE      = "DDR",
             p_NUM_CE         = 1,
