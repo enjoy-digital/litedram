@@ -81,14 +81,17 @@ class LPDDR4PHY(Module, AutoCSR):
         Additional latency introduced during signal deserialization.
     phytype : str
         Name of the PHY (concrete implementation).
-    masked_write : bool
-        Use MASKED-WRITE commands if True else use WRITE commands (data masking will not work).
     cmd_delay : int
         Used to force cmd delay during initialization in BIOS.
+    masked_write : bool
+        Use MASKED-WRITE commands if True else use WRITE commands (data masking will not work).
+    extended_overlaps_check : bool
+        Include additional command overlap checks. Makes no sense during normal operation
+        (when the DRAM controller works correctly), so use `False` to avoid wasting resources.
     """
     def __init__(self, pads, *,
                  sys_clk_freq, ser_latency, des_latency, phytype,
-                 masked_write=True, cmd_delay=None):
+                 cmd_delay=None, masked_write=True, extended_overlaps_check=False):
         self.pads        = pads
         self.memtype     = memtype     = "LPDDR4"
         self.nranks      = nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
@@ -213,20 +216,25 @@ class LPDDR4PHY(Module, AutoCSR):
         ]
 
         # LPDDR4 Commands --------------------------------------------------------------------------
-        # Each command can span several phases (up to 4), so we must ignore overlapping commands,
-        # but in general, module timings should be set in a way that overlapping will never happen.
+        # Each LPDDR4 command can span several phases (2 or 4), so the commands cannot overlap.
+        # This should be guaranteed by the controller based on module timings, but we also include
+        # an overlaps check in PHY logic.
+        # Basic check will make sure that no command will be sent to DRAM if there was any command
+        # sent by the controller on DFI during 3 previous cycles. The extended version will instead
+        # make sure no command is sent to DRAM if there was any command _actually sent to DRAM_
+        # during 3 previous cycles. This is more expensive in terms of resources and generally not
+        # needed.
 
-        # Create a history of valid adapters used for masking overlapping ones.
-        # TODO: make optional, as it takes up resources and the controller should ensure no overlaps
+        # Create a history of valid adapters used for masking overlapping ones
         valids = ConstBitSlip(dw=nphases, cycles=1, slp=0)
         self.submodules += valids
         self.comb += valids.i.eq(Cat(a.valid for a in adapters))
-        # valids_hist = valids.r
-        valids_hist = Signal.like(valids.r)
-        # TODO: especially make this part optional
-        for i in range(len(valids_hist)):
-            was_valid_before = reduce(or_, valids_hist[max(0, i-3):i], 0)
-            self.comb += valids_hist[i].eq(valids.r[i] & ~was_valid_before)
+        valids_hist = valids.r
+        if extended_overlaps_check:
+            valids_hist = Signal.like(valids.r)
+            for i in range(len(valids_hist)):
+                was_valid_before = reduce(or_, valids_hist[max(0, i-3):i], 0)
+                self.comb += valids_hist[i].eq(valids.r[i] & ~was_valid_before)
 
         cs_per_adapter = []
         ca_per_adapter = defaultdict(list)

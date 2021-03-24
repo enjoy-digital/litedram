@@ -537,6 +537,35 @@ class LPDDR4Tests(unittest.TestCase):
                     }},
                 )
 
+    def test_lpddr4_command_overlaps(self):
+        # Test command overlap protection (can happen only if controller violates timings)
+        latency = '00000000' * self.CMD_LATENCY
+        read = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)
+        dfi_sequence = [
+            # p2 always ignored:
+            # 1111
+            #   1111
+            #       1111
+            {0: read, 2: read, 6: read},
+            {},
+            # p2 or both p2 and p4 ignored, depending on extended_overlaps_check
+            # 1111
+            #   1111
+            #     1111
+            {0: read, 2: read, 4: read},
+        ]
+        for extended_check in [False, True]:
+            with self.subTest(extended_check=extended_check):
+                phy = LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ, extended_overlaps_check=extended_check)
+                pads = {
+                    False: {'cs': latency + '10100010'+'10000000'+'10100000'},  # last cycle: p2 and p4 ignored
+                    True:  {'cs': latency + '10100010'+'10000000'+'10101010'},  # last cycle: only p2 ignored
+                }[extended_check]
+                self.run_test(phy,
+                    dfi_sequence = dfi_sequence,
+                    pad_checkers = {"sys8x_90": pads},
+                )
+
     def test_lpddr4_command_pads(self):
         # Test serialization of DFI command pins (cs/cke/odt/reset_n)
         latency = '00000000' * self.CMD_LATENCY
@@ -545,17 +574,17 @@ class LPDDR4Tests(unittest.TestCase):
             dfi_sequence = [
                 {
                     0: dict(cke=1, odt=1, reset_n=1, **read),
-                    2: dict(cke=0, odt=1, reset_n=0, **read),
-                    3: dict(cke=1, odt=0, reset_n=0, **read),
-                    5: dict(cke=0, odt=1, reset_n=1, **read),
-                    7: dict(cke=0, odt=0, reset_n=0, **read),
+                    7: dict(cke=0, odt=1, reset_n=1, **read),
                 },
+                {
+                    3: dict(cke=1, odt=0, reset_n=0, **read),
+                }
             ],
             pad_checkers = {"sys8x_90": {
-                'cs':      latency + '10100101',  # p2, p3, p7 ignored
-                'cke':     latency + '10010000',
-                'odt':     latency + '10100100',
-                'reset_n': latency + '11001110',
+                'cs':      latency + '10100001' + '01010100',
+                'cke':     latency + '10000000' + '00010000',
+                'odt':     latency + '10000001' + '00000000',
+                'reset_n': latency + '11111111' + '11101111',
             }},
         )
 
