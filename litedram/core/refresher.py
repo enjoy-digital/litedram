@@ -50,7 +50,7 @@ class RefreshExecuter(Module):
                 ]),
                 # Auto Refresh after tRP
                 (trp, [
-                    cmd.a.eq(  0),
+                    cmd.a.eq(  2**10),  # all banks in LPDDR4/DDR5, ignored in other memories
                     cmd.ba.eq( 0),
                     cmd.cas.eq(1),
                     cmd.ras.eq(1),
