@@ -61,8 +61,7 @@ class DQSPattern(Module):
         self.comb += [
             self.o.eq(0b0101010101010101),
             If(self.preamble,
-                # FIXME: using 2tCK write preamble, but it depends on mode registers
-                self.o.eq(0b0101000001010101)
+                self.o.eq(0b0101000001010101)  # 2tCK write preamble
             ),
             If(self.postamble,
                 self.o.eq(0b0101010101010100)

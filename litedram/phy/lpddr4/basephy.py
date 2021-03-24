@@ -122,7 +122,7 @@ class LPDDR4PHY(Module, AutoCSR):
         bitslip_cycles  = 1
         bitslip_range   = 1
         # Commands are sent over 4 DRAM clocks (sys8x) and we count cl/cwl from last bit
-        cmd_latency     = 4  # FIXME: or should it be 3?
+        cmd_latency     = 4
         # Commands read from adapters are delayed on ConstBitSlips
         ca_latency      = 1
 
