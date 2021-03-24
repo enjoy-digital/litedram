@@ -42,10 +42,7 @@ class ConstBitSlip(Module):
 
         self.r = r = Signal((cycles+1)*dw, reset_less=True)
         self.sync += r.eq(Cat(r[dw:], self.i))
-        cases = {}
-        for i in range(cycles*dw):
-            cases[i] = self.o.eq(r[i+1:dw+i+1])
-        self.comb += Case(slp, cases)
+        self.comb += self.o.eq(r[slp+1:dw+slp+1])
 
 # TODO: rewrite DQSPattern in litedram/common.py to support different data widths
 class DQSPattern(Module):
