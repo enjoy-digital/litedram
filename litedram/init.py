@@ -683,9 +683,10 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     r += "#define SDRAM_PHY_WRPHASE "+str(wrphase)+"\n"
 
     # Define Read/Write Leveling capability
-    if phytype in ["USDDRPHY", "USPDDRPHY", "K7DDRPHY", "V7DDRPHY", "S7LPDDR4PHY"]:
+    if phytype in ["USDDRPHY", "USPDDRPHY", 'K7DDRPHY', 'V7DDRPHY', 'K7LPDDR4PHY', 'V7LPDDR4PHY']:
         r += "#define SDRAM_PHY_WRITE_LEVELING_CAPABLE\n"
-    if phytype in ["USDDRPHY", "USPDDRPHY", "A7DDRPHY", "K7DDRPHY", "V7DDRPHY", "S7LPDDR4PHY"]:
+    if phytype in ["USDDRPHY", "USPDDRPHY", 'A7DDRPHY', 'K7DDRPHY', 'V7DDRPHY', 'A7LPDDR4PHY',
+            'K7LPDDR4PHY', 'V7LPDDR4PHY']:
         r += "#define SDRAM_PHY_WRITE_LATENCY_CALIBRATION_CAPABLE\n"
         r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
     if phytype in ["ECP5DDRPHY"]:
@@ -702,7 +703,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
         r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2\n"
         r += "#define SDRAM_PHY_DELAYS 32\n"
         r += "#define SDRAM_PHY_BITSLIPS 8\n"
-    elif phytype in ["S7LPDDR4PHY"]:
+    elif phytype in ["A7LPDDR4PHY", "K7LPDDR4PHY", "V7LPDDR4PHY"]:
         r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2\n"
         r += "#define SDRAM_PHY_DELAYS 32\n"
         r += "#define SDRAM_PHY_BITSLIPS 16\n"
