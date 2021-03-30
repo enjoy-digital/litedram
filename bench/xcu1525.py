@@ -17,7 +17,6 @@ from litex_boards.platforms import xcu1525
 from litex.soc.cores.clock import *
 from litex.soc.interconnect.csr import *
 from litex.soc.integration.soc_core import *
-from litex.soc.integration.soc_sdram import *
 from litex.soc.integration.builder import *
 
 from litedram.modules import MT40A512M8

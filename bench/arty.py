@@ -16,7 +16,6 @@ from litex_boards.platforms import arty
 from litex.soc.cores.clock import *
 from litex.soc.interconnect.csr import *
 from litex.soc.integration.soc_core import *
-from litex.soc.integration.soc_sdram import *
 from litex.soc.integration.builder import *
 
 from litedram.phy import s7ddrphy
