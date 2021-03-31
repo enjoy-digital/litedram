@@ -9,6 +9,8 @@
 # Copyright (c) 2019 Gabriel L. Somlo <gsomlo@gmail.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import math
+
 from migen import *
 
 cmds = {
@@ -445,16 +447,192 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
 
     return init_sequence, {1: mr1}
 
+# LPDDR4 -------------------------------------------------------------------------------------------
+
+def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
+    cl = phy_settings.cl
+    cwl = phy_settings.cwl
+    bl = 16
+    dq_odt = "RZQ/2"
+    ca_odt = "RZQ/2"
+
+    def get_nwr():
+        frequency_ranges = [  # Table 28. Frequency Ranges for RL, WL, nWR, and nRTP Settings
+            # RL (DBI)   WL (set)  nWR nRTP  frequency
+            # w/o  w/    A   B               >     <=
+            [( 6,  6),  ( 4,  4),   6,  8,  (  10,  266)],
+            [(10, 12),  ( 6,  8),  10,  8,  ( 266,  533)],
+            [(14, 16),  ( 8, 12),  16,  8,  ( 533,  800)],
+            [(20, 22),  (10, 18),  20,  8,  ( 800, 1066)],
+            [(24, 28),  (12, 22),  24, 10,  (1066, 1333)],
+            [(28, 32),  (14, 26),  30, 12,  (1333, 1600)],
+            [(32, 36),  (16, 30),  34, 14,  (1600, 1866)],
+            [(36, 40),  (18, 34),  40, 16,  (1866, 2133)],
+        ]
+        # We use no DBI and WL set A
+        for (rl, _), (wl, _), nwr, nrtp, (fmin, fmax) in frequency_ranges:
+            if rl == cl:
+                assert wl == cwl, "Wrong (RL, WL) combination"
+                return nwr
+
+    nwr = get_nwr()
+
+    odt_map = {
+        "disable": 0b000,
+        "RZQ/1":   0b001,
+        "RZQ/2":   0b010,
+        "RZQ/3":   0b011,
+        "RZQ/4":   0b100,
+        "RZQ/5":   0b101,
+        "RZQ/6":   0b110,
+    }
+
+    # Table 215: VREF Setting for Range[0] and Range[1] (LPDDR4 1.10V VDDQ)
+    # vref_ranges[range][percent_vddx]
+    vref_ranges = {
+        0: {
+            10.0: 0b000000, 10.4: 0b000001, 10.8: 0b000010, 11.2: 0b000011, 11.6: 0b000100,
+            12.0: 0b000101, 12.4: 0b000110, 12.8: 0b000111, 13.2: 0b001000, 13.6: 0b001001,
+            14.0: 0b001010, 14.4: 0b001011, 14.8: 0b001100, 15.2: 0b001101, 15.6: 0b001110,
+            16.0: 0b001111, 16.4: 0b010000, 16.8: 0b010001, 17.2: 0b010010, 17.6: 0b010011,
+            18.0: 0b010100, 18.4: 0b010101, 18.8: 0b010110, 19.2: 0b010111, 19.6: 0b011000,
+            20.0: 0b011001, 20.4: 0b011010, 20.8: 0b011011, 21.2: 0b011100, 21.6: 0b011101,
+            22.0: 0b011110, 22.4: 0b011111, 22.8: 0b100000, 23.2: 0b100001, 23.6: 0b100010,
+            24.0: 0b100011, 24.4: 0b100100, 24.8: 0b100101, 25.2: 0b100110, 25.6: 0b100111,
+            26.0: 0b101000, 26.4: 0b101001, 26.8: 0b101010, 27.2: 0b101011, 27.6: 0b101100,
+            28.0: 0b101101, 28.4: 0b101110, 28.8: 0b101111, 29.2: 0b110000, 29.6: 0b110001,
+            30.0: 0b110010,
+        },
+        1: {
+            22.0: 0b000000, 22.4: 0b000001, 22.8: 0b000010, 23.2: 0b000011, 23.6: 0b000100,
+            24.0: 0b000101, 24.4: 0b000110, 24.8: 0b000111, 25.2: 0b001000, 25.6: 0b001001,
+            26.0: 0b001010, 26.4: 0b001011, 26.8: 0b001100, 27.2: 0b001101, 27.6: 0b001110,
+            28.0: 0b001111, 28.4: 0b010000, 28.8: 0b010001, 29.2: 0b010010, 29.6: 0b010011,
+            30.0: 0b010100, 30.4: 0b010101, 30.8: 0b010110, 31.2: 0b010111, 31.6: 0b011000,
+            32.0: 0b011001, 32.4: 0b011010, 32.8: 0b011011, 33.2: 0b011100, 33.6: 0b011101,
+            34.0: 0b011110, 34.4: 0b011111, 34.8: 0b100000, 35.2: 0b100001, 35.6: 0b100010,
+            36.0: 0b100011, 36.4: 0b100100, 36.8: 0b100101, 37.2: 0b100110, 37.6: 0b100111,
+            38.0: 0b101000, 38.4: 0b101001, 38.8: 0b101010, 39.2: 0b101011, 39.6: 0b101100,
+            40.0: 0b101101, 40.4: 0b101110, 40.8: 0b101111, 41.2: 0b110000, 41.6: 0b110001,
+            42.0: 0b110010,
+        },
+    }
+
+    def reg(fields):
+        regval = 0
+        written = 0
+        for shift, width, val in fields:
+            mask = (2**width - 1) << shift
+            assert written & mask == 0, "Would overwrite another field, xor=0b{:032b}".format(mask ^ written)
+            assert val < 2**width, "Value larger than field width: val={}, width={}".format(val, width)
+            regval |= (val << shift) & mask
+            written |= mask
+        return regval
+
+    mr = {}
+    mr[1] = reg([
+        (0, 2, {16: 0b00, 32: 0b01, "on-the-fly": 0b10}[bl]),
+        (2, 1, 1),  # 2tCK WR preamble
+        (3, 1, 0),  # static RD preamble
+        (4, 3, {
+            6:  0b000,
+            10: 0b001,
+            16: 0b010,
+            20: 0b011,
+            24: 0b100,
+            30: 0b101,
+            34: 0b110,
+            40: 0b111,
+        }[nwr]),
+        (7, 1, 0),  # 0.5tCK RD postamble
+    ])
+    mr[2] = reg([
+        (0, 3, {  # RL assuming DBI-RD disabled
+            6:  0b000,
+            10: 0b001,
+            14: 0b010,
+            20: 0b011,
+            24: 0b100,
+            28: 0b101,
+            32: 0b110,
+            36: 0b111,
+        }[cl]),
+        (3, 3, {  # WL, set A
+            4:  0b000,
+            6:  0b001,
+            8:  0b010,
+            10: 0b011,
+            12: 0b100,
+            14: 0b101,
+            16: 0b110,
+            18: 0b111,
+        }[cwl]),
+        (6, 1, 0),  # use set A
+        (7, 1, 0),  # write leveling disabled
+    ])
+    mr[3] = reg([  # defaults
+        (0, 1, 1),
+        (1, 1, 0),
+        (2, 1, 0),
+        (3, 3, odt_map["RZQ/6"]),
+        (6, 1, 0),
+        (7, 1, 0),
+    ])
+    mr[11] = reg([
+        (0, 3, odt_map[dq_odt]),
+        (4, 3, odt_map[ca_odt]),
+    ])
+    mr[12] = reg([
+        (0, 6, vref_ranges[1][30.4]),  # Vref(CA) % of VDD2
+        (6, 1, 1),  # range[1]
+    ])
+    mr[14] = reg([
+        (0, 6, vref_ranges[1][30.4]),  # Vref(DQ) % of VDDQ
+        (6, 1, 1),  # range[1]
+    ])
+    mr[13] = 0  # defaults (data mask enabled, frequency set point 0)
+
+    from litedram.phy.lpddr4.commands import SpecialCmd, MPC
+
+    def cmd_mr(ma):
+        # Convert Mode Register Write command to DFI as expected by PHY
+        op = mr[ma]
+        assert ma < 2**6, "MR address to big: {}".format(ma)
+        assert op < 2**8, "MR opcode to big: {}".format(op)
+        a = op
+        ba = ma
+        return ("Load More Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
+
+    def ck(sec):
+        # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
+        fmax = 200e6
+        return int(math.ceil(sec * fmax))
+
+    init_sequence = [
+        # Perform "Reset Initialization with Stable Power"
+        # We assume that loading the bistream will take at least tINIT1 (200us)
+        # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
+        ("Assert reset", 0x0000, 0, "DFII_CONTROL_ODT", ck(100e-9)),
+        ("Release reset", 0x0000, 0, cmds["UNRESET"], ck(2e-3)),
+        ("Bring CKE high", 0x0000, 0, cmds["CKE"], ck(2e-6)),
+        *[cmd_mr(ma) for ma in sorted(mr.keys())],
+        ("ZQ Calibration start", MPC.ZQC_START, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
+        ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
+    ]
+
+    return init_sequence, mr
+
 # Init Sequence ------------------------------------------------------------------------------------
 
 def get_sdram_phy_init_sequence(phy_settings, timing_settings):
     return {
-        "SDR"  : get_sdr_phy_init_sequence,
-        "DDR"  : get_ddr_phy_init_sequence,
-        "LPDDR": get_lpddr_phy_init_sequence,
-        "DDR2" : get_ddr2_phy_init_sequence,
-        "DDR3" : get_ddr3_phy_init_sequence,
-        "DDR4" : get_ddr4_phy_init_sequence,
+        "SDR":    get_sdr_phy_init_sequence,
+        "DDR":    get_ddr_phy_init_sequence,
+        "LPDDR":  get_lpddr_phy_init_sequence,
+        "DDR2":   get_ddr2_phy_init_sequence,
+        "DDR3":   get_ddr3_phy_init_sequence,
+        "DDR4":   get_ddr4_phy_init_sequence,
+        "LPDDR4": get_lpddr4_phy_init_sequence,
     }[phy_settings.memtype](phy_settings, timing_settings)
 
 # C Header -----------------------------------------------------------------------------------------
@@ -505,12 +683,15 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     r += "#define SDRAM_PHY_WRPHASE "+str(wrphase)+"\n"
 
     # Define Read/Write Leveling capability
-    if phytype in ["USDDRPHY", "USPDDRPHY", "K7DDRPHY", "V7DDRPHY"]:
+    if phytype in ["USDDRPHY", "USPDDRPHY", 'K7DDRPHY', 'V7DDRPHY', 'K7LPDDR4PHY', 'V7LPDDR4PHY']:
         r += "#define SDRAM_PHY_WRITE_LEVELING_CAPABLE\n"
-    if phytype in ["USDDRPHY", "USPDDRPHY", "A7DDRPHY", "K7DDRPHY", "V7DDRPHY"]:
+    if phytype in ["USDDRPHY", "USPDDRPHY", 'A7DDRPHY', 'K7DDRPHY', 'V7DDRPHY', 'A7LPDDR4PHY',
+            'K7LPDDR4PHY', 'V7LPDDR4PHY']:
         r += "#define SDRAM_PHY_WRITE_LATENCY_CALIBRATION_CAPABLE\n"
         r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
     if phytype in ["ECP5DDRPHY"]:
+        r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
+    if phytype in ["LPDDR4SIMPHY"]:
         r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
 
     # Define number of modules/delays/bitslips
@@ -522,10 +703,18 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
         r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2\n"
         r += "#define SDRAM_PHY_DELAYS 32\n"
         r += "#define SDRAM_PHY_BITSLIPS 8\n"
+    elif phytype in ["A7LPDDR4PHY", "K7LPDDR4PHY", "V7LPDDR4PHY"]:
+        r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/2\n"
+        r += "#define SDRAM_PHY_DELAYS 32\n"
+        r += "#define SDRAM_PHY_BITSLIPS 16\n"
     elif phytype in ["ECP5DDRPHY"]:
         r += "#define SDRAM_PHY_MODULES DFII_PIX_DATA_BYTES/4\n"
         r += "#define SDRAM_PHY_DELAYS 8\n"
         r += "#define SDRAM_PHY_BITSLIPS 4\n"
+    elif phytype in ["LPDDR4SIMPHY"]:
+        r += "#define SDRAM_PHY_MODULES 2\n"
+        r += "#define SDRAM_PHY_DELAYS 1\n"
+        r += "#define SDRAM_PHY_BITSLIPS 16\n"
 
     if phy_settings.is_rdimm:
         assert phy_settings.memtype == "DDR4"
@@ -572,6 +761,11 @@ const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {{
         # The value of MR1[7] needs to be modified during write leveling
         r += "#define DDRX_MR_WRLVL_ADDRESS {}\n".format(1)
         r += "#define DDRX_MR_WRLVL_RESET {}\n".format(mr[1])
+        r += "#define DDRX_MR_WRLVL_BIT {}\n\n".format(7)
+    elif phy_settings.memtype in ["LPDDR4"]:
+        # Write leveling enabled by MR2[7]
+        r += "#define DDRX_MR_WRLVL_ADDRESS {}\n".format(2)
+        r += "#define DDRX_MR_WRLVL_RESET {}\n".format(mr[2])
         r += "#define DDRX_MR_WRLVL_BIT {}\n\n".format(7)
 
     r += "static void init_sequence(void)\n{\n"
