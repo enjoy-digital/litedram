@@ -12,7 +12,7 @@
 # Copyright (c) 2018 Tim 'mithro' Ansell <me@mith.ro>
 # Copyright (c) 2018 Daniel Kucera <daniel.kucera@gmail.com>
 # Copyright (c) 2018 Mikołaj Sowiński <mikolaj.sowinski@gmail.com>
-# Copyright (c) 2020 Antmicro <www.antmicro.com>
+# Copyright (c) 2020-2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
 from math import ceil

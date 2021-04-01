@@ -7,6 +7,7 @@
 # Copyright (c) 2014 Yann Sionneau <ys@m-labs.hk>
 # Copyright (c) 2018 bunnie <bunnie@kosagi.com>
 # Copyright (c) 2019 Gabriel L. Somlo <gsomlo@gmail.com>
+# Copyright (c) 2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
 import math
