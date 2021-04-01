@@ -1,3 +1,9 @@
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2021 Antmicro <www.antmicro.com>
+# SPDX-License-Identifier: BSD-2-Clause
+
 from migen import *
 
 from litedram.phy.lpddr4.utils import delayed, Serializer, Deserializer
