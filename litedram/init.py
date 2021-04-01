@@ -827,12 +827,6 @@ def get_sdram_phy_py_header(phy_settings, timing_settings):
 
     r += "init_sequence = [\n"
     for comment, a, ba, cmd, delay in init_sequence:
-        r += "    "
-        r += "(\"" + comment + "\", "
-        r += str(a) + ", "
-        r += str(ba) + ", "
-        r += cmd.lower() + ", "
-        r += str(delay) + "),"
-        r += "\n"
+        r += f"    (\"{comment}\", {a}, {ba}, {cmd.lower()}, {delay}),\n"
     r += "]\n"
     return r
