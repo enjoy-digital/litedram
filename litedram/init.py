@@ -456,6 +456,7 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
     bl = 16
     dq_odt = "RZQ/2"
     ca_odt = "RZQ/2"
+    pull_down_drive_strength = "RZQ/3"
 
     def get_nwr():
         frequency_ranges = [  # Table 28. Frequency Ranges for RL, WL, nWR, and nRTP Settings
@@ -575,7 +576,7 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
         (0, 1, 1),
         (1, 1, 0),
         (2, 1, 0),
-        (3, 3, odt_map["RZQ/6"]),
+        (3, 3, odt_map[pull_down_drive_strength]),
         (6, 1, 0),
         (7, 1, 0),
     ])
