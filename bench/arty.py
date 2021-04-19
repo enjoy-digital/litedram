@@ -77,14 +77,12 @@ class BenchSoC(SoCCore):
 
         # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = _CRG(platform, sys_clk_freq)
-        self.add_csr("crg")
 
         # DDR3 SDRAM -------------------------------------------------------------------------------
         self.submodules.ddrphy = s7ddrphy.A7DDRPHY(platform.request("ddram"),
             memtype      = "DDR3",
             nphases      = 4,
             sys_clk_freq = sys_clk_freq)
-        self.add_csr("ddrphy")
         self.add_sdram("sdram",
             phy       = self.ddrphy,
             module    = MT41K128M16(sys_clk_freq, "1:4"),
@@ -100,7 +98,6 @@ class BenchSoC(SoCCore):
             clock_pads = self.platform.request("eth_clocks"),
             pads       = self.platform.request("eth"),
             with_hw_init_reset = False)
-        self.add_csr("ethphy")
         self.add_etherbone(phy=self.ethphy)
 
         # Analyzer ---------------------------------------------------------------------------------
@@ -111,14 +108,12 @@ class BenchSoC(SoCCore):
                 depth        = 256,
                 clock_domain = "sys",
                 csr_csv      = "analyzer.csv")
-            self.add_csr("analyzer")
 
         # Leds -------------------------------------------------------------------------------------
         from litex.soc.cores.led import LedChaser
         self.submodules.leds = LedChaser(
             pads         = platform.request_all("user_led"),
             sys_clk_freq = sys_clk_freq)
-        self.add_csr("leds")
 
 # Main ---------------------------------------------------------------------------------------------
 
