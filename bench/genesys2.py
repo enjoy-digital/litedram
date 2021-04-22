@@ -27,6 +27,7 @@ from liteeth.phy.s7rgmii import LiteEthPHYRGMII
 
 class _CRG(Module, AutoCSR):
     def __init__(self, platform, sys_clk_freq):
+        self.rst = Signal()
         self.clock_domains.cd_sys_pll   = ClockDomain()
         self.clock_domains.cd_sys       = ClockDomain()
         self.clock_domains.cd_sys4x     = ClockDomain(reset_less=True)
@@ -45,7 +46,7 @@ class _CRG(Module, AutoCSR):
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_clk200)
 
         self.submodules.pll = pll = S7PLL(speedgrade=-2)
-        self.comb += pll.reset.eq(~main_pll.locked)
+        self.comb += pll.reset.eq(~main_pll.locked | self.rst)
         pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
         pll.create_clkout(self.cd_sys,    sys_clk_freq)
         pll.create_clkout(self.cd_sys4x,  4*sys_clk_freq)
@@ -124,7 +125,7 @@ def main():
     args = parser.parse_args()
 
     soc     = BenchSoC(uart=args.uart, with_bist=args.with_bist, with_analyzer=args.with_analyzer)
-    builder = Builder(soc, csr_csv="csr.csv")
+    builder = Builder(soc, output_dir="build/genesys2", csr_csv="csr.csv")
     builder.build(run=args.build)
 
     if args.load:

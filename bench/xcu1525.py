@@ -27,6 +27,7 @@ from litedram.phy import usddrphy
 
 class _CRG(Module, AutoCSR):
     def __init__(self, platform, sys_clk_freq, channel):
+        self.rst = Signal()
         self.clock_domains.cd_sys_pll = ClockDomain()
         self.clock_domains.cd_sys     = ClockDomain()
         self.clock_domains.cd_sys4x   = ClockDomain(reset_less=True)
@@ -44,7 +45,7 @@ class _CRG(Module, AutoCSR):
         main_pll.expose_drp()
 
         self.submodules.pll = pll = USPMMCM(speedgrade=-2)
-        self.comb += pll.reset.eq(~main_pll.locked)
+        self.comb += pll.reset.eq(~main_pll.locked | self.rst)
         pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
         pll.create_clkout(self.cd_pll4x,  sys_clk_freq*4, buf=None, with_reset=False)
 
