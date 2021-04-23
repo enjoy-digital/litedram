@@ -23,6 +23,7 @@
 #define SDRAM_PHY_CWL 2
 #define SDRAM_PHY_RDPHASE 0
 #define SDRAM_PHY_WRPHASE 0
+#define SDRAM_PHY_MODULES SDRAM_PHY_DATABITS/8
 
 static void cdelay(int i);
 
