@@ -309,10 +309,17 @@ class LiteDRAMNativePortUpConverter(Module):
 
             # Replicate `sel` bits to match the width of port_to.wdata.we.
             wdata_sel = Signal.like(port_to.wdata.we)
-            wdata_sel_parts = [
-                Replicate(cmd_buffer.source.sel[i], port_to.wdata.we.nbits // sel.nbits)
-                for i in range(ratio)
-            ]
+            if reverse:
+                wdata_sel_parts = [
+                    Replicate(cmd_buffer.source.sel[i], port_to.wdata.we.nbits // sel.nbits)
+                    for i in reverse(range(ratio))
+                ]
+            else:
+                wdata_sel_parts = [
+                    Replicate(cmd_buffer.source.sel[i], port_to.wdata.we.nbits // sel.nbits)
+                    for i in range(ratio)
+                ]
+
             self.sync += \
                 If(cmd_buffer.source.valid & cmd_buffer.source.we & wdata_chunk[ratio - 1],
                     wdata_sel.eq(Cat(wdata_sel_parts))
