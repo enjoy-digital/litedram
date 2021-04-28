@@ -689,6 +689,8 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
                    "K7DDRPHY", "V7DDRPHY",
                    "K7LPDDR4PHY", "V7LPDDR4PHY"]:
         r += "#define SDRAM_PHY_WRITE_LEVELING_CAPABLE\n"
+    if phytype in ["K7DDRPHY", "V7DDRPHY",
+                   "K7LPDDR4PHY", "V7LPDDR4PHY"]:
         r += "#define SDRAM_PHY_WRITE_DQ_DQS_TRAINING_CAPABLE\n"
     if phytype in ["USDDRPHY", "USPDDRPHY",
                    "A7DDRPHY", "K7DDRPHY", "V7DDRPHY",
