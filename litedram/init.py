@@ -454,9 +454,13 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
     cwl = phy_settings.cwl
     bl = 16
-    dq_odt = "RZQ/2"
-    ca_odt = "RZQ/2"
-    pull_down_drive_strength = "RZQ/3"
+    dq_odt = getattr(phy_settings, "dq_odt", "RZQ/2")
+    ca_odt = getattr(phy_settings, "ca_odt", "RZQ/2")
+    pull_down_drive_strength = getattr(phy_settings, "pull_down_drive_strength", "RZQ/2")
+    vref_ca_range = getattr(phy_settings, "vref_ca_range", 1)
+    vref_ca = getattr(phy_settings, "vref_ca", 30.4)
+    vref_dq_range = getattr(phy_settings, "vref_dq_range", 1)
+    vref_dq = getattr(phy_settings, "vref_dq", 30.4)
 
     def get_nwr():
         frequency_ranges = [  # Table 28. Frequency Ranges for RL, WL, nWR, and nRTP Settings
@@ -585,12 +589,12 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
         (4, 3, odt_map[ca_odt]),
     ])
     mr[12] = reg([
-        (0, 6, vref_ranges[1][30.4]),  # Vref(CA) % of VDD2
-        (6, 1, 1),  # range[1]
+        (0, 6, vref_ranges[vref_ca_range][vref_ca]),  # Vref(CA) % of VDD2
+        (6, 1, vref_ca_range),
     ])
     mr[14] = reg([
-        (0, 6, vref_ranges[1][30.4]),  # Vref(DQ) % of VDDQ
-        (6, 1, 1),  # range[1]
+        (0, 6, vref_ranges[vref_dq_range][vref_dq]),  # Vref(DQ) % of VDDQ
+        (6, 1, vref_dq_range),
     ])
     mr[13] = 0  # defaults (data mask enabled, frequency set point 0)
 
