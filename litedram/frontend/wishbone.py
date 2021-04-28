@@ -56,7 +56,7 @@ class LiteDRAMWishbone2Native(Module):
         )
         self.comb += [
             port.wdata.valid.eq(wishbone.stb & wishbone.we),
-            If(ratio < 1, If(~fsm.ongoing("WRITE"), port.wdata.valid.eq(0))),
+            If(ratio <= 1, If(~fsm.ongoing("WRITE"), port.wdata.valid.eq(0))),
             port.wdata.data.eq(wishbone.dat_w),
             port.wdata.we.eq(wishbone.sel),
         ]
@@ -69,9 +69,9 @@ class LiteDRAMWishbone2Native(Module):
         )
         self.comb += port.rdata.ready.eq(1)
         fsm.act("READ",
-            NextValue(aborted, aborted | ~wishbone.cyc),
+            NextValue(aborted, ~wishbone.cyc | aborted),
             If(port.rdata.valid,
-                wishbone.ack.eq(~aborted | wishbone.cyc),
+                wishbone.ack.eq(wishbone.cyc & ~aborted),
                 wishbone.dat_r.eq(port.rdata.data),
                 NextState("CMD")
             )
