@@ -204,7 +204,9 @@ class LiteDRAMNativePortUpConverter(Module):
             ).Else(  # Acknowledge incomming commands, while filling `sel`.
                 port_from.cmd.ready.eq(port_from.cmd.valid),
                 NextValue(cmd_last, port_from.cmd.last),
-                NextValue(sel, sel | 1 << port_from.cmd.addr[:log2_int(ratio)]),
+                If(port_from.cmd.valid,
+                    NextValue(sel, sel | 1 << port_from.cmd.addr[:log2_int(ratio)])
+                )
             )
         )
         fsm.act("COMMIT",
