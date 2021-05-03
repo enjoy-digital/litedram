@@ -312,7 +312,7 @@ class LiteDRAMNativePortUpConverter(Module):
             if reverse:
                 wdata_sel_parts = [
                     Replicate(cmd_buffer.source.sel[i], port_to.wdata.we.nbits // sel.nbits)
-                    for i in reverse(range(ratio))
+                    for i in reversed(range(ratio))
                 ]
             else:
                 wdata_sel_parts = [
