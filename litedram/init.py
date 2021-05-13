@@ -735,7 +735,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     # Commands functions
     for n in range(nphases):
         r += """
-__attribute__((unused)) static void command_p{n}(int cmd)
+__attribute__((unused)) static inline void command_p{n}(int cmd)
 {{
     sdram_dfii_pi{n}_command_write(cmd);
     sdram_dfii_pi{n}_command_issue_write(1);
@@ -743,24 +743,30 @@ __attribute__((unused)) static void command_p{n}(int cmd)
     r += "\n\n"
 
     # Write/Read functions
+    pix_addr_fmt = """
+static inline unsigned long {name}(int phase){{
+\tswitch (phase) {{
+\t\t{cases}
+\t\tdefault: return 0;
+\t}}
+}}
+    """
+    get_cases = lambda addrs: ["case {}: return {};".format(i, addr) for i, addr in enumerate(addrs)]
+
     r += "#define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE\n"
     sdram_dfii_pix_wrdata_addr = []
     for n in range(nphases):
         sdram_dfii_pix_wrdata_addr.append("CSR_SDRAM_DFII_PI{n}_WRDATA_ADDR".format(n=n))
-    r += """
-const unsigned long sdram_dfii_pix_wrdata_addr[SDRAM_PHY_PHASES] = {{
-\t{sdram_dfii_pix_wrdata_addr}
-}};
-""".format(sdram_dfii_pix_wrdata_addr=",\n\t".join(sdram_dfii_pix_wrdata_addr))
+    r += pix_addr_fmt.format(
+        name  = "sdram_dfii_pix_wrdata_addr",
+        cases = "\n\t\t".join(get_cases(sdram_dfii_pix_wrdata_addr)))
 
     sdram_dfii_pix_rddata_addr = []
     for n in range(nphases):
         sdram_dfii_pix_rddata_addr.append("CSR_SDRAM_DFII_PI{n}_RDDATA_ADDR".format(n=n))
-    r += """
-const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {{
-\t{sdram_dfii_pix_rddata_addr}
-}};
-""".format(sdram_dfii_pix_rddata_addr=",\n\t".join(sdram_dfii_pix_rddata_addr))
+    r += pix_addr_fmt.format(
+        name  = "sdram_dfii_pix_rddata_addr",
+        cases = "\n\t\t".join(get_cases(sdram_dfii_pix_rddata_addr)))
     r += "\n"
 
     init_sequence, mr = get_sdram_phy_init_sequence(phy_settings, timing_settings)
@@ -776,7 +782,7 @@ const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {{
         r += "#define DDRX_MR_WRLVL_RESET {}\n".format(mr[2])
         r += "#define DDRX_MR_WRLVL_BIT {}\n\n".format(7)
 
-    r += "static void init_sequence(void)\n{\n"
+    r += "static inline void init_sequence(void)\n{\n"
     for comment, a, ba, cmd, delay in init_sequence:
         invert_masks = [(0, 0), ]
         if phy_settings.is_rdimm:
