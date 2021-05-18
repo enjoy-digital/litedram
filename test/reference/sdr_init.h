@@ -27,7 +27,7 @@
 
 static void cdelay(int i);
 
-__attribute__((unused)) static void command_p0(int cmd)
+__attribute__((unused)) static inline void command_p0(int cmd)
 {
     sdram_dfii_pi0_command_write(cmd);
     sdram_dfii_pi0_command_issue_write(1);
@@ -35,15 +35,21 @@ __attribute__((unused)) static void command_p0(int cmd)
 
 #define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE
 
-const unsigned long sdram_dfii_pix_wrdata_addr[SDRAM_PHY_PHASES] = {
-	CSR_SDRAM_DFII_PI0_WRDATA_ADDR
-};
-
-const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {
-	CSR_SDRAM_DFII_PI0_RDDATA_ADDR
-};
-
-static void init_sequence(void)
+static inline unsigned long sdram_dfii_pix_wrdata_addr(int phase){
+    switch (phase) {
+        case 0: return CSR_SDRAM_DFII_PI0_WRDATA_ADDR;
+        default: return 0;
+        }
+}
+    
+static inline unsigned long sdram_dfii_pix_rddata_addr(int phase){
+    switch (phase) {
+        case 0: return CSR_SDRAM_DFII_PI0_RDDATA_ADDR;
+        default: return 0;
+        }
+}
+    
+static inline void init_sequence(void)
 {
 	/* Bring CKE high */
 	sdram_dfii_pi0_address_write(0x0);

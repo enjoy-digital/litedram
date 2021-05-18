@@ -33,22 +33,22 @@
 
 static void cdelay(int i);
 
-__attribute__((unused)) static void command_p0(int cmd)
+__attribute__((unused)) static inline void command_p0(int cmd)
 {
     sdram_dfii_pi0_command_write(cmd);
     sdram_dfii_pi0_command_issue_write(1);
 }
-__attribute__((unused)) static void command_p1(int cmd)
+__attribute__((unused)) static inline void command_p1(int cmd)
 {
     sdram_dfii_pi1_command_write(cmd);
     sdram_dfii_pi1_command_issue_write(1);
 }
-__attribute__((unused)) static void command_p2(int cmd)
+__attribute__((unused)) static inline void command_p2(int cmd)
 {
     sdram_dfii_pi2_command_write(cmd);
     sdram_dfii_pi2_command_issue_write(1);
 }
-__attribute__((unused)) static void command_p3(int cmd)
+__attribute__((unused)) static inline void command_p3(int cmd)
 {
     sdram_dfii_pi3_command_write(cmd);
     sdram_dfii_pi3_command_issue_write(1);
@@ -56,25 +56,31 @@ __attribute__((unused)) static void command_p3(int cmd)
 
 #define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE
 
-const unsigned long sdram_dfii_pix_wrdata_addr[SDRAM_PHY_PHASES] = {
-	CSR_SDRAM_DFII_PI0_WRDATA_ADDR,
-	CSR_SDRAM_DFII_PI1_WRDATA_ADDR,
-	CSR_SDRAM_DFII_PI2_WRDATA_ADDR,
-	CSR_SDRAM_DFII_PI3_WRDATA_ADDR
-};
-
-const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {
-	CSR_SDRAM_DFII_PI0_RDDATA_ADDR,
-	CSR_SDRAM_DFII_PI1_RDDATA_ADDR,
-	CSR_SDRAM_DFII_PI2_RDDATA_ADDR,
-	CSR_SDRAM_DFII_PI3_RDDATA_ADDR
-};
-
+static inline unsigned long sdram_dfii_pix_wrdata_addr(int phase){
+    switch (phase) {
+        case 0: return CSR_SDRAM_DFII_PI0_WRDATA_ADDR;
+		case 1: return CSR_SDRAM_DFII_PI1_WRDATA_ADDR;
+		case 2: return CSR_SDRAM_DFII_PI2_WRDATA_ADDR;
+		case 3: return CSR_SDRAM_DFII_PI3_WRDATA_ADDR;
+        default: return 0;
+        }
+}
+    
+static inline unsigned long sdram_dfii_pix_rddata_addr(int phase){
+    switch (phase) {
+        case 0: return CSR_SDRAM_DFII_PI0_RDDATA_ADDR;
+		case 1: return CSR_SDRAM_DFII_PI1_RDDATA_ADDR;
+		case 2: return CSR_SDRAM_DFII_PI2_RDDATA_ADDR;
+		case 3: return CSR_SDRAM_DFII_PI3_RDDATA_ADDR;
+        default: return 0;
+        }
+}
+    
 #define DDRX_MR_WRLVL_ADDRESS 1
 #define DDRX_MR_WRLVL_RESET 769
 #define DDRX_MR_WRLVL_BIT 7
 
-static void init_sequence(void)
+static inline void init_sequence(void)
 {
 	/* Release reset */
 	sdram_dfii_pi0_address_write(0x0);

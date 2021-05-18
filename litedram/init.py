@@ -745,10 +745,10 @@ __attribute__((unused)) static inline void command_p{n}(int cmd)
     # Write/Read functions
     pix_addr_fmt = """
 static inline unsigned long {name}(int phase){{
-\tswitch (phase) {{
-\t\t{cases}
-\t\tdefault: return 0;
-\t}}
+    switch (phase) {{
+        {cases}
+        default: return 0;
+        }}
 }}
     """
     get_cases = lambda addrs: ["case {}: return {};".format(i, addr) for i, addr in enumerate(addrs)]
