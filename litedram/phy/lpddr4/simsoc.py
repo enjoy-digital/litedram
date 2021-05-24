@@ -14,8 +14,7 @@ from litex.build.sim import SimPlatform
 from litex.build.sim.config import SimConfig
 
 from litex.soc.interconnect.csr import CSR
-from litex.soc.integration.soc_core import SoCCore
-from litex.soc.integration.soc_sdram import soc_sdram_args, soc_sdram_argdict
+from litex.soc.integration.soc_core import SoCCore, soc_core_args, soc_core_argdict
 from litex.soc.integration.builder import builder_args, builder_argdict, Builder
 from litex.soc.cores.cpu import CPUS
 
@@ -316,7 +315,7 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
 def main():
     parser = argparse.ArgumentParser(description="Generic LiteX SoC Simulation")
     builder_args(parser.add_argument_group(title="Builder"))
-    soc_sdram_args(parser.add_argument_group(title="SoC SDRAM"))
+    soc_core_args(parser.add_argument_group(title="SoC Core"))
     group = parser.add_argument_group(title="LPDDR4 simulation")
     group.add_argument("--sdram-verbosity",      default=0,               help="Set SDRAM checker verbosity")
     group.add_argument("--trace",                action="store_true",     help="Enable Tracing")
@@ -336,7 +335,7 @@ def main():
     group.add_argument("--finish-after-memtest", action="store_true",     help="Stop simulation after DRAM memory test")
     args = parser.parse_args()
 
-    soc_kwargs     = soc_sdram_argdict(args)
+    soc_kwargs     = soc_core_argdict(args)
     builder_kwargs = builder_argdict(args)
 
     sim_config = SimConfig()
