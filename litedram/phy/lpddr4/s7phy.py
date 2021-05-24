@@ -12,7 +12,7 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
-from litedram.phy.lpddr4.utils import delayed
+from litedram.phy.utils import delayed
 from litedram.phy.lpddr4.basephy import DoubleRateLPDDR4PHY, Latency
 
 

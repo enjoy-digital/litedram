@@ -15,7 +15,7 @@ from litex.soc.interconnect.stream import ClockDomainCrossing
 from litex.soc.interconnect.csr import AutoCSR
 
 from litedram.common import TappedDelayLine, tXXDController
-from litedram.phy.lpddr4.utils import delayed, edge, SimLogger
+from litedram.phy.utils import delayed, edge, SimLogger
 from litedram.phy.lpddr4.commands import MPC
 
 

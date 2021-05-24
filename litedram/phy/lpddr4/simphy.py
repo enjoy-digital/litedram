@@ -6,7 +6,7 @@
 
 from migen import *
 
-from litedram.phy.lpddr4.utils import delayed, Serializer, Deserializer
+from litedram.phy.utils import delayed, Serializer, Deserializer
 from litedram.phy.lpddr4.basephy import LPDDR4PHY, DoubleRateLPDDR4PHY, Latency
 
 

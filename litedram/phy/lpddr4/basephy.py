@@ -15,7 +15,7 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
-from litedram.phy.lpddr4.utils import bitpattern, delayed, ConstBitSlip, DQSPattern, Serializer, Deserializer
+from litedram.phy.utils import bitpattern, delayed, ConstBitSlip, DQSPattern, Serializer, Deserializer
 from litedram.phy.lpddr4.commands import DFIPhaseAdapter
 
 
