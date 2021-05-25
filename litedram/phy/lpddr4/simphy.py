@@ -6,8 +6,8 @@
 
 from migen import *
 
-from litedram.phy.utils import delayed, Serializer, Deserializer
-from litedram.phy.lpddr4.basephy import LPDDR4PHY, DoubleRateLPDDR4PHY, Latency
+from litedram.phy.utils import delayed, Serializer, Deserializer, Latency
+from litedram.phy.lpddr4.basephy import LPDDR4PHY, DoubleRateLPDDR4PHY
 
 
 class LPDDR4SimulationPads(Module):
@@ -131,8 +131,8 @@ class LPDDR4SimPHY(_LPDDR4SimPHYMixin, LPDDR4PHY):
         pads = LPDDR4SimulationPads()
         self.submodules += pads
         super().__init__(pads,
-            ser_latency  = Latency(Serializer.LATENCY),
-            des_latency  = Latency(Deserializer.LATENCY),
+            ser_latency  = Latency(sys=Serializer.LATENCY),
+            des_latency  = Latency(sys=Deserializer.LATENCY),
             phytype      = "LPDDR4SimPHY",
             **kwargs)
 
@@ -153,8 +153,8 @@ class DoubleRateLPDDR4SimPHY(_LPDDR4SimPHYMixin, DoubleRateLPDDR4PHY):
         pads = LPDDR4SimulationPads()
         self.submodules += pads
         super().__init__(pads,
-            ser_latency  = Latency(sys=0, sys8x=4*Serializer.LATENCY),
-            des_latency  = Latency(sys=0, sys8x=4*Deserializer.LATENCY),
+            ser_latency  = Latency(sys2x=Serializer.LATENCY),
+            des_latency  = Latency(sys2x=Deserializer.LATENCY),
             phytype      = "LPDDR4SimPHY",
             **kwargs)
 

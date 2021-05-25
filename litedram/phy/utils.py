@@ -4,6 +4,8 @@
 # Copyright (c) 2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import re
+from fractions import Fraction
 from functools import reduce
 from operator import or_
 
@@ -13,6 +15,9 @@ from litex.soc.interconnect.csr import CSRStorage, AutoCSR
 
 from litedram.common import TappedDelayLine
 
+
+def bit(n, val):
+    return (val & (1 << n)) >> n
 
 def chunks(lst, n):
     for i in range(0, len(lst), n):
@@ -81,6 +86,38 @@ class DQSPattern(Module):
             o = Signal.like(self.o)
             self.sync += o.eq(self.o)
             self.o = o
+
+
+class Latency:
+    """Helper for specifying latency in different clock domains"""
+
+    PATTERN = re.compile(r"^sys(?:(\d+)x)?$")
+
+    def __init__(self, **kwargs):
+        self._sys = Fraction(0, 1)
+        for name, cycles in kwargs.items():
+            m = self.PATTERN.match(name)
+            assert m, f"Wrong format: {name}"
+            denom = m.group(1) or 1
+            self._sys += Fraction(cycles, int(denom))
+
+    def __getattr__(self, name):
+        m = self.PATTERN.match(name)
+        if m:
+            denom = m.group(1) or 1
+            cycles = self._sys * int(denom)
+            if cycles.denominator != 1:
+                raise ValueError("{}.{} results in a fraction: {}".format(self, name, cycles))
+            return cycles.numerator
+        raise AttributeError(name)
+
+    def __add__(self, other):
+        new = Latency()
+        new._sys = self._sys + other._sys
+        return new
+
+    def __repr__(self):
+        return "Latency({} sys clk)".format(self._sys)
 
 
 class Serializer(Module):

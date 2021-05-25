@@ -12,8 +12,8 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
-from litedram.phy.utils import delayed
-from litedram.phy.lpddr4.basephy import DoubleRateLPDDR4PHY, Latency
+from litedram.phy.utils import delayed, Latency
+from litedram.phy.lpddr4.basephy import DoubleRateLPDDR4PHY
 
 
 class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
@@ -22,10 +22,9 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
 
         # DoubleRateLPDDR4PHY outputs half-width signals (comparing to LPDDR4PHY) in sys2x domain.
         # This allows us to use 8:1 DDR OSERDESE2/ISERDESE2 to (de-)serialize the data.
-        _sys2x = 4
         super().__init__(pads,
-            ser_latency = Latency(sys=0, sys8x=1*_sys2x),  # OSERDESE2 8:1 DDR (4 full-rate clocks)
-            des_latency = Latency(sys=0, sys8x=2*_sys2x),  # ISERDESE2 NETWORKING
+            ser_latency = Latency(sys2x=1),  # OSERDESE2 8:1 DDR (4 full-rate clocks)
+            des_latency = Latency(sys2x=2),  # ISERDESE2 NETWORKING
             phytype     = self.__class__.__name__,
             serdes_reset_cnt=-1,
             **kwargs

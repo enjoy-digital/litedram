@@ -15,21 +15,9 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
-from litedram.phy.utils import bitpattern, delayed, ConstBitSlip, DQSPattern, Serializer, Deserializer
+from litedram.phy.utils import (
+    bitpattern, delayed, ConstBitSlip, DQSPattern, Serializer, Deserializer, Latency)
 from litedram.phy.lpddr4.commands import DFIPhaseAdapter
-
-
-class Latency:
-    """Used to specify latency for LPDDR4PHY"""
-    def __init__(self, sys, sys8x=0):
-        self.sys = sys + sys8x//8
-        self.sys8x = sys8x % 8
-
-    def __add__(self, other):
-        return Latency(sys=self.sys + other.sys, sys8x=self.sys8x + other.sys8x)
-
-    def __repr__(self):
-        return "Latency(sys={}, sys8x={})".format(self.sys, self.sys8x)
 
 
 class LPDDR4Output:
@@ -139,7 +127,7 @@ class LPDDR4PHY(Module, AutoCSR):
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
         # For reads we need to account for ser+des latency to make sure we get the data in-phase with sys clock
-        rdphase = get_sys_phase(nphases, cl_sys_latency, cl + cmd_latency + ser_latency.sys8x + des_latency.sys8x)
+        rdphase = get_sys_phase(nphases, cl_sys_latency, cl + cmd_latency + ser_latency.sys8x % 8 + des_latency.sys8x % 8)
         # No need to modify wrphase, because ser_latency applies the same to both CA and DQ
         wrphase = get_sys_phase(nphases, cwl_sys_latency, cwl + cmd_latency)
 
@@ -154,8 +142,8 @@ class LPDDR4PHY(Module, AutoCSR):
         rdphase, cl_sys_latency = updated_latency(rdphase, cl_sys_latency)
 
         # Read latency
-        read_data_delay = ca_latency + ser_latency.sys + cl_sys_latency  # DFI cmd -> read data on DQ
-        read_des_delay  = des_latency.sys + bitslip_cycles+bitslip_range  # data on DQ -> data on DFI rddata
+        read_data_delay = ca_latency + ser_latency.sys8x//8 + cl_sys_latency  # DFI cmd -> read data on DQ
+        read_des_delay  = des_latency.sys8x//8 + bitslip_cycles+bitslip_range  # data on DQ -> data on DFI rddata
         read_latency    = read_data_delay + read_des_delay
 
         # Write latency
