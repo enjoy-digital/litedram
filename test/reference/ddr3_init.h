@@ -32,7 +32,7 @@
 #define SDRAM_PHY_DELAYS 32
 #define SDRAM_PHY_BITSLIPS 8
 
-static void cdelay(int i);
+void cdelay(int i);
 
 __attribute__((unused)) static inline void command_p0(int cmd)
 {

@@ -25,7 +25,7 @@
 #define SDRAM_PHY_WRPHASE 0
 #define SDRAM_PHY_MODULES SDRAM_PHY_DATABITS/8
 
-static void cdelay(int i);
+void cdelay(int i);
 
 __attribute__((unused)) static inline void command_p0(int cmd)
 {
