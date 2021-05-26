@@ -267,7 +267,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
                     If(self._loop.storage,
                         NextValue(offset, 0)
                     ).Else(
-                        NextState("IDLE")
+                        NextState("DONE")
                     )
                 )
             )
