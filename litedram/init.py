@@ -730,7 +730,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
 
     r += "\n"
 
-    r += "static void cdelay(int i);\n"
+    r += "void cdelay(int i);\n"
 
     # Commands functions
     for n in range(nphases):
