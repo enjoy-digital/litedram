@@ -30,14 +30,14 @@ class LPDDR4Output:
         self.reset_n = Signal(nphases)
         self.cs      = Signal(nphases)
         self.ca      = [Signal(nphases)   for _ in range(6)]
-        self.dmi_o   = [Signal(2*nphases) for _ in range(2)]
-        self.dmi_i   = [Signal(2*nphases) for _ in range(2)]
+        self.dmi_o   = [Signal(2*nphases) for _ in range(databits//8)]
+        self.dmi_i   = [Signal(2*nphases) for _ in range(databits//8)]
         self.dmi_oe  = Signal()  # no serialization
         self.dq_o    = [Signal(2*nphases) for _ in range(databits)]
         self.dq_i    = [Signal(2*nphases) for _ in range(databits)]
         self.dq_oe   = Signal()  # no serialization
-        self.dqs_o   = [Signal(2*nphases) for _ in range(2)]
-        self.dqs_i   = [Signal(2*nphases) for _ in range(2)]
+        self.dqs_o   = [Signal(2*nphases) for _ in range(databits//8)]
+        self.dqs_i   = [Signal(2*nphases) for _ in range(databits//8)]
         self.dqs_oe  = Signal()  # no serialization
 
 
