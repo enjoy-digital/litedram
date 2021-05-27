@@ -6,7 +6,6 @@
 
 from operator import or_
 from functools import reduce
-from collections import defaultdict
 
 from migen import *
 
@@ -15,8 +14,8 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
-from litedram.phy.utils import (
-    bitpattern, delayed, ConstBitSlip, DQSPattern, Serializer, Deserializer, Latency)
+from litedram.phy.utils import (bitpattern, delayed, DQSPattern, Serializer, Deserializer, Latency,
+    CommandsPipeline)
 from litedram.phy.lpddr4.commands import DFIPhaseAdapter
 
 
@@ -210,55 +209,20 @@ class LPDDR4PHY(Module, AutoCSR):
         ]
 
         # LPDDR4 Commands --------------------------------------------------------------------------
-        # Each LPDDR4 command can span several phases (2 or 4), so the commands cannot overlap.
-        # This should be guaranteed by the controller based on module timings, but we also include
-        # an overlaps check in PHY logic.
-        # Basic check will make sure that no command will be sent to DRAM if there was any command
-        # sent by the controller on DFI during 3 previous cycles. The extended version will instead
-        # make sure no command is sent to DRAM if there was any command _actually sent to DRAM_
-        # during 3 previous cycles. This is more expensive in terms of resources and generally not
-        # needed.
+        # Each LPDDR4 command can span several phases (2 or 4), so in theory the commands could
+        # overlap. No overlap should be guaranteed by the controller based on module timings, but
+        # we also include an overlaps check in PHY logic.
+        self.submodules.commands = CommandsPipeline(adapters,
+            cs_ser_width = len(self.out.cs),
+            ca_ser_width = len(self.out.ca[0]),
+            ca_nbits     = len(self.out.ca),
+            cmd_nphases_span = 4,
+            extended_overlaps_check = extended_overlaps_check
+        )
 
-        # Create a history of valid adapters used for masking overlapping ones
-        valids = ConstBitSlip(dw=nphases, cycles=1, slp=0)
-        self.submodules += valids
-        self.comb += valids.i.eq(Cat(a.valid for a in adapters))
-        valids_hist = valids.r
-        if extended_overlaps_check:
-            valids_hist = Signal.like(valids.r)
-            for i in range(len(valids_hist)):
-                was_valid_before = reduce(or_, valids_hist[max(0, i-3):i], 0)
-                self.comb += valids_hist[i].eq(valids.r[i] & ~was_valid_before)
-
-        cs_per_adapter = []
-        ca_per_adapter = defaultdict(list)
-        for phase, adapter in enumerate(adapters):
-            # The signals from an adapter can be used if there were no commands on 3 previous cycles
-            allowed = ~reduce(or_, valids_hist[nphases+phase - 3:nphases+phase])
-
-            # Use CS and CA of given adapter slipped by `phase` bits
-            cs_bs = ConstBitSlip(dw=nphases, cycles=1, slp=phase)
-            self.submodules += cs_bs
-            self.comb += cs_bs.i.eq(Cat(adapter.cs)),
-            cs_mask = Replicate(allowed, len(cs_bs.o))
-            cs = cs_bs.o & cs_mask
-            cs_per_adapter.append(cs)
-
-            # For CA we need to do the same for each bit
-            ca_bits = []
-            for bit in range(6):
-                ca_bs = ConstBitSlip(dw=nphases, cycles=1, slp=phase)
-                self.submodules += ca_bs
-                ca_bit_hist = [adapter.ca[i][bit] for i in range(4)]
-                self.comb += ca_bs.i.eq(Cat(*ca_bit_hist)),
-                ca_mask = Replicate(allowed, len(ca_bs.o))
-                ca = ca_bs.o & ca_mask
-                ca_per_adapter[bit].append(ca)
-
-        # OR all the masked signals
-        self.comb += self.out.cs.eq(reduce(or_, cs_per_adapter))
+        self.comb += self.out.cs.eq(self.commands.cs)
         for bit in range(6):
-            self.comb += self.out.ca[bit].eq(reduce(or_, ca_per_adapter[bit]))
+            self.comb += self.out.ca[bit].eq(self.commands.ca[bit])
 
         # DQ ---------------------------------------------------------------------------------------
         dq_oe = Signal()

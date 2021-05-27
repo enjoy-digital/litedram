@@ -8,6 +8,7 @@ import re
 from fractions import Fraction
 from functools import reduce
 from operator import or_
+from collections import defaultdict
 
 from migen import *
 
@@ -118,6 +119,80 @@ class Latency:
 
     def __repr__(self):
         return "Latency({} sys clk)".format(self._sys)
+
+
+class CommandsPipeline(Module):
+    """Commands pipeline logic for LPDDR4/LPDDR5
+
+    Single DFI command may require more than one LPDDR4/LPDDR5 command, effectively
+    spanning multiple DFI phases. This module given a list of DFI phase adapters
+    will use them to translate DFI commands to data on the CS/CA lines and will
+    handle any possible overlaps.
+
+    Basic check will make sure that no command will be sent to DRAM if there was any command
+    sent by the controller on DFI during previous phases. The extended version will instead
+    make sure no command is sent to DRAM if there was any command _actually sent to DRAM_
+    during the previous phasess. This is more expensive in terms of resources and generally
+    not needed.
+
+    Adapters have to provide the following fields: valid, cs, ca.
+    """
+    def __init__(self, adapters, *,
+            cs_ser_width,  # n bits serialized in controller cycle (depends on CS being SDR/DDR)
+            ca_ser_width,  # n bits serialized in controller cycle (depends on CA being SDR/DDR)
+            ca_nbits,      # number of CA lines (LPDDR4/5 -> 6/7)
+            cmd_nphases_span,  # at most how many phases can a command span
+            extended_overlaps_check=False):
+        nphases = len(adapters)
+        self.cs = Signal(cs_ser_width)
+        self.ca = [Signal(ca_ser_width) for _ in range(ca_nbits)]
+
+        # # #
+
+        # Number of phases (before the current one) we need to check for overlaps
+        n_previous = cmd_nphases_span - 1
+
+        # Create a history of valid adapters used for masking overlapping ones
+        valids = ConstBitSlip(dw=nphases, cycles=1, slp=0)
+        self.submodules += valids
+        self.comb += valids.i.eq(Cat(a.valid for a in adapters))
+        valids_hist = valids.r
+        if extended_overlaps_check:
+            valids_hist = Signal.like(valids.r)
+            for i in range(len(valids_hist)):
+                hist_before = valids_hist[max(0, i-n_previous):i]
+                was_valid_before = reduce(or_, hist_before, 0)
+                self.comb += valids_hist[i].eq(valids.r[i] & ~was_valid_before)
+
+        cs_per_adapter = []
+        ca_per_adapter = defaultdict(list)
+        for phase, adapter in enumerate(adapters):
+            # The signals from an adapter can be used if there were no commands on previous cycles
+            allowed = ~reduce(or_, valids_hist[nphases+phase - n_previous:nphases+phase])
+
+            # Use CS and CA of given adapter slipped by `phase` bits
+            cs_bs = ConstBitSlip(dw=cs_ser_width, cycles=1, slp=phase)
+            self.submodules += cs_bs
+            self.comb += cs_bs.i.eq(Cat(adapter.cs)),
+            cs_mask = Replicate(allowed, len(cs_bs.o))
+            cs = cs_bs.o & cs_mask
+            cs_per_adapter.append(cs)
+
+            # For CA we need to do the same for each bit
+            ca_bits = []
+            for bit in range(ca_nbits):
+                ca_bs = ConstBitSlip(dw=ca_ser_width, cycles=1, slp=phase)
+                self.submodules += ca_bs
+                ca_bit_hist = [adapter.ca[i][bit] for i in range(cmd_nphases_span)]
+                self.comb += ca_bs.i.eq(Cat(*ca_bit_hist)),
+                ca_mask = Replicate(allowed, len(ca_bs.o))
+                ca = ca_bs.o & ca_mask
+                ca_per_adapter[bit].append(ca)
+
+        # OR all the masked signals
+        self.comb += self.cs.eq(reduce(or_, cs_per_adapter))
+        for bit in range(ca_nbits):
+            self.comb += self.ca[bit].eq(reduce(or_, ca_per_adapter[bit]))
 
 
 class Serializer(Module):
