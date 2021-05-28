@@ -14,7 +14,7 @@ from migen import *
 
 from litex.soc.interconnect.csr import CSRStorage, AutoCSR
 
-from litedram.common import TappedDelayLine
+from litedram.common import TappedDelayLine, Settings
 
 
 def bit(n, val):
@@ -119,6 +119,39 @@ class Latency:
 
     def __repr__(self):
         return "Latency({} sys clk)".format(self._sys)
+
+
+class SimPad(Settings):
+    def __init__(self, name, width, io=False):
+        self.set_attributes(locals())
+
+class SimulationPads(Module):
+    """Pads for simulation purpose
+
+    Tristate pads are simulated as separate input/output pins (name_i, name_o) and
+    an output-enable pin (name_oe). Output pins are to be driven byt the PHY and
+    input pins are to be driven by the DRAM simulator. An additional pin without
+    a suffix is created and this module will include logic to set this pin to the
+    actual value depending on the output-enable signal.
+    """
+    def layout(self, **kwargs):
+        raise NotImplementedError("Simulation pads layout as a list of SimPad objects")
+
+    def __init__(self, **kwargs):
+        for pad  in self.layout(**kwargs):
+            if pad.io:
+                o, i, oe = (f"{pad.name}_{suffix}" for suffix in ["o", "i", "oe"])
+                setattr(self, pad.name, Signal(pad.width))
+                setattr(self, o, Signal(pad.width))
+                setattr(self, i, Signal(pad.width))
+                setattr(self, oe, Signal())
+                self.comb += If(getattr(self, oe),
+                    getattr(self, pad.name).eq(getattr(self, o))
+                ).Else(
+                    getattr(self, pad.name).eq(getattr(self, i))
+                )
+            else:
+                setattr(self, pad.name, Signal(pad.width))
 
 
 class CommandsPipeline(Module):

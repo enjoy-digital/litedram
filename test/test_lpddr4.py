@@ -43,7 +43,6 @@ from test.test_phy_utils import run_simulation as _run_simulation
 # rising edge!
 CLOCKS = {
     "sys":          (64, 31),
-    "sys_11_25":    (64, 29),  # aligned to sys8x_90 (phase shift of 11.25)
     "sys2x":        (32, 15),
     "sys8x":        ( 8,  3),
     "sys8x_ddr":    ( 4,  1),
@@ -314,7 +313,7 @@ class LPDDR4Tests(unittest.TestCase):
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
             ],
             pad_checkers = {"sys8x_90_ddr": {
-                'clk_p': latency + '01010101' * 3,
+                'clk': latency + '01010101' * 3,
             }},
         )
 

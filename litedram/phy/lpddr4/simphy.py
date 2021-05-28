@@ -6,45 +6,22 @@
 
 from migen import *
 
-from litedram.phy.utils import delayed, Serializer, Deserializer, Latency
+from litedram.phy.utils import delayed, Serializer, Deserializer, Latency, SimPad, SimulationPads
 from litedram.phy.lpddr4.basephy import LPDDR4PHY, DoubleRateLPDDR4PHY
 
 
-class LPDDR4SimulationPads(Module):
-    """Pads for simulation purpose
-
-    To avoid simulate tristate behavior of DQ/DQS/DMI pins separate input and output
-    pins (_i/_o) are provided. Output pins are to be driven by the PHY and input pins
-    are to be driven by the DRAM simulator. This module sets the actual values on pins
-    `dq`, `dqs` and `dmi` based on output enable signals.
-    """
-    def __init__(self, databits=16):
-        self.clk_p   = Signal()
-        self.clk_n   = Signal()
-        self.cke     = Signal()
-        self.odt     = Signal()
-        self.reset_n = Signal()
-        self.cs      = Signal()
-        self.ca      = Signal(6)
-        # signals for checking actual tristate lines state (PHY reads these)
-        self.dq      = Signal(databits)
-        self.dqs     = Signal(databits//8)
-        self.dmi     = Signal(databits//8)
-        # internal tristates i/o that should be driven for simulation
-        self.dq_o    = Signal(databits)  # PHY drives these
-        self.dq_i    = Signal(databits)  # DRAM chip (simulator) drives these
-        self.dq_oe   = Signal()          # PHY drives these
-        self.dqs_o   = Signal(databits//8)
-        self.dqs_i   = Signal(databits//8)
-        self.dqs_oe  = Signal()
-        self.dmi_o   = Signal(databits//8)
-        self.dmi_i   = Signal(databits//8)
-        self.dmi_oe  = Signal()
-
-        self.comb += [
-            If(self.dq_oe, self.dq.eq(self.dq_o)).Else(self.dq.eq(self.dq_i)),
-            If(self.dqs_oe, self.dqs.eq(self.dqs_o)).Else(self.dqs.eq(self.dqs_i)),
-            If(self.dmi_oe, self.dmi.eq(self.dmi_o)).Else(self.dmi.eq(self.dmi_i)),
+class LPDDR4SimulationPads(SimulationPads):
+    def layout(self, databits=16):
+        return [
+            SimPad("clk", 1),
+            SimPad("cke", 1),
+            SimPad("odt", 1),
+            SimPad("reset_n", 1),
+            SimPad("cs", 1),
+            SimPad("ca", 6),
+            SimPad("dq", databits, io=True),
+            SimPad("dqs", databits//8, io=True),
+            SimPad("dmi", databits//8, io=True),
         ]
 
 
@@ -96,9 +73,8 @@ class _LPDDR4SimPHYMixin:
             self._deserialize(clk=clk, clkdiv=clkdiv, o_dw=len(kwargs["o"]), **kwargs)
 
         # Clock is shifted 180 degrees to get rising edge in the middle of SDR signals.
-        # To achieve that we send negated clock on clk_p and non-negated on clk_n.
-        ser_ddr(i=~self.out.clk,    o=self.pads.clk_p,   name='clk_p')
-        ser_ddr(i=self.out.clk,     o=self.pads.clk_n,   name='clk_n')
+        # To achieve that we send negated clock on clk (clk_p).
+        ser_ddr(i=~self.out.clk,    o=self.pads.clk,   name='clk')
 
         ser_sdr(i=self.out.cke,     o=self.pads.cke,     name='cke')
         ser_sdr(i=self.out.odt,     o=self.pads.odt,     name='odt')

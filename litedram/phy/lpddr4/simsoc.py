@@ -42,8 +42,8 @@ _io = [
     ),
 
     ("lpddr4", 0,
-        Subsignal("clk_p",   Pins(1)),
-        Subsignal("clk_n",   Pins(1)),
+        Subsignal("clk",   Pins(1)),
+        # Subsignal("clk_n",   Pins(1)),
         Subsignal("cke",     Pins(1)),
         Subsignal("odt",     Pins(1)),
         Subsignal("reset_n", Pins(1)),
@@ -146,7 +146,7 @@ class SimSoC(SoCCore):
         self.ddrphy._rdly_dq_inc         = CSR()
         self.add_csr("ddrphy")
 
-        for p in ["clk_p", "clk_n", "cke", "odt", "reset_n", "cs", "ca", "dq", "dqs", "dmi"]:
+        for p in ["clk", "cke", "odt", "reset_n", "cs", "ca", "dq", "dqs", "dmi"]:
             self.comb += getattr(pads, p).eq(getattr(self.ddrphy.pads, p))
 
         controller_settings = ControllerSettings()
@@ -302,8 +302,8 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
         save.group([s for s in vars(soc.ddrphy.pads).values() if isinstance(s, Signal)],
             group_name = "pads",
             mappers = [
-                gtkw.regex_filter(["clk_n$", "_[io]$"], negate=True),
-                gtkw.regex_sorter(gtkw.suffixes2re(["cke", "odt", "reset_n", "clk_p", "cs", "ca", "dq", "dqs", "dmi", "oe"])),
+                gtkw.regex_filter(["_[io]$"], negate=True),
+                gtkw.regex_sorter(gtkw.suffixes2re(["cke", "odt", "reset_n", "clk", "cs", "ca", "dq", "dqs", "dmi", "oe"])),
                 gtkw.regex_colorer({
                     "yellow": gtkw.suffixes2re(["cs", "ca"]),
                     "orange": gtkw.suffixes2re(["dq", "dqs", "dmi"]),
