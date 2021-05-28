@@ -320,6 +320,21 @@ class Deserializer(Module):
         sd_clkdiv += self.o.eq(Cat(as_array(o_pre_d)[:-1], as_array(o_pre)[-1]))
 
 
+class SimSerDesMixin:
+    """Helper class for easier (de-)serialization to simulation pads."""
+    def ser(self, *, i, o, clkdiv, clk, name="", **kwargs):
+        assert len(o) == 1
+        kwargs = dict(i=i, i_dw=len(i), o=o, o_dw=1, clk=clk, clkdiv=clkdiv,
+            name=f"ser_{name}".strip("_"), **kwargs)
+        self.submodules += Serializer(**kwargs)
+
+    def des(self, *, i, o, clkdiv, clk, name="", **kwargs):
+        assert len(i) == 1
+        kwargs = dict(i=i, i_dw=1, o=o, o_dw=len(o), clk=clk, clkdiv=clkdiv,
+            name=f"des_{name}".strip("_"), **kwargs)
+        self.submodules += Deserializer(**kwargs)
+
+
 class SimLogger(Module, AutoCSR):
     """Logger for use in simulation
 
