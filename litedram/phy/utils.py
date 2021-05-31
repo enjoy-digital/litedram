@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 import re
+import math
 from fractions import Fraction
 from functools import reduce
 from operator import or_
@@ -43,11 +44,14 @@ def edge(mod, cond):
     return  ~cond_d & cond
 
 class ConstBitSlip(Module):
-    def __init__(self, dw, i=None, o=None, slp=None, cycles=1):
-        self.i   = Signal(dw, name='i') if i is None else i
-        self.o   = Signal(dw, name='o') if o is None else o
-        assert cycles >= 1
-        assert 0 <= slp <= cycles*dw-1
+    def __init__(self, dw, slp, i=None, o=None, cycles=None):
+        self.i = Signal(dw, name='i') if i is None else i
+        self.o = Signal(dw, name='o') if o is None else o
+        if cycles is None:
+            cycles = self.min_cycles(slp, dw)
+
+        assert cycles >= 1, cycles
+        assert 0 <= slp <= cycles*dw-1, (slp, cycles, dw)
         slp = (cycles*dw-1) - slp
 
         # # #
@@ -55,6 +59,11 @@ class ConstBitSlip(Module):
         self.r = r = Signal((cycles+1)*dw, reset_less=True)
         self.sync += r.eq(Cat(r[dw:], self.i))
         self.comb += self.o.eq(r[slp+1:dw+slp+1])
+
+    @staticmethod
+    def min_cycles(slp, dw):
+        """Minimum number of cycles to be able to use given bitslip values"""
+        return math.ceil((slp + 1) / dw)
 
 # TODO: rewrite DQSPattern in litedram/common.py to support different data widths
 class DQSPattern(Module):
@@ -186,7 +195,7 @@ class CommandsPipeline(Module):
         n_previous = cmd_nphases_span - 1
 
         # Create a history of valid adapters used for masking overlapping ones
-        valids = ConstBitSlip(dw=nphases, cycles=1, slp=0)
+        valids = ConstBitSlip(dw=nphases, slp=0)
         self.submodules += valids
         self.comb += valids.i.eq(Cat(a.valid for a in adapters))
         valids_hist = valids.r
@@ -204,7 +213,7 @@ class CommandsPipeline(Module):
             allowed = ~reduce(or_, valids_hist[nphases+phase - n_previous:nphases+phase])
 
             # Use CS and CA of given adapter slipped by `phase` bits
-            cs_bs = ConstBitSlip(dw=cs_ser_width, cycles=1, slp=phase)
+            cs_bs = ConstBitSlip(dw=cs_ser_width, slp=phase)
             self.submodules += cs_bs
             self.comb += cs_bs.i.eq(Cat(adapter.cs)),
             cs_mask = Replicate(allowed, len(cs_bs.o))
@@ -214,7 +223,7 @@ class CommandsPipeline(Module):
             # For CA we need to do the same for each bit
             ca_bits = []
             for bit in range(ca_nbits):
-                ca_bs = ConstBitSlip(dw=ca_ser_width, cycles=1, slp=phase)
+                ca_bs = ConstBitSlip(dw=ca_ser_width, slp=phase)
                 self.submodules += ca_bs
                 ca_bit_hist = [adapter.ca[i][bit] for i in range(cmd_nphases_span)]
                 self.comb += ca_bs.i.eq(Cat(*ca_bit_hist)),
