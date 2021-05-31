@@ -16,8 +16,7 @@ from litedram.phy.utils import bit
 from litedram.phy.lpddr4.simphy import LPDDR4SimPHY, DoubleRateLPDDR4SimPHY
 from litedram.phy.lpddr4 import simsoc
 
-from test.phy_common import DFISequencer, PadChecker
-from test.test_phy_utils import run_simulation as _run_simulation
+from test.phy_common import DFISequencer, PadChecker, run_simulation as _run_simulation
 
 
 # Migen simulator supports reset signals so we could add CRG to start all the signals

@@ -11,27 +11,7 @@ from migen import *
 
 from litedram.phy.utils import Serializer, Deserializer, Latency, chunks, bit
 
-from litex.gen.sim import run_simulation as _run_simulation
-
-
-def run_simulation(dut, generators, clocks, debug_clocks=False, **kwargs):
-    """Wrapper that can be used to easily debug clock configuration"""
-
-    if debug_clocks:
-        class DUT(Module):
-            def __init__(self, dut):
-                self.submodules.dut = dut
-                for clk in clocks:
-                    setattr(self.clock_domains, "cd_{}".format(clk), ClockDomain(clk))
-                    cd = getattr(self, 'cd_{}'.format(clk))
-                    self.comb += cd.rst.eq(0)
-
-                    s = Signal(4, name='dbg_{}'.format(clk))
-                    sd = getattr(self.sync, clk)
-                    sd += s.eq(s + 1)
-        dut = DUT(dut)
-
-    _run_simulation(dut, generators, clocks, **kwargs)
+from test.phy_common import run_simulation
 
 
 class TestSimSerializers(unittest.TestCase):

@@ -10,9 +10,12 @@ import itertools
 from collections import defaultdict
 from typing import Mapping, Sequence
 
+from migen import *
+
 from litedram.phy import dfi
 from litedram.phy.utils import chunks
 
+from test.test_phy_utils import run_simulation as _run_simulation
 
 BOLD = '\033[1m'
 HIGHLIGHT = '\033[91m'
@@ -20,6 +23,32 @@ CLEAR = '\033[0m'
 
 def highlight(s, hl=True):
     return BOLD + (HIGHLIGHT if hl else '') + s + CLEAR
+
+
+def run_simulation(dut, generators, clocks, debug_clocks=False, **kwargs):
+    """Wrapper that can be used to easily debug clock configuration"""
+
+    if not isinstance(generators, dict):
+        assert "sys" in clocks
+    else:
+        for clk in generators:
+            assert clk in clocks, clk
+
+    if debug_clocks:
+        class DUT(Module):
+            def __init__(self, dut):
+                self.submodules.dut = dut
+                for clk in clocks:
+                    setattr(self.clock_domains, "cd_{}".format(clk), ClockDomain(clk))
+                    cd = getattr(self, 'cd_{}'.format(clk))
+                    self.comb += cd.rst.eq(0)
+
+                    s = Signal(4, name='dbg_{}'.format(clk))
+                    sd = getattr(self.sync, clk)
+                    sd += s.eq(s + 1)
+        dut = DUT(dut)
+
+    _run_simulation(dut, generators, clocks, **kwargs)
 
 
 class PadsHistory(defaultdict):
@@ -64,6 +93,7 @@ class PadChecker:
     """Helper class for defining expected sequences on pads"""
     def __init__(self, pads, signals: Mapping[str, str]):
         # signals: {sig: values}, values: a string of '0'/'1'/'x'/' '
+        signals = {clk: values.replace(' ', '') for clk, values in signals.items()}
         self.pads = pads
         self.signals = signals
         self.history = PadsHistory()  # registered values
