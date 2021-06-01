@@ -59,7 +59,11 @@ class ConstBitSlip(Module):
             self.sync += r.eq(Cat(r[dw:], self.i))
         else:
             reg = Signal(cycles*dw, reset_less=True)
-            self.sync += reg.eq(Cat(reg[dw:], self.i))
+            # Cat with slice of len=0 generates incorrect Verilog
+            if len(reg[dw:]) > 0:
+                self.sync += reg.eq(Cat(reg[dw:], self.i))
+            else:
+                self.sync += reg.eq(self.i)
             self.comb += r.eq(Cat(reg, self.i))
         self.comb += self.o.eq(r[slp+1:dw+slp+1])
 
@@ -191,6 +195,7 @@ class CommandsPipeline(Module):
         nphases = len(adapters)
         self.cs = Signal(cs_ser_width)
         self.ca = [Signal(ca_ser_width) for _ in range(ca_nbits)]
+        assert cmd_nphases_span <= nphases
 
         # # #
 
@@ -198,7 +203,7 @@ class CommandsPipeline(Module):
         n_previous = cmd_nphases_span - 1
 
         # Create a history of valid adapters used for masking overlapping ones
-        valids = ConstBitSlip(dw=nphases, slp=0)
+        valids = ConstBitSlip(dw=nphases, slp=0, cycles=1, register=False)
         self.submodules += valids
         self.comb += valids.i.eq(Cat(a.valid for a in adapters))
         valids_hist = valids.r
@@ -216,23 +221,21 @@ class CommandsPipeline(Module):
             allowed = ~reduce(or_, valids_hist[nphases+phase - n_previous:nphases+phase])
 
             # Use CS and CA of given adapter slipped by `phase` bits
-            cs_bs = ConstBitSlip(dw=cs_ser_width, slp=phase)
+            cs_bs = ConstBitSlip(dw=cs_ser_width, slp=phase, cycles=1)
             self.submodules += cs_bs
-            self.comb += cs_bs.i.eq(Cat(adapter.cs)),
-            cs_mask = Replicate(allowed, len(cs_bs.o))
-            cs = cs_bs.o & cs_mask
-            cs_per_adapter.append(cs)
+            cs_mask = Replicate(allowed, len(cs_bs.i))
+            self.comb += cs_bs.i.eq(Cat(adapter.cs) & cs_mask),
+            cs_per_adapter.append(cs_bs.o)
 
             # For CA we need to do the same for each bit
             ca_bits = []
             for bit in range(ca_nbits):
-                ca_bs = ConstBitSlip(dw=ca_ser_width, slp=phase)
+                ca_bs = ConstBitSlip(dw=ca_ser_width, slp=phase, cycles=1)
                 self.submodules += ca_bs
-                ca_bit_hist = [adapter.ca[i][bit] for i in range(cmd_nphases_span)]
-                self.comb += ca_bs.i.eq(Cat(*ca_bit_hist)),
+                ca_bit_hist = [ca[bit] for ca in adapter.ca]
                 ca_mask = Replicate(allowed, len(ca_bs.o))
-                ca = ca_bs.o & ca_mask
-                ca_per_adapter[bit].append(ca)
+                self.comb += ca_bs.i.eq(Cat(*ca_bit_hist) & ca_mask),
+                ca_per_adapter[bit].append(ca_bs.o)
 
         # OR all the masked signals
         self.comb += self.cs.eq(reduce(or_, cs_per_adapter))
