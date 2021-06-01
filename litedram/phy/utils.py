@@ -44,11 +44,9 @@ def edge(mod, cond):
     return  ~cond_d & cond
 
 class ConstBitSlip(Module):
-    def __init__(self, dw, slp, i=None, o=None, cycles=None):
+    def __init__(self, dw, slp, cycles, i=None, o=None, register=True):
         self.i = Signal(dw, name='i') if i is None else i
         self.o = Signal(dw, name='o') if o is None else o
-        if cycles is None:
-            cycles = self.min_cycles(slp, dw)
 
         assert cycles >= 1, cycles
         assert 0 <= slp <= cycles*dw-1, (slp, cycles, dw)
@@ -57,7 +55,12 @@ class ConstBitSlip(Module):
         # # #
 
         self.r = r = Signal((cycles+1)*dw, reset_less=True)
-        self.sync += r.eq(Cat(r[dw:], self.i))
+        if register:
+            self.sync += r.eq(Cat(r[dw:], self.i))
+        else:
+            reg = Signal(cycles*dw, reset_less=True)
+            self.sync += reg.eq(Cat(reg[dw:], self.i))
+            self.comb += r.eq(Cat(reg, self.i))
         self.comb += self.o.eq(r[slp+1:dw+slp+1])
 
     @staticmethod

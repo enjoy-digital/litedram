@@ -9,7 +9,7 @@ import itertools
 
 from migen import *
 
-from litedram.phy.utils import Serializer, Deserializer, Latency, chunks, bit
+from litedram.phy.utils import Serializer, Deserializer, Latency, chunks, bit, ConstBitSlip
 
 from test.phy_common import run_simulation
 
@@ -186,3 +186,64 @@ class LatencyTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 getattr(l, attr)
         l.sys6x # ok
+
+class TestConstBitslip(unittest.TestCase):
+    class Dut(Module):
+        def __init__(self, dw, **kwargs):
+            self.i = Signal(dw)
+            self.o = Signal(dw)
+            bs = ConstBitSlip(dw, **kwargs)
+            self.submodules += bs
+            self.comb += [
+                self.o.eq(bs.o),
+                bs.i.eq(self.i),
+            ]
+
+    def test_register(self):
+        outputs = {
+            0: [0b0011, 0b0000],
+            1: [0b0110, 0b0000],
+            2: [0b1100, 0b0000],
+            3: [0b1000, 0b0001],
+        }
+
+        for slp, out in outputs.items():
+            with self.subTest(slp=slp):
+                def generator(dut):
+                    yield dut.i.eq(0b0011)
+                    yield
+                    self.assertEqual((yield dut.o), 0)
+                    yield dut.i.eq(0)
+                    yield
+                    self.assertEqual((yield dut.o), out[0])
+                    yield
+                    self.assertEqual((yield dut.o), out[1])
+                    yield
+                    self.assertEqual((yield dut.o), 0)
+
+                dut = self.Dut(dw=4, slp=slp, cycles=1)
+                run_simulation(dut, generator(dut))
+
+    def test_no_register(self):
+        outputs = {
+            0: [0b0011, 0b0000],
+            1: [0b0110, 0b0000],
+            2: [0b1100, 0b0000],
+            3: [0b1000, 0b0001],
+        }
+
+        for slp, out in outputs.items():
+            with self.subTest(slp=slp):
+                def generator(dut):
+                    self.assertEqual((yield dut.o), 0)
+                    yield dut.i.eq(0b0011)
+                    yield
+                    self.assertEqual((yield dut.o), out[0])
+                    yield dut.i.eq(0)
+                    yield
+                    self.assertEqual((yield dut.o), out[1])
+                    yield
+                    self.assertEqual((yield dut.o), 0)
+
+                dut = self.Dut(dw=4, slp=slp, cycles=1, register=False)
+                run_simulation(dut, generator(dut))
