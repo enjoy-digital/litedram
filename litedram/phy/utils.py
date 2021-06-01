@@ -201,6 +201,9 @@ class CommandsPipeline(Module):
 
         # Number of phases (before the current one) we need to check for overlaps
         n_previous = cmd_nphases_span - 1
+        # Number of bits to slip CA per phase (how many CA output bits are equivalent to 1 CS output bit)
+        assert ca_ser_width % cs_ser_width == 0, f"Non-integer CA:CS output width ratio: {ca_ser_width % cs_ser_width}"
+        ca_phase_slip = ca_ser_width // cs_ser_width
 
         # Create a history of valid adapters used for masking overlapping ones
         valids = ConstBitSlip(dw=nphases, slp=0, cycles=1, register=False)
@@ -230,7 +233,7 @@ class CommandsPipeline(Module):
             # For CA we need to do the same for each bit
             ca_bits = []
             for bit in range(ca_nbits):
-                ca_bs = ConstBitSlip(dw=ca_ser_width, slp=phase, cycles=1)
+                ca_bs = ConstBitSlip(dw=ca_ser_width, slp=phase*ca_phase_slip, cycles=1)
                 self.submodules += ca_bs
                 ca_bit_hist = [ca[bit] for ca in adapter.ca]
                 ca_mask = Replicate(allowed, len(ca_bs.o))
