@@ -7,8 +7,9 @@
 import re
 import copy
 import unittest
-from collections import defaultdict
 from typing import Mapping
+from functools import partial
+from collections import defaultdict
 
 from migen import *
 
@@ -16,7 +17,8 @@ from litedram.phy.utils import bit
 from litedram.phy.lpddr4.simphy import LPDDR4SimPHY, DoubleRateLPDDR4SimPHY
 from litedram.phy.lpddr4 import simsoc
 
-from test.phy_common import DFISequencer, PadChecker, run_simulation as _run_simulation
+import test.phy_common
+from test.phy_common import DFISequencer, PadChecker
 
 
 # Migen simulator supports reset signals so we could add CRG to start all the signals
@@ -38,18 +40,14 @@ from test.phy_common import DFISequencer, PadChecker, run_simulation as _run_sim
 # sys8x_90_ddr does not trigger at the simulation start (not an edge),
 # BUT a generator starts before first edge, so a `yield` is needed to wait until the first
 # rising edge!
-CLOCKS = {
+run_simulation = partial(test.phy_common.run_simulation, clocks={
     "sys":          (64, 31),
     "sys2x":        (32, 15),
     "sys8x":        ( 8,  3),
     "sys8x_ddr":    ( 4,  1),
     "sys8x_90":     ( 8,  1),
     "sys8x_90_ddr": ( 4,  3),
-}
-
-def run_simulation(dut, generators, **kwargs):
-    _run_simulation(dut, generators, CLOCKS, **kwargs)
-
+})
 
 
 def dfi_data_to_dq(dq_i, dfi_phases, dfi_name, nphases=8):

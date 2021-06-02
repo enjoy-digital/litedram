@@ -6,27 +6,27 @@
 
 import unittest
 import itertools
+from functools import partial
 
 from migen import *
 
 from litedram.phy.utils import Serializer, Deserializer, Latency, chunks, bit, ConstBitSlip
 
-from test.phy_common import run_simulation
+import test.phy_common
+
+
+run_serializers_simulation = partial(test.phy_common.run_simulation, clocks={
+    "sys":          (64, 31),
+    "sys_11_25":    (64, 29),  # aligned to sys8x_90 (phase shift of 11.25)
+    "sys2x":        (32, 15),
+    "sys8x":        ( 8,  3),
+    "sys8x_ddr":    ( 4,  1),
+    "sys8x_90":     ( 8,  1),
+    "sys8x_90_ddr": ( 4,  3),
+})
 
 
 class TestSimSerializers(unittest.TestCase):
-    def run_simulation(self, dut, generators, **kwargs):
-        clocks = {
-            "sys":          (64, 31),
-            "sys_11_25":    (64, 29),  # aligned to sys8x_90 (phase shift of 11.25)
-            "sys2x":        (32, 15),
-            "sys8x":        ( 8,  3),
-            "sys8x_ddr":    ( 4,  1),
-            "sys8x_90":     ( 8,  1),
-            "sys8x_90_ddr": ( 4,  3),
-        }
-        run_simulation(dut, generators, clocks, **kwargs)
-
     @staticmethod
     def data_generator(i, datas):
         for data in datas:
@@ -56,7 +56,7 @@ class TestSimSerializers(unittest.TestCase):
             clkgen: self.data_generator(dut.i, datas),
             clkcheck: self.data_checker(dut.o, received, n=len(datas) * data_width, latency=latency * data_width, yield1=True),
         }
-        self.run_simulation(dut, generators, **kwargs)
+        run_serializers_simulation(dut, generators, **kwargs)
 
         received = list(chunks(received, data_width))
         datas  = [[bit(i, d) for i in range(data_width)] for d in datas]
@@ -75,7 +75,7 @@ class TestSimSerializers(unittest.TestCase):
             clkcheck: self.data_checker(dut.o, received, n=len(datas), latency=latency),
         }
 
-        self.run_simulation(dut, generators, **kwargs)
+        run_serializers_simulation(dut, generators, **kwargs)
 
         received = [[bit(i, d) for i in range(data_width)] for d in received]
         self.assertEqual(received, datas)

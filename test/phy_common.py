@@ -12,10 +12,10 @@ from typing import Mapping, Sequence
 
 from migen import *
 
+from litex.gen.sim.core import run_simulation as _run_simulation
+
 from litedram.phy import dfi
 from litedram.phy.utils import chunks
-
-from test.test_phy_utils import run_simulation as _run_simulation
 
 BOLD = '\033[1m'
 HIGHLIGHT = '\033[91m'
