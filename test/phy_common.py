@@ -15,7 +15,7 @@ from migen import *
 from litex.gen.sim.core import run_simulation as _run_simulation
 
 from litedram.phy import dfi
-from litedram.phy.utils import chunks
+from litedram.phy.utils import bit, chunks
 
 BOLD = '\033[1m'
 HIGHLIGHT = '\033[91m'
@@ -49,6 +49,20 @@ def run_simulation(dut, generators, clocks, debug_clocks=False, **kwargs):
         dut = DUT(dut)
 
     _run_simulation(dut, generators, clocks, **kwargs)
+
+
+def dfi_data_to_dq(dq_i, dfi_phases, dfi_name, nphases, databits, burst):
+    # e.g. for nphases=8 DDR (burst=16), data on DQ should go in a pattern:
+    # dq0: p0.wrdata[0], p0.wrdata[16], p1.wrdata[0], p1.wrdata[16], ...
+    # dq1: p0.wrdata[1], p0.wrdata[17], p1.wrdata[1], p1.wrdata[17], ...
+    assert burst % nphases == 0
+    for p in range(nphases):
+        data = dfi_phases[p][dfi_name]
+        for i in range(burst//nphases):
+            yield bit(i*databits + dq_i, data)
+
+def dq_pattern(i, dfi_data, dfi_name, **kwargs):
+    return ''.join(str(v) for v in dfi_data_to_dq(i, dfi_data, dfi_name, **kwargs))
 
 
 class PadsHistory(defaultdict):
