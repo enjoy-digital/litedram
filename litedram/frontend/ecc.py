@@ -45,7 +45,7 @@ class LiteDRAMNativePortECCW(Module):
                 encoder.i.eq(sink.data[i*data_width_from//8:(i+1)*data_width_from//8]),
                 source.data[i*data_width_to//8:(i+1)*data_width_to//8].eq(encoder.o)
             ]
-        self.comb += source.we.eq(2**len(source.we)-1)
+        self.comb += If(sink.we != 0, source.we.eq(2**len(source.we)-1))
 
 # LiteDRAMNativePortECCR ---------------------------------------------------------------------------
 
