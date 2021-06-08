@@ -31,7 +31,7 @@ from litedram.common import wdata_description, rdata_description
 # LiteDRAMNativePortECCW ---------------------------------------------------------------------------
 
 class LiteDRAMNativePortECCW(Module):
-    def __init__(self, data_width_from, data_width_to):
+    def __init__(self, data_width_from, data_width_to, burst_cycles=8):
         self.sink   = sink   = Endpoint(wdata_description(data_width_from))
         self.source = source = Endpoint(wdata_description(data_width_to))
 
@@ -41,9 +41,9 @@ class LiteDRAMNativePortECCW(Module):
         self.comb += sink.connect(source, omit={"data", "we"}),
 
         # Data Path.
-        for i in range(8):
-            ecc_width_from = data_width_from//8
-            ecc_width_to   = data_width_to//8
+        for i in range(burst_cycles):
+            ecc_width_from = data_width_from//burst_cycles
+            ecc_width_to   = data_width_to//burst_cycles
 
             # Encoder.
             self.submodules.encoder = encoder = ECCEncoder(ecc_width_from)
@@ -62,22 +62,22 @@ class LiteDRAMNativePortECCW(Module):
 # LiteDRAMNativePortECCR ---------------------------------------------------------------------------
 
 class LiteDRAMNativePortECCR(Module):
-    def __init__(self, data_width_from, data_width_to):
+    def __init__(self, data_width_from, data_width_to, burst_cycles=8):
         self.sink   = sink   = Endpoint(rdata_description(data_width_to))
         self.source = source = Endpoint(rdata_description(data_width_from))
         self.enable = Signal()
-        self.sec    = Signal(8)
-        self.ded    = Signal(8)
+        self.sec    = Signal(burst_cycles)
+        self.ded    = Signal(burst_cycles)
 
         # # #
 
-        # Control Path (ECC encoding is combinatorial).
+        # Control Path (ECC decoding is combinatorial).
         self.comb +=  sink.connect(source, omit={"data"})
 
         # Data Path.
-        for i in range(8):
-            ecc_width_to   = data_width_to//8
-            ecc_width_from = data_width_from//8
+        for i in range(burst_cycles):
+            ecc_width_to   = data_width_to//burst_cycles
+            ecc_width_from = data_width_from//burst_cycles
 
             # Decoder.
             self.submodules.decoder = decoder = ECCDecoder(ecc_width_from)
@@ -98,9 +98,9 @@ class LiteDRAMNativePortECCR(Module):
 # LiteDRAMNativePortECC ----------------------------------------------------------------------------
 
 class LiteDRAMNativePortECC(Module, AutoCSR):
-    def __init__(self, port_from, port_to, with_error_injection=False):
-        _ , n = compute_m_n(port_from.data_width//8)
-        assert port_to.data_width >= (n + 1)*8
+    def __init__(self, port_from, port_to, burst_cycles=8, with_error_injection=False):
+        _ , n = compute_m_n(port_from.data_width//burst_cycles)
+        assert port_to.data_width >= (n + 1)*burst_cycles
 
         self.enable     = CSRStorage(reset=1)
         self.clear      = CSR()
@@ -117,7 +117,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         self.comb += port_from.cmd.connect(port_to.cmd)
 
         # Wdata (ECC) encoding) --------------------------------------------------------------------
-        ecc_wdata = LiteDRAMNativePortECCW(port_from.data_width, port_to.data_width)
+        ecc_wdata = LiteDRAMNativePortECCW(port_from.data_width, port_to.data_width, burst_cycles)
         ecc_wdata = BufferizeEndpoints({"source": DIR_SOURCE})(ecc_wdata)
         self.submodules += ecc_wdata
         self.comb += [
@@ -130,7 +130,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         # Rdata (ECC decoding) ---------------------------------------------------------------------
         sec = Signal()
         ded = Signal()
-        ecc_rdata = LiteDRAMNativePortECCR(port_from.data_width, port_to.data_width)
+        ecc_rdata = LiteDRAMNativePortECCR(port_from.data_width, port_to.data_width, burst_cycles)
         ecc_rdata = BufferizeEndpoints({"source": DIR_SOURCE})(ecc_rdata)
         self.submodules += ecc_rdata
         self.comb += [
