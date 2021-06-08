@@ -179,6 +179,9 @@ def dfi_names(cmd=True, wrdata=True, rddata=True):
     if rddata: names += [name for name, _, _ in dfi.phase_rddata_description(16)]
     return names
 
+def dfi_reset_values(**kwargs):
+    return {sig: 1 if sig.endswith("_n") else 0 for sig in dfi_names(**kwargs)}
+
 
 class DFIPhaseValues(dict):
     """Dictionary {dfi_signal_name: value}"""
@@ -219,12 +222,9 @@ class DFISequencer:
     def add(self, dfi_cycle: Mapping[DFIPhase, DFIPhaseValues]):
         self.sequence.append(dfi_cycle)
 
-    def _dfi_reset_values(self):
-        return {sig: 1 if sig.endswith("_n") else 0 for sig in dfi_names()}
-
     def _reset(self, dfi):
         for phase in dfi.phases:
-            for sig, val in self._dfi_reset_values().items():
+            for sig, val in dfi_reset_values().items():
                 yield getattr(phase, sig).eq(val)
 
     def assert_ok(self, test_case):

@@ -17,6 +17,7 @@ from litex.soc.interconnect import stream
 from litex.soc.interconnect.csr import CSRStorage, AutoCSR
 
 from litedram.common import TappedDelayLine, Settings
+from litedram.phy.dfi import Interface as DFIInterface, phase_description
 
 
 def bit(n, val):
@@ -352,6 +353,57 @@ class SimSerDesMixin:
         kwargs = dict(i=i, i_dw=1, o=o, o_dw=len(o), clk=clk, clkdiv=clkdiv,
             name=f"des_{name}".strip("_"), **kwargs)
         self.submodules += Deserializer(**kwargs)
+
+
+class DFIRateConverter(Module):
+    # do the clock domain adjustment
+    # e.g. PHYRateConverter(my_sys4x_phy, "sys", "sys4x", ratio=4).dfi
+    # thismodule should be created in clkdiv clock domain
+    def __init__(self, phy_dfi, *, clkdiv, clk, ratio, serdes_reset_cnt=-1):
+        phase_params = dict(
+            addressbits = len(phy_dfi.p0.address),
+            bankbits = len(phy_dfi.p0.bank),
+            nranks = len(phy_dfi.p0.cs_n),
+            databits = len(phy_dfi.p0.wrdata),
+        )
+        self.dfi = DFIInterface(nphases=ratio * len(phy_dfi.phases), **phase_params)
+
+        for name, width, dir in phase_description(**phase_params):
+            # on each clk phase
+            for pi, phase_s in enumerate(phy_dfi.phases):
+                sig_s = getattr(phase_s, name)
+                assert len(sig_s) == width
+
+                # data from each clkdiv phase
+                sigs_m = []
+                for j in range(ratio):
+                    phase_m = self.dfi.phases[pi + len(phy_dfi.phases)*j]
+                    sigs_m.append(getattr(phase_m, name))
+
+                if dir == DIR_M_TO_S:
+                    ser = Serializer(
+                        clkdiv     = clkdiv,
+                        clk       = clk,
+                        i_dw      = ratio*width,
+                        o_dw      = width,
+                        i         = Cat(sigs_m),
+                        o         = sig_s,
+                        reset_cnt = serdes_reset_cnt,
+                        name      = name,
+                    )
+                    self.submodules += ser
+                else:
+                    des = Deserializer(
+                        clkdiv    = clkdiv,
+                        clk       = clk,
+                        i_dw      = width,
+                        o_dw      = ratio*width,
+                        i         = sig_s,
+                        o         = Cat(sigs_m),
+                        reset_cnt = serdes_reset_cnt,
+                        name      = name,
+                    )
+                    self.submodules += des
 
 
 class SimLogger(Module, AutoCSR):
