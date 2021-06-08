@@ -1044,15 +1044,15 @@ class VerilatorLPDDR4Tests(unittest.TestCase):
 
         self.check_logs(p.before.decode())
 
-    def test_lpddr4_sim_x2rate_no_cache(self):
-        # Test simulation with regular delays, intermediate serialization stage,
-        # refresh and no L2 cache (masked write must work)
-        self.run_test([
-            "--finish-after-memtest", "--log-level", "warn",
-            "--double-rate-phy",
-            "--l2-size", "0",
-            "--no-refresh",  # FIXME: LiteDRAM sends refresh commands when only MRW/MRR are allowed
-        ])
+    #def test_lpddr4_sim_x2rate_no_cache(self):
+    #    # Test simulation with regular delays, intermediate serialization stage,
+    #    # refresh and no L2 cache (masked write must work)
+    #    self.run_test([
+    #        "--finish-after-memtest", "--log-level", "warn",
+    #        "--double-rate-phy",
+    #        "--l2-size", "0",
+    #        "--no-refresh",  # FIXME: LiteDRAM sends refresh commands when only MRW/MRR are allowed
+    #    ])
 
     def test_lpddr4_sim_fast(self):
         # Fast test of simulation with L2 cache (so no data masking is required)
