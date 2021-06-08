@@ -16,7 +16,7 @@ Features:
 - Errors reporting.
 
 Limitations:
-- Byte enable not supported for writes.
+- Write byte enable granularity of DRAM's data-width.
 """
 
 from migen import *
@@ -37,15 +37,27 @@ class LiteDRAMNativePortECCW(Module):
 
         # # #
 
+        # Control (ECC encoding is combinatorial).
+        self.comb += sink.connect(source, omit={"data", "we"}),
+
+        # Data Path.
         for i in range(8):
-            encoder = ECCEncoder(data_width_from//8)
-            self.submodules += encoder
+            ecc_width_from = data_width_from//8
+            ecc_width_to   = data_width_to//8
+
+            # Encoder.
+            self.submodules.encoder = encoder = ECCEncoder(ecc_width_from)
             self.comb += [
-                sink.connect(source, omit={"data", "we"}),
-                encoder.i.eq(sink.data[i*data_width_from//8:(i+1)*data_width_from//8]),
-                source.data[i*data_width_to//8:(i+1)*data_width_to//8].eq(encoder.o)
+                # Input.
+                encoder.i.eq(sink.data[i*ecc_width_from:(i+1)*ecc_width_from]),
+                # Output.
+                # We always have to store the full ECC-Word so byte enable is not supported within
+                # an ECC word. If any of the byte enable is set, the full ECC-Word is written.
+                If(sink.we[i*ecc_width_from//8:(i+1)*ecc_width_from//8] != 0,
+                    source.we[i*ecc_width_to//8:(i+1)*ecc_width_to//8].eq(2**ecc_width_to-1)
+                ),
+                source.data[i*ecc_width_to:(i+1)*ecc_width_to].eq(encoder.o)
             ]
-        self.comb += If(sink.we != 0, source.we.eq(2**len(source.we)-1))
 
 # LiteDRAMNativePortECCR ---------------------------------------------------------------------------
 
@@ -59,15 +71,24 @@ class LiteDRAMNativePortECCR(Module):
 
         # # #
 
+        # Control Path (ECC encoding is combinatorial).
         self.comb +=  sink.connect(source, omit={"data"})
 
+        # Data Path.
         for i in range(8):
-            decoder = ECCDecoder(data_width_from//8)
-            self.submodules += decoder
+            ecc_width_to   = data_width_to//8
+            ecc_width_from = data_width_from//8
+
+            # Decoder.
+            self.submodules.decoder = decoder = ECCDecoder(ecc_width_from)
             self.comb += [
+                # Enable.
                 decoder.enable.eq(self.enable),
-                decoder.i.eq(sink.data[i*data_width_to//8:(i+1)*data_width_to//8]),
-                source.data[i*data_width_from//8:(i+1)*data_width_from//8].eq(decoder.o),
+                # Input.
+                decoder.i.eq(sink.data[i*ecc_width_to:(i+1)*ecc_width_to]),
+                # Output.
+                source.data[i*ecc_width_from:(i+1)*ecc_width_from].eq(decoder.o),
+                # Bitflip/Error reporting.
                 If(source.valid,
                     self.sec[i].eq(decoder.sec),
                     self.ded[i].eq(decoder.ded)
@@ -95,7 +116,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         # Cmd --------------------------------------------------------------------------------------
         self.comb += port_from.cmd.connect(port_to.cmd)
 
-        # Wdata (ecc encoding) ---------------------------------------------------------------------
+        # Wdata (ECC) encoding) --------------------------------------------------------------------
         ecc_wdata = LiteDRAMNativePortECCW(port_from.data_width, port_to.data_width)
         ecc_wdata = BufferizeEndpoints({"source": DIR_SOURCE})(ecc_wdata)
         self.submodules += ecc_wdata
@@ -106,7 +127,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         if with_error_injection:
             self.comb += port_to.wdata.data[:8].eq(self.flip.storage ^ ecc_wdata.source.data[:8])
 
-        # Rdata (ecc decoding) ---------------------------------------------------------------------
+        # Rdata (ECC decoding) ---------------------------------------------------------------------
         sec = Signal()
         ded = Signal()
         ecc_rdata = LiteDRAMNativePortECCR(port_from.data_width, port_to.data_width)
