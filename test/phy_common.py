@@ -268,3 +268,19 @@ class DFISequencer:
                 phases[i] = values
             self.read_sequence.append(phases)
             yield
+
+    @staticmethod
+    def input_generator(dfi, sequence: DFISequence):
+        names = dfi_names(cmd=True, wrdata=True, rddata=False) + ["rddata_en"]
+        for per_phase in sequence:
+            # set values
+            for phase, values in per_phase.items():
+                for sig, val in values.items():
+                    assert sig not in names, f"`{sig}` is not DFI input signal"
+                    yield getattr(dfi.phases[phase], sig).eq(val)
+            yield
+            # reset values
+            for phase, values in per_phase.items():
+                for sig in values.keys():
+                    yield getattr(dfi.phases[phase], sig).eq(0)
+        yield

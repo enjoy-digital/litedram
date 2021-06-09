@@ -16,7 +16,7 @@ from migen import *
 from litex.soc.interconnect import stream
 from litex.soc.interconnect.csr import CSRStorage, AutoCSR
 
-from litedram.common import TappedDelayLine, Settings
+from litedram.common import TappedDelayLine, Settings, PhySettings
 from litedram.phy.dfi import Interface as DFIInterface, phase_description
 
 
@@ -261,8 +261,8 @@ class Serializer(Module):
     LATENCY = 1
 
     def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None):
-        assert i_dw > o_dw
-        assert i_dw % o_dw == 0
+        assert i_dw > o_dw, (i_dw, o_dw)
+        assert i_dw % o_dw == 0, (i_dw, o_dw)
         ratio = i_dw // o_dw
 
         sd_clk = getattr(self.sync, clk)
@@ -304,8 +304,8 @@ class Deserializer(Module):
     LATENCY = 2
 
     def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None):
-        assert i_dw < o_dw
-        assert o_dw % i_dw == 0
+        assert i_dw < o_dw, (i_dw, o_dw)
+        assert o_dw % i_dw == 0, (i_dw, o_dw)
         ratio = o_dw // i_dw
 
         sd_clk = getattr(self.sync, clk)
@@ -357,18 +357,44 @@ class SimSerDesMixin:
 
 class DFIRateConverter(Module):
     # do the clock domain adjustment
-    # e.g. PHYRateConverter(my_sys4x_phy, "sys", "sys4x", ratio=4).dfi
-    # thismodule should be created in clkdiv clock domain
-    def __init__(self, phy_dfi, *, clkdiv, clk, ratio, serdes_reset_cnt=-1):
+    """Converts between DFI interfaces running at different clock frequencies
+
+    This module allows to convert DFI interface `phy_dfi` running at higher clock frequency
+    into a DFI interface running at `ratio` lower frequency. The new DFI has `ratio` more
+    phases and the commands on the following phases of the new DFI will be serialized to
+    following phases/clocks of `phy_dfi` (phases first, then clock cycles).
+
+    Data must be serialized/deserialized in such a way that a whole burst on `phy_dfi` is
+    sent in a single `clk` cycle. For this reason, the new DFI interface will have `ratio`
+    less databits. For example, with phy_dfi(nphases=2, databits=32) and ratio=4 the new
+    DFI will have nphases=8, databits=8. This results in 8*8=64 bits in `clkdiv` translating
+    into 2*32=64 bits in `clk`. This means that only a single cycle of `clk` per `clkdiv`
+    cycle carries the data (by default cycle 0). This can be modified by passing values
+    different than 0 for `write_delay`/`read_delay` and may be needed to properly align
+    write/read latency of the original PHY and the wrapper.
+    """
+    def __init__(self, phy_dfi, *, clkdiv, clk, ratio, serdes_reset_cnt=-1, write_delay=0, read_delay=0):
+        assert len(phy_dfi.p0.wrdata) % ratio == 0
+        assert 0 <= write_delay < ratio, f"Data can be delayed up to {ratio} clk cycles"
+        assert 0 <= read_delay < ratio, f"Data can be delayed up to {ratio} clk cycles"
+
         phase_params = dict(
             addressbits = len(phy_dfi.p0.address),
             bankbits = len(phy_dfi.p0.bank),
             nranks = len(phy_dfi.p0.cs_n),
-            databits = len(phy_dfi.p0.wrdata),
+            databits = len(phy_dfi.p0.wrdata) // ratio,
         )
         self.dfi = DFIInterface(nphases=ratio * len(phy_dfi.phases), **phase_params)
 
+        sd_clk = getattr(self.sync, clk)
+
+        wr_delayed = ["wrdata", "wrdata_mask"]
+        rd_delayed = ["rddata", "rddata_valid"]
+
         for name, width, dir in phase_description(**phase_params):
+            # all signals except write/read
+            if name in wr_delayed + rd_delayed:
+                continue
             # on each clk phase
             for pi, phase_s in enumerate(phy_dfi.phases):
                 sig_s = getattr(phase_s, name)
@@ -380,30 +406,130 @@ class DFIRateConverter(Module):
                     phase_m = self.dfi.phases[pi + len(phy_dfi.phases)*j]
                     sigs_m.append(getattr(phase_m, name))
 
-                if dir == DIR_M_TO_S:
-                    ser = Serializer(
-                        clkdiv     = clkdiv,
-                        clk       = clk,
-                        i_dw      = ratio*width,
-                        o_dw      = width,
-                        i         = Cat(sigs_m),
-                        o         = sig_s,
-                        reset_cnt = serdes_reset_cnt,
-                        name      = name,
-                    )
-                    self.submodules += ser
-                else:
-                    des = Deserializer(
-                        clkdiv    = clkdiv,
-                        clk       = clk,
-                        i_dw      = width,
-                        o_dw      = ratio*width,
-                        i         = sig_s,
-                        o         = Cat(sigs_m),
-                        reset_cnt = serdes_reset_cnt,
-                        name      = name,
-                    )
-                    self.submodules += des
+                assert dir == DIR_M_TO_S
+                ser = Serializer(
+                    clkdiv     = clkdiv,
+                    clk       = clk,
+                    i_dw      = ratio*width,
+                    o_dw      = width,
+                    i         = Cat(sigs_m),
+                    o         = sig_s,
+                    reset_cnt = serdes_reset_cnt,
+                    name      = name,
+                )
+                self.submodules += ser
+
+        # TODO: it should be possible to get rid of Serializer/Deserializer for read/write
+
+        # wrdata
+        for name, width, dir in phase_description(**phase_params):
+            if name not in wr_delayed:
+                continue
+            for pi, phase_s in enumerate(phy_dfi.phases):
+                sig_s = getattr(phase_s, name)
+                sig_m = Signal(len(sig_s) * ratio)
+
+                sigs_m = []
+                for j in range(ratio):
+                    phase_m = self.dfi.phases[pi*ratio + j]
+                    sigs_m.append(getattr(phase_m, name))
+
+                width = len(Cat(sigs_m))
+                self.comb += sig_m[write_delay*width:(write_delay+1)*width].eq(Cat(sigs_m))
+
+                o = Signal.like(sig_s)
+                ser = Serializer(
+                    clkdiv     = clkdiv,
+                    clk       = clk,
+                    i_dw      = len(sig_m),
+                    o_dw      = len(sig_s),
+                    i         = sig_m,
+                    o         = o,
+                    reset_cnt = serdes_reset_cnt,
+                    name      = name,
+                )
+                self.submodules += ser
+
+                self.comb += sig_s.eq(o)
+
+        # rddata
+        for name, width, dir in phase_description(**phase_params):
+            if name not in rd_delayed:
+                continue
+            for pi, phase_s in enumerate(phy_dfi.phases):
+                sig_s = getattr(phase_s, name)
+
+                sig_m = Signal(ratio * len(sig_s))
+                sigs_m = []
+                for j in range(ratio):
+                    phase_m = self.dfi.phases[pi*ratio + j]
+                    sigs_m.append(getattr(phase_m, name))
+
+                des = Deserializer(
+                    clkdiv    = clkdiv,
+                    clk       = clk,
+                    i_dw      = len(sig_s),
+                    o_dw      = len(sig_m),
+                    i         = sig_s,
+                    o         = sig_m,
+                    reset_cnt = serdes_reset_cnt,
+                    name      = name,
+                )
+                self.submodules += des
+
+                out_width = len(Cat(sigs_m))
+                sig_m_window = sig_m[read_delay*out_width:(read_delay + 1)*out_width]
+                self.comb += Cat(sigs_m).eq(sig_m_window)
+
+    @staticmethod
+    def wrap(phy, *, clkdiv, clk, ratio, cd_mapping=None, **kwargs):
+        # we need to recalculate write/read latencies such that the controller sends/receives
+        # data with correct latencies at `clkdiv`
+        write_delay = phy.settings.write_latency % ratio
+        read_delay = phy.settings.read_latency % ratio
+
+        print(f"{write_delay=}")
+        print(f"{read_delay=}")
+
+        converter = DFIRateConverter(phy.dfi, clkdiv=clkdiv, clk=clk, ratio=ratio,
+            write_delay=write_delay, read_delay=read_delay, **kwargs)
+
+        if cd_mapping is None:
+            cd_mapping = {"sys": clkdiv}
+        else:
+            cd_mapping["sys"] = clkdiv
+        phy.submodules.dfi_converter = ClockDomainsRenamer(cd_mapping)(converter)
+
+        # replace PHY attributes
+        phy._dfi = phy.dfi
+        phy.dfi = converter.dfi
+        phy.nphases = len(converter.dfi.phases)
+
+        phy._settings = phy.settings
+        phy.settings = PhySettings(
+            phytype       = phy._settings.phytype,
+            memtype       = phy._settings.memtype,
+            databits      = phy._settings.databits,
+            dfi_databits  = len(phy.dfi.p0.wrdata),
+            nranks        = phy._settings.nranks,
+            nphases       = phy.nphases,
+            rdphase       = phy._settings.rdphase,
+            wrphase       = phy._settings.wrphase,
+            cl            = phy._settings.cl,
+            cwl           = phy._settings.cwl,
+            read_latency  = phy._settings.read_latency//ratio + Serializer.LATENCY + Deserializer.LATENCY,
+            write_latency = phy._settings.write_latency//ratio,
+            cmd_latency   = phy._settings.cmd_latency,
+            cmd_delay     = phy._settings.cmd_delay,
+        )
+
+        # def get_phase(phase_name):
+        #     phase = getattr(clk_settings, phase_name)
+        #     storage = getattr(phase, "storage", None)
+        #     return storage.reset if storage is not None else phase
+        # rdphase = get_phase("rdphase")
+        # wrphase = get_phase("wrphase")
+
 
 
 class SimLogger(Module, AutoCSR):
