@@ -32,8 +32,9 @@ from litedram.common import wdata_description, rdata_description
 
 class LiteDRAMNativePortECCW(Module):
     def __init__(self, data_width_from, data_width_to, burst_cycles=8):
-        self.sink   = sink   = Endpoint(wdata_description(data_width_from))
-        self.source = source = Endpoint(wdata_description(data_width_to))
+        self.sink     = sink   = Endpoint(wdata_description(data_width_from))
+        self.source   = source = Endpoint(wdata_description(data_width_to))
+        self.we_error = Signal()
 
         # # #
 
@@ -42,8 +43,8 @@ class LiteDRAMNativePortECCW(Module):
 
         # Data Path.
         for i in range(burst_cycles):
-            ecc_width_from = data_width_from//burst_cycles
-            ecc_width_to   = data_width_to//burst_cycles
+            ecc_width_from = data_width_from // burst_cycles
+            ecc_width_to   = data_width_to   // burst_cycles
 
             # Encoder.
             self.submodules.encoder = encoder = ECCEncoder(ecc_width_from)
@@ -54,9 +55,13 @@ class LiteDRAMNativePortECCW(Module):
                 # We always have to store the full ECC-Word so byte enable is not supported within
                 # an ECC word. If any of the byte enable is set, the full ECC-Word is written.
                 If(sink.we[i*ecc_width_from//8:(i+1)*ecc_width_from//8] != 0,
-                    source.we[i*ecc_width_to//8:(i+1)*ecc_width_to//8].eq(2**ecc_width_to-1)
+                    source.we[i*ecc_width_to//8:(i+1)*ecc_width_to//8].eq(2**ecc_width_to//8-1)
                 ),
-                source.data[i*ecc_width_to:(i+1)*ecc_width_to].eq(encoder.o)
+                source.data[i*ecc_width_to:(i+1)*ecc_width_to].eq(encoder.o),
+                # Byte enable granularity  error detection.
+                If(sink.valid & (sink.we[i*ecc_width_from//8:(i+1)*ecc_width_from//8] != (2**ecc_width_from//8-1)),
+                    self.we_error.eq(1)
+                )
             ]
 
 # LiteDRAMNativePortECCR ---------------------------------------------------------------------------
@@ -76,8 +81,8 @@ class LiteDRAMNativePortECCR(Module):
 
         # Data Path.
         for i in range(burst_cycles):
-            ecc_width_to   = data_width_to//burst_cycles
-            ecc_width_from = data_width_from//burst_cycles
+            ecc_width_to   = data_width_to   // burst_cycles
+            ecc_width_from = data_width_from // burst_cycles
 
             # Decoder.
             self.submodules.decoder = decoder = ECCDecoder(ecc_width_from)
@@ -98,7 +103,7 @@ class LiteDRAMNativePortECCR(Module):
 # LiteDRAMNativePortECC ----------------------------------------------------------------------------
 
 class LiteDRAMNativePortECC(Module, AutoCSR):
-    def __init__(self, port_from, port_to, burst_cycles=8, with_error_injection=False):
+    def __init__(self, port_from, port_to, burst_cycles=8, with_error_injection=False, with_we_error_detection=False):
         _ , n = compute_m_n(port_from.data_width//burst_cycles)
         assert port_to.data_width >= (n + 1)*burst_cycles
 
@@ -110,6 +115,8 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         self.ded_detected = ded_detected = Signal()
         if with_error_injection:
             self.flip = CSRStorage(8)
+        if with_we_error_detection:
+            self.we_errors = CSRStatus(32)
 
         # # #
 
@@ -163,3 +170,16 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
                 )
             )
         ]
+        if with_we_error_detection:
+            we_errors = self.we_errors.status
+            self.sync += [
+                If(self.clear.re,
+                    we_errors.eq(0),
+                ).Else(
+                    If(we_errors != (2**len(we_errors) - 1),
+                        If(ecc_wdata.we_error,
+                            we_errors.eq(we_errors + 1)
+                        )
+                    )
+                )
+            ]
