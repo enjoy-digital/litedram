@@ -424,16 +424,16 @@ class TestPHYRateConverter(unittest.TestCase):
             1: dict(wrdata=0x2222, wrdata_mask=0b11),
             2: dict(wrdata=0x3333, wrdata_mask=0b00),
             3: dict(wrdata=0x4444, wrdata_mask=0b11),
-            4: dict(wrdata=0x5555, wrdata_mask=0b00),
-            5: dict(wrdata=0x6666, wrdata_mask=0b11),
-            6: dict(wrdata=0x7777, wrdata_mask=0b00),
-            7: dict(wrdata=0x8888, wrdata_mask=0b11),
+            4: dict(wrdata=0x5555, wrdata_mask=0b01),
+            5: dict(wrdata=0x6666, wrdata_mask=0b01),
+            6: dict(wrdata=0x7777, wrdata_mask=0b10),
+            7: dict(wrdata=0x8888, wrdata_mask=0b01),
         }
         data_clk = {
             0: dict(wrdata=0x22221111, wrdata_mask=0b1100),
             1: dict(wrdata=0x44443333, wrdata_mask=0b1100),
-            2: dict(wrdata=0x66665555, wrdata_mask=0b1100),
-            3: dict(wrdata=0x88887777, wrdata_mask=0b1100),
+            2: dict(wrdata=0x66665555, wrdata_mask=0b0101),
+            3: dict(wrdata=0x88887777, wrdata_mask=0b0110),
         }
         dfi_sys = [
             {7: write_ap},
@@ -576,18 +576,18 @@ class TestPHYRateConverter(unittest.TestCase):
     def test_dfi_rate_converter_1_to_4_read(self):
         read = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, bank=0b111, address=0b110101)
         data_clkdiv = {
-            0: dict(rddata=0x1111),
-            1: dict(rddata=0x2222),
-            2: dict(rddata=0x3333),
-            3: dict(rddata=0x4444),
-            4: dict(rddata=0x5555),
-            5: dict(rddata=0x6666),
-            6: dict(rddata=0x7777),
-            7: dict(rddata=0x8888),
+            0: dict(rddata=0x1111, rddata_valid=1),
+            1: dict(rddata=0x2222, rddata_valid=1),
+            2: dict(rddata=0x3333, rddata_valid=1),
+            3: dict(rddata=0x4444, rddata_valid=1),
+            4: dict(rddata=0x5555, rddata_valid=1),
+            5: dict(rddata=0x6666, rddata_valid=1),
+            6: dict(rddata=0x7777, rddata_valid=1),
+            7: dict(rddata=0x8888, rddata_valid=1),
         }
         data_clk = {
-            0: dict(rddata=0x4444333322221111),
-            1: dict(rddata=0x8888777766665555),
+            0: dict(rddata=0x4444333322221111, rddata_valid=1),
+            1: dict(rddata=0x8888777766665555, rddata_valid=1),
         }
         des_latency = [{}] * Deserializer.LATENCY
         dfi_sys = [
@@ -673,17 +673,17 @@ class TestPHYRateConverter(unittest.TestCase):
         # When read_latency does not aligh with clkdiv boundaries, the read data must be delayed
         read = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, bank=0b111, address=0b110101)
         data_clkdiv = {
-            0: dict(rddata=0x1111),
-            1: dict(rddata=0x2222),
-            2: dict(rddata=0x3333),
-            3: dict(rddata=0x4444),
+            0: dict(rddata=0x1111, rddata_valid=1),  # make sure it rddata_valid on 1 phase is replicated to ratio phases
+            1: dict(rddata=0x2222, rddata_valid=1),
+            2: dict(rddata=0x3333, rddata_valid=1),
+            3: dict(rddata=0x4444, rddata_valid=1),
             4: dict(rddata=0x5555),
             5: dict(rddata=0x6666),
             6: dict(rddata=0x7777),
             7: dict(rddata=0x8888),
         }
         data_clk = {
-            0: dict(rddata=0x4444333322221111),
+            0: dict(rddata=0x4444333322221111, rddata_valid=1),
             1: dict(rddata=0x8888777766665555),
         }
         for read_latency, sys_latency, read_delay in [(1, 0, 0), (2, 0, 1), (3, 0, 2), (4, 0, 3), (5, 1, 0)]:

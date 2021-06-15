@@ -477,9 +477,12 @@ class DFIRateConverter(Module):
                 )
                 self.submodules += des
 
-                out_width = len(Cat(sigs_m))
-                sig_m_window = sig_m[read_delay*out_width:(read_delay + 1)*out_width]
-                self.comb += Cat(sigs_m).eq(sig_m_window)
+                if name == "rddata_valid":
+                    self.comb += Cat(sigs_m).eq(Replicate(sig_m[read_delay], ratio))
+                else:
+                    out_width = len(Cat(sigs_m))
+                    sig_m_window = sig_m[read_delay*out_width:(read_delay + 1)*out_width]
+                    self.comb += Cat(sigs_m).eq(sig_m_window)
 
     @staticmethod
     def wrap(phy, *, clkdiv, clk, ratio, cd_mapping=None, **kwargs):
