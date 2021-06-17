@@ -527,6 +527,7 @@ class HalfRateA7DDRPHY(Module):
             clkdiv="sys", clk="sys2x", ratio=ratio,
             write_delay=phy.settings.write_latency % ratio,
             read_delay=phy.settings.read_latency % ratio,
+            serdes_reset_cnt=0,
         )
 
         self.dfi = self.dfi_converter.dfi
