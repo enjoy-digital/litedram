@@ -74,7 +74,7 @@ class PadsHistory(defaultdict):
     def __init__(self):
         super().__init__(str)
 
-    def format(self, hl_cycle=None, hl_signal=None, underline_cycle=False, key_strw=None):
+    def format(self, hl_cycle=None, hl_signal=None, underline_cycle=False, key_strw=None, chunk_size=8):
         if key_strw is None:
             key_strw = max(len(k) for k in self)
         lines = []
@@ -83,12 +83,12 @@ class PadsHistory(defaultdict):
             if hl_cycle is not None and hl_signal is not None:
                 vals = [highlight(val, hl=hl_signal == k) if i == hl_cycle else val
                         for i, val in enumerate(vals)]
-            hist = ' '.join(''.join(chunk) for chunk in chunks(vals, 8))
+            hist = ' '.join(''.join(chunk) for chunk in chunks(vals, chunk_size))
             line = '{:{n}} {}'.format(k + ':', hist, n=key_strw+1)
             lines.append(line)
         if underline_cycle:
             assert hl_cycle is not None
-            n = hl_cycle + hl_cycle//8
+            n = hl_cycle + hl_cycle//chunk_size
             line = ' ' * (key_strw+1) + ' ' + ' ' * n + '^'
             lines.append(line)
         if hl_signal is not None and hl_cycle is None:
@@ -157,14 +157,14 @@ class PadChecker:
         return '\n'.join(lines)
 
     @staticmethod
-    def assert_ok(test_case, clock_checkers):
+    def assert_ok(test_case, clock_checkers, **kwargs):
         # clock_checkers: {clock: PadChecker(...), ...}
         errors = list(filter(None, [c.find_error() for c in clock_checkers.values()]))
         if errors:
             all_histories = [c.history for c in clock_checkers.values()]
             all_histories += [c.ref_history for c in clock_checkers.values()]
             key_strw = PadsHistory.width_for(all_histories)
-            summaries = ['{}\n{}'.format(highlight(clock, hl=False), checker.summary(key_strw=key_strw))
+            summaries = ['{}\n{}'.format(highlight(clock, hl=False), checker.summary(key_strw=key_strw, **kwargs))
                          for clock, checker in clock_checkers.items()]
             first_error = min(errors, key=lambda e: e[0])  # first error
             i, sig, val, ref = first_error
