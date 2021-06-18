@@ -13,6 +13,7 @@ from collections import defaultdict
 
 from migen import *
 
+from litex.soc.interconnect import stream
 from litex.soc.interconnect.csr import CSRStorage, AutoCSR
 
 from litedram.common import TappedDelayLine, Settings
@@ -158,16 +159,16 @@ class SimulationPads(Module):
             if pad.io:
                 o, i, oe = (f"{pad.name}_{suffix}" for suffix in ["o", "i", "oe"])
                 setattr(self, pad.name, Signal(pad.width))
-                setattr(self, o, Signal(pad.width))
-                setattr(self, i, Signal(pad.width))
-                setattr(self, oe, Signal())
+                setattr(self, o, Signal(pad.width, name=o))
+                setattr(self, i, Signal(pad.width, name=i))
+                setattr(self, oe, Signal(name=oe))
                 self.comb += If(getattr(self, oe),
                     getattr(self, pad.name).eq(getattr(self, o))
                 ).Else(
                     getattr(self, pad.name).eq(getattr(self, i))
                 )
             else:
-                setattr(self, pad.name, Signal(pad.width))
+                setattr(self, pad.name, Signal(pad.width, name=pad.name))
 
 
 class CommandsPipeline(Module):
@@ -411,3 +412,34 @@ class SimLogger(Module, AutoCSR):
                 fmt = f"[%16d ps] {fmt}"
                 args = (self.time_ps, *args)
             self.sync += If((level >= self.level) & cond, Display(fmt, *args))
+
+
+class HoldValid(Module):
+    """Hold input data until ready
+
+    Acts more or less like PipeValid with 0 latency. Data on source becomes valid in the same
+    cycle on which it is valid on sink. In the next cycle the data is latched to a buffer and
+    the data from buffer is presented on source. After source.ready, it resets back to sink data.
+    """
+    def __init__(self, layout):
+        self.sink = stream.Endpoint(layout)
+        self.buf = stream.Endpoint(layout)
+        self.source = stream.Endpoint(layout)
+
+        self.sync += [
+            If(self.buf.ready,
+                self.buf.valid.eq(0),
+            ).Elif(self.sink.valid,
+                self.buf.valid.eq(1),
+                self.buf.payload.eq(self.sink.payload),
+                self.buf.param.eq(self.sink.param),
+            ),
+        ]
+
+        self.comb += [
+            If(self.buf.valid,
+                self.buf.connect(self.source),
+            ).Else(
+                self.sink.connect(self.source),
+            ),
+        ]
