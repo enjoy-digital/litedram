@@ -499,7 +499,7 @@ class A7DDRPHY(S7DDRPHY):
         S7DDRPHY.__init__(self, pads, with_odelay=False, **kwargs)
 
 
-from litedram.phy.utils import DFIRateConverter, Serializer, Deserializer
+from litedram.phy.dfi import DFIRateConverter
 
 class HalfRateA7DDRPHY(Module):
     def get_csrs(self):
@@ -533,6 +533,7 @@ class HalfRateA7DDRPHY(Module):
         self.dfi = self.dfi_converter.dfi
         self.phytype = "A7DDRPHY"
 
+        converter_latency = self.dfi_converter.ser_latency + self.dfi_converter.des_latency
         self.settings = PhySettings(
             phytype       = phy.settings.phytype,
             memtype       = phy.settings.memtype,
@@ -544,7 +545,7 @@ class HalfRateA7DDRPHY(Module):
             wrphase       = phy.settings.wrphase,
             cl            = phy.settings.cl,
             cwl           = phy.settings.cwl,
-            read_latency  = phy.settings.read_latency//ratio + Serializer.LATENCY + Deserializer.LATENCY,
+            read_latency  = phy.settings.read_latency//ratio + converter_latency,
             write_latency = phy.settings.write_latency//ratio,
             cmd_latency   = phy.settings.cmd_latency,
             cmd_delay     = phy.settings.cmd_delay,
