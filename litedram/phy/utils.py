@@ -419,8 +419,6 @@ class DFIRateConverter(Module):
                 )
                 self.submodules += ser
 
-        # TODO: it should be possible to get rid of Serializer/Deserializer for read/write
-
         # wrdata
         for name, width, dir in phase_description(**phase_params):
             if name not in wr_delayed:
@@ -483,56 +481,6 @@ class DFIRateConverter(Module):
                     out_width = len(Cat(sigs_m))
                     sig_m_window = sig_m[read_delay*out_width:(read_delay + 1)*out_width]
                     self.comb += Cat(sigs_m).eq(sig_m_window)
-
-    @staticmethod
-    def wrap(phy, *, clkdiv, clk, ratio, cd_mapping=None, **kwargs):
-        # we need to recalculate write/read latencies such that the controller sends/receives
-        # data with correct latencies at `clkdiv`
-        write_delay = phy.settings.write_latency % ratio
-        read_delay = phy.settings.read_latency % ratio
-
-        print(f"{write_delay=}")
-        print(f"{read_delay=}")
-
-        converter = DFIRateConverter(phy.dfi, clkdiv=clkdiv, clk=clk, ratio=ratio,
-            write_delay=write_delay, read_delay=read_delay, **kwargs)
-
-        if cd_mapping is None:
-            cd_mapping = {"sys": clkdiv}
-        else:
-            cd_mapping["sys"] = clkdiv
-        phy.submodules.dfi_converter = ClockDomainsRenamer(cd_mapping)(converter)
-
-        # replace PHY attributes
-        phy._dfi = phy.dfi
-        phy.dfi = converter.dfi
-        phy.nphases = len(converter.dfi.phases)
-
-        phy._settings = phy.settings
-        phy.settings = PhySettings(
-            phytype       = phy._settings.phytype,
-            memtype       = phy._settings.memtype,
-            databits      = phy._settings.databits,
-            dfi_databits  = len(phy.dfi.p0.wrdata),
-            nranks        = phy._settings.nranks,
-            nphases       = phy.nphases,
-            rdphase       = phy._settings.rdphase,
-            wrphase       = phy._settings.wrphase,
-            cl            = phy._settings.cl,
-            cwl           = phy._settings.cwl,
-            read_latency  = phy._settings.read_latency//ratio + Serializer.LATENCY + Deserializer.LATENCY,
-            write_latency = phy._settings.write_latency//ratio,
-            cmd_latency   = phy._settings.cmd_latency,
-            cmd_delay     = phy._settings.cmd_delay,
-        )
-
-        # def get_phase(phase_name):
-        #     phase = getattr(clk_settings, phase_name)
-        #     storage = getattr(phase, "storage", None)
-        #     return storage.reset if storage is not None else phase
-        # rdphase = get_phase("rdphase")
-        # wrphase = get_phase("wrphase")
-
 
 
 class SimLogger(Module, AutoCSR):
