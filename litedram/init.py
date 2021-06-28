@@ -609,6 +609,20 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
 
     return init_sequence, mr
 
+# LPDDR5 -------------------------------------------------------------------------------------------
+
+def get_lpddr5_phy_init_sequence(phy_settings, timing_settings):
+    cl = phy_settings.cl
+    cwl = phy_settings.cwl
+    bl = 16
+
+    mr = {}
+
+    init_sequence = [
+    ]
+
+    return init_sequence, mr
+
 # Init Sequence ------------------------------------------------------------------------------------
 
 def get_sdram_phy_init_sequence(phy_settings, timing_settings):
@@ -620,6 +634,7 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
         "DDR3":   get_ddr3_phy_init_sequence,
         "DDR4":   get_ddr4_phy_init_sequence,
         "LPDDR4": get_lpddr4_phy_init_sequence,
+        "LPDDR5": get_lpddr5_phy_init_sequence,
     }[phy_settings.memtype](phy_settings, timing_settings)
 
 # C Header -----------------------------------------------------------------------------------------

@@ -6,6 +6,8 @@
 
 from migen import *
 
+from litex.soc.interconnect.csr import CSR
+
 from litedram.phy.utils import delayed, Serializer, Deserializer, Latency
 from litedram.phy.sim_utils import SimPad, SimulationPads, SimSerDesMixin
 from litedram.phy.lpddr5.basephy import LPDDR5PHY
@@ -47,35 +49,47 @@ class LPDDR5SimPHY(SimSerDesMixin, LPDDR5PHY):
             phytype      = "LPDDR5SimPHY",
             **kwargs)
 
+        # fake delays (make no nsense in simulation, but sdram.c expects them)
+        self.settings.read_leveling = True
+        self.settings.delays = 1
+        self._rdly_dq_rst = CSR()
+        self._rdly_dq_inc = CSR()
+
         delay = lambda sig, cycles: delayed(self, sig, cycles=cycles)
-        ddr_ck     = dict(clkdiv="sys", clk="sys2x")
-        ddr_ck_90  = dict(clkdiv="sys", clk="sys2x_90")
-        ddr_wck    = dict(clkdiv="sys", clk={2: "sys4x", 4: "sys8x"}[wck_ck_ratio])
-        ddr_wck_90 = dict(clkdiv="sys", clk={2: "sys4x_90", 4: "sys8x_90"}[wck_ck_ratio])
+        ddr_ck      = dict(clkdiv="sys", clk="sys2x")
+        ddr_ck_180  = dict(clkdiv="sys", clk="sys2x_180")
+        ddr_wck     = dict(clkdiv="sys", clk={2: "sys4x", 4: "sys8x"}[wck_ck_ratio])
+        ddr_wck_180 = dict(clkdiv="sys", clk={2: "sys4x_180", 4: "sys8x_180"}[wck_ck_ratio])
+
+        def cdc(sig, cd):
+            latched = Signal.like(sig)
+            sd_wck = getattr(self.sync, cd["clk"])
+            sd_wck += latched.eq(delay(sig, cycles=Serializer.LATENCY))
+            return dict(i=latched, register=False)
 
         if aligned_reset_zero:
             ddr_ck["reset_cnt"] = 0
             ddr_wck["reset_cnt"] = 0
 
         # CK signals
-        # CK is shifted by 90 deg just by inversion
+        # CK is shifted by just inverting it
         # CS will then be properly aligned with respect to CK
-        # CA needs 90 phase shift
+        # CA needs phase shifting
         self.comb += [
             self.pads.reset_n.eq(delay(self.out.reset_n, cycles=Serializer.LATENCY)),
             self.pads.cs.eq(delay(self.out.cs, cycles=Serializer.LATENCY)), # SDR
         ]
         self.ser(i=~self.out.ck, o=self.pads.ck, name='ck', **ddr_ck)
         for i in range(7):
-            self.ser(i=self.out.ca[i], o=self.pads.ca[i], name=f'ca{i}', **ddr_ck_90)
+            self.ser(**cdc(self.out.ca[i], ddr_ck_180), o=self.pads.ca[i], name=f'ca{i}', **ddr_ck_180)
 
         # WCK
         for i in range(self.databits//8):
-            self.ser(i=self.out.wck[i], o=self.pads.wck[i], name=f'wck{i}', **ddr_wck_90)
+            self.ser(i=self.out.wck[i], o=self.pads.wck[i], name=f'wck{i}', **ddr_wck_180)
             self.ser(i=self.out.dmi_o[i], o=self.pads.dmi_o[i], name=f'dmi_o{i}', **ddr_wck)
             self.des(o=self.out.dmi_i[i], i=self.pads.dmi[i],   name=f'dmi_i{i}', **ddr_wck)
-            self.ser(i=self.out.rdqs_o[i], o=self.pads.rdqs_o[i], name=f'dqs_o{i}', **ddr_wck_90)
-            self.des(o=self.out.rdqs_i[i], i=self.pads.rdqs[i],   name=f'dqs_i{i}', **ddr_wck_90)
+            self.ser(i=self.out.rdqs_o[i], o=self.pads.rdqs_o[i], name=f'rdqs_o{i}', **ddr_wck_180)
+            self.des(o=self.out.rdqs_i[i], i=self.pads.rdqs[i],   name=f'rdqs_i{i}', **ddr_wck_180)
         for i in range(self.databits):
             self.ser(i=self.out.dq_o[i], o=self.pads.dq_o[i], name=f'dq_o{i}', **ddr_wck)
             self.des(o=self.out.dq_i[i], i=self.pads.dq[i],   name=f'dq_i{i}', **ddr_wck)

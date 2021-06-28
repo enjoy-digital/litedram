@@ -160,7 +160,7 @@ class LPDDR5Tests(unittest.TestCase):
             pad_checkers = {
                 "sys_90": {
                     'cs':  '0' ' 1 1  0  0 1 ', },
-                "sys2x_180": {  # it is serialized on sys2x_90 so check at _180
+                "sys2x_270": {  # it is serialized on sys2x_180 so check at _270
                     'ca0': '00' '0010 00 0000',
                     'ca1': '00' '0000 00 0000',
                     'ca2': '00' '1000 00 0000',
@@ -190,7 +190,7 @@ class LPDDR5Tests(unittest.TestCase):
             pad_checkers = {
                 "sys_90": {
                     'cs':  '0' ' 1 1  0 1  1 0 ', },
-                "sys2x_180": {
+                "sys2x_270": {
                     'ca0': '00' '0010 0000 1000',
                     'ca1': '00' '0000 0000 0000',
                     'ca2': '00' '1000 0010 0000',
@@ -220,7 +220,7 @@ class LPDDR5Tests(unittest.TestCase):
             pad_checkers = {
                 "sys_90": {
                     'cs':  '0' ' 1 1  0 1  1 0 ', },
-                "sys2x_180": {
+                "sys2x_270": {
                     'ca0': '00' '0000 0000 0000',
                     'ca1': '00' '0000 0000 0000',
                     'ca2': '00' '1000 0010 0000',
@@ -254,7 +254,7 @@ class LPDDR5Tests(unittest.TestCase):
                     pad_checkers = {
                         "sys_90": {
                             'cs':  '0' ' 1 1  0 1  1 0 ', },
-                        "sys2x_180": {
+                        "sys2x_270": {
                             'ca0': '00' '0000 0000 0000',
                             'ca1': '00' '0010 0000 1000',
                             'ca2': '00'f'{w1} 0010 {w2}',
@@ -301,7 +301,7 @@ class LPDDR5Tests(unittest.TestCase):
                     pad_checkers = {
                         "sys_90": {  #     RD   WR   ACT  REF  PRE  MRW  MRR  ZQCS ZQCL
                             'cs':  '0 0 ' '1 1  1 1  1 1  0 1  0 1  1 1  1 1  0 1  0 1 ', },
-                        "sys2x_180": {
+                        "sys2x_270": {
                             'ca0': '0000' '0011 0000 1011 0001 0001 0100 0001 0001 0000',
                             'ca1': '0000' '0001 0011 1110 0000 0001 0101 0000 0000 0001',
                             'ca2': '0000'f'1001 {mw} 1000 0000 0001 0000 1001 0001 0001',
@@ -510,7 +510,7 @@ class LPDDR5Tests(unittest.TestCase):
                             "dq0": "0000"*wl + "0000 0000" + "10101010 10101010" + "0000",
                             "dq1": "0000"*wl + "0000 0000" + "11111111 11111111" + "0000",
                         },
-                        "sys4x_180": {
+                        "sys4x_270": {
                             # tWCKENL_WR starts counting from first command (CAS) so we add command latency,
                             # then preamble, then toggle for the whole burst, then postamble for tWCKPST=2.5tCK
                             # (but for now we assume that WCK is never disabled)
@@ -553,7 +553,7 @@ class LPDDR5Tests(unittest.TestCase):
                             "dq0": "00000000"*wl + "00000000 00000000" + "10101010 10101010" + "00000000",
                             "dq1": "00000000"*wl + "00000000 00000000" + "11111111 11111111" + "00000000",
                         },
-                        "sys8x_180": {
+                        "sys8x_270": {
                             # tWCKENL_WR starts counting from first command (CAS) so we add command latency,
                             # then preamble, then toggle for the whole burst, then postamble for tWCKPST=2.5tCK
                             # (but for now we assume that WCK is never disabled)
@@ -588,7 +588,7 @@ class LPDDR5Tests(unittest.TestCase):
                         "sys_90": {
                             "cs": "01100000",
                         },
-                        "sys4x_180": {
+                        "sys4x_270": {
                             "wck0": "0000" + wck_preamble + "10 10" * (16//4) + "10 10 1" + "0 10" + "10 10"*2,
                         },
                     },
@@ -621,7 +621,7 @@ class LPDDR5Tests(unittest.TestCase):
                         "sys_90": {
                             "cs": "01100000",
                         },
-                        "sys8x_180": {
+                        "sys8x_270": {
                             "wck0": "00000000" + wck_preamble + "10101010" * (16//8) + "10101" + "0 10" + "10 10"*2,
                         },
                     },
