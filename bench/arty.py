@@ -38,6 +38,7 @@ class _CRG(Module, AutoCSR):
 
         # # #
 
+        # Main PLL.
         self.submodules.main_pll = main_pll = S7PLL(speedgrade=-1)
         self.comb += main_pll.reset.eq(~platform.request("cpu_reset"))
         main_pll.register_clkin(platform.request("clk100"), 100e6)
@@ -50,6 +51,8 @@ class _CRG(Module, AutoCSR):
 
         self.comb += platform.request("eth_ref_clk").eq(self.cd_eth.clk)
 
+
+        # DRAM PLL.
         self.submodules.pll = pll = S7PLL(speedgrade=-1)
         self.comb += pll.reset.eq(~main_pll.locked | self.rst)
         pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
@@ -57,10 +60,9 @@ class _CRG(Module, AutoCSR):
         pll.create_clkout(self.cd_sys4x,        4*sys_clk_freq)
         pll.create_clkout(self.cd_sys4x_dqs,    4*sys_clk_freq, phase=90)
 
-        sys_clk_counter = Signal(32)
-        self.sync += sys_clk_counter.eq(sys_clk_counter + 1)
+        # Sys Clk Counter.
         self.sys_clk_counter = CSRStatus(32)
-        self.comb += self.sys_clk_counter.status.eq(sys_clk_counter)
+        self.sync += self.sys_clk_counter.status.eq(self.sys_clk_counter.status + 1)
 
 # Bench SoC ----------------------------------------------------------------------------------------
 

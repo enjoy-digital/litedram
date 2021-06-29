@@ -37,6 +37,7 @@ class _CRG(Module, AutoCSR):
 
         # # #
 
+        # Main PLL.
         self.submodules.main_pll = main_pll = USPMMCM(speedgrade=-2)
         main_pll.register_clkin(platform.request("clk300", channel), 300e6)
         main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
@@ -44,11 +45,11 @@ class _CRG(Module, AutoCSR):
         main_pll.create_clkout(self.cd_uart,   100e6)
         main_pll.expose_drp()
 
+        # DRAM PLL.
         self.submodules.pll = pll = USPMMCM(speedgrade=-2)
         self.comb += pll.reset.eq(~main_pll.locked | self.rst)
         pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
         pll.create_clkout(self.cd_pll4x,  sys_clk_freq*4, buf=None, with_reset=False)
-
         self.specials += [
             Instance("BUFGCE_DIV",
                 p_BUFGCE_DIVIDE = 4,
@@ -62,13 +63,11 @@ class _CRG(Module, AutoCSR):
                 o_O  = self.cd_sys4x.clk,
             ),
         ]
-
         self.submodules.idelayctrl = USIDELAYCTRL(cd_ref=self.cd_idelay, cd_sys=self.cd_sys)
 
-        sys_clk_counter = Signal(32)
-        self.sync += sys_clk_counter.eq(sys_clk_counter + 1)
+        # Sys Clk Counter.
         self.sys_clk_counter = CSRStatus(32)
-        self.comb += self.sys_clk_counter.status.eq(sys_clk_counter)
+        self.sync += self.sys_clk_counter.status.eq(self.sys_clk_counter.status + 1)
 
 # Bench SoC ----------------------------------------------------------------------------------------
 
