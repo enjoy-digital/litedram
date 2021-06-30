@@ -24,7 +24,7 @@ from litedram.phy.model import DFITimingsChecker, _speedgrade_timings, _technolo
 
 from litedram.phy.sim_utils import Clocks, CRG, Platform
 from litedram.phy.lpddr5.simphy import LPDDR5SimPHY
-# from litedram.phy.lpddr5.sim import LPDDR5Sim
+from litedram.phy.lpddr5.sim import LPDDR5Sim
 
 # Platform -----------------------------------------------------------------------------------------
 
@@ -137,14 +137,11 @@ class SimSoC(SoCCore):
         self.add_constant("MEMTEST_ADDR_SIZE", 8*1024)
 
         # LPDDR5 Sim -------------------------------------------------------------------------------
-        # self.submodules.lpddr5sim = LPDDR5Sim(
-        #     pads          = self.ddrphy.pads,
-        #     cl            = self.sdram.controller.settings.phy.cl,
-        #     cwl           = self.sdram.controller.settings.phy.cwl,
-        #     sys_clk_freq  = sys_clk_freq,
-        #     log_level     = log_level,
-        #     disable_delay = disable_delay,
-        # )
+        self.submodules.lpddr5sim = LPDDR5Sim(
+            pads          = self.ddrphy.pads,
+            ck_freq       = sys_clk_freq,
+            log_level     = log_level,
+        )
 
         self.add_constant("CONFIG_SIM_DISABLE_BIOS_PROMPT")
         if disable_delay:
