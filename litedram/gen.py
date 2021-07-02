@@ -746,9 +746,9 @@ def main():
     if args.sim:
         platform = SimPlatform("", io=[])
     elif core_config["sdram_phy"] in [litedram_phys.GENSDRPHY]:
-        platform = LatticePlatform("LFE5U-45F-6BG381C", io=[], toolchain="trellis") # FIXME: Allow other Vendors/Devices.
+        platform = LatticePlatform(core_config["device"], io=[], toolchain="trellis") # FIXME: Allow other Vendors.
     elif core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
-        platform = LatticePlatform("LFE5UM5G-45F-8BG381C", io=[], toolchain="trellis") # FIXME: Allow other Vendors/Devices.
+        platform = LatticePlatform(core_config["device"], io=[], toolchain="trellis")
     elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
         platform = XilinxPlatform("", io=[], toolchain="vivado")
     elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:

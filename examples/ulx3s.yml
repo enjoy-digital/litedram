@@ -6,8 +6,9 @@
 
 {
     # General ------------------------------------------------------------------
-    "cpu":     "serv", # Type of CPU used for init/calib.
-    "memtype": "SDR",  # DRAM type.
+    "device":  "LFE5U-45F-6BG381C", # FPGA device.
+    "cpu":     "serv",              # CPU type (ex vexriscv, serv, None)
+    "memtype": "SDR",               # DRAM type
 
     # PHY ----------------------------------------------------------------------
     "sdram_module":    "MT48LC16M16", # SDRAM modules of the board or SO-DIMM

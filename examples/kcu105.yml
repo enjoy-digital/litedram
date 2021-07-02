@@ -6,8 +6,8 @@
 
 {
     # General ------------------------------------------------------------------
-    "cpu":        "vexriscv", # Type of CPU used for init/calib (vexriscv, lm32)
     "speedgrade": -2,         # FPGA speedgrade
+    "cpu":        "vexriscv", # CPU type (ex vexriscv, serv, None)
     "memtype":    "DDR4",     # DRAM type
 
     # PHY ----------------------------------------------------------------------
