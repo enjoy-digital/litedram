@@ -3,7 +3,7 @@
 #
 # This file is part of LiteDRAM.
 #
-# Copyright (c) 2018-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2018-2021 Florent Kermarrec <florent@enjoy-digital.fr>
 # Copyright (c) 2020 Stefan Schrijvers <ximin@ximinity.net>
 # SPDX-License-Identifier: BSD-2-Clause
 
@@ -21,6 +21,7 @@ The standalone core is generated from a YAML configuration file that allows the 
 easily a custom configuration of the core.
 
 Current version of the generator is limited to:
+- SDR on all FPGAs.
 - DDR3 on Lattice ECP5 FPGAs.
 - DDR2/DDR3 on Xilinx 7-Series FPGAs.
 - DDR4 on Xilinx Ultascale(+) FPGAs.
@@ -91,8 +92,26 @@ def get_common_ios():
     ]
 
 def get_dram_ios(core_config):
+    assert core_config["memtype"] in ["SDR", "DDR2", "DDR3", "DDR4"]
+
+    # SDR.
+    if core_config["memtype"] in ["SDR"]:
+        return [
+            ("sdram", 0,
+                Subsignal("a",       Pins(log2_int(core_config["sdram_module"].nrows))),
+                Subsignal("ba",      Pins(log2_int(core_config["sdram_module"].nbanks))),
+                Subsignal("ras_n",   Pins(1)),
+                Subsignal("cas_n",   Pins(1)),
+                Subsignal("we_n",    Pins(1)),
+                Subsignal("cs_n",    Pins(1)),
+                Subsignal("dm",      Pins(core_config["sdram_module_nb"])),
+                Subsignal("dq",      Pins(8*core_config["sdram_module_nb"])),
+                Subsignal("cke",     Pins(1))
+            ),
+        ]
+
+    # DDR2 / DDR3.
     if core_config["memtype"] in ["DDR2", "DDR3"]:
-        a_width = log2_int(core_config["sdram_module"].nrows)
         return [
             ("ddram", 0,
                 Subsignal("a",       Pins(log2_int(core_config["sdram_module"].nrows))),
@@ -112,7 +131,8 @@ def get_dram_ios(core_config):
                 Subsignal("reset_n", Pins(1))
             ),
         ]
-    elif core_config["memtype"] == "DDR4":
+    # DDR4.
+    if core_config["memtype"] == "DDR4":
         # On DDR4, A14. A15 and A16 are shared with we_n/cas_n/ras_n
         a_width = min(log2_int(core_config["sdram_module"].nrows), 14)
         return [
@@ -240,6 +260,18 @@ class Platform(XilinxPlatform):
 
 # CRG ----------------------------------------------------------------------------------------------
 
+class LiteDRAMGENSDRPHYCRG(Module):
+    def __init__(self, platform, core_config):
+        assert core_config["memtype"] in ["SDR"]
+        self.clock_domains.cd_sys  = ClockDomain()
+
+        # # #
+
+        # Clk / Rst.
+        self.comb += self.cd_sys.clk.eq(platform.request("clk"))
+        self.specials += AsyncResetSynchronizer(self.cd_sys, platform.request("rst"))
+
+
 class LiteDRAMECP5DDRPHYCRG(Module):
     def __init__(self, platform, core_config):
         assert core_config["memtype"] in ["DDR3"]
@@ -254,18 +286,18 @@ class LiteDRAMECP5DDRPHYCRG(Module):
         self.stop  = Signal()
         self.reset = Signal()
 
-        # clk / rst
+        # Clk / Rst.
         clk = platform.request("clk")
         rst = platform.request("rst")
 
-        # power on reset
+        # Power On Reset.
         por_count = Signal(16, reset=2**16-1)
         por_done  = Signal()
         self.comb += self.cd_por.clk.eq(clk)
         self.comb += por_done.eq(por_count == 0)
         self.sync.por += If(~por_done, por_count.eq(por_count - 1))
 
-        # pll
+        # PLL.
         self.submodules.pll = pll = ECP5PLL()
         self.comb += pll.reset.eq(~por_done | rst)
         pll.register_clkin(clk, core_config["input_clk_freq"])
@@ -303,10 +335,11 @@ class LiteDRAMS7DDRPHYCRG(Module):
 
         # # #
 
+        # Clk / Rst.
         clk = platform.request("clk")
         rst = platform.request("rst")
 
-        # Sys PLL
+        # PLL.
         self.submodules.sys_pll = sys_pll = S7PLL(speedgrade=core_config["speedgrade"])
         self.comb += sys_pll.reset.eq(rst)
         sys_pll.register_clkin(clk, core_config["input_clk_freq"])
@@ -322,7 +355,7 @@ class LiteDRAMS7DDRPHYCRG(Module):
             raise NotImplementedError
         self.comb += platform.request("pll_locked").eq(sys_pll.locked)
 
-        # IODelay Ctrl
+        # IODelay Ctrl.
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_iodelay)
 
 class LiteDRAMUSDDRPHYCRG(Module):
@@ -336,17 +369,18 @@ class LiteDRAMUSDDRPHYCRG(Module):
 
         # # #
 
+        # Clk / Rst.
         clk = platform.request("clk")
         rst = platform.request("rst")
 
-        # Power On Reset
+        # Power On Reset.
         por_count = Signal(32, reset=int(core_config["input_clk_freq"]*100/1e3)) # 100ms
         por_done  = Signal()
         self.comb += self.cd_por.clk.eq(clk)
         self.comb += por_done.eq(por_count == 0)
         self.sync.por += If(~por_done, por_count.eq(por_count - 1))
 
-        # Sys PLL
+        # PLL.
         self.submodules.sys_pll = sys_pll = USMMCM(speedgrade=core_config["speedgrade"])
         self.comb += sys_pll.reset.eq(rst)
         sys_pll.register_clkin(clk, core_config["input_clk_freq"])
@@ -361,7 +395,7 @@ class LiteDRAMUSDDRPHYCRG(Module):
                 i_CE=por_done, i_I=self.cd_sys4x_pll.clk, o_O=self.cd_sys4x.clk),
         ]
 
-        # IODelay Ctrl
+        # IODelay Ctrl.
         self.submodules.idelayctrl = USIDELAYCTRL(self.cd_iodelay, cd_sys=self.cd_sys)
 
 class LiteDRAMUSPDDRPHYCRG(Module):
@@ -375,17 +409,18 @@ class LiteDRAMUSPDDRPHYCRG(Module):
 
         # # #
 
+        # Clk / Rst.
         clk = platform.request("clk")
         rst = platform.request("rst")
 
-        # Power On Reset
+        # Power On Reset.
         por_count = Signal(32, reset=int(core_config["input_clk_freq"]*100/1e3)) # 100ms
         por_done  = Signal()
         self.comb += self.cd_por.clk.eq(clk)
         self.comb += por_done.eq(por_count == 0)
         self.sync.por += If(~por_done, por_count.eq(por_count - 1))
 
-        # Sys PLL
+        # PLL.
         self.submodules.sys_pll = sys_pll = USPMMCM(speedgrade=core_config["speedgrade"])
         self.comb += sys_pll.reset.eq(rst)
         sys_pll.register_clkin(clk, core_config["input_clk_freq"])
@@ -400,7 +435,7 @@ class LiteDRAMUSPDDRPHYCRG(Module):
                 i_CE=por_done, i_I=self.cd_sys4x_pll.clk, o_O=self.cd_sys4x.clk),
         ]
 
-        # IODelay Ctrl
+        # IODelay Ctrl.
         self.submodules.idelayctrl = USPIDELAYCTRL(self.cd_iodelay, cd_sys=self.cd_sys)
 
 # LiteDRAMCoreControl ------------------------------------------------------------------------------
@@ -437,24 +472,28 @@ class LiteDRAMCore(SoCCore):
 
         # CRG --------------------------------------------------------------------------------------
         if isinstance(platform, SimPlatform):
-            self.submodules.crg = CRG(platform.request("clk"))
+            crg = CRG(platform.request("clk"))
+        elif core_config["sdram_phy"] in [litedram_phys.GENSDRPHY]:
+            crg = LiteDRAMGENSDRPHYCRG(platform, core_config)
         elif core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
-            self.submodules.crg = crg = LiteDRAMECP5DDRPHYCRG(platform, core_config)
+            crg = LiteDRAMECP5DDRPHYCRG(platform, core_config)
         elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
-            self.submodules.crg = LiteDRAMS7DDRPHYCRG(platform, core_config)
+            crg = LiteDRAMS7DDRPHYCRG(platform, core_config)
         elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY]:
-            self.submodules.crg = LiteDRAMUSDDRPHYCRG(platform, core_config)
+            crg = LiteDRAMUSDDRPHYCRG(platform, core_config)
         elif core_config["sdram_phy"] in [litedram_phys.USPDDRPHY]:
-            self.submodules.crg = LiteDRAMUSPDDRPHYCRG(platform, core_config)
+            crg = LiteDRAMUSPDDRPHYCRG(platform, core_config)
+        self.submodules.crg = crg
 
         # DRAM -------------------------------------------------------------------------------------
         platform.add_extension(get_dram_ios(core_config))
         sdram_module = core_config["sdram_module"](sys_clk_freq, rate={
+            "SDR" : "1:1",
             "DDR2": "1:2",
             "DDR3": "1:4",
             "DDR4": "1:4"}[core_config["memtype"]])
 
-        # Sim
+        # Sim.
         if isinstance(platform, SimPlatform):
             from litex.tools.litex_sim import get_sdram_phy_settings
             sdram_clk_freq   = int(100e6) # FIXME: use 100MHz timings
@@ -467,21 +506,26 @@ class LiteDRAMCore(SoCCore):
                 settings  = phy_settings,
                 clk_freq  = sdram_clk_freq)
 
-        # ECP5DDRPHY
+        # GENSDRPHY.
+        elif core_config["sdram_phy"] in [litedram_phys.GENSDRPHY]:
+            assert core_config["memtype"] in ["SDR"]
+            self.submodules.sdrphy = sdram_phy = core_config["sdram_phy"](
+                pads         = platform.request("sdram"),
+                sys_clk_freq = sys_clk_freq)
+
+        # ECP5DDRPHY.
         elif core_config["sdram_phy"] in  [litedram_phys.ECP5DDRPHY]:
             assert core_config["memtype"] in ["DDR3"]
-            self.submodules.ddrphy = core_config["sdram_phy"](
+            self.submodules.ddrphy = sdram_phy = core_config["sdram_phy"](
                 pads         = platform.request("ddram"),
                 sys_clk_freq = sys_clk_freq)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
             self.comb += crg.reset.eq(self.ddrphy.init.reset)
-            self.add_constant("ECP5DDRPHY")
-            sdram_module = core_config["sdram_module"](sys_clk_freq, "1:2")
 
-        # S7DDRPHY
+        # S7DDRPHY.
         elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             assert core_config["memtype"] in ["DDR2", "DDR3"]
-            self.submodules.ddrphy = core_config["sdram_phy"](
+            self.submodules.ddrphy = sdram_phy = core_config["sdram_phy"](
                 pads             = platform.request("ddram"),
                 memtype          = core_config["memtype"],
                 nphases          = {"DDR2": 2, "DDR3": 4}[core_config["memtype"]],
@@ -494,9 +538,9 @@ class LiteDRAMCore(SoCCore):
                     rtt_wr  = core_config["rtt_wr"],
                     ron     = core_config["ron"])
 
-        # USDDRPHY
+        # USDDRPHY.
         elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:
-            self.submodules.ddrphy = core_config["sdram_phy"](
+            self.submodules.ddrphy = sdram_phy = core_config["sdram_phy"](
                 pads             = platform.request("ddram"),
                 memtype          = core_config["memtype"],
                 sys_clk_freq     = sys_clk_freq,
@@ -508,12 +552,13 @@ class LiteDRAMCore(SoCCore):
                 ron     = core_config["ron"])
         else:
             raise NotImplementedError
-        self.add_csr("ddrphy")
 
-        controller_settings = controller_settings = ControllerSettings(
-            cmd_buffer_depth = core_config["cmd_buffer_depth"])
+        # Controller Settings.
+        controller_settings = controller_settings = ControllerSettings(cmd_buffer_depth=core_config["cmd_buffer_depth"])
+
+        # Add LiteDRAM Core to SoC.
         self.add_sdram("sdram",
-            phy                     = self.ddrphy,
+            phy                     = sdram_phy,
             module                  = sdram_module,
             origin                  = self.mem_map["main_ram"],
             size                    = 0x01000000, # Only expose 16MB to the CPU, enough for Init/Calib.
@@ -524,11 +569,12 @@ class LiteDRAMCore(SoCCore):
         )
 
         # DRAM Control/Status ----------------------------------------------------------------------
+
         # Expose calibration status to user.
         self.submodules.ddrctrl = LiteDRAMCoreControl()
-        self.add_csr("ddrctrl")
         self.comb += platform.request("init_done").eq(self.ddrctrl.init_done.storage)
         self.comb += platform.request("init_error").eq(self.ddrctrl.init_error.storage)
+
         # If no CPU, expose a bus control interface to user.
         if cpu_type is None:
             wb_bus = wishbone.Interface()
@@ -699,8 +745,10 @@ def main():
     # Generate core --------------------------------------------------------------------------------
     if args.sim:
         platform = SimPlatform("", io=[])
+    elif core_config["sdram_phy"] in [litedram_phys.GENSDRPHY]:
+        platform = LatticePlatform("LFE5U-45F-6BG381C", io=[], toolchain="trellis") # FIXME: Allow other Vendors/Devices.
     elif core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
-        platform = LatticePlatform("LFE5UM5G-45F-8BG381C", io=[], toolchain="trellis") # FIXME: allow other devices.
+        platform = LatticePlatform("LFE5UM5G-45F-8BG381C", io=[], toolchain="trellis") # FIXME: Allow other Vendors/Devices.
     elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
         platform = XilinxPlatform("", io=[], toolchain="vivado")
     elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:
