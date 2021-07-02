@@ -140,6 +140,7 @@ class SimSoC(SoCCore):
         self.submodules.lpddr5sim = LPDDR5Sim(
             pads          = self.ddrphy.pads,
             ck_freq       = sys_clk_freq,
+            wck_freq      = wck_ck_ratio*sys_clk_freq,
             log_level     = log_level,
         )
 
@@ -264,6 +265,7 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
         # dram pads
         save.group([s for s in vars(soc.ddrphy.pads).values() if isinstance(s, Signal)],
             group_name = "pads",
+            closed = False,
             mappers = [
                 gtkw.regex_filter(["_[io]$"], negate=True),
                 gtkw.regex_sorter(gtkw.suffixes2re(["reset_n", "ck", "cs", "ca", "dq", "wck", "dmi", "rdqs"])),
@@ -274,6 +276,13 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
                 }),
             ],
         )
+
+        from litedram.phy.lpddr5.sim import gtkw_dbg
+        for name in "cmd_info cmds cmd_buf current_cmd".split():
+            save.add(gtkw_dbg[name], group_name=name, closed=False,
+                # mappers=[gtkw.endpoint_filter(payload=False)],
+                mappers=[gtkw.endpoint_filter()],
+            )
 
 def main():
     parser = argparse.ArgumentParser(description="Generic LiteX SoC Simulation")
