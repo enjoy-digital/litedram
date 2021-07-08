@@ -501,11 +501,20 @@ class SDRAMPHYModel(Module):
 
         return bank_init
 
-    def __init__(self, module, settings, clk_freq=100e6,
+    def __init__(self, module, settings=None, data_width=None, clk_freq=100e6,
         we_granularity         = 8,
         init                   = [],
         address_mapping        = "ROW_BANK_COL",
         verbosity              = SDRAM_VERBOSE_OFF):
+
+        # PHY Settings -----------------------------------------------------------------------------
+        if settings is None:
+            assert data_width is not None
+            settings = get_sdram_phy_settings(
+                memtype    = module.memtype,
+                data_width = data_width,
+                clk_freq   = clk_freq
+            )
 
         # Parameters -------------------------------------------------------------------------------
         burst_length = {
