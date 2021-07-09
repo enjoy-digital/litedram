@@ -14,7 +14,7 @@ from litex.soc.interconnect import stream
 from litex.soc.interconnect.csr import AutoCSR
 #
 from litedram.common import TappedDelayLine
-from litedram.phy.utils import edge
+from litedram.phy.utils import edge, delayed
 from litedram.phy.sim_utils import SimLogger, PulseTiming, log_level_getter
 
 
@@ -501,126 +501,136 @@ class DataSim(Module, AutoCSR):
         # CommandsSim produces the data required for handling a data command via cmd_info endpoint.
         # Using stream.ClockDomainCrossing introduces too much latency, so we do a simplistic CDC
         # and store the information in a FIFO, so that it is possible to pipeline data commands.
-        self.submodules.cmds = stream.SyncFIFO(CMD_INFO_LAYOUT, depth=4)
-        gtkw_dbg["cmds"] = self.cmds
+        self.submodules.cmd_buf = stream.PipeValid(CMD_INFO_LAYOUT)
+        gtkw_dbg["cmd_buf"] = self.cmd_buf
         self.comb += [
-            cmd_info.connect(self.cmds.sink, omit={"ready", "valid"}),
-            # ~ready will signalize that somehow our FIFO is full, which is an internal error
-            cmd_info.ready.eq(cmd_info.valid & self.cmds.sink.ready),
+            cmd_info.connect(self.cmd_buf.sink, omit={"ready", "valid"}),
+            # ~ready will signalize that somehow our buffer is full, which is an internal error
+            cmd_info.ready.eq(cmd_info.valid & self.cmd_buf.sink.ready),
             # to latch a command only once we use an edge here, which we can do as there is no way
             # for 2 valid commands cycle-by-cycle
-            self.cmds.sink.valid.eq(edge(self, cmd_info.valid)),
+            self.cmd_buf.sink.valid.eq(edge(self, cmd_info.valid)),
+        ]
+        cmd = self.cmd_buf.source
+
+        # DRAM Memory storage
+        mems = [Memory(len(pads.dq), depth=nrows * ncols) for _ in range(nbanks)]
+        self.specials += mems
+
+        # Combine SDR data from each burst handler into DDR value
+        dq_i_p = Signal.like(pads.dq_i)
+        dq_i_n = Signal.like(pads.dq_i)
+        self.comb += [
+            If(pads.wck,
+                pads.dq_i.eq(dq_i_n),
+            ).Else(
+                pads.dq_i.eq(dq_i_p),
+            )
         ]
 
-        wr_start = Signal()
-        rd_start = Signal()
-        self.comb += [
-            wr_start.eq(self.cmds.source.valid & self.cmds.source.we & latency_ready),
-            rd_start.eq(self.cmds.source.valid & ~self.cmds.source.we & latency_ready),
-        ]
+        Burst = lambda wck_cd, dq_i_x: BurstHalf(wck_cd=wck_cd, pads=pads, dq_i=dq_i_x, cmd=cmd,
+            mems=mems, nrows=nrows, ncols=ncols, log_level=log_level, logger_kwargs=logger_kwargs)
+        self.submodules.burst_p = ClockDomainsRenamer("wck")(Burst("wck", dq_i_p))
+        self.submodules.burst_n = ClockDomainsRenamer("wck_n")(Burst("wck_n", dq_i_n))
 
         # After the WL signal arives we require the data to arrive some time later and then we start
         # reading it. This would be adjustable on hardware, but in simulation we rather must set this
         # so that it matches the delay that PHY introduces.
-        t_wckdqi = 2 - 1 -1
-
-        wr_start_d = wr_start
-        for _ in range(t_wckdqi):
-            _wr_start_d = Signal()
-            self.sync += _wr_start_d.eq(wr_start_d)
-            wr_start_d = _wr_start_d
-
-        current_cmd = stream.Endpoint(CMD_INFO_LAYOUT)
-        gtkw_dbg["current_cmd"] = current_cmd
-        cmd_buf = stream.PipeValid(CMD_INFO_LAYOUT)
-        gtkw_dbg["cmd_buf"] = cmd_buf
-        self.submodules += cmd_buf
+        wr_start = Signal()
+        rd_start = Signal()
         self.comb += [
-            self.cmds.source.connect(cmd_buf.sink),
-            cmd_buf.source.connect(current_cmd),
+            wr_start.eq(cmd.valid & cmd.we & latency_ready),
+            rd_start.eq(cmd.valid & ~cmd.we & latency_ready),
+            self.burst_p.enable_wr.eq(wr_start),
+            self.burst_p.enable_rd.eq(rd_start),
+            self.burst_n.enable_wr.eq(delayed(self, wr_start, cycles=1)),
+            self.burst_n.enable_rd.eq(delayed(self, rd_start, cycles=1)),
+            cmd.ready.eq(self.burst_p.ready),
         ]
 
-        burst_counter = Signal(max=32)
-        burst_length = Signal.like(burst_counter)
+
+class BurstHalf(Module):
+    def __init__(self, *, pads, dq_i, cmd, mems, wck_cd, nrows, ncols, log_level, logger_kwargs):
+        self.submodules.log = SimLogger(log_level=log_level("burst_wr"), **logger_kwargs)
+
+        self.enable_wr = Signal()
+        self.enable_rd = Signal()
+        self.ready     = Signal()
+
+        # Register the command
+        cmd_d = stream.Endpoint(CMD_INFO_LAYOUT)
+        self.sync += cmd_d.eq(cmd)
+
+        # Memory interface
+        burst_start = {"wck": 0, "wck_n": 1}[wck_cd]
+        mem_addr    = Signal(max=nrows * ncols)
+        current_col = Signal(max=ncols)
+        burst_beat  = Signal.like(current_col, reset=burst_start)
+
+        ports = [
+            mem.get_port(write_capable=True, we_granularity=8, async_read=True, clock_domain=wck_cd)
+            for mem in mems
+        ]
+        self.specials += ports
+        ports = Array(ports)
+
+        # Burst control
+        burst_length = Signal.like(burst_beat)
         self.comb += [
-            If(current_cmd.burst32,
+            self.ready.eq(burst_beat[1:] == burst_length[1:]),
+            If(cmd_d.burst32,
                 burst_length.eq(32 - 1)
             ).Else(
                 burst_length.eq(16 - 1)
-            )
+            ),
         ]
 
-        class BurstWriter(Module):
-            def __init__(self, ports, burst_start):
-                self.enable = Signal()
-
-                self.submodules.log = log = SimLogger(log_level=log_level, **logger_kwargs)
-                self.log.add_csrs()
-
-                mem_addr = Signal(max=nrows * ncols)
-                current_col = Signal(max=ncols)
-                burst_beat = Signal.like(current_col, reset=burst_start)
-
-                self.sync += If(self.enable,
-                    burst_beat.eq(burst_beat + 2)
-                ).Else(
-                    burst_beat.eq(burst_start)
-                )
-                self.comb += [
-                    If(self.enable,
-                        current_col.eq(current_cmd.col + burst_beat),
-                        mem_addr.eq(current_cmd.row * ncols + current_col),
-                        ports[current_cmd.bank].we.eq(2**len(ports[current_cmd.bank].we) - 1),
-                        ports[current_cmd.bank].adr.eq(mem_addr),
-                        ports[current_cmd.bank].dat_w.eq(pads.dq),
-                        self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%04x dm=0x%02b",
-                            burst_beat, current_cmd.bank, current_cmd.row, current_col, pads.dq, pads.dmi,
-                            once=False
-                        ),
-                    ),
-                ]
-
-        # DRAM Memory storage
-        mems = [Memory(len(pads.dq), depth=nrows * ncols) for _ in range(nbanks)]
-        ports_p = [mem.get_port(write_capable=True, we_granularity=8, async_read=True, clock_domain="wck") for mem in mems]
-        ports_n = [mem.get_port(write_capable=True, we_granularity=8, async_read=True, clock_domain="wck_n") for mem in mems]
-        self.specials += mems + ports_p + ports_n
-        ports_p = Array(ports_p)
-        ports_n = Array(ports_n)
-
-        self.submodules.write_p = ClockDomainsRenamer("wck")(BurstWriter(ports_p, 0))
-        self.submodules.write_n = ClockDomainsRenamer("wck_n")(BurstWriter(ports_n, 1))
-        write_enable = Signal()
-        self.sync.wck_n += If(write_enable,
-            self.write_p.enable.eq(1),
-            self.write_n.enable.eq(1),
-        ).Else(
-            self.write_p.enable.eq(0),
-            self.write_n.enable.eq(0),
-        )
+        self.comb += [
+            current_col.eq(cmd_d.col + burst_beat),
+            mem_addr.eq(cmd_d.row * ncols + current_col),
+            ports[cmd_d.bank].adr.eq(mem_addr),
+        ]
 
         self.submodules.fsm = fsm = FSM()
         fsm.act("IDLE",
-            If(wr_start_d,
-                current_cmd.ready.eq(1),
-                NextValue(burst_counter, 0),
-                NextState("WRITE-BURST"),
+            If(self.enable_wr | self.enable_rd,
+                NextValue(burst_beat, burst_start),
+                If(self.enable_wr,
+                    NextState("BURST-WRITE"),
+                ).Else(
+                    NextState("BURST-READ"),
+                ),
             )
         )
-        fsm.act("WRITE-BURST",
-            write_enable.eq(1),
-            If(burst_counter == burst_length[1:],
-                # TODO: continuous bursts
-                # If(wr_start, NextValue(burst_counter, current_cmd.burst32)),
-                NextValue(burst_counter, 0),
-                NextState("IDLE")
+        fsm.act("BURST-WRITE",
+            ports[cmd_d.bank].we.eq(2**len(ports[cmd_d.bank].we) - 1),
+            ports[cmd_d.bank].dat_w.eq(pads.dq),
+            self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%04x dm=0x%02b",
+                burst_beat, cmd_d.bank, cmd_d.row, current_col, pads.dq, pads.dmi,
+                once=False
+            ),
+            If(self.ready,
+                NextValue(burst_beat, burst_start),
+                If(~self.enable_wr,
+                    NextState("IDLE"),
+                ),
             ).Else(
-                NextValue(burst_counter, burst_counter + 1),
+                NextValue(burst_beat, burst_beat + 2),
             ),
         )
-        fsm.act("READ-BURST",
+        fsm.act("BURST-READ",
+            ports[cmd_d.bank].we.eq(0),
+            dq_i.eq(ports[cmd_d.bank].dat_r),
+            self.log.debug("READ[%d]: bank=%d, row=%d, col=%d, dq=0x%04x",
+                burst_beat, cmd_d.bank, cmd_d.row, current_col, pads.dq,
+                once=False
+            ),
+            If(self.ready,
+                NextValue(burst_beat, burst_start),
+                If(~self.enable_rd,
+                    NextState("IDLE"),
+                ),
+            ).Else(
+                NextValue(burst_beat, burst_beat + 2),
+            ),
         )
-
-
-
-        pass
