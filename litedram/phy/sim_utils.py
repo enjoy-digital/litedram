@@ -136,6 +136,13 @@ class SimLogger(Module, AutoCSR):
     used inside `FSM` code. It also provides logging levels that can be used to
     filter messages, either by specifying the default `log_level` or in runtime
     by driving to the `level` signal or using a corresponding CSR.
+
+    If `clk_freq` is provided, than the logger will prepend timestamps to the
+    messages (in picoseconds). This will work as long as the clock domain in which
+    this module operates is always running with a constant frequency. On the other
+    hand, if the frequency varies or the clock is sometimes disabled, `clk_freq_cd`
+    can be specified to select a different clock domain (`clk_freq` must specify
+    the frequecy of that new clock domain).
     """
     # Allows to use Display inside FSM and to filter log messages by level (statically or dynamically)
     DEBUG = 0
@@ -144,14 +151,15 @@ class SimLogger(Module, AutoCSR):
     ERROR = 3
     NONE  = 4
 
-    def __init__(self, log_level=INFO, clk_freq=None):
+    def __init__(self, log_level=INFO, clk_freq=None, clk_freq_cd=None):
         self.ops = []
         self.level = Signal(reset=log_level, max=self.NONE + 1)
         self.time_ps = None
         if clk_freq is not None:
             self.time_ps = Signal(64)
             cnt = Signal(64)
-            self.sync += cnt.eq(cnt + 1)
+            sd_cnt = self.sync if clk_freq_cd is None else getattr(self.sync, clk_freq_cd)
+            sd_cnt += cnt.eq(cnt + 1)
             self.comb += self.time_ps.eq(cnt * int(1e12/clk_freq))
 
     def debug(self, fmt, *args, **kwargs):

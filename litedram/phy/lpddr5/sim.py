@@ -32,7 +32,7 @@ gtkw_dbg = {}
 class LPDDR5Sim(Module, AutoCSR):
     """LPDDR5 DRAM simulation
     """
-    def __init__(self, pads, *, ck_freq, wck_freq, log_level):
+    def __init__(self, pads, *, log_level, logger_kwargs):
         log_level = log_level_getter(log_level)
 
         self.clock_domains.cd_ck = ClockDomain(reset_less=True)
@@ -53,10 +53,10 @@ class LPDDR5Sim(Module, AutoCSR):
         cmd_info = stream.Endpoint(CMD_INFO_LAYOUT)
         gtkw_dbg["cmd_info"] = cmd_info
 
-        cmd = CommandsSim(pads, cmd_info, ck_freq=ck_freq, log_level=log_level("cmd"))
+        cmd = CommandsSim(pads, cmd_info, logger_kwargs=logger_kwargs, log_level=log_level("cmd"))
         self.submodules.cmd = ClockDomainsRenamer("ck")(cmd)
 
-        data = DataSim(pads, cmd_info, cmd.data_timer.ready_p, wck_freq=wck_freq, log_level=log_level("data"))
+        data = DataSim(pads, cmd_info, cmd.data_timer.ready_p, logger_kwargs=logger_kwargs, log_level=log_level("data"))
         self.submodules.data = ClockDomainsRenamer("wck")(data)
 
 
@@ -141,8 +141,8 @@ class ModeRegisters(Module, AutoCSR):
         ckr = (18, (7, 7)),
     )
 
-    def __init__(self, *, ck_freq, log_level):
-        self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=ck_freq)
+    def __init__(self, *, log_level, logger_kwargs):
+        self.submodules.log = log = SimLogger(log_level=log_level, **logger_kwargs)
         self.log.add_csrs()
 
         self.mr = Array([
@@ -218,13 +218,13 @@ class Sync(list):
 
 
 class CommandsSim(Module, AutoCSR):
-    def __init__(self, pads, cmd_info, *, ck_freq, log_level):
-        self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=ck_freq)
+    def __init__(self, pads, cmd_info, *, log_level, logger_kwargs):
+        self.submodules.log = log = SimLogger(log_level=log_level, **logger_kwargs)
         self.log.add_csrs()
         self.comb += self.log.info("Simulation start")
 
         self.cmd_info = cmd_info
-        self.submodules.mode_regs = ModeRegisters(log_level=log_level, ck_freq=ck_freq)
+        self.submodules.mode_regs = ModeRegisters(log_level=log_level, logger_kwargs=logger_kwargs)
 
         self.nbanks = 16
         self.active_banks = Array([Signal(name=f"bank{i}_active") for i in range(self.nbanks)])
@@ -497,8 +497,8 @@ class CommandsSim(Module, AutoCSR):
 
 
 class DataSim(Module, AutoCSR):
-    def __init__(self, pads, cmd_info, latency_ready, *, wck_freq, log_level, nrows=32768, ncols=1024, nbanks=16):
-        self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=wck_freq)
+    def __init__(self, pads, cmd_info, latency_ready, *, log_level, logger_kwargs, nrows=32768, ncols=1024, nbanks=16):
+        self.submodules.log = log = SimLogger(log_level=log_level, **logger_kwargs)
         self.log.add_csrs()
 
         # CommandsSim produces the data required for handling a data command via cmd_info endpoint.
@@ -557,7 +557,7 @@ class DataSim(Module, AutoCSR):
             def __init__(self, ports, burst_start):
                 self.enable = Signal()
 
-                self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=wck_freq)
+                self.submodules.log = log = SimLogger(log_level=log_level, **logger_kwargs)
                 self.log.add_csrs()
 
                 mem_addr = Signal(max=nrows * ncols)
