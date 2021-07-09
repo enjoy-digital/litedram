@@ -18,6 +18,7 @@ from litex.soc.interconnect.csr import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 
+from litedram.common import PHYPadsReducer
 from litedram.phy import s7ddrphy
 from litedram.modules import MT41K128M16
 
@@ -82,7 +83,8 @@ class BenchSoC(SoCCore):
         self.submodules.crg = _CRG(platform, sys_clk_freq)
 
         # DDR3 SDRAM -------------------------------------------------------------------------------
-        self.submodules.ddrphy = s7ddrphy.A7DDRPHY(platform.request("ddram"),
+        self.submodules.ddrphy = s7ddrphy.A7DDRPHY(
+            pads         = PHYPadsReducer(platform.request("ddram"), [0, 1]),
             memtype      = "DDR3",
             nphases      = 4,
             sys_clk_freq = sys_clk_freq)
