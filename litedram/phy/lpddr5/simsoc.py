@@ -140,7 +140,11 @@ class SimSoC(SoCCore):
         self.submodules.lpddr5sim = LPDDR5Sim(
             pads          = self.ddrphy.pads,
             log_level     = log_level,
-            logger_kwargs = dict(clk_freq_cd=f"sys{2*wck_ck_ratio}x", clk_freq=2*wck_ck_ratio * sys_clk_freq),
+            logger_kwargs = dict(
+                clk_freq_cd = f"sys{2*wck_ck_ratio}x",
+                clk_freq    = 2*wck_ck_ratio * sys_clk_freq,
+                with_csrs   = True,
+            ),
         )
 
         self.add_constant("CONFIG_SIM_DISABLE_BIOS_PROMPT")
@@ -277,7 +281,7 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
         )
 
         from litedram.phy.lpddr5.sim import gtkw_dbg
-        for name in "cmd_info cmds cmd_buf current_cmd".split():
+        for name in "cmd_info cmd_buf".split():
             save.add(gtkw_dbg[name], group_name=name, closed=False,
                 # mappers=[gtkw.endpoint_filter(payload=False)],
                 mappers=[gtkw.endpoint_filter()],

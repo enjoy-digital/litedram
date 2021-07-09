@@ -151,7 +151,7 @@ class SimLogger(Module, AutoCSR):
     ERROR = 3
     NONE  = 4
 
-    def __init__(self, log_level=INFO, clk_freq=None, clk_freq_cd=None):
+    def __init__(self, log_level=INFO, clk_freq=None, clk_freq_cd=None, with_csrs=False):
         self.ops = []
         self.level = Signal(reset=log_level, max=self.NONE + 1)
         self.time_ps = None
@@ -161,6 +161,8 @@ class SimLogger(Module, AutoCSR):
             sd_cnt = self.sync if clk_freq_cd is None else getattr(self.sync, clk_freq_cd)
             sd_cnt += cnt.eq(cnt + 1)
             self.comb += self.time_ps.eq(cnt * int(1e12/clk_freq))
+        if with_csrs:
+            self.add_csrs()
 
     def debug(self, fmt, *args, **kwargs):
         return self.log("[DEBUG] " + fmt, *args, level=self.DEBUG, **kwargs)

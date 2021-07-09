@@ -53,10 +53,10 @@ class LPDDR5Sim(Module, AutoCSR):
         cmd_info = stream.Endpoint(CMD_INFO_LAYOUT)
         gtkw_dbg["cmd_info"] = cmd_info
 
-        cmd = CommandsSim(pads, cmd_info, logger_kwargs=logger_kwargs, log_level=log_level("cmd"))
+        cmd = CommandsSim(pads, cmd_info, logger_kwargs=logger_kwargs, log_level=log_level)
         self.submodules.cmd = ClockDomainsRenamer("ck")(cmd)
 
-        data = DataSim(pads, cmd_info, cmd.data_timer.ready_p, logger_kwargs=logger_kwargs, log_level=log_level("data"))
+        data = DataSim(pads, cmd_info, cmd.data_timer.ready_p, logger_kwargs=logger_kwargs, log_level=log_level)
         self.submodules.data = ClockDomainsRenamer("wck")(data)
 
 
@@ -142,8 +142,7 @@ class ModeRegisters(Module, AutoCSR):
     )
 
     def __init__(self, *, log_level, logger_kwargs):
-        self.submodules.log = log = SimLogger(log_level=log_level, **logger_kwargs)
-        self.log.add_csrs()
+        self.submodules.log = SimLogger(log_level=log_level("mr"), **logger_kwargs)
 
         self.mr = Array([
             Signal(8, reset=self.MR_RESET.get(addr, 0), name=f"mr{addr}")
@@ -219,8 +218,7 @@ class Sync(list):
 
 class CommandsSim(Module, AutoCSR):
     def __init__(self, pads, cmd_info, *, log_level, logger_kwargs):
-        self.submodules.log = log = SimLogger(log_level=log_level, **logger_kwargs)
-        self.log.add_csrs()
+        self.submodules.log = SimLogger(log_level=log_level("cmd"), **logger_kwargs)
         self.comb += self.log.info("Simulation start")
 
         self.cmd_info = cmd_info
@@ -498,8 +496,7 @@ class CommandsSim(Module, AutoCSR):
 
 class DataSim(Module, AutoCSR):
     def __init__(self, pads, cmd_info, latency_ready, *, log_level, logger_kwargs, nrows=32768, ncols=1024, nbanks=16):
-        self.submodules.log = log = SimLogger(log_level=log_level, **logger_kwargs)
-        self.log.add_csrs()
+        self.submodules.log = SimLogger(log_level=log_level("data"), **logger_kwargs)
 
         # CommandsSim produces the data required for handling a data command via cmd_info endpoint.
         # Using stream.ClockDomainCrossing introduces too much latency, so we do a simplistic CDC
