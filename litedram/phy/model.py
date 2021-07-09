@@ -11,7 +11,7 @@
 
 from migen import *
 
-from litedram.common import burst_lengths, PhySettings
+from litedram.common import *
 from litedram.phy.dfi import *
 from litedram.modules import _speedgrade_timings, _technology_timings
 
