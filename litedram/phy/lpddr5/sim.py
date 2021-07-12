@@ -410,14 +410,14 @@ class CommandsSim(Module, AutoCSR):
                 ),
                 # data latency
                 If(self.cmd_info.we,
-                    self.data_latency.eq(self.mode_regs.wl - 2),
-                    If(self.mode_regs.wl < 2,
-                        self.log.error("WL < 2 is currently not supported")
+                    self.data_latency.eq(self.mode_regs.wl - 1),
+                    If(self.mode_regs.wl < 1,
+                        self.log.error("WL < 2 is not supported")
                     ),
                 ).Else(
-                    self.data_latency.eq(self.mode_regs.rl - 2),
-                    If(self.mode_regs.rl < 2,
-                        self.log.error("RL < 2 is currently not supported")
+                    self.data_latency.eq(self.mode_regs.rl - 1),
+                    If(self.mode_regs.rl < 1,
+                        self.log.error("RL < 2 is not supported")
                     ),
                 ),
                 self.data_timer.trigger.eq(1),
@@ -533,18 +533,25 @@ class DataSim(Module, AutoCSR):
         self.submodules.burst_p = ClockDomainsRenamer("wck")(Burst("wck", dq_i_p))
         self.submodules.burst_n = ClockDomainsRenamer("wck_n")(Burst("wck_n", dq_i_n))
 
+        def delay(sig, cycles):
+            if cycles == 0:
+                return sig
+            return delayed(self, sig, cycles=cycles)
+
         # After the WL signal arives we require the data to arrive some time later and then we start
         # reading it. This would be adjustable on hardware, but in simulation we rather must set this
         # so that it matches the delay that PHY introduces.
         wr_start = Signal()
         rd_start = Signal()
+        wr_delay = 1
+        rd_delay = 0
         self.comb += [
             wr_start.eq(cmd.valid & cmd.we & latency_ready),
             rd_start.eq(cmd.valid & ~cmd.we & latency_ready),
-            self.burst_p.enable_wr.eq(wr_start),
-            self.burst_p.enable_rd.eq(rd_start),
-            self.burst_n.enable_wr.eq(delayed(self, wr_start, cycles=1)),
-            self.burst_n.enable_rd.eq(delayed(self, rd_start, cycles=1)),
+            self.burst_p.enable_wr.eq(delay(wr_start, wr_delay)),
+            self.burst_p.enable_rd.eq(delay(rd_start, rd_delay)),
+            self.burst_n.enable_wr.eq(delay(wr_start, wr_delay + 1)),
+            self.burst_n.enable_rd.eq(delay(rd_start, rd_delay + 1)),
             cmd.ready.eq(self.burst_p.ready),
         ]
 

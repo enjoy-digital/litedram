@@ -177,7 +177,7 @@ class LPDDR5PHY(Module, AutoCSR):
         read_latency    = read_data_delay + read_des_delay
 
         # Write latency
-        write_latency = cwl
+        write_latency = cwl + cmd_latency
 
         # Registers --------------------------------------------------------------------------------
         self._rst = CSRStorage()
@@ -350,7 +350,7 @@ class LPDDR5PHY(Module, AutoCSR):
             self.comb += self.out.wck[byte].eq(wck_out)
 
         # Write Control Path -----------------------------------------------------------------------
-        wrtap = cwl - 1
+        wrtap = write_latency - 1
         assert wrtap >= 0
 
         wrdata_en = TappedDelayLine(
