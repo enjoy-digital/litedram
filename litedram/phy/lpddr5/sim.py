@@ -273,6 +273,7 @@ class CommandsSim(Module, AutoCSR):
             REF = self.refresh_handler(),
             MRW = self.mrw_handler(),
             DATA = self.data_handler(),
+            CAS = self.cas_handler(),
             # WRITE/MASKED-WRITE
             # READ
             # CAS
@@ -376,6 +377,34 @@ class CommandsSim(Module, AutoCSR):
             ]
         )
 
+    def cas_handler(self):
+        ws_wr = Signal()
+        ws_rd = Signal()
+        ws_fs = Signal()
+        dc    = Signal(4)
+        wrx   = Signal()
+        wxsa  = Signal()
+        wxsb  = Signal()
+        return self.cmd_one_step("CAS",
+            cond = self.ca_p[:4] == 0b1100,
+            body = [
+                # TODO: implement WCK sync
+                ws_wr.eq(self.ca_p[4]),
+                ws_rd.eq(self.ca_p[5]),
+                ws_fs.eq(self.ca_p[6]),
+                dc.eq(self.ca_n[:4]),
+                wrx.eq(self.ca_n[4]),
+                wxsa.eq(self.ca_n[5]),
+                wxsb.eq(self.ca_n[6]),
+                If(sum([ws_wr, ws_rd, ws_fs]) > 1,
+                    self.log.error("More than one WCK Sync bit in CAS command")
+                ),
+                If(reduce(or_, [dc, wrx, wxsa, wxsb]),
+                    self.log.warn("Unsupported CAS function requested")
+                ),
+            ]
+        )
+
     def data_handler(self):
         data_cmds = {
             "MASKED-WRITE": self.ca_p[:3] == 0b010,
@@ -405,9 +434,6 @@ class CommandsSim(Module, AutoCSR):
                 self.cmd_info.row.eq(row),
                 self.cmd_info.col.eq(col),
                 self.cmd_info.valid.eq(1),
-                If(~self.cmd_info.ready,
-                    self.log.error("Simulator CMD-to-DATA overflow")
-                ),
                 # data latency
                 If(self.cmd_info.we,
                     self.data_latency.eq(self.mode_regs.wl - 1),
@@ -505,11 +531,14 @@ class DataSim(Module, AutoCSR):
         gtkw_dbg["cmd_buf"] = self.cmd_buf
         self.comb += [
             cmd_info.connect(self.cmd_buf.sink, omit={"ready", "valid"}),
-            # ~ready will signalize that somehow our buffer is full, which is an internal error
-            cmd_info.ready.eq(cmd_info.valid & self.cmd_buf.sink.ready),
+            cmd_info.ready.eq(1),
             # to latch a command only once we use an edge here, which we can do as there is no way
             # for 2 valid commands cycle-by-cycle
             self.cmd_buf.sink.valid.eq(edge(self, cmd_info.valid)),
+            # if for some reason buffer hasn't been cleared, then we have an error
+            If(self.cmd_buf.sink.valid & ~self.cmd_buf.sink.ready,
+                self.log.error("Simulator internal error: CMD-to-DATA overflow")
+            ),
         ]
         cmd = self.cmd_buf.source
 
@@ -544,7 +573,7 @@ class DataSim(Module, AutoCSR):
         wr_start = Signal()
         rd_start = Signal()
         wr_delay = 1
-        rd_delay = 0
+        rd_delay = 2
         self.comb += [
             wr_start.eq(cmd.valid & cmd.we & latency_ready),
             rd_start.eq(cmd.valid & ~cmd.we & latency_ready),
