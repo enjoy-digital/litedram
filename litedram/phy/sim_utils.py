@@ -146,7 +146,7 @@ class SimLogger(Module, AutoCSR):
 
     def __init__(self, log_level=INFO, clk_freq=None):
         self.ops = []
-        self.level = Signal(reset=log_level, max=self.NONE)
+        self.level = Signal(reset=log_level, max=self.NONE + 1)
         self.time_ps = None
         if clk_freq is not None:
             self.time_ps = Signal(64)
