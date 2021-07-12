@@ -235,36 +235,26 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             gtkw.dfi_sorter(),
             gtkw.dfi_per_phase_colorer(),
         ])
-        # # serialization
-        # with save.gtkw.group("serialization", closed=True):
-        #     if isinstance(soc.ddrphy, DoubleRateLPDDR4SimPHY):
-        #         ser_groups = [("out 1x", soc.ddrphy._out), ("out 2x", soc.ddrphy.out)]
-        #     else:
-        #         ser_groups = [("out", soc.ddrphy.out)]
-        #     for name, out in ser_groups:
-        #         save.group([out.cs, out.dqs_o[0], out.dqs_oe, out.dmi_o[0], out.dmi_oe],
-        #             group_name = name,
-        #             mappers = [
-        #                 gtkw.regex_colorer({
-        #                     "yellow": gtkw.suffixes2re(["cs"]),
-        #                     "orange": ["_o[^e]"],
-        #                     "red": gtkw.suffixes2re(["oe"]),
-        #                 })
-        #             ]
-        #         )
-        # with save.gtkw.group("deserialization", closed=True):
-        #     if isinstance(soc.ddrphy, DoubleRateLPDDR4SimPHY):
-        #         ser_groups = [("in 1x", soc.ddrphy._out), ("in 2x", soc.ddrphy.out)]
-        #     else:
-        #         ser_groups = [("in", soc.ddrphy.out)]
-        #     for name, out in ser_groups:
-        #         save.group([out.dq_i[0], out.dq_oe, out.dqs_i[0], out.dqs_oe],
-        #             group_name = name,
-        #             mappers = [gtkw.regex_colorer({
-        #                 "yellow": ["dqs"],
-        #                 "orange": ["dq[^s]"],
-        #             })]
-        #         )
+        # serialization
+        out = soc.ddrphy.out
+        save.group([out.cs, out.wck[0], out.dq_o[0], out.dq_oe, out.dmi_o[0], out.dmi_oe],
+            group_name = "out serialization",
+            mappers = [
+                gtkw.regex_colorer({
+                    "yellow": gtkw.suffixes2re(["cs"]),
+                    "orange": ["_o[^e]"],
+                    "red": gtkw.suffixes2re(["oe"]),
+                })
+            ]
+        )
+        save.group([out.dq_i[0], out.dq_oe, out.rdqs_i[0], out.rdqs_oe],
+            group_name = "out deserialization",
+            mappers = [
+                gtkw.regex_colorer({
+                    "red": gtkw.suffixes2re(["oe"]),
+                })
+            ]
+        )
         # dram pads
         save.group([s for s in vars(soc.ddrphy.pads).values() if isinstance(s, Signal)],
             group_name = "pads",
