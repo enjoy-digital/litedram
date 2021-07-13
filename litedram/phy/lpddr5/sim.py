@@ -328,10 +328,10 @@ class CommandsSim(Module, AutoCSR):
             body = [
                 all_banks.eq(self.ca_n[6]),
                 If(all_banks,
-                    self.log.info("PRE: all banks"),
+                    self.log.debug("PRE: all banks"),
                     bank.eq(2**len(bank) - 1),
                 ).Else(
-                    self.log.info("PRE: bank = %d", bank),
+                    self.log.debug("PRE: bank = %d", bank),
                     bank.eq(self.ca_n[:4]),
                 ),
                 Sync(
@@ -486,10 +486,15 @@ class CommandsSim(Module, AutoCSR):
         state1, state2 = f"{name}-1", f"{name}-2"
         matched = Signal()
 
+        timeout = 0
+        trigger_timer = []
         if wait_time is not None:
-            wait_time = wait_time - 1
-        next_cmd_timer = PulseTiming(wait_time)
-        self.submodules += next_cmd_timer
+            next_cmd_timer = PulseTiming(wait_time)
+            self.submodules += next_cmd_timer
+            timeout = next_cmd_timer.ready
+            trigger_timer = [
+                next_cmd_timer.trigger.eq(1),
+            ]
 
         fsm = FSM()
         fsm.act(state1,
@@ -497,12 +502,13 @@ class CommandsSim(Module, AutoCSR):
                 self.log.debug(state1),
                 matched.eq(1),
                 *body1,
+                *trigger_timer,
                 NextState(state2)
             )
         )
         fsm.act(state2,
-            next_cmd_timer.trigger.eq(1),
-            If(next_cmd_timer.ready,
+            If(timeout,
+                self.log.warn(f"Timeout while waiting for {state2}"),
                 NextState(state1)
             ).Elif(self.handle_cmd,
                 If(cond2,
@@ -587,7 +593,7 @@ class DataSim(Module, AutoCSR):
 
 class BurstHalf(Module):
     def __init__(self, *, pads, dq_i, cmd, mems, wck_cd, nrows, ncols, log_level, logger_kwargs):
-        self.submodules.log = SimLogger(log_level=log_level("burst_wr"), **logger_kwargs)
+        self.submodules.log = SimLogger(log_level=log_level("burst"), **logger_kwargs)
 
         self.enable_wr = Signal()
         self.enable_rd = Signal()
