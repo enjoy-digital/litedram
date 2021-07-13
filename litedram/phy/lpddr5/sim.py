@@ -131,7 +131,14 @@ def _nested_case(mapping, *, on_leaf, variables, default, values, orig_mapping, 
 
 
 class ModeRegisters(Module, AutoCSR):
-    MR_RESET = {}
+    MR_RESET = {
+        3: 0b00000110,
+        4: 0b10000000,
+        17: 0b00111000,
+        18: 0b10000000,  # DRAM starts with WCK:CK=2:1
+        28: 0b00000100,
+        41: 0b01100000,
+    }
     FIELD_DEFS = dict(
         # (address, (highest bit, lowest bit)), bits are inclusive
         wl = (1, (7, 4)),
