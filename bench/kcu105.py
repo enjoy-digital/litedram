@@ -19,8 +19,9 @@ from litex.soc.interconnect.csr import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 
-from litedram.modules import EDY4016A
+from litedram.common import PHYPadsReducer
 from litedram.phy import usddrphy
+from litedram.modules import EDY4016A
 
 from liteeth.phy.ku_1000basex import KU_1000BASEX
 
@@ -91,7 +92,8 @@ class BenchSoC(SoCCore):
         self.submodules.crg = _CRG(platform, sys_clk_freq)
 
         # DDR4 SDRAM -------------------------------------------------------------------------------
-        self.submodules.ddrphy = usddrphy.USDDRPHY(platform.request("ddram"),
+        self.submodules.ddrphy = usddrphy.USDDRPHY(
+            pads             = PHYPadsReducer(platform.request("ddram"), [0, 1, 2, 3, 4, 5, 6, 7]),
             memtype          = "DDR4",
             sys_clk_freq     = sys_clk_freq,
             iodelay_clk_freq = 200e6)

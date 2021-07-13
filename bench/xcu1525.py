@@ -19,6 +19,7 @@ from litex.soc.interconnect.csr import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 
+from litedram.common import PHYPadsReducer
 from litedram.modules import MT40A512M8
 from litedram.phy import usddrphy
 
@@ -87,7 +88,8 @@ class BenchSoC(SoCCore):
         self.submodules.crg = _CRG(platform, sys_clk_freq, channel)
 
         # DDR4 SDRAM -------------------------------------------------------------------------------
-        self.submodules.ddrphy = usddrphy.USPDDRPHY(platform.request("ddram", channel),
+        self.submodules.ddrphy = usddrphy.USPDDRPHY(
+            pads             = PHYPadsReducer(platform.request("ddram", channel), [0, 1, 2, 3, 4, 5, 6, 7]),
             memtype          = "DDR4",
             sys_clk_freq     = sys_clk_freq,
             iodelay_clk_freq = 500e6)
