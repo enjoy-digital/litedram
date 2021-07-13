@@ -641,7 +641,11 @@ class BurstHalf(Module):
             )
         )
         fsm.act("BURST-WRITE",
-            ports[cmd_d.bank].we.eq(2**len(ports[cmd_d.bank].we) - 1),
+            If(cmd_d.masked,
+                ports[cmd_d.bank].we.eq(~pads.dmi),  # DMI HIGH masks a byte
+            ).Else(
+                ports[cmd_d.bank].we.eq(2**len(ports[cmd_d.bank].we) - 1),
+            ),
             ports[cmd_d.bank].dat_w.eq(pads.dq),
             self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%04x dm=0x%02b",
                 burst_beat, cmd_d.bank, cmd_d.row, current_col, pads.dq, pads.dmi,
