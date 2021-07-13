@@ -274,7 +274,8 @@ class Command(Module):
             "WXSB":    lambda: 0,  # Write X function, unimplemented
             "BA(\d+)": lambda i: self.dfi.bank[i],  # only BA0-2 is used, in BG/B16 modes we always refresh banks (x, x+8)
             "R(\d+)":  lambda i: self.dfi.address[i],  # row
-            "C(\d+)":  lambda i: self.dfi.address[i],  # column
+            # LPDDR5 specs split the regular column address into C[5:0] "column address" and B[3:0] "burst address"
+            "C(\d+)":  lambda i: self.dfi.address[i + 4],
             "MA(\d+)": lambda i: mr_address[i],  # mode register address
             "OP(\d+)": lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
         }

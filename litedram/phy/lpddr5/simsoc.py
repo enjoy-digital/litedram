@@ -72,7 +72,7 @@ class LPDDR5ExampleModule(SDRAMModule):
 
     nbanks      = 16
     nrows       = 32768
-    ncols       = 1024
+    ncols       = 1024  # specs split this into C[5:0] "column address" and B[3:0] "burst address"
 
     # TODO: find a way to select if we need masked writes
     tccd = {"write": (8, None), "masked-write": (32, None)}

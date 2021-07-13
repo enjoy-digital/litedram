@@ -572,6 +572,7 @@ class BurstHalf(Module):
         burst_start = {"wck": 0, "wck_n": 1}[wck_cd]
         mem_addr    = Signal(max=nrows * ncols)
         current_col = Signal(max=ncols)
+        col_num     = Signal.like(current_col)
         burst_beat  = Signal.like(current_col, reset=burst_start)
 
         ports = [
@@ -593,7 +594,8 @@ class BurstHalf(Module):
         ]
 
         self.comb += [
-            current_col.eq(cmd_d.col + burst_beat),
+            col_num[4:].eq(cmd_d.col),
+            current_col.eq(col_num + burst_beat),
             mem_addr.eq(cmd_d.row * ncols + current_col),
             ports[cmd_d.bank].adr.eq(mem_addr),
         ]

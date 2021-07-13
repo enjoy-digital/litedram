@@ -271,7 +271,7 @@ class LPDDR5Tests(unittest.TestCase):
     def test_lpddr5_ca_addressing(self, Phy):
         # Test that bank/address for different commands are correctly serialized to CA pads
         # LPDDR5 has only 64 columns, but uses optional 4-bit "burst address"
-        read       = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, bank=0b1111, address=0b110101)
+        read       = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, bank=0b1111, address=0b1101010000)
         write_ap   = dict(cs_n=0, cas_n=0, ras_n=1, we_n=0, bank=0b1010, address=0b10000000000)
         activate   = dict(cs_n=0, cas_n=1, ras_n=0, we_n=1, bank=0b0010, address=0b111110000111100001)
         refresh_ab = dict(cs_n=0, cas_n=0, ras_n=0, we_n=1, bank=0b1001, address=0b10000000000)
