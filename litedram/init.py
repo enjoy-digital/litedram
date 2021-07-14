@@ -23,6 +23,18 @@ cmds = {
     "CKE":           "DFII_CONTROL_CKE|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N"
 }
 
+def reg(fields):
+    # takes a list of tuples: [(bit_offset, bit_width, value), ...]
+    regval = 0
+    written = 0
+    for shift, width, val in fields:
+        mask = (2**width - 1) << shift
+        assert written & mask == 0, "Would overwrite another field, xor=0b{:032b}".format(mask ^ written)
+        assert val < 2**width, "Value larger than field width: val={}, width={}".format(val, width)
+        regval |= (val << shift) & mask
+        written |= mask
+    return regval
+
 # SDR ----------------------------------------------------------------------------------------------
 
 def get_sdr_phy_init_sequence(phy_settings, timing_settings):
@@ -505,17 +517,6 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
         },
     }
 
-    def reg(fields):
-        regval = 0
-        written = 0
-        for shift, width, val in fields:
-            mask = (2**width - 1) << shift
-            assert written & mask == 0, "Would overwrite another field, xor=0b{:032b}".format(mask ^ written)
-            assert val < 2**width, "Value larger than field width: val={}, width={}".format(val, width)
-            regval |= (val << shift) & mask
-            written |= mask
-        return regval
-
     mr = {}
     mr[1] = reg([
         (0, 2, {16: 0b00, 32: 0b01, "on-the-fly": 0b10}[bl]),
@@ -612,13 +613,127 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
 # LPDDR5 -------------------------------------------------------------------------------------------
 
 def get_lpddr5_phy_init_sequence(phy_settings, timing_settings):
-    cl = phy_settings.cl
-    cwl = phy_settings.cwl
+    from litedram.phy.lpddr5.basephy import FREQUENCY_RANGES
+    from litedram.phy.lpddr5.commands import SpecialCmd, MPC, BankOrganization
+
+    rl = phy_settings.cl
+    wl = phy_settings.cwl
+    wck_ck_ratio = phy_settings.wck_ck_ratio
     bl = 16
+    dq_odt = getattr(phy_settings, "dq_odt", "RZQ/2")
+    ca_odt = getattr(phy_settings, "dq_odt", "RZQ/2")
+    pull_down_drive_strength = getattr(phy_settings, "pull_down_drive_strength", "RZQ/2")
+    soc_odt = getattr(phy_settings, "soc_odt", "disable")
+    wck_odt = getattr(phy_settings, "wck_odt", "disable")
+    vref_ca = getattr(phy_settings, "vref_ca", 34.0)
+    vref_dq = getattr(phy_settings, "vref_dq", 34.0)
+
+    # find definitions for given wck_ck_ratio/wl/rl
+    def get_frange():
+        for fr in FREQUENCY_RANGES[wck_ck_ratio]:
+            fr = fr.for_set(wl_set="A", rl_set=0)
+            if fr.wl == wl and fr.rl == rl:
+                return fr
+        raise ValueError
+
+    frange = get_frange()
+
+    rzq_map = {
+        "disable": 0b000,
+        "RZQ/1":   0b001,
+        "RZQ/2":   0b010,
+        "RZQ/3":   0b011,
+        "RZQ/4":   0b100,
+        "RZQ/5":   0b101,
+        "RZQ/6":   0b110,
+    }
+
+    # Both VrefCA and VrefDQ have the same mapping <10.0%, 73.5%> => <0b0000000, 0b1111111>
+    def get_vref(vref_percent, testing=False):
+        assert 10.0 <= vref_percent <= 73.5
+        assert testing or vref_percent >= 15.0, f"Vref of {vref_percent:.2f}% (<15%) meant only for testing purpose"
+        vref_percent = round(vref_percent * 2) / 2  # round to x.5
+        reg = int((vref_percent - 10.0) * 2)
+        assert 0 <= reg <= 0b1111111
+        return reg
 
     mr = {}
+    mr[1] = reg([
+        (3, 1, 0),  # differential CK
+        (4, 4, frange.mr),
+    ])
+    mr[2] = reg([
+        (0, 4, frange.mr),  # seems that in both MR1 and MR2 we need the same value
+        (4, 4, frange.n_wr_op),
+    ])
+    mr[3] = reg([
+        (0, 3, rzq_map[pull_down_drive_strength]),
+        (3, 2, BankOrganization.B16),
+        (5, 1, 0),  # WL Set "A"
+    ])
+    mr[10] = reg([
+        (0, 0, 0),  # RDQS postamble toggle mode
+        (2, 2, 0b00),  # WCK postamble 2.5*tWCK
+        (4, 2, 0b00),  # RDQS preamble 4*tWCK static + 0 toggle
+        (6, 2, 0b00),  # RDQS postamble 0.5*tWCK
+    ])
+    mr[11] = reg([
+        (0, 3, rzq_map[dq_odt]),
+        (3, 1, 0),  # non-target ODT disabled
+        (4, 3, rzq_map[ca_odt]),
+    ])
+    mr[12] = reg([
+        (0, 7, get_vref(vref_ca)),
+        (7, 1, 0),
+    ])
+    mr[13] = 0 # defaults, DM enabled
+    mr[14] = reg([
+        (0, 7, get_vref(vref_dq)),
+        (7, 1, 0),
+    ])
+    mr[15] = get_vref(vref_dq)
+    mr[17] = reg([
+        (0, 3, rzq_map[soc_odt]),
+        # defaults
+        (3, 1, 1),
+        (4, 1, 1),
+        (5, 1, 1),
+        (6, 1, 0),
+        (7, 1, 0),
+    ])
+    mr[18] = reg([
+        (0, 3, rzq_map[wck_odt]),
+        (3, 1, 0),  # WCK low frequency mode
+        (4, 1, 1),  # WCK always on mode enabled
+        (6, 1, 0),  # WCK2CK leveling diabled
+        (7, 1, {2: 1, 4: 0}[wck_ck_ratio]),
+    ])
+    # MR19 - defaults
+    mr[20] = reg([
+        (0, 2, 0b01),  # TODO: as we don't actually use RDQS, maybe we can just disable it
+        # zero-defaults
+    ])
+    mr[22] = 0  # Write/read link ECC disabled
+
+    def cmd_mr(ma):
+        # Convert Mode Register Write command to DFI as expected by PHY
+        op = mr[ma]
+        assert ma < 2**7, "MR address to big: {}".format(ma)
+        assert op < 2**8, "MR opcode to big: {}".format(op)
+        a = op
+        ba = ma
+        return ("Load More Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
+
+    def ck(sec):
+        fmax = 200e6
+        return int(math.ceil(sec * fmax))
 
     init_sequence = [
+        ("Assert reset", 0x0000, 0, "DFII_CONTROL_ODT", ck(200e-6)),  # ??
+        ("Release reset", 0x0000, 0, cmds["UNRESET"], ck(2e-3) + 5),
+        ("Toggle CS", 0x0000, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(2e-6)),
+        *[cmd_mr(ma) for ma in sorted(mr.keys())],
+        ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(4, ck(30e-9))),
     ]
 
     return init_sequence, mr
