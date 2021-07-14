@@ -4,6 +4,7 @@
 # Copyright (c) 2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import math
 from operator import or_
 from functools import reduce
 from collections import OrderedDict
@@ -15,7 +16,7 @@ from litex.soc.interconnect.csr import AutoCSR
 #
 from litedram.common import TappedDelayLine
 from litedram.phy.utils import edge, delayed
-from litedram.phy.sim_utils import SimLogger, PulseTiming, log_level_getter
+from litedram.phy.sim_utils import SimLogger, Timing, PulseTiming, log_level_getter
 
 
 CMD_INFO_LAYOUT = [
@@ -32,7 +33,7 @@ gtkw_dbg = {}
 class LPDDR5Sim(Module, AutoCSR):
     """LPDDR5 DRAM simulation
     """
-    def __init__(self, pads, *, log_level, logger_kwargs):
+    def __init__(self, pads, *, ck_freq, log_level, logger_kwargs):
         log_level = log_level_getter(log_level)
 
         self.clock_domains.cd_ck = ClockDomain(reset_less=True)
@@ -53,7 +54,7 @@ class LPDDR5Sim(Module, AutoCSR):
         cmd_info = stream.Endpoint(CMD_INFO_LAYOUT)
         gtkw_dbg["cmd_info"] = cmd_info
 
-        cmd = CommandsSim(pads, cmd_info, logger_kwargs=logger_kwargs, log_level=log_level)
+        cmd = CommandsSim(pads, cmd_info, ck_freq=ck_freq, logger_kwargs=logger_kwargs, log_level=log_level)
         self.submodules.cmd = ClockDomainsRenamer("ck")(cmd)
 
         data = DataSim(pads, cmd_info, cmd.data_timer.ready_p, logger_kwargs=logger_kwargs, log_level=log_level)
@@ -224,7 +225,7 @@ class Sync(list):
 
 
 class CommandsSim(Module, AutoCSR):
-    def __init__(self, pads, cmd_info, *, log_level, logger_kwargs):
+    def __init__(self, pads, cmd_info, *, ck_freq, log_level, logger_kwargs):
         self.submodules.log = SimLogger(log_level=log_level("cmd"), **logger_kwargs)
         self.comb += self.log.info("Simulation start")
 
@@ -234,6 +235,13 @@ class CommandsSim(Module, AutoCSR):
         self.nbanks = 16
         self.active_banks = Array([Signal(name=f"bank{i}_active") for i in range(self.nbanks)])
         self.active_rows = Array([Signal(18, name=f"bank{i}_active_row") for i in range(self.nbanks)])
+
+        # MPC operand
+        self.mpc_op  = Signal(8)
+
+        # ZQ calibration TODO: implement ZQC logic
+        self.zqc_start = Signal()
+        self.zqc_latch = Signal()
 
         # The captured command is delayed and the timer starts 1 cycle later:
         #       CK  --____----____----____----____----____--
@@ -281,11 +289,12 @@ class CommandsSim(Module, AutoCSR):
             MRW = self.mrw_handler(),
             DATA = self.data_handler(),
             CAS = self.cas_handler(),
+            MPC = self.mpc_handler(),
+            # MRR
             # WRITE/MASKED-WRITE
             # READ
             # CAS
             # MPC
-            # MRR
             # WFF/RFF?
             # RDC?
         )
@@ -294,9 +303,115 @@ class CommandsSim(Module, AutoCSR):
             If(self.handle_cmd & ~reduce(or_, cmd_handlers.values()),
                 self.log.error("Unexpected command: CA_p=0b%07b CA_n=0b%07b", self.ca_p, self.ca_n)
             ),
-
-            cmds_enabled.eq(1),
+            If(cs & ~cmds_enabled,
+                self.log.warn("Received command when no commands should be sent: CA_p=0b%07b CA_n=0b%07b", self.ca_p, self.ca_n)
+            ),
         ]
+
+        ck = lambda t: math.ceil(t * ck_freq)
+        ms, us, ns = 1e-3, 1e-6, 1e-9
+        self.submodules.tinit0 = PulseTiming(ck(20*ms))  # (max) voltage-ramp at power-up; not applicable in the simulation
+        self.submodules.tinit1 = PulseTiming(ck(200*us))  # (min) reset_n low time after voltage-ramp completion
+        self.submodules.tinit2 = Timing(ck(10*ns))  # (min) CS low time before reset deassertion
+        self.submodules.tinit3 = PulseTiming(ck(2*ms))  # (min) CS low time after reset deassertion
+        self.submodules.tinit4 = PulseTiming(5)  # (min) stabilized CK before CS high; not really applicable in this simulation
+        self.submodules.tinit5 = PulseTiming(ck(2*us))  # (min) idle time before first MRW/MRR cmmand
+        self.submodules.tzqlat = PulseTiming(max(4, ck(30*ns)))  # (min) ZQCAL latch quiet time
+
+        self.comb += [
+            If(edge(self, pads.reset_n),
+                self.log.info("RESET released"),
+            ).Elif(edge(self, ~pads.reset_n),
+                self.log.info("RESET asserted"),
+            ),
+        ]
+
+        # NOTE: for simulation purpose we assume that CK is always running because CommandsSim is clocked
+        # from it, or else the states up to Tc would make no sense because the timings would not be counted
+        self.submodules.fsm = fsm = FSM()
+        fsm.act("RESET",
+            self.tinit1.trigger.eq(1),
+            self.tinit2.valid.eq(~pads.cs),
+            If(edge(self, pads.reset_n),
+                If(~self.tinit1.ready,
+                    self.log.warn("tINIT1 violated: RESET deasserted too fast")
+                ),
+                If(~self.tinit2.ready,
+                    self.log.warn("tINIT2 violated: CS LOW for too short before deasserting RESET")
+                ),
+                NextState("WAIT-NOP")  # Tc
+            ),
+        )
+        fsm.act("WAIT-NOP",
+            self.tinit3.trigger.eq(1),
+            If(cs & ~self.tinit3.ready,
+                self.log.warn("tINIT3 violated: CS high too fast after RESET deassertion")
+            ),
+            self.tinit4.trigger.eq(1),
+            If(cs & ~self.tinit4.ready,
+                self.log.warn("tINIT4 violated: CS high too fast after stable CK")
+            ),
+            If(cs,
+                self.tinit5.trigger.eq(1),
+                If(~self.tinit4.ready,
+                    self.log.warn("tINIT4 violated: CS HIGH too fast while waiting for initial NOP")
+                ),
+                If((self.ca_p != 0) | (self.ca_n != 0),
+                    self.log.warn("Waiting for NOP but got CA_p=0b%07b CA_n=0b%07b", self.ca_p, self.ca_n)
+                ),
+                NextState("NO-CMDS"),  # Te
+            )
+        )
+        fsm.act("NO-CMDS",
+            self.tinit5.trigger.eq(1),
+            If(cs,
+                self.log.warn("tINIT5 violated: command issued too fast after initial NOP")
+            ),
+            If(self.tinit5.ready,
+                NextState("MODE-REGS")  # Tf
+            )
+        )
+        fsm.act("MODE-REGS",
+            cmds_enabled.eq(1),
+            # If(self.handle_cmd & ~cmd_handlers["MRW"] & ~cmd_handlers["MRR"] & ~cmd_handlers["MPC"],  # TODO: MRR
+            If(self.handle_cmd & ~cmd_handlers["MRW"] & ~cmd_handlers["MPC"],
+                self.log.warn("Only MRW/MRR commands expected before ZQ Latch ..."),
+                self.log.warn("... " + " ".join("{}=%d".format(cmd) for cmd in cmd_handlers.keys()), *cmd_handlers.values()),
+            ),
+            If(cmd_handlers["MPC"],
+                If(~self.zqc_latch,
+                    self.log.error("ZQC-LATCH expected, got MPC with op=0b%07b", self.mpc_op)
+                ).Else(
+                    NextState("ZQC-LATCH")  # Tg
+                )
+            ),
+        )
+        fsm.act("ZQC-LATCH",
+            cmds_enabled.eq(1),
+            self.tzqlat.trigger.eq(1),
+            If(self.handle_cmd,
+                self.log.error("tZQCAL violated: new command issued too fast: CA_p=0b%07b CA_n=0b%07b", self.ca_p, self.ca_n)
+            ),
+            If(self.tzqlat.ready,
+                NextState("NORMAL"),  # Th
+            )
+        )
+        fsm.act("NORMAL",
+            cmds_enabled.eq(1)
+        )
+
+        # Log state transitions
+        fsm.finalize()
+        prev_state = delayed(self, fsm.state)
+        self.comb += If(prev_state != fsm.state,
+            Case(prev_state, {
+                state: Case(fsm.state, {
+                    next_state: self.log.info(f"FSM: {state_name} -> {next_state_name}")
+                    for next_state, next_state_name in fsm.decoding.items()
+                })
+                for state, state_name in fsm.decoding.items()
+            })
+        )
 
     def activate_handler(self):
         bank = Signal(max=self.nbanks)
@@ -382,6 +497,21 @@ class CommandsSim(Module, AutoCSR):
                 self.log.info("MRW: MR[%d] = 0x%02x", ma, op),
                 NextValue(self.mode_regs.mr[ma], op),
             ]
+        )
+
+    def mpc_handler(self):
+        op  = Signal(8)
+        return self.cmd_one_step("MRW",
+            cond = self.ca_p[:6] == 0b110000,
+            body = [
+                op.eq(Cat(self.ca_n, self.ca_p[6])),
+                self.mpc_op.eq(op),
+                self.zqc_start.eq(op == 0b10000101),
+                self.zqc_latch.eq(op == 0b10000110),
+                If(~(self.zqc_start | self.zqc_latch),
+                    self.log.warn("Unsupported MPC command: op=0b%08b", op),
+                ),
+            ],
         )
 
     def cas_handler(self):
