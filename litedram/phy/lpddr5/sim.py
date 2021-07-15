@@ -318,8 +318,19 @@ class CommandsSim(Module, AutoCSR):
         self.submodules.tinit4 = PulseTiming(5)  # (min) stabilized CK before CS high; not really applicable in this simulation
         self.submodules.tinit5 = PulseTiming(ck(2*us))  # (min) idle time before first MRW/MRR cmmand
         self.submodules.tzqlat = PulseTiming(max(4, ck(30*ns)))  # (min) ZQCAL latch quiet time
+        self.submodules.tpw_reset = PulseTiming(ck(100*ns))  # (min) RESET_n low time for Reset initialization with stable power
 
         self.comb += [
+            self.tpw_reset.trigger.eq(~pads.reset_n),
+            self.tinit2.valid.eq(~pads.cs),
+            If(edge(self, pads.reset_n),
+                If(~self.tinit2.ready,
+                    self.log.warn("tINIT2 violated: CS LOW for too short before deasserting RESET")
+                ),
+                If(~self.tpw_reset.ready,
+                    self.log.warn("tPW_RESET violated: RESET_n held low for too short")
+                ),
+            ),
             If(edge(self, pads.reset_n),
                 self.log.info("RESET released"),
             ).Elif(edge(self, ~pads.reset_n),
@@ -327,18 +338,29 @@ class CommandsSim(Module, AutoCSR):
             ),
         ]
 
+        # We use an FSM that will be automatically reset to the RESET state when reset pad is asserted.
         # NOTE: for simulation purpose we assume that CK is always running because CommandsSim is clocked
         # from it, or else the states up to Tc would make no sense because the timings would not be counted
-        self.submodules.fsm = fsm = FSM()
+        class ResetFSM(FSM):
+            def __init__(self, tpw_reset):
+                self.tpw_reset = tpw_reset
+                super().__init__(reset_state="RESET")
+
+            def act(self, state, *statements):
+                if state != "RESET":
+                    statements = [
+                        If(edge(self, self.tpw_reset.ready),
+                            NextState("RESET"),
+                        ).Else(*statements)
+                    ]
+                super().act(state, statements)
+
+        self.submodules.fsm = fsm = ResetFSM(self.tpw_reset)
         fsm.act("RESET",
             self.tinit1.trigger.eq(1),
-            self.tinit2.valid.eq(~pads.cs),
             If(edge(self, pads.reset_n),
                 If(~self.tinit1.ready,
                     self.log.warn("tINIT1 violated: RESET deasserted too fast")
-                ),
-                If(~self.tinit2.ready,
-                    self.log.warn("tINIT2 violated: CS LOW for too short before deasserting RESET")
                 ),
                 NextState("WAIT-NOP")  # Tc
             ),
