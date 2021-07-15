@@ -282,6 +282,7 @@ class CommandsSim(Module, AutoCSR):
         ),
 
         cmds_enabled = Signal()
+        allow_unhandled_cmd = Signal()
         cmd_handlers = OrderedDict(
             ACT = self.activate_handler(),
             PRE = self.precharge_handler(),
@@ -303,7 +304,7 @@ class CommandsSim(Module, AutoCSR):
             If(self.handle_cmd & ~reduce(or_, cmd_handlers.values()),
                 self.log.error("Unexpected command: CA_p=0b%07b CA_n=0b%07b", self.ca_p, self.ca_n)
             ),
-            If(cs & ~cmds_enabled,
+            If(cs & ~cmds_enabled & ~allow_unhandled_cmd,
                 self.log.warn("Received command when no commands should be sent: CA_p=0b%07b CA_n=0b%07b", self.ca_p, self.ca_n)
             ),
         ]
@@ -351,7 +352,8 @@ class CommandsSim(Module, AutoCSR):
             If(cs & ~self.tinit4.ready,
                 self.log.warn("tINIT4 violated: CS high too fast after stable CK")
             ),
-            If(cs,
+            If(cs & (self.ca_p == 0),  # NOP; TODO: DRAM probably only checks CS, then we'd better not check CA
+                allow_unhandled_cmd.eq(1),
                 self.tinit5.trigger.eq(1),
                 If(~self.tinit4.ready,
                     self.log.warn("tINIT4 violated: CS HIGH too fast while waiting for initial NOP")

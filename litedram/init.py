@@ -731,7 +731,7 @@ def get_lpddr5_phy_init_sequence(phy_settings, timing_settings):
     init_sequence = [
         ("Assert reset", 0x0000, 0, "DFII_CONTROL_ODT", ck(200e-6)),  # ??
         ("Release reset", 0x0000, 0, cmds["UNRESET"], ck(2e-3) + 5),
-        ("Toggle CS", 0x0000, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(2e-6)),
+        ("Toggle CS", 0, SpecialCmd.NOP, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(2e-6)),
         *[cmd_mr(ma) for ma in sorted(mr.keys())],
         ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(4, ck(30e-9))),
     ]

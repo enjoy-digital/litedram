@@ -23,9 +23,14 @@ class SpecialCmd(enum.IntEnum):
     in DFI in the regular way. DFI ZQC command is used to encode several
     special commands depending on the value of DFI.bank using DFI.address
     for additional data.
+
+    NOP can be used to actually send NOP to the DRAM. By default we send
+    DESELECT because LiteDRAM keeps holding CS_n low all the time, so we
+    would be sending NOPs (toggling LPDDR5 CS pad) all the time.
     """
     MPC = 0
     MRR = 1
+    NOP = 2
 
 @enum.unique
 class MPC(enum.IntEnum):
@@ -71,7 +76,7 @@ class DFIPhaseAdapter(Module):
 
     In LPDDR5 a "full command" may consist of 1 or 2 commands. Each command then consists
     of values for 2 consecutive clock edges. For DFI commands that require only 1 LPDDR5
-    command, a NOP is inserted in on the first 2 CK edges to simplify timing calculations.
+    command, a DESELECT is inserted in on the first 2 CK edges to simplify timing calculations.
 
     Parameters
     ----------
@@ -153,6 +158,7 @@ class DFIPhaseAdapter(Module):
                 CMD["ZQC"]: Case(dfi_phase.bank, {
                     SpecialCmd.MPC: cmds("MPC"),
                     SpecialCmd.MRR: [*cmds("CAS", "MRR"), wck_sync("RD")],
+                    SpecialCmd.NOP: cmds("NOP"),
                     "default": deselect,
                 }),
                 CMD["MRS"]: cmds("MRW-1", "MRW-2"),
