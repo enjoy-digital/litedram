@@ -57,7 +57,12 @@ class LPDDR5Sim(Module, AutoCSR):
         cmd = CommandsSim(pads, cmd_info, ck_freq=ck_freq, logger_kwargs=logger_kwargs, log_level=log_level)
         self.submodules.cmd = ClockDomainsRenamer("ck")(cmd)
 
-        data = DataSim(pads, cmd_info, cmd.data_timer.ready_p, logger_kwargs=logger_kwargs, log_level=log_level)
+        data = DataSim(pads, cmd_info,
+            latency_ready = cmd.data_timer.ready_p,
+            mode_regs     = cmd.mode_regs,
+            logger_kwargs = logger_kwargs,
+            log_level     = log_level
+        )
         self.submodules.data = ClockDomainsRenamer("wck")(data)
 
 
@@ -688,7 +693,7 @@ class CommandsSim(Module, AutoCSR):
 
 
 class DataSim(Module, AutoCSR):
-    def __init__(self, pads, cmd_info, latency_ready, *, log_level, logger_kwargs, nrows=32768, ncols=1024, nbanks=16):
+    def __init__(self, pads, cmd_info, latency_ready, mode_regs, *, log_level, logger_kwargs, nrows=32768, ncols=1024, nbanks=16):
         self.submodules.log = SimLogger(log_level=log_level("data"), **logger_kwargs)
 
         # CommandsSim produces the data required for handling a data command via cmd_info endpoint.
@@ -737,17 +742,23 @@ class DataSim(Module, AutoCSR):
         # After the WL signal arives we require the data to arrive some time later and then we start
         # reading it. This would be adjustable on hardware, but in simulation we rather must set this
         # so that it matches the delay that PHY introduces.
-        wr_start = Signal()
-        rd_start = Signal()
-        wr_delay = 1
-        rd_delay = 2
+        wr_start = TappedDelayLine(ntaps=2)
+        rd_start = TappedDelayLine(ntaps=2)
+        self.submodules += wr_start, rd_start
+
+        def delayed_cases(signal, delay_line, ckr_to_delay):
+            cases = {}
+            for ckr, delay in ckr_to_delay.items():
+                cases[ckr] = signal.eq(delay_line.input if delay == 0 else delay_line.taps[delay - 1])
+            return Case(mode_regs.ckr, cases)
+
         self.comb += [
-            wr_start.eq(cmd.valid & cmd.we & latency_ready),
-            rd_start.eq(cmd.valid & ~cmd.we & latency_ready),
-            self.burst_p.enable_wr.eq(delay(wr_start, wr_delay)),
-            self.burst_p.enable_rd.eq(delay(rd_start, rd_delay)),
-            self.burst_n.enable_wr.eq(delay(wr_start, wr_delay + 1)),
-            self.burst_n.enable_rd.eq(delay(rd_start, rd_delay + 1)),
+            wr_start.input.eq(cmd.valid & cmd.we & latency_ready),
+            rd_start.input.eq(cmd.valid & ~cmd.we & latency_ready),
+            delayed_cases(self.burst_p.enable_wr, wr_start, {2: 0, 4: 1}),
+            delayed_cases(self.burst_n.enable_wr, wr_start, {2: 1, 4: 2}),
+            delayed_cases(self.burst_p.enable_rd, rd_start, {2: 0, 4: 0}),
+            delayed_cases(self.burst_n.enable_rd, rd_start, {2: 1, 4: 1}),
             cmd.ready.eq(self.burst_p.ready),
         ]
 
