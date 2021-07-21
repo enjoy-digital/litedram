@@ -16,7 +16,7 @@ from litex.soc.interconnect import stream
 from litex.soc.interconnect.csr import AutoCSR, CSRStorage, CSR
 
 from litedram.common import BitSlip, get_sys_latency, get_sys_phase, PhySettings, TappedDelayLine
-from litedram.phy.dfi import Interface as DFIInterface
+from litedram.phy.dfi import Interface as DFIInterface, DFIRateConverter
 from litedram.phy.utils import CommandsPipeline, bitpattern, delayed, HoldValid
 from litedram.phy.lpddr5.commands import DFIPhaseAdapter, WCKSyncType
 
@@ -143,7 +143,7 @@ class LPDDR5PHY(Module, AutoCSR):
         Specifies the WCK:CK ratio used.
     """
     def __init__(self, pads, *, ck_freq, phytype, ser_latency, des_latency, cmd_delay=None,
-            masked_write=True, wck_ck_ratio=2):
+            masked_write=True, wck_ck_ratio=2, csr_cdc=None):
         self.pads        = pads
         self.memtype     = memtype     = "LPDDR5"
         self.nranks      = nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
@@ -194,6 +194,14 @@ class LPDDR5PHY(Module, AutoCSR):
 
         self._wdly_dq_bitslip_rst = CSR()
         self._wdly_dq_bitslip     = CSR()
+
+        # Add CDC in case of memory controller operating in different clock domain than this PHY.
+        csr_cdc = csr_cdc or (lambda i: i)
+        wlevel_strobe       = csr_cdc(self._wlevel_strobe.re)
+        rdly_dq_bitslip_rst = csr_cdc(self._rdly_dq_bitslip_rst.re)
+        rdly_dq_bitslip     = csr_cdc(self._rdly_dq_bitslip.re)
+        wdly_dq_bitslip_rst = csr_cdc(self._wdly_dq_bitslip_rst.re)
+        wdly_dq_bitslip     = csr_cdc(self._wdly_dq_bitslip.re)
 
         # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
@@ -433,8 +441,8 @@ class LPDDR5PHY(Module, AutoCSR):
             self.submodules += BitSlip(
                 dw     = 2*wck_ck_ratio,
                 cycles = bitslip_cycles,
-                rst    = self.get_rst(bit//8, self._wdly_dq_bitslip_rst.re),
-                slp    = self.get_inc(bit//8, self._wdly_dq_bitslip.re),
+                rst    = self.get_rst(bit//8, wdly_dq_bitslip_rst),
+                slp    = self.get_inc(bit//8, wdly_dq_bitslip),
                 i      = Cat(*wrdata),
                 o      = self.out.dq_o[bit],
             )
@@ -445,8 +453,8 @@ class LPDDR5PHY(Module, AutoCSR):
                 self.submodules += BitSlip(
                     dw     = 2*wck_ck_ratio,
                     cycles = bitslip_cycles,
-                    rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
-                    slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
+                    rst    = self.get_rst(byte, wdly_dq_bitslip_rst),
+                    slp    = self.get_inc(byte, wdly_dq_bitslip),
                     i      = Cat(*wrdata_mask),
                     o      = self.out.dmi_o[byte],
                 )
@@ -456,8 +464,8 @@ class LPDDR5PHY(Module, AutoCSR):
             self.submodules += BitSlip(
                 dw     = 2*wck_ck_ratio,
                 cycles = bitslip_cycles,
-                rst    = self.get_rst(bit//8, self._rdly_dq_bitslip_rst.re),
-                slp    = self.get_inc(bit//8, self._rdly_dq_bitslip.re),
+                rst    = self.get_rst(bit//8, rdly_dq_bitslip_rst),
+                slp    = self.get_inc(bit//8, rdly_dq_bitslip),
                 i      = self.out.dq_i[bit],
                 o      = dq_i_bs,
             )

@@ -21,6 +21,7 @@ from litedram.gen import LiteDRAMCoreControl
 from litedram.modules import SDRAMModule, _TechnologyTimings, _SpeedgradeTimings
 from litedram.core.controller import ControllerSettings
 from litedram.phy.model import DFITimingsChecker, _speedgrade_timings, _technology_timings
+from litedram.phy.dfi import DFIRateConverter
 
 from litedram.phy.sim_utils import Clocks, CRG, Platform
 from litedram.phy.lpddr5.simphy import LPDDR5SimPHY
@@ -44,22 +45,22 @@ _io = [
 
 # Clocks -------------------------------------------------------------------------------------------
 
-def get_clocks(sys_clk_freq, wck_ck_ratio):
-    clocks = {
-        "sys":           dict(freq_hz=sys_clk_freq),
-        "sys2x":         dict(freq_hz=2*sys_clk_freq),
-        "sys2x_180":     dict(freq_hz=2*sys_clk_freq, phase_deg=180),
+def get_clocks(sys_clk_freq, wck_ck_ratio, dfi_converter_ratio):
+    # sys is the main system clock
+    # DFI rate converter moves PHY to dfi_converter_ratio*sys
+    # PHY CK = dfi_converter_ratio*sys
+    # PHY WCK = wck_ck_ratio*dfi_converter_ratio*sys
+    # DDR is simulated using twice the clock, this is the case for CA signal on CK and all WCK signals
+    defs = {
+        "phy": dfi_converter_ratio,
+        "ck": dfi_converter_ratio,
+        "ck_ddr": 2*dfi_converter_ratio,
+        "wck_ddr": 2*wck_ck_ratio*dfi_converter_ratio,
     }
-    clocks.update({
-        2: {
-            "sys4x":         dict(freq_hz=4*sys_clk_freq),
-            "sys4x_180":     dict(freq_hz=4*sys_clk_freq, phase_deg=180),
-        },
-        4: {
-            "sys8x":         dict(freq_hz=8*sys_clk_freq),
-            "sys8x_180":     dict(freq_hz=8*sys_clk_freq, phase_deg=180),
-        },
-    }[wck_ck_ratio])
+    clocks = {"sys": dict(freq_hz=sys_clk_freq)}
+    for name, ratio in defs.items():
+        clocks[f"sys{ratio}x"] = dict(freq_hz=ratio*sys_clk_freq)
+        clocks[f"sys{ratio}x_180"] = dict(freq_hz=ratio*sys_clk_freq, phase_deg=180)
     return Clocks(clocks)
 
 # SoC ----------------------------------------------------------------------------------------------
@@ -86,7 +87,7 @@ class SimSoC(SoCCore):
     """Simulation of SoC with LPDDR5 DRAM"""
     def __init__(self, clocks, log_level,
             auto_precharge=False, with_refresh=True, trace_reset=0, disable_delay=False,
-            masked_write=True, finish_after_memtest=False, wck_ck_ratio=2, **kwargs):
+            masked_write=True, finish_after_memtest=False, wck_ck_ratio=2, dfi_converter_ratio=1, **kwargs):
         platform     = Platform(_io, clocks)
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
@@ -106,10 +107,36 @@ class SimSoC(SoCCore):
 
         # LPDDR5 -----------------------------------------------------------------------------------
         pads = platform.request("lpddr5")
-        sdram_module = LPDDR5ExampleModule(sys_clk_freq, "1:1")
-        sim_phy_cls = LPDDR5SimPHY
+        sdram_module = LPDDR5ExampleModule(sys_clk_freq, f"1:{dfi_converter_ratio}")
+
+        # Map system and Serializer/Deserializer clocks to higher frequency
+        clock_mapping = {"sys": f"sys{dfi_converter_ratio}x"}
+        for ratio in [2, 2*wck_ck_ratio]:
+            clock_mapping[f"sys{ratio}x"] = f"sys{dfi_converter_ratio * ratio}x"
+            clock_mapping[f"sys{ratio}x_180"] = f"sys{dfi_converter_ratio * ratio}x_180"
+
+        sim_phy_cls = DFIRateConverter.phy_wrapper(
+            phy_cls   = LPDDR5SimPHY,
+            ratio     = dfi_converter_ratio,
+            phy_attrs = [
+                "pads",
+                "memtype",
+                "nranks",
+                "databits",
+                "addressbits",
+                "bankbits",
+                "nphases",
+                "twck",
+                "ser_latency",
+                "des_latency",
+                "out",
+            ],
+            clock_mapping=clock_mapping,
+            serdes_reset_cnt=0,
+        )
+
         self.submodules.ddrphy = sim_phy_cls(
-            sys_clk_freq       = sys_clk_freq,
+            sys_clk_freq       = dfi_converter_ratio*sys_clk_freq,
             aligned_reset_zero = True,
             masked_write       = masked_write,
             wck_ck_ratio       = wck_ck_ratio,
@@ -139,11 +166,11 @@ class SimSoC(SoCCore):
         # LPDDR5 Sim -------------------------------------------------------------------------------
         self.submodules.lpddr5sim = LPDDR5Sim(
             pads          = self.ddrphy.pads,
-            ck_freq       = sys_clk_freq,
+            ck_freq       = dfi_converter_ratio*sys_clk_freq,
             log_level     = log_level,
             logger_kwargs = dict(
-                clk_freq_cd = f"sys{2*wck_ck_ratio}x",
-                clk_freq    = 2*wck_ck_ratio * sys_clk_freq,
+                clk_freq_cd = f"sys{2*wck_ck_ratio*dfi_converter_ratio}x",
+                clk_freq    = 2*wck_ck_ratio*dfi_converter_ratio * sys_clk_freq,
                 with_csrs   = True,
             ),
         )
@@ -186,6 +213,8 @@ class SimSoC(SoCCore):
 
         print("=" * 80)
         dump(clocks)
+        if hasattr(self.ddrphy, "phy"):
+            dump(self.ddrphy.phy.settings)
         dump(self.ddrphy.settings)
         dump(sdram_module.geom_settings)
         dump(sdram_module.timing_settings)
@@ -293,6 +322,7 @@ def main():
     group.add_argument("--auto-precharge",       action="store_true",     help="Use DRAM auto precharge")
     group.add_argument("--no-refresh",           action="store_true",     help="Disable DRAM refresher")
     group.add_argument("--wck-ck-ratio", default=2, type=int, choices=[2, 4], help="WCK:CK ratio")
+    group.add_argument("--dfi-converter-ratio", default=1, type=int,      help="Conversion ratio between sys clock and PHY CK")
     group.add_argument("--log-level",            default="all=INFO",      help="Set simulation logging level")
     group.add_argument("--disable-delay",        action="store_true",     help="Disable CPU delays")
     group.add_argument("--gtkw-savefile",        action="store_true",     help="Generate GTKWave savefile")
@@ -306,7 +336,7 @@ def main():
 
     sim_config = SimConfig()
     sys_clk_freq = int(float(args.sys_clk_freq))
-    clocks = get_clocks(sys_clk_freq, wck_ck_ratio=args.wck_ck_ratio)
+    clocks = get_clocks(sys_clk_freq, wck_ck_ratio=args.wck_ck_ratio, dfi_converter_ratio=args.dfi_converter_ratio)
     clocks.add_clockers(sim_config)
 
     # Configuration --------------------------------------------------------------------------------
@@ -328,6 +358,7 @@ def main():
         masked_write    = not args.no_masked_write,
         finish_after_memtest = args.finish_after_memtest,
         wck_ck_ratio    = args.wck_ck_ratio,
+        dfi_converter_ratio = args.dfi_converter_ratio,
         **soc_kwargs)
 
     # Build/Run ------------------------------------------------------------------------------------
