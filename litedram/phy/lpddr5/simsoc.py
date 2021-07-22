@@ -182,21 +182,21 @@ class SimSoC(SoCCore):
             self.submodules.ddrctrl = LiteDRAMCoreControl()
             self.sync += If(self.ddrctrl.init_done.storage, Finish())
 
-        # # Reuse DFITimingsChecker from phy/model.py
-        # nphases = self.sdram.controller.settings.phy.nphases
-        # timings = {"tCK": (1e9 / sys_clk_freq) / nphases}
-        # for name in _speedgrade_timings + _technology_timings:
-        #     timings[name] = sdram_module.get(name)
-        #
-        # self.submodules.dfi_timings_checker = DFITimingsChecker(
-        #     dfi          = self.ddrphy.dfi,
-        #     nbanks       = 2**self.sdram.controller.settings.geom.bankbits,
-        #     nphases      = nphases,
-        #     timings      = timings,
-        #     refresh_mode = sdram_module.timing_settings.fine_refresh_mode,
-        #     memtype      = self.sdram.controller.settings.phy.memtype,
-        #     verbose      = False,
-        # )
+        # Reuse DFITimingsChecker from phy/model.py
+        nphases = self.sdram.controller.settings.phy.nphases
+        timings = {"tCK": (1e9 / sys_clk_freq) / nphases}
+        for name in _speedgrade_timings + _technology_timings:
+            timings[name] = sdram_module.get(name)
+
+        self.submodules.dfi_timings_checker = DFITimingsChecker(
+            dfi          = self.ddrphy.dfi,
+            nbanks       = 2**self.sdram.controller.settings.geom.bankbits,
+            nphases      = nphases,
+            timings      = timings,
+            refresh_mode = sdram_module.timing_settings.fine_refresh_mode,
+            memtype      = self.sdram.controller.settings.phy.memtype,
+            verbose      = False,
+        )
 
         # Debug info -------------------------------------------------------------------------------
         def dump(obj):
@@ -381,4 +381,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
