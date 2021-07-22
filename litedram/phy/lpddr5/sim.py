@@ -33,7 +33,7 @@ gtkw_dbg = {}
 class LPDDR5Sim(Module, AutoCSR):
     """LPDDR5 DRAM simulation
     """
-    def __init__(self, pads, *, ck_freq, log_level, logger_kwargs):
+    def __init__(self, pads, *, ck_freq, log_level, logger_kwargs, check_timings=True):
         log_level = log_level_getter(log_level)
 
         self.clock_domains.cd_ck = ClockDomain(reset_less=True)
@@ -54,7 +54,8 @@ class LPDDR5Sim(Module, AutoCSR):
         cmd_info = stream.Endpoint(CMD_INFO_LAYOUT)
         gtkw_dbg["cmd_info"] = cmd_info
 
-        cmd = CommandsSim(pads, cmd_info, ck_freq=ck_freq, logger_kwargs=logger_kwargs, log_level=log_level)
+        cmd = CommandsSim(pads, cmd_info, ck_freq=ck_freq, check_timings=check_timings,
+            logger_kwargs=logger_kwargs, log_level=log_level)
         self.submodules.cmd = ClockDomainsRenamer("ck")(cmd)
 
         data = DataSim(pads, cmd_info,
@@ -230,7 +231,7 @@ class Sync(list):
 
 
 class CommandsSim(Module, AutoCSR):
-    def __init__(self, pads, cmd_info, *, ck_freq, log_level, logger_kwargs):
+    def __init__(self, pads, cmd_info, *, ck_freq, check_timings, log_level, logger_kwargs):
         self.submodules.log = SimLogger(log_level=log_level("cmd"), **logger_kwargs)
         self.comb += self.log.info("Simulation start")
 
@@ -297,10 +298,6 @@ class CommandsSim(Module, AutoCSR):
             CAS = self.cas_handler(),
             MPC = self.mpc_handler(),
             # MRR
-            # WRITE/MASKED-WRITE
-            # READ
-            # CAS
-            # MPC
             # WFF/RFF?
             # RDC?
         )
@@ -314,6 +311,7 @@ class CommandsSim(Module, AutoCSR):
             ),
         ]
 
+        check_timings = 1 if check_timings else 0
         ck = lambda t: math.ceil(t * ck_freq)
         ms, us, ns = 1e-3, 1e-6, 1e-9
         self.submodules.tinit0 = PulseTiming(ck(20*ms))  # (max) voltage-ramp at power-up; not applicable in the simulation
@@ -335,10 +333,10 @@ class CommandsSim(Module, AutoCSR):
             self.tpw_reset.trigger.eq(~pads.reset_n),
             self.tinit2.valid.eq(~pads.cs),
             If(edge(self, pads.reset_n),
-                If(~self.tinit2.ready,
+                If(~self.tinit2.ready & check_timings,
                     self.log.warn(*with_progress(self.tinit2, "tINIT2 violated: CS LOW for too short before deasserting RESET"))
                 ),
-                If(~self.tpw_reset.ready,
+                If(~self.tpw_reset.ready & check_timings,
                     self.log.warn(*with_progress(self.tpw_reset, "tPW_RESET violated: RESET_n held low for too short"))
                 ),
             ),
@@ -370,7 +368,7 @@ class CommandsSim(Module, AutoCSR):
         fsm.act("RESET",
             self.tinit1.trigger.eq(1),
             If(edge(self, pads.reset_n),
-                If(~self.tinit1.ready,
+                If(~self.tinit1.ready & check_timings,
                     self.log.warn(*with_progress(self.tinit1, "tINIT1 violated: RESET deasserted too fast"))
                 ),
                 NextState("WAIT-NOP")  # Tc
@@ -378,17 +376,17 @@ class CommandsSim(Module, AutoCSR):
         )
         fsm.act("WAIT-NOP",
             self.tinit3.trigger.eq(1),
-            If(cs & ~self.tinit3.ready,
+            If(cs & ~self.tinit3.ready & check_timings,
                 self.log.warn(*with_progress(self.tinit3, "tINIT3 violated: CS high too fast after RESET deassertion"))
             ),
             self.tinit4.trigger.eq(1),
-            If(cs & ~self.tinit4.ready,
+            If(cs & ~self.tinit4.ready & check_timings,
                 self.log.warn(*with_progress(self.tinit4, "tINIT4 violated: CS high too fast after stable CK"))
             ),
-            If(cs & (self.ca_p == 0),  # NOP; TODO: DRAM probably only checks CS, then we'd better not check CA
+            If(cs,  # NOP; TODO: DRAM probably only checks CS, then we'd better not check CA
                 allow_unhandled_cmd.eq(1),
                 self.tinit5.trigger.eq(1),
-                If(~self.tinit4.ready,
+                If(~self.tinit4.ready & check_timings,
                     self.log.warn(*with_progress(self.tinit4, "tINIT4 violated: CS HIGH too fast while waiting for initial NOP"))
                 ),
                 If((self.ca_p != 0) | (self.ca_n != 0),
@@ -399,10 +397,10 @@ class CommandsSim(Module, AutoCSR):
         )
         fsm.act("NO-CMDS",
             self.tinit5.trigger.eq(1),
-            If(~self.tinit5.ready & cs,
+            If(cs & ~self.tinit5.ready & check_timings,
                 self.log.warn(*with_progress(self.tinit5, "tINIT5 violated: command issued too fast after initial NOP"))
             ),
-            If(self.tinit5.ready,
+            If(self.tinit5.ready | ~check_timings,
                 NextState("MODE-REGS")  # Tf
             )
         )
@@ -424,10 +422,10 @@ class CommandsSim(Module, AutoCSR):
         fsm.act("ZQC-LATCH",
             cmds_enabled.eq(1),
             self.tzqlat.trigger.eq(1),
-            If(~self.tzqlat.ready & self.handle_cmd,
+            If(~self.tzqlat.ready & self.handle_cmd & check_timings,
                 self.log.error(*with_progress(self.tzqlat, "tZQCAL violated: new command issued too fast: CA_p=0b%07b CA_n=0b%07b", self.ca_p, self.ca_n))
             ),
-            If(self.tzqlat.ready,
+            If(self.tzqlat.ready | ~check_timings,
                 NextState("NORMAL"),  # Th
             )
         )
