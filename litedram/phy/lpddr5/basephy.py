@@ -5,10 +5,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 import copy
+import collections
 from operator import or_, and_
 from functools import reduce
 from typing import Tuple
-from dataclasses import dataclass
 
 from migen import *
 
@@ -42,7 +42,20 @@ class LPDDR5Output:
         self.dmi_oe  = Signal()
 
 
-@dataclass
+def namedtuple(cls):
+    # This is a simple workaround the lack of dataclasses module in Python <3.7
+    # It will instead take given class and generate a new one that inherits
+    # from namedtuple with fields that are retrieved from class annotations.
+    assert cls.__base__ is object, "Supports only simple classes with no inheritance"
+    # retrieve field names and generate namedtuple class
+    fields = [name for name, _type in cls.__annotations__.items()]
+    ntuple_cls = collections.namedtuple(cls.__name__, fields)
+    # create a new type inheriting from the generated namedtuple
+    new_cls = type(cls.__name__, (ntuple_cls, object), cls.__dict__.copy())
+    return new_cls
+
+
+@namedtuple
 class FreqRange:
     mr:                 int                  # MR2[3:0] value
     data_rate:          Tuple[int, int]      # (> Mbps, <= Mbps)
@@ -60,16 +73,16 @@ class FreqRange:
     @property
     def ck_freq(self):
         low, high = self.data_rate
-        return (round(low / 4), round(hi / 4))
+        return (round(low / 4), round(high / 4))
 
     def for_set(self, wl_set, rl_set):
-        new = copy.copy(self)
         wl_set = {"A": 0, "B": 1}[wl_set]
-        new.wl = self.wl[wl_set]
-        new.t_wckenl_wr = self.t_wckenl_wr[wl_set]
-        new.rl = self.rl[rl_set]
-        new.t_wckenl_rd = self.t_wckenl_rd[rl_set]
-        return new
+        return self._replace(
+            wl          = self.wl[wl_set],
+            t_wckenl_wr = self.t_wckenl_wr[wl_set],
+            rl          = self.rl[rl_set],
+            t_wckenl_rd = self.t_wckenl_rd[rl_set],
+        )
 
 # Taken from Tables 182, 183, 201 of JEDEC specification for LPDDR5
 # WCK:CK 2:1 or 4:1, DVFSC diabled, Read Link ECC off
