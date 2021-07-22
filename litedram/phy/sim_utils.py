@@ -230,6 +230,9 @@ class Timing(Module):
         else:
             count = Signal(max=max(t, 2))
 
+        self._t = t
+        self._count = count
+
         ready = Signal()
         ready_reg = Signal()
         self.comb += [
@@ -258,6 +261,12 @@ class Timing(Module):
                 )
             )
 
+    def progress(self):
+        full = self._t
+        current = Signal.like(self._count)
+        self.comb += current.eq(full - self._count)  # down-counting
+        return (current, full)
+
 class PulseTiming(Module):
     """Timing monitor with pulse input/output
 
@@ -276,8 +285,7 @@ class PulseTiming(Module):
 
         trigger_d = Signal()
         triggered = Signal()
-        timing = Timing(t)
-        self.submodules += timing
+        self.submodules.timing = timing = Timing(t)
 
         self.sync += [
             If(self.trigger, triggered.eq(1)),
@@ -292,3 +300,6 @@ class PulseTiming(Module):
             ])),
             timing.valid.eq(edge(self, self.trigger)),
         ]
+
+    def progress(self):
+        return self.timing.progress()

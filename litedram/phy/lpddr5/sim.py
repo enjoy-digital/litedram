@@ -325,15 +325,21 @@ class CommandsSim(Module, AutoCSR):
         self.submodules.tzqlat = PulseTiming(max(4, ck(30*ns)))  # (min) ZQCAL latch quiet time
         self.submodules.tpw_reset = PulseTiming(ck(100*ns))  # (min) RESET_n low time for Reset initialization with stable power
 
+        def with_progress(timing, string, *args, as_clocks=False):
+            current, full = timing.progress()
+            width = len(str(full)) if not isinstance(full, Signal) else len(str(2**len(full)))
+            string += f" (%{width}d/%{width}d ck)"
+            return (string, *args, current, full)
+
         self.comb += [
             self.tpw_reset.trigger.eq(~pads.reset_n),
             self.tinit2.valid.eq(~pads.cs),
             If(edge(self, pads.reset_n),
                 If(~self.tinit2.ready,
-                    self.log.warn("tINIT2 violated: CS LOW for too short before deasserting RESET")
+                    self.log.warn(*with_progress(self.tinit2, "tINIT2 violated: CS LOW for too short before deasserting RESET"))
                 ),
                 If(~self.tpw_reset.ready,
-                    self.log.warn("tPW_RESET violated: RESET_n held low for too short")
+                    self.log.warn(*with_progress(self.tpw_reset, "tPW_RESET violated: RESET_n held low for too short"))
                 ),
             ),
             If(edge(self, pads.reset_n),
@@ -365,7 +371,7 @@ class CommandsSim(Module, AutoCSR):
             self.tinit1.trigger.eq(1),
             If(edge(self, pads.reset_n),
                 If(~self.tinit1.ready,
-                    self.log.warn("tINIT1 violated: RESET deasserted too fast")
+                    self.log.warn(*with_progress(self.tinit1, "tINIT1 violated: RESET deasserted too fast"))
                 ),
                 NextState("WAIT-NOP")  # Tc
             ),
@@ -373,17 +379,17 @@ class CommandsSim(Module, AutoCSR):
         fsm.act("WAIT-NOP",
             self.tinit3.trigger.eq(1),
             If(cs & ~self.tinit3.ready,
-                self.log.warn("tINIT3 violated: CS high too fast after RESET deassertion")
+                self.log.warn(*with_progress(self.tinit3, "tINIT3 violated: CS high too fast after RESET deassertion"))
             ),
             self.tinit4.trigger.eq(1),
             If(cs & ~self.tinit4.ready,
-                self.log.warn("tINIT4 violated: CS high too fast after stable CK")
+                self.log.warn(*with_progress(self.tinit4, "tINIT4 violated: CS high too fast after stable CK"))
             ),
             If(cs & (self.ca_p == 0),  # NOP; TODO: DRAM probably only checks CS, then we'd better not check CA
                 allow_unhandled_cmd.eq(1),
                 self.tinit5.trigger.eq(1),
                 If(~self.tinit4.ready,
-                    self.log.warn("tINIT4 violated: CS HIGH too fast while waiting for initial NOP")
+                    self.log.warn(*with_progress(self.tinit4, "tINIT4 violated: CS HIGH too fast while waiting for initial NOP"))
                 ),
                 If((self.ca_p != 0) | (self.ca_n != 0),
                     self.log.warn("Waiting for NOP but got CA_p=0b%07b CA_n=0b%07b", self.ca_p, self.ca_n)
@@ -393,8 +399,8 @@ class CommandsSim(Module, AutoCSR):
         )
         fsm.act("NO-CMDS",
             self.tinit5.trigger.eq(1),
-            If(cs,
-                self.log.warn("tINIT5 violated: command issued too fast after initial NOP")
+            If(~self.tinit5.ready & cs,
+                self.log.warn(*with_progress(self.tinit5, "tINIT5 violated: command issued too fast after initial NOP"))
             ),
             If(self.tinit5.ready,
                 NextState("MODE-REGS")  # Tf
@@ -418,8 +424,8 @@ class CommandsSim(Module, AutoCSR):
         fsm.act("ZQC-LATCH",
             cmds_enabled.eq(1),
             self.tzqlat.trigger.eq(1),
-            If(self.handle_cmd,
-                self.log.error("tZQCAL violated: new command issued too fast: CA_p=0b%07b CA_n=0b%07b", self.ca_p, self.ca_n)
+            If(~self.tzqlat.ready & self.handle_cmd,
+                self.log.error(*with_progress(self.tzqlat, "tZQCAL violated: new command issued too fast: CA_p=0b%07b CA_n=0b%07b", self.ca_p, self.ca_n))
             ),
             If(self.tzqlat.ready,
                 NextState("NORMAL"),  # Th
