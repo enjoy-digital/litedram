@@ -176,13 +176,6 @@ class SimSoC(SoCCore):
             ),
         )
 
-        self.add_constant("CONFIG_SIM_DISABLE_BIOS_PROMPT")
-        if disable_delay:
-            self.add_constant("CONFIG_DISABLE_DELAYS")
-        if finish_after_memtest:
-            self.submodules.ddrctrl = LiteDRAMCoreControl()
-            self.sync += If(self.ddrctrl.init_done.storage, Finish())
-
         # Reuse DFITimingsChecker from phy/model.py
         nphases = self.sdram.controller.settings.phy.nphases
         timings = {"tCK": (1e9 / sys_clk_freq) / nphases}
@@ -198,6 +191,16 @@ class SimSoC(SoCCore):
             memtype      = self.sdram.controller.settings.phy.memtype,
             verbose      = False,
         )
+
+        self.submodules.ddrctrl = LiteDRAMCoreControl()
+
+        self.add_constant("CONFIG_SIM_DISABLE_BIOS_PROMPT")
+        if disable_delay:
+            self.add_constant("CONFIG_DISABLE_DELAYS")
+            # when delays are disabled we may experience timing violations during software control
+            self.comb += self.dfi_timings_checker.logging_enabled.eq(self.ddrctrl.init_done.storage)
+        if finish_after_memtest:
+            self.sync += If(self.ddrctrl.init_done.storage, Finish())
 
         # Debug info -------------------------------------------------------------------------------
         def dump(obj):
