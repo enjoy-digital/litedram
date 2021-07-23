@@ -228,8 +228,8 @@ class Serializer(Module):
     LATENCY = 1
 
     def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None):
-        assert i_dw > o_dw
-        assert i_dw % o_dw == 0
+        assert i_dw > o_dw, (i_dw, o_dw)
+        assert i_dw % o_dw == 0, (i_dw, o_dw)
         ratio = i_dw // o_dw
 
         sd_clk = getattr(self.sync, clk)
@@ -271,8 +271,8 @@ class Deserializer(Module):
     LATENCY = 2
 
     def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None):
-        assert i_dw < o_dw
-        assert o_dw % i_dw == 0
+        assert i_dw < o_dw, (i_dw, o_dw)
+        assert o_dw % i_dw == 0, (i_dw, o_dw)
         ratio = o_dw // i_dw
 
         sd_clk = getattr(self.sync, clk)
