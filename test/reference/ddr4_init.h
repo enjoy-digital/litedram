@@ -27,7 +27,7 @@
 #define SDRAM_PHY_WRITE_LEVELING_CAPABLE
 #define SDRAM_PHY_WRITE_LATENCY_CALIBRATION_CAPABLE
 #define SDRAM_PHY_READ_LEVELING_CAPABLE
-#define SDRAM_PHY_MODULES SDRAM_PHY_DATABITS/8
+#define SDRAM_PHY_MODULES (SDRAM_PHY_DATABITS/8)
 #define SDRAM_PHY_DELAYS 512
 #define SDRAM_PHY_BITSLIPS 8
 
@@ -65,7 +65,7 @@ static inline unsigned long sdram_dfii_pix_wrdata_addr(int phase){
         default: return 0;
         }
 }
-    
+
 static inline unsigned long sdram_dfii_pix_rddata_addr(int phase){
     switch (phase) {
         case 0: return CSR_SDRAM_DFII_PI0_RDDATA_ADDR;
@@ -75,7 +75,7 @@ static inline unsigned long sdram_dfii_pix_rddata_addr(int phase){
         default: return 0;
         }
 }
-    
+
 #define DDRX_MR_WRLVL_ADDRESS 1
 #define DDRX_MR_WRLVL_RESET 769
 #define DDRX_MR_WRLVL_BIT 7

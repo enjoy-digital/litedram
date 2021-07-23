@@ -707,7 +707,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
         r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
 
     # Define number of modules/delays/bitslips
-    r += "#define SDRAM_PHY_MODULES SDRAM_PHY_DATABITS/8\n"
+    r += "#define SDRAM_PHY_MODULES (SDRAM_PHY_DATABITS/8)\n"
     if phytype in ["USDDRPHY", "USPDDRPHY"]:
         r += "#define SDRAM_PHY_DELAYS 512\n"
         r += "#define SDRAM_PHY_BITSLIPS 8\n"
