@@ -14,27 +14,10 @@ from migen import *
 from litex.soc.interconnect.stream import ClockDomainCrossing
 from litex.soc.interconnect.csr import AutoCSR
 
-from litedram.common import TappedDelayLine, tXXDController
-from litedram.phy.utils import delayed, edge, SimLogger
+from litedram.common import TappedDelayLine
+from litedram.phy.utils import delayed, edge
+from litedram.phy.sim_utils import SimLogger, PulseTiming, log_level_getter
 from litedram.phy.lpddr4.commands import MPC
-
-
-def log_level_getter(log_level):
-    """Parse logging level description
-
-    Log level can be presented in a simple form (e.g. `--log-level=DEBUG`) to specify
-    the same level for all modules, or can set different levels for different modules
-    e.g. `--log-level=all=INFO,data=DEBUG`.
-    """
-    def get_level(name):
-        return getattr(SimLogger, name.upper())
-
-    if "=" not in log_level:  # simple log_level, e.g. "INFO"
-        return lambda _: get_level(log_level)
-
-    # parse log_level in the per-module form, e.g. "--log-level=all=INFO,data=DEBUG"
-    per_module = dict(part.split("=") for part in log_level.strip().split(","))
-    return lambda module: get_level(per_module.get(module, per_module.get("all", None)))
 
 
 class LPDDR4Sim(Module, AutoCSR):
@@ -105,33 +88,6 @@ class LPDDR4Sim(Module, AutoCSR):
         self.submodules.data = ClockDomainsRenamer(cd_dq_wr)(data)
 
 # Commands -----------------------------------------------------------------------------------------
-
-class PulseTiming(Module):
-    """Timing monitor with pulse input/output
-
-    This module works like `tXXDController` with the following differences:
-
-    * countdown triggered by a low to high pulse on `trigger`
-    * `ready` is initially low, only after a trigger it can become high
-    * provides `ready_p` which is high only for 1 cycle when `ready` becomes high
-    """
-    def __init__(self, t):
-        self.trigger = Signal()
-        self.ready   = Signal()
-        self.ready_p = Signal()
-
-        ready_d = Signal()
-        triggered = Signal()
-        tctrl = tXXDController(t)
-        self.submodules += tctrl
-
-        self.sync += If(self.trigger, triggered.eq(1)),
-        self.comb += [
-            self.ready.eq(triggered & tctrl.ready),
-            self.ready_p.eq(edge(self, self.ready)),
-            tctrl.valid.eq(edge(self, self.trigger)),
-        ]
-
 
 class CommandsSim(Module, AutoCSR):
     """Command simulation
