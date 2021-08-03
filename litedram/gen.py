@@ -496,15 +496,14 @@ class LiteDRAMCore(SoCCore):
         # Sim.
         if isinstance(platform, SimPlatform):
             from litex.tools.litex_sim import get_sdram_phy_settings
-            sdram_clk_freq   = int(100e6) # FIXME: use 100MHz timings
             phy_settings   = get_sdram_phy_settings(
                 memtype    = sdram_module.memtype,
                 data_width = core_config["sdram_module_nb"]*8,
-                clk_freq   = sdram_clk_freq)
+                clk_freq   = sys_clk_freq)
             self.submodules.ddrphy = sdram_phy = SDRAMPHYModel(
                 module    = sdram_module,
                 settings  = phy_settings,
-                clk_freq  = sdram_clk_freq)
+                clk_freq  = sys_clk_freq)
 
         # GENSDRPHY.
         elif core_config["sdram_phy"] in [litedram_phys.GENSDRPHY]:
