@@ -170,9 +170,7 @@ class BankMachine(Module):
         # Note: tRRD, tFAW, tCCD, tWTR timings are enforced by the multiplexer
         self.submodules.fsm = fsm = FSM()
         fsm.act("REGULAR",
-            If(refresh_req,
-                NextState("REFRESH")
-            ).Elif(cmd_buffer.source.valid,
+            If(cmd_buffer.source.valid,
                 If(row_opened,
                     If(row_hit,
                         cmd.valid.eq(1),
@@ -194,7 +192,11 @@ class BankMachine(Module):
                 ).Else(  # ~row_opened
                     NextState("ACTIVATE")
                 )
-            )
+            ),
+            # Before starting a refresh, allow one pending command to be sent to the Multiplexer.
+            If(refresh_req & (~cmd.valid | cmd.ready),
+                NextState("REFRESH")
+            ),
         )
         fsm.act("PRECHARGE",
             # Note: we are presenting the column address, A10 is always low
