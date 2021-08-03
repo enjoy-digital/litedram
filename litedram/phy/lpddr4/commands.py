@@ -59,7 +59,7 @@ class DFIPhaseAdapter(Module):
     ----------
     dfi_phase : Record(dfi.phase_description), in
         Input from a single DFI phase.
-    masked_write : bool
+    masked_write : bool or Signal(1)
         Specifies how DFI write command (cas_n=0, ras_n=1, we_n=0) is interpreted, either
         as LPDDR4 WRITE or MASKED-WRITE. MASKED-WRITE requires larger tCCD, but WRITE does
         not permit masking of data, so if masking is needed MASKED-WRITE has to be used.
