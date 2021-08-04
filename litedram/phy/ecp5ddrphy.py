@@ -167,7 +167,10 @@ class ECP5DDRPHY(Module, AutoCSR):
             cl            = cl,
             cwl           = cwl,
             read_latency  = cl_sys_latency + 10,
-            write_latency = cwl_sys_latency
+            write_latency = cwl_sys_latency,
+            read_leveling = True,
+            bitslips      = 4,
+            delays        = 8,
         )
 
         # DFI Interface ----------------------------------------------------------------------------

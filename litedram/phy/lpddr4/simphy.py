@@ -6,6 +6,8 @@
 
 from migen import *
 
+from litex.soc.interconnect.csr import CSR
+
 from litedram.phy.utils import delayed, Serializer, Deserializer, Latency
 from litedram.phy.sim_utils import SimPad, SimulationPads, SimSerDesMixin
 from litedram.phy.lpddr4.basephy import LPDDR4PHY, DoubleRateLPDDR4PHY
@@ -39,6 +41,12 @@ class LPDDR4SimPHY(SimSerDesMixin, LPDDR4PHY):
             des_latency  = Latency(sys=Deserializer.LATENCY),
             phytype      = "LPDDR4SimPHY",
             **kwargs)
+
+        # fake delays (make no nsense in simulation, but sdram.c expects them)
+        self.settings.read_leveling = True
+        self.settings.delays = 1
+        self._rdly_dq_rst = CSR()
+        self._rdly_dq_inc = CSR()
 
         delay = lambda sig, cycles: delayed(self, sig, cycles=cycles)
         sdr    = dict(clkdiv="sys", clk="sys8x")
@@ -97,8 +105,14 @@ class DoubleRateLPDDR4SimPHY(SimSerDesMixin, DoubleRateLPDDR4PHY):
             des_latency  = Latency(sys2x=Deserializer.LATENCY),
             phytype      = "LPDDR4SimPHY",
             **kwargs)
-
         self.submodules.half_delay = ClockDomainsRenamer("sys2x")(Module())
+
+        # fake delays (make no nsense in simulation, but sdram.c expects them)
+        self.settings.read_leveling = True
+        self.settings.delays = 1
+        self._rdly_dq_rst = CSR()
+        self._rdly_dq_inc = CSR()
+
         delay = lambda sig, cycles: delayed(self.half_delay, sig, cycles=cycles)
 
         sdr    = dict(clkdiv="sys2x", clk="sys8x")

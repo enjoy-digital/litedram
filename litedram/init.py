@@ -747,45 +747,6 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     if isinstance(wrphase, Signal): wrphase = wrphase.reset.value
     r.define("SDRAM_PHY_WRPHASE", wrphase)
 
-    phy_settings.write_leveling = False
-    phy_settings.write_dq_dqs_training = False
-    phy_settings.write_latency_calibration = False
-    phy_settings.read_leveling = False
-    if phytype in ["USDDRPHY", "USPDDRPHY",
-                   "K7DDRPHY", "V7DDRPHY",
-                   "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        phy_settings.write_leveling = True
-    if phytype in ["K7DDRPHY", "V7DDRPHY",
-                   "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        phy_settings.write_dq_dqs_training = True
-    if phytype in ["USDDRPHY", "USPDDRPHY",
-                   "A7DDRPHY", "K7DDRPHY", "V7DDRPHY",
-                   "A7LPDDR4PHY", "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        phy_settings.write_latency_calibration = True
-        phy_settings.read_leveling = True
-    if phytype in ["ECP5DDRPHY"]:
-        phy_settings.read_leveling = True
-    if phytype in ["LPDDR4SIMPHY"]:
-        phy_settings.read_leveling = True
-
-    phy_settings.delays = None
-    phy_settings.bitslips = None
-    if phytype in ["USDDRPHY", "USPDDRPHY"]:
-        phy_settings.delays = 512
-        phy_settings.bitslips = 8
-    elif phytype in ["A7DDRPHY", "K7DDRPHY", "V7DDRPHY"]:
-        phy_settings.delays = 32
-        phy_settings.bitslips = 8
-    elif phytype in ["A7LPDDR4PHY", "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        phy_settings.delays = 32
-        phy_settings.bitslips = 16
-    elif phytype in ["ECP5DDRPHY"]:
-        phy_settings.delays = 8
-        phy_settings.bitslips = 4
-    elif phytype in ["LPDDR4SIMPHY"]:
-        phy_settings.delays = 1
-        phy_settings.bitslips = 16
-
     # Define Read/Write Leveling capability
     if phy_settings.write_leveling:
         r.define("SDRAM_PHY_WRITE_LEVELING_CAPABLE")
@@ -798,21 +759,10 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
 
     # Define number of modules/delays/bitslips
     r.define("SDRAM_PHY_MODULES", "(SDRAM_PHY_DATABITS/8)")
-    if phytype in ["USDDRPHY", "USPDDRPHY"]:
-        r.define("SDRAM_PHY_DELAYS", 512)
-        r.define("SDRAM_PHY_BITSLIPS", 8)
-    elif phytype in ["A7DDRPHY", "K7DDRPHY", "V7DDRPHY"]:
-        r.define("SDRAM_PHY_DELAYS", 32)
-        r.define("SDRAM_PHY_BITSLIPS", 8)
-    elif phytype in ["A7LPDDR4PHY", "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        r.define("SDRAM_PHY_DELAYS", 32)
-        r.define("SDRAM_PHY_BITSLIPS", 16)
-    elif phytype in ["ECP5DDRPHY"]:
-        r.define("SDRAM_PHY_DELAYS", 8)
-        r.define("SDRAM_PHY_BITSLIPS", 4)
-    elif phytype in ["LPDDR4SIMPHY"]:
-        r.define("SDRAM_PHY_DELAYS", 1)
-        r.define("SDRAM_PHY_BITSLIPS", 16)
+    if phy_settings.delays > 0:
+        r.define("SDRAM_PHY_DELAYS", phy_settings.delays)
+    if phy_settings.bitslips > 0:
+        r.define("SDRAM_PHY_BITSLIPS", phy_settings.bitslips)
 
     if phy_settings.is_rdimm:
         assert phy_settings.memtype == "DDR4"

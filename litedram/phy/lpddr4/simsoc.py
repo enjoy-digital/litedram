@@ -95,10 +95,6 @@ class SimSoC(SoCCore):
             aligned_reset_zero = True,
             masked_write       = masked_write,
         )
-        # fake delays (make no nsense in simulation, but sdram.c expects them)
-        self.ddrphy._rdly_dq_rst         = CSR()
-        self.ddrphy._rdly_dq_inc         = CSR()
-        self.add_csr("ddrphy")
 
         for p in ["clk", "cke", "odt", "reset_n", "cs", "ca", "dq", "dqs", "dmi"]:
             self.comb += getattr(pads, p).eq(getattr(self.ddrphy.pads, p))
