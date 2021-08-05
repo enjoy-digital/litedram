@@ -915,6 +915,12 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
         r.define("DDRX_MR_WRLVL_RESET", mr[2])
         r.define("DDRX_MR_WRLVL_BIT", 7)
         r.newline()
+    elif phy_settings.memtype in ["LPDDR5"]:
+        # Write leveling enabled by MR18[6]
+        r.define("DDRX_MR_WRLVL_ADDRESS", 18)
+        r.define("DDRX_MR_WRLVL_RESET", mr[18])
+        r.define("DDRX_MR_WRLVL_BIT", 6)
+        r.newline()
 
     with r.block("static inline void init_sequence(void)") as b:
         for comment, a, ba, cmd, delay in init_sequence:
