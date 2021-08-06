@@ -6,7 +6,8 @@
 
 from migen import *
 
-from litedram.phy.utils import delayed, Serializer, Deserializer, Latency, SimPad, SimulationPads, SimSerDesMixin
+from litedram.phy.utils import delayed, Serializer, Deserializer, Latency
+from litedram.phy.sim_utils import SimPad, SimulationPads, SimSerDesMixin
 from litedram.phy.lpddr4.basephy import LPDDR4PHY, DoubleRateLPDDR4PHY
 
 

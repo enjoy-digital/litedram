@@ -14,9 +14,8 @@ from collections import defaultdict
 from migen import *
 
 from litex.soc.interconnect import stream
-from litex.soc.interconnect.csr import CSRStorage, AutoCSR
 
-from litedram.common import TappedDelayLine, Settings
+from litedram.common import TappedDelayLine
 
 
 def bit(n, val):
@@ -43,6 +42,7 @@ def edge(mod, cond):
     cond_d = Signal()
     mod.sync += cond_d.eq(cond)
     return  ~cond_d & cond
+
 
 class ConstBitSlip(Module):
     def __init__(self, dw, slp, cycles, i=None, o=None, register=True):
@@ -72,6 +72,7 @@ class ConstBitSlip(Module):
     def min_cycles(slp, dw):
         """Minimum number of cycles to be able to use given bitslip values"""
         return math.ceil((slp + 1) / dw)
+
 
 # TODO: rewrite DQSPattern in litedram/common.py to support different data widths
 class DQSPattern(Module):
@@ -136,39 +137,6 @@ class Latency:
 
     def __repr__(self):
         return "Latency({} sys clk)".format(self._sys)
-
-
-class SimPad(Settings):
-    def __init__(self, name, width, io=False):
-        self.set_attributes(locals())
-
-class SimulationPads(Module):
-    """Pads for simulation purpose
-
-    Tristate pads are simulated as separate input/output pins (name_i, name_o) and
-    an output-enable pin (name_oe). Output pins are to be driven byt the PHY and
-    input pins are to be driven by the DRAM simulator. An additional pin without
-    a suffix is created and this module will include logic to set this pin to the
-    actual value depending on the output-enable signal.
-    """
-    def layout(self, **kwargs):
-        raise NotImplementedError("Simulation pads layout as a list of SimPad objects")
-
-    def __init__(self, **kwargs):
-        for pad  in self.layout(**kwargs):
-            if pad.io:
-                o, i, oe = (f"{pad.name}_{suffix}" for suffix in ["o", "i", "oe"])
-                setattr(self, pad.name, Signal(pad.width))
-                setattr(self, o, Signal(pad.width, name=o))
-                setattr(self, i, Signal(pad.width, name=i))
-                setattr(self, oe, Signal(name=oe))
-                self.comb += If(getattr(self, oe),
-                    getattr(self, pad.name).eq(getattr(self, o))
-                ).Else(
-                    getattr(self, pad.name).eq(getattr(self, i))
-                )
-            else:
-                setattr(self, pad.name, Signal(pad.width, name=pad.name))
 
 
 class CommandsPipeline(Module):
@@ -337,81 +305,6 @@ class Deserializer(Module):
         sd_clkdiv += o_pre_d.eq(o_pre)
         # would work as self.comb (at least in simulation)
         sd_clkdiv += self.o.eq(Cat(as_array(o_pre_d)[:-1], as_array(o_pre)[-1]))
-
-
-class SimSerDesMixin:
-    """Helper class for easier (de-)serialization to simulation pads."""
-    def ser(self, *, i, o, clkdiv, clk, name="", **kwargs):
-        assert len(o) == 1
-        kwargs = dict(i=i, i_dw=len(i), o=o, o_dw=1, clk=clk, clkdiv=clkdiv,
-            name=f"ser_{name}".strip("_"), **kwargs)
-        self.submodules += Serializer(**kwargs)
-
-    def des(self, *, i, o, clkdiv, clk, name="", **kwargs):
-        assert len(i) == 1
-        kwargs = dict(i=i, i_dw=1, o=o, o_dw=len(o), clk=clk, clkdiv=clkdiv,
-            name=f"des_{name}".strip("_"), **kwargs)
-        self.submodules += Deserializer(**kwargs)
-
-
-class SimLogger(Module, AutoCSR):
-    """Logger for use in simulation
-
-    This module allows for easier message logging when running simulation designs.
-    The logger can be used from `comb` context so it the methods can be directly
-    used inside `FSM` code. It also provides logging levels that can be used to
-    filter messages, either by specifying the default `log_level` or in runtime
-    by driving to the `level` signal or using a corresponding CSR.
-    """
-    # Allows to use Display inside FSM and to filter log messages by level (statically or dynamically)
-    DEBUG = 0
-    INFO  = 1
-    WARN  = 2
-    ERROR = 3
-    NONE  = 4
-
-    def __init__(self, log_level=INFO, clk_freq=None):
-        self.ops = []
-        self.level = Signal(reset=log_level, max=self.NONE)
-        self.time_ps = None
-        if clk_freq is not None:
-            self.time_ps = Signal(64)
-            cnt = Signal(64)
-            self.sync += cnt.eq(cnt + 1)
-            self.comb += self.time_ps.eq(cnt * int(1e12/clk_freq))
-
-    def debug(self, fmt, *args, **kwargs):
-        return self.log("[DEBUG] " + fmt, *args, level=self.DEBUG, **kwargs)
-
-    def info(self, fmt, *args, **kwargs):
-        return self.log("[INFO] " + fmt, *args, level=self.INFO, **kwargs)
-
-    def warn(self, fmt, *args, **kwargs):
-        return self.log("[WARN] " + fmt, *args, level=self.WARN, **kwargs)
-
-    def error(self, fmt, *args, **kwargs):
-        return self.log("[ERROR] " + fmt, *args, level=self.ERROR, **kwargs)
-
-    def log(self, fmt, *args, level=DEBUG, once=True):
-        cond = Signal()
-        if once:  # make the condition be triggered only on rising edge
-            condition = edge(self, cond)
-        else:
-            condition = cond
-
-        self.ops.append((level, condition, fmt, args))
-        return cond.eq(1)
-
-    def add_csrs(self):
-        self._level = CSRStorage(len(self.level), reset=self.level.reset.value)
-        self.comb += self.level.eq(self._level.storage)
-
-    def do_finalize(self):
-        for level, cond, fmt, args in self.ops:
-            if self.time_ps is not None:
-                fmt = f"[%16d ps] {fmt}"
-                args = (self.time_ps, *args)
-            self.sync += If((level >= self.level) & cond, Display(fmt, *args))
 
 
 class HoldValid(Module):
