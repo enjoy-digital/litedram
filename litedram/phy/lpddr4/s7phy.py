@@ -34,7 +34,7 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
         self.settings.write_leveling = True
         self.settings.write_latency_calibration = True
         self.settings.write_dq_dqs_training = True
-        self.settings.read_level = True
+        self.settings.read_leveling = True
 
         # Parameters -------------------------------------------------------------------------------
         # Calculate value of taps needed to shift a signal by 90 degrees.
