@@ -336,6 +336,7 @@ class LiteDRAMECP5DDRPHYCRG(Module):
             AsyncResetSynchronizer(self.cd_sys,   ~pll.locked | self.reset),
             AsyncResetSynchronizer(self.cd_sys2x, ~pll.locked | self.reset),
         ]
+        self.comb += platform.request("pll_locked").eq(pll.locked)
 
 class LiteDRAMS7DDRPHYCRG(Module):
     def __init__(self, platform, core_config):
