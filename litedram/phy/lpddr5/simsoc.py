@@ -78,7 +78,7 @@ class LPDDR5ExampleModule(SDRAMModule):
     # TODO: find a way to select if we need masked writes
     tccd = {"write": (8, None), "masked-write": (32, None)}
 
-    technology_timings = _TechnologyTimings(tREFI=32e6/8192, tWTR=(4, 12), tCCD=tccd["masked-write"], tRRD=(2, 5), tZQCS=None)
+    technology_timings = _TechnologyTimings(tREFI=32e6/8192, tWTR=(4, 12), tCCD=tccd["masked-write"], tRRD=(2, 5), tZQCS=(128, 80))
     speedgrade_timings = {
         "default": _SpeedgradeTimings(tRP=(2, 21), tRCD=(2, 18), tWR=(3, 34), tRFC=210, tFAW=20, tRAS=(3, 42)),  # TODO: tRAS_max
     }

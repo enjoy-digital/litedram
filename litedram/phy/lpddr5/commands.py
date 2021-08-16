@@ -250,17 +250,29 @@ class Command(Module):
         ops = []
         for edge, bits in enumerate(self.truth_table[cmd]):
             for bit, bit_desc in enumerate(bits):
-                ops.append(self.ca[edge][bit].eq(self.parse_bit(bit_desc, is_mrw=cmd.startswith("MRW"))))
+                ops.append(self.ca[edge][bit].eq(self.parse_bit(bit_desc, cmd)))
         if cmd != "DES":  # only DESELECT has CS low
             ops.append(self.cs.eq(1))
         return ops
 
-    def parse_bit(self, bit, is_mrw):
+    def parse_bit(self, bit, cmd_str):
         assert len(self.dfi.bank) >= 7, "At least 7 DFI addressbits needed for Mode Register address"
         assert len(self.dfi.address) >= 18, "At least 18 DFI addressbits needed for row address"
 
         cmd = dfi_cmd(self.dfi)
+
+        is_mrw = cmd_str.startswith("MRW")
+        is_mpc = cmd_str == "MPC"
+
         mr_address = self.dfi.bank if is_mrw else self.dfi.address
+
+        mpc_op = Signal(8)
+        self.comb += If(self.dfi.address == 0,
+            mpc_op.eq(MPC.ZQC_LATCH)
+        ).Else(
+            mpc_op.eq(self.dfi.address)
+        )
+        op = mpc_op if is_mpc else self.dfi.address
 
         rules = {
             "H":       lambda: 1,  # high
@@ -283,7 +295,7 @@ class Command(Module):
             # LPDDR5 specs split the regular column address into C[5:0] "column address" and B[3:0] "burst address"
             "C(\d+)":  lambda i: self.dfi.address[i + 4],
             "MA(\d+)": lambda i: mr_address[i],  # mode register address
-            "OP(\d+)": lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
+            "OP(\d+)": lambda i: op[i], # mode register value, or operand for MPC
         }
 
         for pattern, value in rules.items():
