@@ -1,54 +1,57 @@
 #ifndef __GENERATED_SDRAM_PHY_H
 #define __GENERATED_SDRAM_PHY_H
+
 #include <hw/common.h>
 #include <generated/csr.h>
 
-#define DFII_CONTROL_SEL        0x01
-#define DFII_CONTROL_CKE        0x02
-#define DFII_CONTROL_ODT        0x04
-#define DFII_CONTROL_RESET_N    0x08
+#define DFII_CONTROL_SEL 0x01
+#define DFII_CONTROL_CKE 0x02
+#define DFII_CONTROL_ODT 0x04
+#define DFII_CONTROL_RESET_N 0x08
 
-#define DFII_COMMAND_CS         0x01
-#define DFII_COMMAND_WE         0x02
-#define DFII_COMMAND_CAS        0x04
-#define DFII_COMMAND_RAS        0x08
-#define DFII_COMMAND_WRDATA     0x10
-#define DFII_COMMAND_RDDATA     0x20
+#define DFII_COMMAND_CS 0x01
+#define DFII_COMMAND_WE 0x02
+#define DFII_COMMAND_CAS 0x04
+#define DFII_COMMAND_RAS 0x08
+#define DFII_COMMAND_WRDATA 0x10
+#define DFII_COMMAND_RDDATA 0x20
 
 #define SDRAM_PHY_GENSDRPHY
 #define SDRAM_PHY_XDR 1
 #define SDRAM_PHY_DATABITS 16
+#define SDRAM_PHY_DFI_DATABITS 16
 #define SDRAM_PHY_PHASES 1
 #define SDRAM_PHY_CL 2
 #define SDRAM_PHY_CWL 2
 #define SDRAM_PHY_RDPHASE 0
 #define SDRAM_PHY_WRPHASE 0
-#define SDRAM_PHY_MODULES SDRAM_PHY_DATABITS/8
+#define SDRAM_PHY_MODULES (SDRAM_PHY_DATABITS/8)
 
 void cdelay(int i);
 
 __attribute__((unused)) static inline void command_p0(int cmd)
 {
-    sdram_dfii_pi0_command_write(cmd);
-    sdram_dfii_pi0_command_issue_write(1);
+	sdram_dfii_pi0_command_write(cmd);
+	sdram_dfii_pi0_command_issue_write(1);
 }
 
 #define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE
 
-static inline unsigned long sdram_dfii_pix_wrdata_addr(int phase){
-    switch (phase) {
-        case 0: return CSR_SDRAM_DFII_PI0_WRDATA_ADDR;
-        default: return 0;
-        }
+static inline unsigned long sdram_dfii_pix_wrdata_addr(int phase)
+{
+	switch (phase) {
+		case 0: return CSR_SDRAM_DFII_PI0_WRDATA_ADDR;
+		default: return 0;
+	}
 }
-    
-static inline unsigned long sdram_dfii_pix_rddata_addr(int phase){
-    switch (phase) {
-        case 0: return CSR_SDRAM_DFII_PI0_RDDATA_ADDR;
-        default: return 0;
-        }
+static inline unsigned long sdram_dfii_pix_rddata_addr(int phase)
+{
+	switch (phase) {
+		case 0: return CSR_SDRAM_DFII_PI0_RDDATA_ADDR;
+		default: return 0;
+	}
 }
-    
+
 static inline void init_sequence(void)
 {
 	/* Bring CKE high */
@@ -92,4 +95,5 @@ static inline void init_sequence(void)
 	cdelay(200);
 
 }
-#endif
+
+#endif /* __GENERATED_SDRAM_PHY_H */

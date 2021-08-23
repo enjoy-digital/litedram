@@ -11,6 +11,7 @@ import math
 from functools import reduce
 from operator import add
 from collections import OrderedDict
+from typing import Union, Optional
 
 from migen import *
 
@@ -203,11 +204,29 @@ class Settings:
 
 
 class PhySettings(Settings):
-    def __init__(self, phytype, memtype, databits, dfi_databits,
-                 nphases,
-                 rdphase, wrphase,
-                 cl, read_latency, write_latency, nranks=1, cwl=None,
-                 cmd_latency=None, cmd_delay=None):
+    def __init__(self,
+            phytype: str,
+            memtype: str,  # SDR, DDR, DDR2, ...
+            databits: int,  # number of DQ lines
+            dfi_databits: int,  # per-phase DFI data width
+            nphases: int,  # number of DFI phases
+            rdphase: Union[int, Signal],  # phase on which READ command will be issued by MC
+            wrphase: Union[int, Signal],  # phase on which WRITE command will be issued by MC
+            cl: int,  # latency (DRAM clk) from READ command to first data
+            read_latency: int,  # latency (MC clk) from DFI.rddata_en to DFI.rddata_valid
+            write_latency: int,  # latency (MC clk) from DFI.wrdata_en to DFI.wrdata
+            nranks: int = 1,  # number of DRAM ranks
+            cwl: Optional[int] = None,  # latency (DRAM clk) from WRITE command to first data
+            cmd_latency: Optional[int] = None,  # additional command latency (MC clk)
+            cmd_delay: Optional[int] = None,  # used to force cmd delay during initialization in BIOS
+            bitslips: int = 0,  # number of write/read bitslip taps
+            delays: int = 0,  # number of write/read delay taps
+            # PHY training capabilities
+            write_leveling: bool = False,
+            write_dq_dqs_training: bool = False,
+            write_latency_calibration: bool = False,
+            read_leveling: bool = False,
+        ):
         self.set_attributes(locals())
         self.cwl = cl if cwl is None else cwl
         self.is_rdimm = False

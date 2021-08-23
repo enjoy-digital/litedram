@@ -11,6 +11,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 import math
+from contextlib import contextmanager
 
 from migen import *
 
@@ -643,178 +644,198 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
 
 # C Header -----------------------------------------------------------------------------------------
 
+class CGenerator(list):
+    # C code generator - list of strings (=lines) or CGenerator instances (sub-generators)
+    def __init__(self, indent=0, indent_str="\t"):
+        self.indent = indent
+        self.indent_str = indent_str
+
+    def __iadd__(self, x):
+        # make `c += "int x = 0;"` append it as line, not char-by-char
+        if isinstance(x, str):
+            x = [x]
+        return super().__iadd__(x)
+
+    def header_guard(self, name):
+        self._header_guard = name
+
+    def generate_lines(self):
+        if getattr(self, "_header_guard", None) is not None:
+            self.insert(0, f"#ifndef {self._header_guard}")
+            self.insert(1, f"#define {self._header_guard}")
+            self.insert(2, "")
+            self.append("")
+            self.append(f"#endif /* {self._header_guard} */")
+            self._header_guard = None
+        lines = []
+        for entry in self:
+            if isinstance(entry, CGenerator):
+                lines.extend(entry.generate_lines())
+            else:
+                line = (self.indent * self.indent_str) + entry
+                lines.append(line.rstrip())
+        return lines
+
+    def generate(self):
+        lines = self.generate_lines()
+        return "\n".join(lines).strip() + "\n"
+
+    def include(self, path):
+        self.append(f"#include {path}")
+
+    def define(self, var, value=None):
+        if isinstance(value, (int, float)):
+            value = str(value)
+        self.append(f"#define {var}" + (f" {value}" if value is not None else ""))
+
+    def newline(self, n=1):
+        self.extend([""] * n)
+
+    @contextmanager
+    def block(self, head=None, newline=True):
+        if head is not None:
+            self.append(head + (" {" if not newline else ""))
+            if newline:
+                self.append("{")
+        else:
+            self.append("{")
+        subgenerator = CGenerator(indent=self.indent + 1, indent_str=self.indent_str)
+        yield subgenerator
+        self.append(subgenerator)
+        self.append("}")
+
+
 def get_sdram_phy_c_header(phy_settings, timing_settings):
-    r = "#ifndef __GENERATED_SDRAM_PHY_H\n#define __GENERATED_SDRAM_PHY_H\n"
-    r += "#include <hw/common.h>\n"
-    r += "#include <generated/csr.h>\n"
-    r += "\n"
+    r = CGenerator()
+    r.header_guard("__GENERATED_SDRAM_PHY_H")
+    r.include("<hw/common.h>")
+    r.include("<generated/csr.h>")
+    r.newline()
 
-    r += "#define DFII_CONTROL_SEL        0x01\n"
-    r += "#define DFII_CONTROL_CKE        0x02\n"
-    r += "#define DFII_CONTROL_ODT        0x04\n"
-    r += "#define DFII_CONTROL_RESET_N    0x08\n"
-    r += "\n"
+    r.define("DFII_CONTROL_SEL",     "0x01")
+    r.define("DFII_CONTROL_CKE",     "0x02")
+    r.define("DFII_CONTROL_ODT",     "0x04")
+    r.define("DFII_CONTROL_RESET_N", "0x08")
+    r.newline()
 
-    r += "#define DFII_COMMAND_CS         0x01\n"
-    r += "#define DFII_COMMAND_WE         0x02\n"
-    r += "#define DFII_COMMAND_CAS        0x04\n"
-    r += "#define DFII_COMMAND_RAS        0x08\n"
-    r += "#define DFII_COMMAND_WRDATA     0x10\n"
-    r += "#define DFII_COMMAND_RDDATA     0x20\n"
-    r += "\n"
+    r.define("DFII_COMMAND_CS",     "0x01")
+    r.define("DFII_COMMAND_WE",     "0x02")
+    r.define("DFII_COMMAND_CAS",    "0x04")
+    r.define("DFII_COMMAND_RAS",    "0x08")
+    r.define("DFII_COMMAND_WRDATA", "0x10")
+    r.define("DFII_COMMAND_RDDATA", "0x20")
+    r.newline()
 
     phytype = phy_settings.phytype.upper()
     nphases = phy_settings.nphases
 
     # Define PHY type and number of phases
-    r += "#define SDRAM_PHY_"+phytype+"\n"
-    r += "#define SDRAM_PHY_XDR "+str(1 if phy_settings.memtype == "SDR" else 2) + "\n"
-    r += "#define SDRAM_PHY_DATABITS "+str(phy_settings.databits) + "\n"
-    r += "#define SDRAM_PHY_PHASES "+str(nphases)+"\n"
-    if phy_settings.cl is not None:
-        r += "#define SDRAM_PHY_CL "+str(phy_settings.cl)+"\n"
-    if phy_settings.cwl is not None:
-        r += "#define SDRAM_PHY_CWL "+str(phy_settings.cwl)+"\n"
-    if phy_settings.cmd_latency is not None:
-        r += "#define SDRAM_PHY_CMD_LATENCY "+str(phy_settings.cmd_latency)+"\n"
-    if phy_settings.cmd_delay is not None:
-        r += "#define SDRAM_PHY_CMD_DELAY "+str(phy_settings.cmd_delay)+"\n"
+    r.define(f"SDRAM_PHY_{phytype}")
+    r.define("SDRAM_PHY_XDR", 1 if phy_settings.memtype == "SDR" else 2)
+    r.define("SDRAM_PHY_DATABITS", phy_settings.databits)
+    r.define("SDRAM_PHY_DFI_DATABITS", phy_settings.dfi_databits)
+    r.define("SDRAM_PHY_PHASES", nphases)
+    for setting in ["cl", "cwl", "cmd_latency", "cmd_delay"]:
+        if getattr(phy_settings, setting, None) is not None:
+            r.define(f"SDRAM_PHY_{setting.upper()}", getattr(phy_settings, setting))
 
     # Define PHY Read.Write phases
     rdphase = phy_settings.rdphase
     if isinstance(rdphase, Signal): rdphase = rdphase.reset.value
-    r += "#define SDRAM_PHY_RDPHASE "+str(rdphase)+"\n"
+    r.define("SDRAM_PHY_RDPHASE", rdphase)
     wrphase = phy_settings.wrphase
     if isinstance(wrphase, Signal): wrphase = wrphase.reset.value
-    r += "#define SDRAM_PHY_WRPHASE "+str(wrphase)+"\n"
+    r.define("SDRAM_PHY_WRPHASE", wrphase)
 
     # Define Read/Write Leveling capability
-    if phytype in ["USDDRPHY", "USPDDRPHY",
-                   "K7DDRPHY", "V7DDRPHY",
-                   "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        r += "#define SDRAM_PHY_WRITE_LEVELING_CAPABLE\n"
-    if phytype in ["K7DDRPHY", "V7DDRPHY",
-                   "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        r += "#define SDRAM_PHY_WRITE_DQ_DQS_TRAINING_CAPABLE\n"
-    if phytype in ["USDDRPHY", "USPDDRPHY",
-                   "A7DDRPHY", "K7DDRPHY", "V7DDRPHY",
-                   "A7LPDDR4PHY", "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        r += "#define SDRAM_PHY_WRITE_LATENCY_CALIBRATION_CAPABLE\n"
-        r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
-    if phytype in ["ECP5DDRPHY"]:
-        r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
-    if phytype in ["LPDDR4SIMPHY"]:
-        r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
+    if phy_settings.write_leveling:
+        r.define("SDRAM_PHY_WRITE_LEVELING_CAPABLE")
+    if phy_settings.write_latency_calibration:
+        r.define("SDRAM_PHY_WRITE_LATENCY_CALIBRATION_CAPABLE")
+    if phy_settings.write_dq_dqs_training:
+        r.define("SDRAM_PHY_WRITE_DQ_DQS_TRAINING_CAPABLE")
+    if phy_settings.read_leveling:
+        r.define("SDRAM_PHY_READ_LEVELING_CAPABLE")
 
     # Define number of modules/delays/bitslips
-    r += "#define SDRAM_PHY_MODULES SDRAM_PHY_DATABITS/8\n"
-    if phytype in ["USDDRPHY", "USPDDRPHY"]:
-        r += "#define SDRAM_PHY_DELAYS 512\n"
-        r += "#define SDRAM_PHY_BITSLIPS 8\n"
-    elif phytype in ["A7DDRPHY", "K7DDRPHY", "V7DDRPHY"]:
-        r += "#define SDRAM_PHY_DELAYS 32\n"
-        r += "#define SDRAM_PHY_BITSLIPS 8\n"
-    elif phytype in ["A7LPDDR4PHY", "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        r += "#define SDRAM_PHY_DELAYS 32\n"
-        r += "#define SDRAM_PHY_BITSLIPS 16\n"
-    elif phytype in ["ECP5DDRPHY"]:
-        r += "#define SDRAM_PHY_DELAYS 8\n"
-        r += "#define SDRAM_PHY_BITSLIPS 4\n"
-    elif phytype in ["LPDDR4SIMPHY"]:
-        r += "#define SDRAM_PHY_DELAYS 1\n"
-        r += "#define SDRAM_PHY_BITSLIPS 16\n"
+    r.define("SDRAM_PHY_MODULES", "(SDRAM_PHY_DATABITS/8)")
+    if phy_settings.delays > 0:
+        r.define("SDRAM_PHY_DELAYS", phy_settings.delays)
+    if phy_settings.bitslips > 0:
+        r.define("SDRAM_PHY_BITSLIPS", phy_settings.bitslips)
 
     if phy_settings.is_rdimm:
         assert phy_settings.memtype == "DDR4"
-        r += "#define SDRAM_PHY_DDR4_RDIMM\n"
+        r.define("SDRAM_PHY_DDR4_RDIMM")
 
-    r += "\n"
+    r.newline()
 
-    r += "void cdelay(int i);\n"
+    r += "void cdelay(int i);"
+    r.newline()
 
     # Commands functions
     for n in range(nphases):
-        r += """
-__attribute__((unused)) static inline void command_p{n}(int cmd)
-{{
-    sdram_dfii_pi{n}_command_write(cmd);
-    sdram_dfii_pi{n}_command_issue_write(1);
-}}""".format(n=str(n))
-    r += "\n\n"
+        with r.block(f"__attribute__((unused)) static inline void command_p{n}(int cmd)") as b:
+            b += f"sdram_dfii_pi{n}_command_write(cmd);"
+            b += f"sdram_dfii_pi{n}_command_issue_write(1);"
+    r.newline()
 
     # Write/Read functions
-    pix_addr_fmt = """
-static inline unsigned long {name}(int phase){{
-    switch (phase) {{
-        {cases}
-        default: return 0;
-        }}
-}}
-    """
-    get_cases = lambda addrs: ["case {}: return {};".format(i, addr) for i, addr in enumerate(addrs)]
-
-    r += "#define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE\n"
-    sdram_dfii_pix_wrdata_addr = []
-    for n in range(nphases):
-        sdram_dfii_pix_wrdata_addr.append("CSR_SDRAM_DFII_PI{n}_WRDATA_ADDR".format(n=n))
-    r += pix_addr_fmt.format(
-        name  = "sdram_dfii_pix_wrdata_addr",
-        cases = "\n\t\t".join(get_cases(sdram_dfii_pix_wrdata_addr)))
-
-    sdram_dfii_pix_rddata_addr = []
-    for n in range(nphases):
-        sdram_dfii_pix_rddata_addr.append("CSR_SDRAM_DFII_PI{n}_RDDATA_ADDR".format(n=n))
-    r += pix_addr_fmt.format(
-        name  = "sdram_dfii_pix_rddata_addr",
-        cases = "\n\t\t".join(get_cases(sdram_dfii_pix_rddata_addr)))
-    r += "\n"
+    r.define("DFII_PIX_DATA_SIZE", "CSR_SDRAM_DFII_PI0_WRDATA_SIZE")
+    r.newline()
+    for data in ["wrdata", "rddata"]:
+        with r.block(f"static inline unsigned long sdram_dfii_pix_{data}_addr(int phase)") as b:
+            with b.block("switch (phase)", newline=False) as s:
+                for n in range(nphases):
+                    s += f"case {n}: return CSR_SDRAM_DFII_PI{n}_{data.upper()}_ADDR;"
+                s += "default: return 0;"
+    r.newline()
 
     init_sequence, mr = get_sdram_phy_init_sequence(phy_settings, timing_settings)
 
     if phy_settings.memtype in ["DDR3", "DDR4"]:
         # The value of MR1[7] needs to be modified during write leveling
-        r += "#define DDRX_MR_WRLVL_ADDRESS {}\n".format(1)
-        r += "#define DDRX_MR_WRLVL_RESET {}\n".format(mr[1])
-        r += "#define DDRX_MR_WRLVL_BIT {}\n\n".format(7)
+        r.define("DDRX_MR_WRLVL_ADDRESS", 1)
+        r.define("DDRX_MR_WRLVL_RESET", mr[1])
+        r.define("DDRX_MR_WRLVL_BIT", 7)
+        r.newline()
     elif phy_settings.memtype in ["LPDDR4"]:
         # Write leveling enabled by MR2[7]
-        r += "#define DDRX_MR_WRLVL_ADDRESS {}\n".format(2)
-        r += "#define DDRX_MR_WRLVL_RESET {}\n".format(mr[2])
-        r += "#define DDRX_MR_WRLVL_BIT {}\n\n".format(7)
+        r.define("DDRX_MR_WRLVL_ADDRESS", 2)
+        r.define("DDRX_MR_WRLVL_RESET", mr[2])
+        r.define("DDRX_MR_WRLVL_BIT", 7)
+        r.newline()
 
-    r += "static inline void init_sequence(void)\n{\n"
-    for comment, a, ba, cmd, delay in init_sequence:
-        invert_masks = [(0, 0), ]
-        if phy_settings.is_rdimm:
-            assert phy_settings.memtype == "DDR4"
-            # JESD82-31A page 38
-            #
-            # B-side chips have certain usually-inconsequential address and BA
-            # bits inverted by the RCD to reduce SSO current. For mode register
-            # writes, however, we must compensate for this. BG[1] also directs
-            # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
-            #
-            # The 'ba != 7' is because we don't do this to writes to the RCD
-            # itself.
-            if ba != 7:
-                invert_masks.append((0b10101111111000, 0b1111))
+    with r.block("static inline void init_sequence(void)") as b:
+        for comment, a, ba, cmd, delay in init_sequence:
+            invert_masks = [(0, 0), ]
+            if phy_settings.is_rdimm:
+                assert phy_settings.memtype == "DDR4"
+                # JESD82-31A page 38
+                #
+                # B-side chips have certain usually-inconsequential address and BA
+                # bits inverted by the RCD to reduce SSO current. For mode register
+                # writes, however, we must compensate for this. BG[1] also directs
+                # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
+                #
+                # The 'ba != 7' is because we don't do this to writes to the RCD
+                # itself.
+                if ba != 7:
+                    invert_masks.append((0b10101111111000, 0b1111))
 
-        for a_inv, ba_inv in invert_masks:
-            r += "\t/* {0} */\n".format(comment)
-            r += "\tsdram_dfii_pi0_address_write({0:#x});\n".format(a ^ a_inv)
-            r += "\tsdram_dfii_pi0_baddress_write({0:d});\n".format(ba ^ ba_inv)
-            if cmd[:12] == "DFII_CONTROL":
-                r += "\tsdram_dfii_control_write({0});\n".format(cmd)
-            else:
-                r += "\tcommand_p0({0});\n".format(cmd)
-            if delay:
-                r += "\tcdelay({0:d});\n".format(delay)
-            r += "\n"
-    r += "}\n"
+            for a_inv, ba_inv in invert_masks:
+                b += f"/* {comment} */"
+                b += f"sdram_dfii_pi0_address_write({a ^ a_inv:#x});"
+                b += f"sdram_dfii_pi0_baddress_write({ba ^ ba_inv:d});"
+                if cmd.startswith("DFII_CONTROL"):
+                    b += f"sdram_dfii_control_write({cmd});"
+                else:
+                    b += f"command_p0({cmd});"
+                if delay:
+                    b += f"cdelay({delay});\n"
+                b.newline()
 
-    r += "#endif\n"
-
-    return r
+    return r.generate()
 
 # Python Header ------------------------------------------------------------------------------------
 

@@ -30,6 +30,12 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY):
             **kwargs
         )
 
+        self.settings.delays = 32
+        self.settings.write_leveling = True
+        self.settings.write_latency_calibration = True
+        self.settings.write_dq_dqs_training = True
+        self.settings.read_leveling = True
+
         # Parameters -------------------------------------------------------------------------------
         # Calculate value of taps needed to shift a signal by 90 degrees.
         # Using iodelay_clk_freq of 300MHz/400MHz is only valid for -3 and -2/2E speed grades.
