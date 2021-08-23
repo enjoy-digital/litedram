@@ -3,6 +3,7 @@
 #
 # Copyright (c) 2015-2020 Florent Kermarrec <florent@enjoy-digital.fr>
 # Copyright (c) 2015 Sebastien Bourdeauducq <sb@m-labs.hk>
+# Copyright (c) 2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
 # 1:4, 1:2 frequency-ratio DDR2/DDR3 PHY for Xilinx's Series7
@@ -15,6 +16,7 @@ from operator import or_
 import math
 
 from migen import *
+from migen.genlib.cdc import PulseSynchronizer
 
 from litex.soc.interconnect.csr import *
 
@@ -32,7 +34,9 @@ class S7DDRPHY(Module, AutoCSR):
         cl               = None,
         cwl              = None,
         cmd_latency      = 0,
-        cmd_delay        = None):
+        cmd_delay        = None,
+        ddr_clk          = None,
+        csr_cdc          = None):
         assert not (memtype == "DDR3" and nphases == 2)
         phytype     = self.__class__.__name__
         pads        = PHYPadsCombiner(pads)
@@ -91,6 +95,27 @@ class S7DDRPHY(Module, AutoCSR):
         self._rdphase = CSRStorage(int(math.log2(nphases)), reset=rdphase)
         self._wrphase = CSRStorage(int(math.log2(nphases)), reset=wrphase)
 
+        def cdc(i):
+            if csr_cdc is None:
+                return i
+            return csr_cdc(i)
+
+        rdly_dq_rst  = cdc(self._rdly_dq_rst.re)
+        rdly_dq_inc  = cdc(self._rdly_dq_inc.re)
+        rdly_dq_bitslip_rst  = cdc(self._rdly_dq_bitslip_rst.re)
+        rdly_dq_bitslip  = cdc(self._rdly_dq_bitslip.re)
+        wlevel_strobe = cdc(self._wlevel_strobe.re)
+        if with_odelay:
+            cdly_rst     = cdc(self._cdly_rst.re) | self._rst.storage
+            cdly_inc     = cdc(self._cdly_inc.re)
+            wdly_dq_rst  = cdc(self._wdly_dq_rst.re)
+            wdly_dq_inc  = cdc(self._wdly_dq_inc.re)
+            wdly_dqs_rst = cdc(self._wdly_dqs_rst.re)
+            wdly_dqs_inc = cdc(self._wdly_dqs_inc.re)
+
+        wdly_dq_bitslip_rst  = cdc(self._wdly_dq_bitslip_rst.re)
+        wdly_dq_bitslip  = cdc(self._wdly_dq_bitslip.re)
+
         # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
             phytype                   = phytype,
@@ -125,7 +150,7 @@ class S7DDRPHY(Module, AutoCSR):
             pads.sel_group(pads_group)
 
             # Clock --------------------------------------------------------------------------------
-            ddr_clk = "sys2x" if nphases == 2 else "sys4x"
+            ddr_clk = ddr_clk or ("sys2x" if nphases == 2 else "sys4x")
             for i in range(len(pads.clk_p)):
                 sd_clk_se_nodelay = Signal()
                 sd_clk_se_delayed = Signal()
@@ -153,9 +178,9 @@ class S7DDRPHY(Module, AutoCSR):
                         p_ODELAY_TYPE           = "VARIABLE",
                         p_ODELAY_VALUE          = 0,
                         i_C        = ClockSignal("sys"),
-                        i_LD       = self._cdly_rst.re | self._rst.storage,
+                        i_LD       = cdly_rst | self._rst.storage,
                         i_LDPIPEEN = 0,
-                        i_CE       = self._cdly_inc.re,
+                        i_CE       = cdly_inc,
                         i_INC      = 1,
                         o_ODATAIN  = sd_clk_se_nodelay,
                         o_DATAOUT  = sd_clk_se_delayed,
@@ -211,9 +236,9 @@ class S7DDRPHY(Module, AutoCSR):
                             p_ODELAY_TYPE           = "VARIABLE",
                             p_ODELAY_VALUE          = 0,
                             i_C        = ClockSignal("sys"),
-                            i_LD       = self._cdly_rst.re | self._rst.storage,
+                            i_LD       = cdly_rst | self._rst.storage,
                             i_LDPIPEEN = 0,
-                            i_CE       = self._cdly_inc.re,
+                            i_CE       = cdly_inc,
                             i_INC      = 1,
                             o_ODATAIN  = oq,
                             o_DATAOUT  = pad[i],
@@ -228,7 +253,7 @@ class S7DDRPHY(Module, AutoCSR):
             #preamble      = dqs_preamble,  # FIXME
             #postamble     = dqs_postamble, # FIXME
             wlevel_en     = self._wlevel_en.storage,
-            wlevel_strobe = self._wlevel_strobe.re,
+            wlevel_strobe = wlevel_strobe,
             register      = not with_odelay)
         self.submodules += dqs_oe_delay, dqs_pattern
         self.comb += dqs_oe_delay.input.eq(dqs_preamble | dqs_oe | dqs_postamble)
@@ -238,8 +263,8 @@ class S7DDRPHY(Module, AutoCSR):
             dqs_t          = Signal()
             dqs_bitslip    = BitSlip(8,
                 i      = dqs_pattern.o,
-                rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
-                slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
+                rst    = (self._dly_sel.storage[i] & wdly_dq_bitslip_rst) | self._rst.storage,
+                slp    = self._dly_sel.storage[i] & wdly_dq_bitslip,
                 cycles = 1)
             self.submodules += dqs_bitslip
             self.specials += Instance("OSERDESE2",
@@ -270,8 +295,8 @@ class S7DDRPHY(Module, AutoCSR):
                     p_ODELAY_TYPE           = "VARIABLE",
                     p_ODELAY_VALUE          = half_sys8x_taps,
                     i_C        = ClockSignal("sys"),
-                    i_LD       = (self._dly_sel.storage[i] & self._wdly_dqs_rst.re) | self._rst.storage,
-                    i_CE       = self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
+                    i_LD       = (self._dly_sel.storage[i] & wdly_dqs_rst) | self._rst.storage,
+                    i_CE       = self._dly_sel.storage[i] & wdly_dqs_inc,
                     i_LDPIPEEN = 0,
                     i_INC      = 1,
                     o_ODATAIN  = dqs_o_no_delay,
@@ -290,8 +315,8 @@ class S7DDRPHY(Module, AutoCSR):
                 dm_o_nodelay = Signal()
                 dm_o_bitslip = BitSlip(8,
                     i      = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)]),
-                    rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
-                    slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
+                    rst    = (self._dly_sel.storage[i] & wdly_dq_bitslip_rst) | self._rst.storage,
+                    slp    = self._dly_sel.storage[i] & wdly_dq_bitslip,
                     cycles = 1)
                 self.submodules += dm_o_bitslip
                 self.specials += Instance("OSERDESE2",
@@ -318,9 +343,9 @@ class S7DDRPHY(Module, AutoCSR):
                         p_ODELAY_TYPE           = "VARIABLE",
                         p_ODELAY_VALUE          = 0,
                         i_C        = ClockSignal("sys"),
-                        i_LD       = (self._dly_sel.storage[i] & self._wdly_dq_rst.re) | self._rst.storage,
+                        i_LD       = (self._dly_sel.storage[i] & wdly_dq_rst) | self._rst.storage,
                         i_LDPIPEEN = 0,
-                        i_CE       = self._dly_sel.storage[i] & self._wdly_dq_inc.re,
+                        i_CE       = self._dly_sel.storage[i] & wdly_dq_inc,
                         i_INC      = 1,
                         o_ODATAIN  = dm_o_nodelay,
                         o_DATAOUT  = pads.dm[i],
@@ -340,8 +365,8 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_data    = Signal(8)
             dq_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
-                rst    = (self._dly_sel.storage[i//8] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//8] & self._wdly_dq_bitslip.re,
+                rst    = (self._dly_sel.storage[i//8] & wdly_dq_bitslip_rst) | self._rst.storage,
+                slp    = self._dly_sel.storage[i//8] & wdly_dq_bitslip,
                 cycles = 1)
             self.submodules += dq_o_bitslip
             self.specials += Instance("OSERDESE2",
@@ -361,8 +386,8 @@ class S7DDRPHY(Module, AutoCSR):
                 o_OQ     = dq_o_nodelay,
             )
             dq_i_bitslip = BitSlip(8,
-                rst    = (self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
+                rst    = (self._dly_sel.storage[i//8] & rdly_dq_bitslip_rst) | self._rst.storage,
+                slp    = self._dly_sel.storage[i//8] & rdly_dq_bitslip,
                 cycles = 1)
             self.submodules += dq_i_bitslip
             self.specials += Instance("ISERDESE2",
@@ -394,9 +419,9 @@ class S7DDRPHY(Module, AutoCSR):
                     p_ODELAY_TYPE           = "VARIABLE",
                     p_ODELAY_VALUE          = 0,
                     i_C        = ClockSignal("sys"),
-                    i_LD       = (self._dly_sel.storage[i//8] & self._wdly_dq_rst.re)| self._rst.storage,
+                    i_LD       = (self._dly_sel.storage[i//8] & wdly_dq_rst)| self._rst.storage,
                     i_LDPIPEEN = 0,
-                    i_CE       = self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
+                    i_CE       = self._dly_sel.storage[i//8] & wdly_dq_inc,
                     i_INC      = 1,
                     o_ODATAIN  = dq_o_nodelay,
                     o_DATAOUT  = dq_o_delayed,
@@ -411,9 +436,9 @@ class S7DDRPHY(Module, AutoCSR):
                 p_IDELAY_TYPE           = "VARIABLE",
                 p_IDELAY_VALUE          = 0,
                 i_C        = ClockSignal("sys"),
-                i_LD       = (self._dly_sel.storage[i//8] & self._rdly_dq_rst.re) | self._rst.storage,
+                i_LD       = (self._dly_sel.storage[i//8] & rdly_dq_rst) | self._rst.storage,
                 i_LDPIPEEN = 0,
-                i_CE       = self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
+                i_CE       = self._dly_sel.storage[i//8] & rdly_dq_inc,
                 i_INC      = 1,
                 i_IDATAIN  = dq_i_nodelay,
                 o_DATAOUT  = dq_i_delayed
@@ -460,6 +485,7 @@ class S7DDRPHY(Module, AutoCSR):
         self.comb += dqs_preamble.eq( wrdata_en.taps[wrtap - 1]  & ~wrdata_en.taps[wrtap + 0])
         self.comb += dqs_postamble.eq(wrdata_en.taps[wrtap + 1]  & ~wrdata_en.taps[wrtap + 0])
 
+
 # Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 
 class V7DDRPHY(S7DDRPHY):
@@ -477,3 +503,22 @@ class K7DDRPHY(S7DDRPHY):
 class A7DDRPHY(S7DDRPHY):
     def __init__(self, pads, **kwargs):
         S7DDRPHY.__init__(self, pads, with_odelay=False, **kwargs)
+
+
+def s7ddrphy_with_ratio(ratio, phy_cls=A7DDRPHY, ddr_clk=None, serdes_reset_cnt=0):
+    """Generate PHY class that uses DFIRateConverter to increase MC:PHY frequecy ratio"""
+    ddr_clk = ddr_clk or f"sys{4*ratio}x"
+
+    # Generate new class that wraps the original PHY
+    wrapper_cls = DFIRateConverter.phy_wrapper(
+        phy_cls          = phy_cls,
+        ratio            = ratio,
+        serdes_reset_cnt = serdes_reset_cnt,
+    )
+
+    # Create a wrapper that will ensure that correct ddr_clk kwarg is passed to the PHY
+    def wrapper(*args, **kwargs):
+        sys_clk_freq = kwargs.pop("sys_clk_freq", 100e6)
+        return wrapper_cls(*args, ddr_clk=ddr_clk, sys_clk_freq=ratio * sys_clk_freq, **kwargs)
+
+    return wrapper
