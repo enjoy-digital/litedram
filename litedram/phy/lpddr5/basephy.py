@@ -121,7 +121,6 @@ def get_frange(twck, wck_ck_ratio):
             return frange
     raise ValueError
 
-
 class LPDDR5PHY(Module, AutoCSR):
     """Core logic of LPDDR5 PHY
 
@@ -295,9 +294,6 @@ class LPDDR5PHY(Module, AutoCSR):
         # WL = tWCKENL_WR - 1 + tWCKPRE_Static + tWCKPRE_Toggle_WR
         # RL = tWCKENL_RD - 1 + tWCKPRE_Static + tWCKPRE_Toggle_RD  (without Byte Mode, nor Read DBI/Read Data Copy)
         wck_sync_done = Signal()
-        self.sync += If(self.adapter.wck_sync != 0, wck_sync_done.eq(1))
-        self.comb += self.adapter.wck_sync_done.eq(wck_sync_done)
-
         wck_sync = TappedDelayLine(
             signal = self.adapter.wck_sync,
             ntaps  = max(1, max(frange.t_wckenl_wr, frange.t_wckenl_rd) + frange.t_wckpre_static),
@@ -427,6 +423,24 @@ class LPDDR5PHY(Module, AutoCSR):
             self.dfi.p0.rddata.eq(rddata_converter.source.data),
             self.dfi.p0.rddata_valid.eq(rddata_converter.source.valid),
         ]
+
+        self.wck_sync_state = Signal(2)
+        self.sync += If(self.adapter.wck_sync != 0,
+            wck_sync_done.eq(1),
+            self.wck_sync_state.eq(self.adapter.wck_sync)
+        ).Elif(self.wck_sync_state == WCKSyncType.RD,
+            If(reduce(or_, rddata_en.taps[0:rddata_start+burst_ck_cycles]) == 0,
+                wck_sync_done.eq(0),
+                self.wck_sync_state.eq(0b00),
+            )
+        ).Elif(self.wck_sync_state == WCKSyncType.WR,
+            If(reduce(or_, wrdata_en.taps[0:wrtap+burst_ck_cycles]) == 0,
+                wck_sync_done.eq(0),
+                self.wck_sync_state.eq(0b00),
+            )
+        )
+
+        self.comb += self.adapter.wck_sync_done.eq(wck_sync_done)
 
         for bit in range(self.databits):
             # output

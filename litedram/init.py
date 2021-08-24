@@ -704,7 +704,7 @@ def get_lpddr5_phy_init_sequence(phy_settings, timing_settings):
     mr[18] = reg([
         (0, 3, rzq_map[wck_odt]),
         (3, 1, 0),  # WCK low frequency mode
-        (4, 1, 1),  # WCK always on mode enabled
+        (4, 1, 0),  # WCK always on mode enabled
         (6, 1, 0),  # WCK2CK leveling diabled
         (7, 1, {2: 1, 4: 0}[wck_ck_ratio]),
     ])
