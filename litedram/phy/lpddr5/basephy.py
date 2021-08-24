@@ -300,7 +300,7 @@ class LPDDR5PHY(Module, AutoCSR):
 
         wck_sync = TappedDelayLine(
             signal = self.adapter.wck_sync,
-            ntaps  = max(1, max(frange.t_wckenl_wr, frange.t_wckenl_rd) + frange.t_wckpre_static - 1),
+            ntaps  = max(1, max(frange.t_wckenl_wr, frange.t_wckenl_rd) + frange.t_wckpre_static),
         )
         self.submodules += wck_sync
         wck_sync_taps = Array([wck_sync.input, *wck_sync.taps])
@@ -313,43 +313,23 @@ class LPDDR5PHY(Module, AutoCSR):
             "toggle_4:1": "-_-_-_-_",
         }
 
-        # When tWCKENL=0 there is a special case:
-        # tWCKENL=0, tWCKPRE_Static=1: instant static and jump toggle
-        # tWCKENL=0, tWCKPRE_Static=2: instant static and jump static
-        # tWCKENL=1, tWCKPRE_Static=1 (and others): jump static, jump toggle
-        def on_disabled(t_wckenl):
-            # when there is no tWCKENL we need to use static in this cycle
-            return If(t_wckenl == 0,
-                wck_pattern.eq(bitpattern(patterns["static"])),
-                # If there is only 1 cycle of static, we must jump directly to toggle
-                If(frange.t_wckpre_static == 1,
-                    NextState("TOGGLE")
-                ).Else(
-                    NextState("STATIC")
-                )
-            ).Else(
-                # tWCKENL was > 0, so we just continue to STATIC
-                NextState("STATIC")
-            ),
-
         assert frange.t_wckpre_static > 0  # The algorithm assumes it's never 0
 
         wck_fsm = FSM()
         self.submodules += wck_fsm
         wck_fsm.act("DISABLED",
             wck_pattern.eq(bitpattern(patterns["disabled"])),
-            # Avoid indexing with -1 as it wraps, we just have special logic for tWCKENL=0
-            If(wck_sync_taps[max(0, frange.t_wckenl_wr - 1)] == WCKSyncType.WR,
-                on_disabled(frange.t_wckenl_wr)
-            ).Elif(wck_sync_taps[max(0, frange.t_wckenl_rd - 1)] == WCKSyncType.RD,
-                on_disabled(frange.t_wckenl_rd)
+            If(wck_sync_taps[frange.t_wckenl_wr] == WCKSyncType.WR,
+                NextState("STATIC")
+            ).Elif(wck_sync_taps[frange.t_wckenl_rd] == WCKSyncType.RD,
+                NextState("STATIC")
             )
         )
         wck_fsm.act("STATIC",
             wck_pattern.eq(bitpattern(patterns["static"])),
-            If(wck_sync_taps[frange.t_wckenl_wr + frange.t_wckpre_static - 1] == WCKSyncType.WR,
+            If(wck_sync_taps[frange.t_wckenl_wr + frange.t_wckpre_static] == WCKSyncType.WR,
                 NextState("TOGGLE")
-            ).Elif(wck_sync_taps[frange.t_wckenl_rd + frange.t_wckpre_static - 1] == WCKSyncType.RD,
+            ).Elif(wck_sync_taps[frange.t_wckenl_rd + frange.t_wckpre_static] == WCKSyncType.RD,
                 NextState("TOGGLE")
             )
         )

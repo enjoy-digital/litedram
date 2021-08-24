@@ -516,14 +516,14 @@ class LPDDR5Tests(unittest.TestCase):
                             # tWCKENL_WR starts counting from first command (CAS) so we add command latency,
                             # then preamble, then toggle for the whole burst, then postamble for tWCKPST=2.5tCK
                             # (but for now we assume that WCK is never disabled)
-                            "wck0": "0000" + wck_preamble + "10 10" * (16//4) + "10 10 1" + "0 10" + "10 10"*2,
+                            "wck0": "0000 0000" + wck_preamble + "10 10" * (16//4) + "10 10 1" + "0 10" + "10 10"*2,
                         },
                     },
                     chunk_size=4,
                 )
 
     def test_lpddr5_wck_sync_4to1_write(self):
-        # Test that correct WCK sequence is generated during WCK sync before burst write for WCK:CK=2:1
+        # Test that correct WCK sequence is generated during WCK sync before burst write for WCK:CK=4:1
         cases = {  # sys_clk_freq: timings
             50e6:  dict(t_wckenl_wr=0, t_wckenl_static=1, t_wckenl_toggle_wr=2),  # data rate 400 MT/s
             100e6: dict(t_wckenl_wr=0, t_wckenl_static=1, t_wckenl_toggle_wr=2),  # 800 MT/s
@@ -559,7 +559,7 @@ class LPDDR5Tests(unittest.TestCase):
                             # tWCKENL_WR starts counting from first command (CAS) so we add command latency,
                             # then preamble, then toggle for the whole burst, then postamble for tWCKPST=2.5tCK
                             # (but for now we assume that WCK is never disabled)
-                            "wck0": "00000000" + wck_preamble + "10101010" * (16//8) + "10101" + "0 10" + "10 10"*2,
+                            "wck0": "00000000 00000000" + wck_preamble + "10101010" * (16//8) + "10101" + "0 10" + "10 10"*2,
                         },
                     },
                 )
@@ -591,7 +591,7 @@ class LPDDR5Tests(unittest.TestCase):
                             "cs": "01100000",
                         },
                         "sys4x_270": {
-                            "wck0": "0000" + wck_preamble + "10 10" * (16//4) + "10 10 1" + "0 10" + "10 10"*2,
+                            "wck0": "0000 0000" + wck_preamble + "10 10" * (16//4) + "10 10 1" + "0 10" + "10 10"*2,
                         },
                     },
                     chunk_size=4,
@@ -624,7 +624,7 @@ class LPDDR5Tests(unittest.TestCase):
                             "cs": "01100000",
                         },
                         "sys8x_270": {
-                            "wck0": "00000000" + wck_preamble + "10101010" * (16//8) + "10101" + "0 10" + "10 10"*2,
+                            "wck0": "00000000 00000000" + wck_preamble + "10101010" * (16//8) + "10101" + "0 10" + "10 10"*2,
                         },
                     },
                 )
