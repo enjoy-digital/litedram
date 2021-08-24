@@ -8,7 +8,7 @@ from migen import *
 
 from litex.soc.interconnect.csr import CSR
 
-from litedram.phy.utils import delayed, Serializer, Deserializer, Latency
+from litedram.phy.utils import delayed, Serializer, Deserializer, Latency, ConstBitSlip
 from litedram.phy.sim_utils import SimPad, SimulationPads, SimSerDesMixin
 from litedram.phy.lpddr5.basephy import LPDDR5PHY
 
@@ -71,17 +71,20 @@ class LPDDR5SimPHY(SimSerDesMixin, LPDDR5PHY):
             ddr_ck["reset_cnt"] = 0
             ddr_wck["reset_cnt"] = 0
 
+        self.comb += self.pads.reset_n.eq(delay(self.out.reset_n, cycles=Serializer.LATENCY))
+
         # CK signals
-        # CK is shifted by just inverting it
-        # CS will then be properly aligned with respect to CK
-        # CA needs phase shifting
-        self.comb += [
-            self.pads.reset_n.eq(delay(self.out.reset_n, cycles=Serializer.LATENCY)),
-            self.pads.cs.eq(delay(self.out.cs, cycles=Serializer.LATENCY)), # SDR
-        ]
-        self.ser(i=~self.out.ck, o=self.pads.ck, name='ck', **ddr_ck)
+        self.ser(i=self.out.ck, o=self.pads.ck, name='ck', **ddr_ck)
+        # CS (SDR) is delayed by 180 deg to be center aligned with CK (+1CK to match serializer latencies)
+        # 1.5 sys = 1 sys + 1 sys2x
+        self.sync.sys2x += self.pads.cs.eq(delay(self.out.cs, cycles=Serializer.LATENCY))
+        # To center align CA (DDR) with CK it has to be delayed by 270 deg CK (+90 deg relative to CS)
         for i in range(7):
-            self.ser(**cdc(self.out.ca[i], ddr_ck_180), o=self.pads.ca[i], name=f'ca{i}', **ddr_ck_180)
+            # Bitslip is used to get the additional +180 deg (slipping 2-bit CA signal by 1 bit with register=False)
+            ca_delayed = Signal(2)
+            self.submodules += ConstBitSlip(dw=2, slp=1, cycles=1, register=False, i=self.out.ca[i], o=ca_delayed)
+            # Getting the +90 deg by serializing on ddr_ck_180 (which shifts by 90 deg of CK)
+            self.ser(**cdc(ca_delayed, ddr_ck_180), o=self.pads.ca[i], name=f'ca{i}', **ddr_ck_180)
 
         # WCK
         for i in range(self.databits//8):

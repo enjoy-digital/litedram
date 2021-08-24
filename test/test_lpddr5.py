@@ -105,7 +105,7 @@ class LPDDR5Tests(unittest.TestCase):
                 {0: dict(reset_n=0)},
                 {0: dict(reset_n=0)},
             ],
-            pad_checkers = {"sys_90": {
+            pad_checkers = {"sys_270": {
                 "cs":      "0 1100 1100",
                 "reset_n": "x 1111 0100",
             }},
@@ -125,7 +125,9 @@ class LPDDR5Tests(unittest.TestCase):
                 {0: dict(cs_n=0, cas_n=1, ras_n=0, we_n=1)},  # ACT
                 {0: dict(cs_n=0, cas_n=1, ras_n=0, we_n=1)},  # ACT (will be ignored)
             ],
-            pad_checkers = {"sys_90": { # use 90 phase shift to sample when the data is valid
+            # use 270 phase shift to sample when the data is valid, i.e. CS is shifted 180 deg
+            # by PHY (to make it center aligned with CK), then we add 90 to sample in the center of CS
+            pad_checkers = {"sys_270": {
                 'cs': '0 1101011000',
             }},
         )
@@ -139,7 +141,7 @@ class LPDDR5Tests(unittest.TestCase):
                 {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
             ],
             pad_checkers = {"sys2x_90": {  # sampling at DDR CK
-                'ck': 'xx' + '01010101' * 3,
+                'ck': 'xx' + '10101010' * 3,
             }},
         )
 
@@ -158,16 +160,16 @@ class LPDDR5Tests(unittest.TestCase):
                 read,  # ignored
             ],
             pad_checkers = {
-                "sys_90": {
-                    'cs':  '0' ' 1 1  0  0 1 ', },
-                "sys2x_270": {  # it is serialized on sys2x_180 so check at _270
-                    'ca0': '00' '0010 00 0000',
-                    'ca1': '00' '0000 00 0000',
-                    'ca2': '00' '1000 00 0000',
-                    'ca3': '00' '1000 00 0010',
-                    'ca4': '00' '0000 00 0010',
-                    'ca5': '00' '1000 00 0010',
-                    'ca6': '00' '0000 00 0010',
+                "sys_270": {
+                    'cs':       '0' ' 1 1  0  0 1 ', },
+                "sys2x": {  # it is serialized on DDR sys_270 so check at sys2x with additional cycle (00)
+                    'ca0': '00' '00' '0010 00 0000',
+                    'ca1': '00' '00' '0000 00 0000',
+                    'ca2': '00' '00' '1000 00 0000',
+                    'ca3': '00' '00' '1000 00 0010',
+                    'ca4': '00' '00' '0000 00 0010',
+                    'ca5': '00' '00' '1000 00 0010',
+                    'ca6': '00' '00' '0000 00 0010',
                 }
             },
             chunk_size=4,
@@ -188,16 +190,16 @@ class LPDDR5Tests(unittest.TestCase):
                 {},
             ],
             pad_checkers = {
-                "sys_90": {
-                    'cs':  '0' ' 1 1  0 1  1 0 ', },
-                "sys2x_270": {
-                    'ca0': '00' '0010 0000 1000',
-                    'ca1': '00' '0000 0000 0000',
-                    'ca2': '00' '1000 0010 0000',
-                    'ca3': '00' '1000 0010 0000',
-                    'ca4': '00' '0000 0000 0000',
-                    'ca5': '00' '1000 0000 0000',
-                    'ca6': '00' '0000 0000 0000',
+                "sys_270": {
+                    'cs':       '0' ' 1 1  0 1  1 0 ', },
+                "sys2x": {
+                    'ca0': '00' '00' '0010 0000 1000',
+                    'ca1': '00' '00' '0000 0000 0000',
+                    'ca2': '00' '00' '1000 0010 0000',
+                    'ca3': '00' '00' '1000 0010 0000',
+                    'ca4': '00' '00' '0000 0000 0000',
+                    'ca5': '00' '00' '1000 0000 0000',
+                    'ca6': '00' '00' '0000 0000 0000',
                 }
             },
             chunk_size=4,
@@ -218,16 +220,16 @@ class LPDDR5Tests(unittest.TestCase):
                 {},
             ],
             pad_checkers = {
-                "sys_90": {
-                    'cs':  '0' ' 1 1  0 1  1 0 ', },
-                "sys2x_270": {
-                    'ca0': '00' '0000 0000 0000',
-                    'ca1': '00' '0000 0000 0000',
-                    'ca2': '00' '1000 0010 0000',
-                    'ca3': '00' '1010 0010 1000',
-                    'ca4': '00' '0010 0000 1000',
-                    'ca5': '00' '1000 0000 0000',
-                    'ca6': '00' '0000 0000 0000',
+                "sys_270": {
+                    'cs':       '0' ' 1 1  0 1  1 0 ', },
+                "sys2x": {
+                    'ca0': '00' '00' '0000 0000 0000',
+                    'ca1': '00' '00' '0000 0000 0000',
+                    'ca2': '00' '00' '1000 0010 0000',
+                    'ca3': '00' '00' '1010 0010 1000',
+                    'ca4': '00' '00' '0010 0000 1000',
+                    'ca5': '00' '00' '1000 0000 0000',
+                    'ca6': '00' '00' '0000 0000 0000',
                 }
             },
             chunk_size=4,
@@ -252,16 +254,16 @@ class LPDDR5Tests(unittest.TestCase):
                         {},
                     ],
                     pad_checkers = {
-                        "sys_90": {
-                            'cs':  '0' ' 1 1  0 1  1 0 ', },
-                        "sys2x_270": {
-                            'ca0': '00' '0000 0000 0000',
-                            'ca1': '00' '0010 0000 1000',
-                            'ca2': '00'f'{w1} 0010 {w2}',
-                            'ca3': '00' '1000 0010 0000',
-                            'ca4': '00' '1000 0000 0000',
-                            'ca5': '00' '0000 0000 0000',
-                            'ca6': '00' '0000 0000 0000',
+                        "sys_270": {
+                            'cs':       '0' ' 1 1  0 1  1 0 ', },
+                        "sys2x": {
+                            'ca0': '00' '00' '0000 0000 0000',
+                            'ca1': '00' '00' '0010 0000 1000',
+                            'ca2': '00' '00'f'{w1} 0010 {w2}',
+                            'ca3': '00' '00' '1000 0010 0000',
+                            'ca4': '00' '00' '1000 0000 0000',
+                            'ca5': '00' '00' '0000 0000 0000',
+                            'ca6': '00' '00' '0000 0000 0000',
                         }
                     },
                     chunk_size=4,
@@ -299,16 +301,16 @@ class LPDDR5Tests(unittest.TestCase):
                         {0: zqc_latch}, {},
                     ],
                     pad_checkers = {
-                        "sys_90": {  #     RD   WR   ACT  REF  PRE  MRW  MRR  ZQCS ZQCL
-                            'cs':  '0 0 ' '1 1  1 1  1 1  0 1  0 1  1 1  1 1  0 1  0 1 ', },
-                        "sys2x_270": {
-                            'ca0': '0000' '0011 0000 1011 0001 0001 0100 0001 0001 0000',
-                            'ca1': '0000' '0001 0011 1110 0000 0001 0101 0000 0000 0001',
-                            'ca2': '0000'f'1001 {mw} 1000 0000 0001 0000 1001 0001 0001',
-                            'ca3': '0000' '1011 1001 1010 0010 0010 1011 1011 0000 0000',
-                            'ca4': '0000' '0000 0000 1010 0010 001x 1100 0010 0010 0010',
-                            'ca5': '0000' '1011 0000 1001 0010 001x 0001 0001 0010 0010',
-                            'ca6': '0000' '0010 0001 1101 0001 0010 1110 0001 0010 0010',
+                        "sys_270": {  #         RD   WR   ACT  REF  PRE  MRW  MRR  ZQCS ZQCL
+                            'cs':       '0 0 ' '1 1  1 1  1 1  0 1  0 1  1 1  1 1  0 1  0 1 ', },
+                        "sys2x": {
+                            'ca0': '00' '0000' '0011 0000 1011 0001 0001 0100 0001 0001 0000',
+                            'ca1': '00' '0000' '0001 0011 1110 0000 0001 0101 0000 0000 0001',
+                            'ca2': '00' '0000'f'1001 {mw} 1000 0000 0001 0000 1001 0001 0001',
+                            'ca3': '00' '0000' '1011 1001 1010 0010 0010 1011 1011 0000 0000',
+                            'ca4': '00' '0000' '0000 0000 1010 0010 001x 1100 0010 0010 0010',
+                            'ca5': '00' '0000' '1011 0000 1001 0010 001x 0001 0001 0010 0010',
+                            'ca6': '00' '0000' '0010 0001 1101 0001 0010 1110 0001 0010 0010',
                         }
                     },
                     chunk_size=4,
@@ -451,7 +453,7 @@ class LPDDR5Tests(unittest.TestCase):
             for _ in range(4 * (1 + phy.settings.cl)):
                 yield
             # wait one more cycle, need to verify the latencies on actual hardware
-            for _ in range(4):
+            for _ in range(2):
                 yield
             for cyc in range(16):  # send a burst of data on pads
                 for bit in range(16):
@@ -503,7 +505,7 @@ class LPDDR5Tests(unittest.TestCase):
                         dfi_data
                     ],
                     pad_checkers = {
-                        "sys_90": {
+                        "sys_270": {
                             "cs": "01100000",
                         },
                         "sys4x_90": {  # DQ just for reference
@@ -546,7 +548,7 @@ class LPDDR5Tests(unittest.TestCase):
                         dfi_data
                     ],
                     pad_checkers = {
-                        "sys_90": {
+                        "sys_270": {
                             "cs": "01100000",
                         },
                         "sys8x_90": {  # DQ just for reference
@@ -585,7 +587,7 @@ class LPDDR5Tests(unittest.TestCase):
                         {0: dict(rddata_valid=1)},
                     ],
                     pad_checkers = {
-                        "sys_90": {
+                        "sys_270": {
                             "cs": "01100000",
                         },
                         "sys4x_270": {
@@ -618,7 +620,7 @@ class LPDDR5Tests(unittest.TestCase):
                         {0: dict(rddata_valid=1)},
                     ],
                     pad_checkers = {
-                        "sys_90": {
+                        "sys_270": {
                             "cs": "01100000",
                         },
                         "sys8x_270": {
