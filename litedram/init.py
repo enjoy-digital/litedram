@@ -714,6 +714,12 @@ def get_lpddr5_phy_init_sequence(phy_settings, timing_settings):
         # zero-defaults
     ])
     mr[22] = 0  # Write/read link ECC disabled
+    mr[28] = reg([
+        (0, 1, 0), # ZQ Reset
+        (1, 1, 0), # ZQ Stop
+        (2, 2, 0b01), # ZQ background calibration interval (64ms default)
+        (5, 1, 0), # ZQ mode
+    ])
 
     def cmd_mr(ma):
         # Convert Mode Register Write command to DFI as expected by PHY
