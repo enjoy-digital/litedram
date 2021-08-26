@@ -611,8 +611,11 @@ class CommandsSim(Module, AutoCSR):
                         self.log.error("WL < 2 is not supported")
                     ),
                 ).Else(
-                    self.data_latency.eq(self.mode_regs.rl - 1),
-                    If(self.mode_regs.rl < 1,
+                    # FIXME: Currently we need to subtract 1 cycle here and delay additionally in BurstHalf.
+                    # We need to check if that's a limitation of PHY not being able to level DRAM only in simulation
+                    # or if there's a need to increase read_latency by 1 cycle (or increase bitslip cycles).
+                    self.data_latency.eq(self.mode_regs.rl - 2),
+                    If(self.mode_regs.rl < 2,
                         self.log.error("RL < 2 is not supported")
                     ),
                 ),
@@ -759,8 +762,8 @@ class DataSim(Module, AutoCSR):
         self.comb += [
             wr_start.input.eq(cmd.valid & cmd.we & latency_ready),
             rd_start.input.eq(cmd.valid & ~cmd.we & latency_ready),
-            delayed_cases(self.burst_p.enable_wr, wr_start, {2: 0, 4: 1}),
-            delayed_cases(self.burst_n.enable_wr, wr_start, {2: 1, 4: 2}),
+            delayed_cases(self.burst_p.enable_wr, wr_start, {2: 0, 4: 0}),
+            delayed_cases(self.burst_n.enable_wr, wr_start, {2: 1, 4: 1}),
             delayed_cases(self.burst_p.enable_rd, rd_start, {2: 0, 4: 0}),
             delayed_cases(self.burst_n.enable_rd, rd_start, {2: 1, 4: 1}),
             cmd.ready.eq(self.burst_p.ready),
@@ -792,6 +795,7 @@ class BurstHalf(Module):
         ]
         self.specials += ports
         ports = Array(ports)
+        we_all = Signal.like(ports[0].we, reset=2**len(ports[0].we) - 1)
 
         # Burst control
         burst_length = Signal.like(burst_beat)
@@ -824,13 +828,13 @@ class BurstHalf(Module):
         )
         fsm.act("BURST-WRITE",
             If(cmd_d.masked,
-                ports[cmd_d.bank].we.eq(~pads.dmi),  # DMI HIGH masks a byte
+                ports[cmd_d.bank].we.eq(delayed(self, ~pads.dmi)),  # DMI HIGH masks a byte
             ).Else(
-                ports[cmd_d.bank].we.eq(2**len(ports[cmd_d.bank].we) - 1),
+                ports[cmd_d.bank].we.eq(delayed(self, we_all)),
             ),
-            ports[cmd_d.bank].dat_w.eq(pads.dq),
+            ports[cmd_d.bank].dat_w.eq(delayed(self, pads.dq)),
             self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%04x dm=0x%02b",
-                burst_beat, cmd_d.bank, cmd_d.row, current_col, pads.dq, pads.dmi,
+                burst_beat, cmd_d.bank, cmd_d.row, current_col, delayed(self, pads.dq), pads.dmi,
                 once=False
             ),
             If(self.ready,
