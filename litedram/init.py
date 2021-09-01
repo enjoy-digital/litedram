@@ -7,7 +7,7 @@
 # Copyright (c) 2014 Yann Sionneau <ys@m-labs.hk>
 # Copyright (c) 2018 bunnie <bunnie@kosagi.com>
 # Copyright (c) 2019 Gabriel L. Somlo <gsomlo@gmail.com>
-# Copyright (c) 2021 Antmicro <www.antmicro.com>
+# Copyright (c) 2020-2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
 import math
@@ -225,6 +225,57 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
     ]
 
     return init_sequence, {1: mr1}
+
+# RPC ----------------------------------------------------------------------------------------------
+
+def get_rpc_phy_init_sequence(phy_settings, timing_settings):
+    from litedram.phy.rpc.commands import ModeRegister
+
+    assert phy_settings.cl == phy_settings.cwl
+    # subtract that +1 always added for AL
+    cl  = phy_settings.cl - 1
+
+    nwr = 8
+    zout = 60
+    odt = 30
+    odt_stb = 1  # disable ODT on STB
+    csr_fx = 0  # do not use loop refresh mode
+    odt_pd = 0  # ODT during PD disabled by DRAM
+
+    mr_a, mr_ba = ModeRegister.dfi_encode(
+        cl      = ModeRegister.CL[cl],
+        nwr     = ModeRegister.NWR[nwr],
+        zout    = ModeRegister.ZOUT[zout],
+        odt     = ModeRegister.ODT[odt],
+        csr_fx  = csr_fx,
+        odt_stb = odt_stb,
+        odt_pd  = odt_pd,
+    )
+
+    def ck(sec):
+        # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
+        fmax = 200e6
+        return int(math.ceil(sec * fmax))
+
+    init_sequence = [
+        # Apply power, stabilize clocks for 200us, CS# and STB should be high
+        ("Stabilize clocks", 0x0000, 0, cmds["UNRESET"], ck(200e-6)),
+        # Send CS# low once, to make PHY start holding it all the time
+        ("Hold CS# low", 0x0000, 0, "DFII_COMMAND_CS", ck(100e-9)),
+        # Enter PU RESET, by issuing ACT with reset_n=0, PHY will perform the reset sequence
+        ("RPC special commands: ON", 0x0000, 0, "DFII_CONTROL_ODT", ck(100e-9)),
+        ("PU RESET sequence (ACT)", 0x0000, 0, "DFII_COMMAND_RAS|DFII_COMMAND_CS", ck(5e-6)),
+        ("RPC special commands: OFF", 0x0000, 0, cmds["UNRESET"], ck(100e-9)),
+        # Setup mode register
+        ("Precharge ALL", 0x0400, 0, cmds["PRECHARGE_ALL"], ck(100e-9)),
+        ("Load Mode Register: CL={}".format(cl), mr_a, mr_ba, cmds["MODE_REGISTER"], ck(100e-9)),
+        # ZQ Calibration (ZQ LONG will be translated to RPC ZQ INIT by PHY)
+        ("RPC special commands: ON", 0x0000, 0, "DFII_CONTROL_ODT", ck(100e-9)),
+        ("ZQ Init Calibration", 0x0400, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
+        ("RPC special commands: OFF", 0x0000, 0, cmds["UNRESET"], ck(100e-9)),
+    ]
+
+    return init_sequence, None
 
 # DDR4 ---------------------------------------------------------------------------------------------
 
@@ -638,6 +689,7 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
         "LPDDR":  get_lpddr_phy_init_sequence,
         "DDR2":   get_ddr2_phy_init_sequence,
         "DDR3":   get_ddr3_phy_init_sequence,
+        "RPC":    get_rpc_phy_init_sequence,
         "DDR4":   get_ddr4_phy_init_sequence,
         "LPDDR4": get_lpddr4_phy_init_sequence,
     }[phy_settings.memtype](phy_settings, timing_settings)
