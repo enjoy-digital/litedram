@@ -693,6 +693,7 @@ class LiteDRAMCore(SoCCore):
                 ]
             # FIFO ---------------------------------------------------------------------------------
             elif port["type"] == "fifo":
+                user_port = self.sdram.crossbar.get_port(data_width=port.get("data_width", None))
                 platform.add_extension(get_fifo_user_port_ios(name, user_port.data_width))
                 _user_fifo_io = platform.request("user_fifo_{}".format(name))
                 fifo = LiteDRAMFIFO(
