@@ -55,6 +55,7 @@ def get_clocks(sys_clk_freq, wck_ck_ratio, dfi_converter_ratio):
         "phy": dfi_converter_ratio,
         "ck": dfi_converter_ratio,
         "ck_ddr": 2*dfi_converter_ratio,
+        "ca_ddr": 4*dfi_converter_ratio,
         "wck_ddr": 2*wck_ck_ratio*dfi_converter_ratio,
     }
     clocks = {"sys": dict(freq_hz=sys_clk_freq)}

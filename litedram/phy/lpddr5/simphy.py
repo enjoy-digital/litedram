@@ -57,7 +57,7 @@ class LPDDR5SimPHY(SimSerDesMixin, LPDDR5PHY):
 
         delay = lambda sig, cycles: delayed(self, sig, cycles=cycles)
         ddr_ck      = dict(clkdiv="sys", clk="sys2x")
-        ddr_ck_180  = dict(clkdiv="sys", clk="sys2x_180")
+        ddr_ca      = dict(clkdiv="sys", clk="sys4x")
         ddr_wck     = dict(clkdiv="sys", clk={2: "sys4x", 4: "sys8x"}[wck_ck_ratio])
         ddr_wck_180 = dict(clkdiv="sys", clk={2: "sys4x_180", 4: "sys8x_180"}[wck_ck_ratio])
 
@@ -69,22 +69,31 @@ class LPDDR5SimPHY(SimSerDesMixin, LPDDR5PHY):
 
         if aligned_reset_zero:
             ddr_ck["reset_cnt"] = 0
+            ddr_ca["reset_cnt"] = 0
             ddr_wck["reset_cnt"] = 0
 
         self.comb += self.pads.reset_n.eq(delay(self.out.reset_n, cycles=Serializer.LATENCY))
 
         # CK signals
         self.ser(i=self.out.ck, o=self.pads.ck, name='ck', **ddr_ck)
-        # CS (SDR) is delayed by 180 deg to be center aligned with CK (+1CK to match serializer latencies)
-        # 1.5 sys = 1 sys + 1 sys2x
-        self.sync.sys2x += self.pads.cs.eq(delay(self.out.cs, cycles=Serializer.LATENCY))
+
+        # CS (SDR) is delayed by 180 deg to be center aligned with CK
+        # Use ConstBitSlip to shift it, then serialize that 2-bit signal as DDR (like with CK)
+        cs_2bit = Signal(2)
+        cs_2bit_d = Signal(2)
+        self.comb += cs_2bit.eq(Replicate(self.out.cs, 2))
+        self.submodules += ConstBitSlip(dw=2, slp=1, cycles=1, register=False, i=cs_2bit, o=cs_2bit_d)
+        self.ser(i=cs_2bit_d, o=self.pads.cs, name='cs', **ddr_ck)
+
         # To center align CA (DDR) with CK it has to be delayed by 270 deg CK (+90 deg relative to CS)
         for i in range(7):
-            # Bitslip is used to get the additional +180 deg (slipping 2-bit CA signal by 1 bit with register=False)
-            ca_delayed = Signal(2)
-            self.submodules += ConstBitSlip(dw=2, slp=1, cycles=1, register=False, i=self.out.ca[i], o=ca_delayed)
-            # Getting the +90 deg by serializing on ddr_ck_180 (which shifts by 90 deg of CK)
-            self.ser(**cdc(ca_delayed, ddr_ck_180), o=self.pads.ca[i], name=f'ca{i}', **ddr_ck_180)
+            # To achieve 270 deg shift we use ConstBitSlip with slp=3 and dw=4.
+            # For this to work we first widen CA to 4 bits and use sys4x when serializing.
+            ca_4bit = Signal(4)
+            ca_4bit_d = Signal(4)
+            self.comb += ca_4bit.eq(Cat([Replicate(bit, 2) for bit in self.out.ca[i]]))
+            self.submodules += ConstBitSlip(dw=4, slp=3, cycles=1, register=False, i=ca_4bit, o=ca_4bit_d)
+            self.ser(i=ca_4bit_d, o=self.pads.ca[i], name=f'ca{i}', **ddr_ca)
 
         # WCK
         for i in range(self.databits//8):
