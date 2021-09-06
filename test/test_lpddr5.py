@@ -4,7 +4,6 @@
 # Copyright (c) 2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
-import re
 import unittest
 from typing import Mapping
 from collections import defaultdict
@@ -13,6 +12,8 @@ from functools import partial, wraps
 from migen import *
 
 from litedram.phy.lpddr5.simphy import LPDDR5SimPHY
+from litedram.phy.lpddr5 import simsoc
+from litedram.phy.sim_utils import SimLogger
 
 import test.phy_common
 from test.phy_common import DFISequencer, PadChecker, run_simulation as _run_simulation
@@ -680,3 +681,55 @@ class LPDDR5Tests(unittest.TestCase):
                         },
                     },
                 )
+
+
+class VerilatorLPDDR5Tests(unittest.TestCase):
+    def check_logs(self, logs, allowed):
+        for match in SimLogger.LOG_PATTERN.finditer(logs):
+            if match.group("level") in ["WARN", "ERROR"]:
+                is_allowed = any(
+                    lvl == match.group("level") and msg in match.group("msg")
+                    for lvl, msg in allowed
+                )
+                self.assertTrue(is_allowed, msg=match.group(0))
+
+    def run_test(self, args, allowed=None, **kwargs):
+        import pexpect
+
+        command = ["python3", simsoc.__file__, *args]
+        timeout = 12 * 60  # give more than enough time
+        p = pexpect.spawn(" ".join(command), timeout=timeout, **kwargs)
+
+        res = p.expect(["Memtest OK", "Memtest KO"])
+        self.assertEqual(res, 0, msg="{}\nGot '{}'".format(p.before.decode(), p.after.decode()))
+
+        # print(p.before.decode())
+        self.check_logs(p.before.decode(), allowed=allowed or [])
+
+    def test_lpddr5_sim_no_delays(self):
+        # Fast test of simulation with L2 cache (so no data masking is required)
+        for wck_ck_ratio in [2, 4]:
+            with self.subTest(wck_ck_ratio=wck_ck_ratio):
+                self.run_test([
+                    "--finish-after-memtest", "--log-level=warn",
+                    "--disable-delay",
+                    f"--wck-ck-ratio={wck_ck_ratio}",
+                    "--no-refresh",  # FIXME: avoids warnings before initialization
+                ])
+
+    def test_lpddr5_sim_delays_no_cache(self):
+        # Test simulation with regular delays and no L2 cache (masked write must work)
+        for wck_ck_ratio in [2, 4]:
+            with self.subTest(wck_ck_ratio=wck_ck_ratio):
+                # These happen due the fact that LiteDRAM starts in hw control mode which holds reset_n=1
+                # all the time. When the DRAM initialization starts we do a reset once more, this time properly.
+                allowed = [
+                    ("WARN", "tPW_RESET violated: RESET_n held low for too short"),
+                    ("WARN", "tINIT1 violated: RESET deasserted too fast"),
+                ]
+                self.run_test([
+                    "--finish-after-memtest", "--log-level=warn",
+                    "--l2-size=0",
+                    f"--wck-ck-ratio={wck_ck_ratio}",
+                    "--no-refresh",  # FIXME: LiteDRAM sends refresh commands when only MRW/MRR are allowed
+                ], allowed=allowed)
