@@ -12,7 +12,7 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
-from litedram.phy.utils import delayed, Latency
+from litedram.phy.utils import delayed, Latency, ConstBitSlip
 from litedram.phy.lpddr5.basephy import LPDDR5PHY
 
 from litedram.phy.s7common import S7Common
@@ -94,31 +94,54 @@ class S7LPDDR5PHY(LPDDR5PHY, S7Common):
 
         # Serialization ----------------------------------------------------------------------------
 
+        # CK/CS/CA for a single command
+        # sys |----____----____
+        # CK  |----____----____  (same as sys)
+        # CS  |____--------____  (180-deg shift)
+        # CA  |______PPPPnnnn__  (270-deg shift)
+
         # Clock
         ck_dly = Signal()
         ck_ser = Signal()
-        # Invert clk to have it phase shifted in relation to CS/CA, because we serialize it with DDR,
-        # rising edge will then be in the middle of a data bit.
-        self.oserdese2_sdr(din=~self.out.ck, dout=ck_ser if with_odelay else ck_dly, clk="sys4x", clkdiv="sys")
+        self.oserdese2_sdr(din=self.out.ck, dout=ck_ser if with_odelay else ck_dly, clk="sys4x", clkdiv="sys")
         if with_odelay:
             self.odelaye2(din=ck_ser, dout=ck_dly, rst=cdly_rst, inc=cdly_inc, clk="sys")
         self.obufds(din=ck_dly, dout=self.pads.ck_p, dout_b=self.pads.ck_n)
 
-        reset_n_rep = Replicate(self.out.reset_n, 8)
-
+        # CS/RESET_n - 180-deg shifted
+        # These signals are 1-bit wide, but shifting can be done laveraging the fact that our serializer
+        # will replicate these anyway to get 8-bit input, so we widen them to 2-bit ones here and use
+        # ConstBitSlip to produce 2-bit input to the serialzier.
         for cmd in ["cs", "reset_n"]:
             cmd_i = getattr(self.out, cmd)
             cmd_o = getattr(self.pads, cmd)
             cmd_ser = Signal()
-            self.oserdese2_sdr(din=cmd_i, dout=cmd_ser if with_odelay else cmd_o, clk="sys4x", clkdiv="sys")
+
+            assert len(cmd_i) == 1
+            cmd_2bit_i = Signal(2)
+            cmd_2bit_o = Signal(2)
+            self.comb += cmd_2bit_i.eq(Replicate(cmd_i, 2))
+            # slp=1 / dw=2 => 180-deg shift
+            self.submodules += ConstBitSlip(dw=2, slp=1, cycles=1, register=False, i=cmd_2bit_i, o=cmd_2bit_o)
+
+            self.oserdese2_sdr(din=cmd_2bit_o, dout=cmd_ser if with_odelay else cmd_o, clk="sys4x", clkdiv="sys")
             if with_odelay:
                 self.odelaye2(din=cmd_ser, dout=cmd_o, rst=cdly_rst, inc=cdly_inc, clk="sys")
 
-        # Commands
+        # Commands - 270-deg shift, achieved as for CS but with 4-bit ConstBitSlip
         for bit in range(len(self.out.ca)):
+            ca_i = self.out.ca[bit]
             ca_ser = Signal()
             ca_dly = self.pads.ca[bit]
-            self.oserdese2_sdr(din=self.out.ca[bit], dout=ca_ser if with_odelay else ca_dly, clk="sys4x", clkdiv="sys")
+
+            assert len(ca_i) == 2
+            ca_4bit_i = Signal(4)
+            ca_4bit_o = Signal(4)
+            self.comb += cmd_4bit_i.eq(Cat([Replicate(bit, 2) for bit in cmd_i]))
+            # slp=3 / dw=4 => 270-deg shift
+            self.submodules += ConstBitSlip(dw=4, slp=3, cycles=1, register=False, i=ca_4bit_i, o=ca_4bit_o)
+
+            self.oserdese2_sdr(din=ca_4bit_o, dout=ca_ser if with_odelay else ca_dly, clk="sys4x", clkdiv="sys")
             if with_odelay:
                 self.odelaye2(din=ca_ser, dout=ca_dly, rst=cdly_rst, inc=cdly_inc, clk="sys")
 
