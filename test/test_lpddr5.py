@@ -536,7 +536,8 @@ class LPDDR5Tests(unittest.TestCase):
                             # tWCKENL_WR starts counting from first command (CAS) so we add command latency,
                             # then preamble, then toggle for the whole burst, then postamble for tWCKPST=2.5tCK
                             # (but for now we assume that WCK is never disabled)
-                            "wck0": "0000 0000" + wck_preamble + wck_burst + wck_postamble + \
+                            "wck0": "0000 0000" + \
+                                    "0000" + wck_preamble + wck_burst + wck_postamble + \
                                     "0000" + wck_preamble + wck_burst + wck_postamble + \
                                     "0000" + wck_preamble + wck_burst + wck_postamble + \
                                     "0000" + wck_preamble + wck_burst + wck_postamble,
@@ -601,7 +602,8 @@ class LPDDR5Tests(unittest.TestCase):
                             # tWCKENL_WR starts counting from first command (CAS) so we add command latency,
                             # then preamble, then toggle for the whole burst, then postamble for tWCKPST=2.5tCK
                             # (but for now we assume that WCK is never disabled)
-                            "wck0": "00000000 00000000" + wck_preamble + wck_burst + wck_postamble + \
+                            "wck0": "00000000 00000000" + \
+                                    "00000000" + wck_preamble + wck_burst + wck_postamble + \
                                     "00000000" + wck_preamble + wck_burst + wck_postamble + \
                                     "00000000" + wck_preamble + wck_burst + wck_postamble + \
                                     "00000000" + wck_preamble + wck_burst + wck_postamble,
@@ -640,7 +642,7 @@ class LPDDR5Tests(unittest.TestCase):
                             "cs": "01100000",
                         },
                         "sys4x_270": {
-                            "wck0": "0000 0000" + wck_preamble + wck_burst + wck_postamble + "00 00",
+                            "wck0": "0000 0000 0000" + wck_preamble + wck_burst + wck_postamble + "00 00",
                         },
                     },
                     chunk_size=4,
@@ -677,7 +679,7 @@ class LPDDR5Tests(unittest.TestCase):
                             "cs": "01100000",
                         },
                         "sys8x_270": {
-                            "wck0": "00000000 00000000" + wck_preamble + wck_burst + wck_postamble + "00000000",
+                            "wck0": "00000000 00000000 00000000" + wck_preamble + wck_burst + wck_postamble + "00000000",
                         },
                     },
                 )
