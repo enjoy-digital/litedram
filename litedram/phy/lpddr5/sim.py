@@ -321,7 +321,8 @@ class CommandsSim(Module, AutoCSR):
         self.submodules.tinit4 = PulseTiming(5)  # (min) stabilized CK before CS high; not really applicable in this simulation
         self.submodules.tinit5 = PulseTiming(ck(2*us))  # (min) idle time before first MRW/MRR cmmand
         self.submodules.tzqlat = PulseTiming(max(4, ck(30*ns)))  # (min) ZQCAL latch quiet time
-        self.submodules.tpw_reset = PulseTiming(ck(100*ns))  # (min) RESET_n low time for Reset initialization with stable power
+        tpw_reset_ck = ck(100*ns) if check_timings else 4  # Avoids double reset during initialization at high frequecies
+        self.submodules.tpw_reset = PulseTiming(tpw_reset_ck)  # (min) RESET_n low time for Reset initialization with stable power
 
         def with_progress(timing, string, *args, as_clocks=False):
             current, full = timing.progress()
