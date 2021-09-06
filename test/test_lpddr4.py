@@ -15,6 +15,7 @@ from migen import *
 
 from litedram.phy.lpddr4.simphy import LPDDR4SimPHY, DoubleRateLPDDR4SimPHY
 from litedram.phy.lpddr4 import simsoc
+from litedram.phy.sim_utils import SimLogger
 
 import test.phy_common
 from test.phy_common import DFISequencer, PadChecker
@@ -651,18 +652,7 @@ class LPDDR4Tests(unittest.TestCase):
         )
 
 
-# Named regex group
-def ng(name, regex):
-    return r"(?P<{}>{})".format(name, regex)
-
-
 class VerilatorLPDDR4Tests(unittest.TestCase):
-    LOG_PATTERN = re.compile(r"\[\s*{time} ps] \[{level}]\s*{msg}".format(
-        time  = ng("time", r"[0-9]+"),
-        level = ng("level", r"DEBUG|INFO|WARN|ERROR"),
-        msg   = ng("msg", ".*"),
-    ))
-
     # We ignore these 2 warnings, they appear due to the fact that litedram starts
     # in hardware control mode which holds reset_n=1 all the time. PHY will later
     # set reset_n=0 once again and then perform proper init sequence.
@@ -672,7 +662,7 @@ class VerilatorLPDDR4Tests(unittest.TestCase):
     ]
 
     def check_logs(self, logs):
-        for match in self.LOG_PATTERN.finditer(logs):
+        for match in SimLogger.LOG_PATTERN.finditer(logs):
             if match.group("level") in ["WARN", "ERROR"]:
                 allowed = any(
                     lvl == match.group("level") and msg in match.group("msg")

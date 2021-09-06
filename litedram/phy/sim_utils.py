@@ -4,6 +4,8 @@
 # Copyright (c) 2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import re
+
 from migen import *
 
 from litex.build.sim import SimPlatform
@@ -128,6 +130,11 @@ class Platform(SimPlatform):
 
 # Logging ------------------------------------------------------------------------------------------
 
+# Named regex group
+def ng(name, regex):
+    return r"(?P<{}>{})".format(name, regex)
+
+
 class SimLogger(Module, AutoCSR):
     """Logger for use in simulation
 
@@ -150,6 +157,13 @@ class SimLogger(Module, AutoCSR):
     WARN  = 2
     ERROR = 3
     NONE  = 4
+
+    # Regex pattern for parsing logs
+    LOG_PATTERN = re.compile(r"\[\s*{time} ps] \[{level}]\s*{msg}".format(
+        time  = ng("time", r"[0-9]+"),
+        level = ng("level", r"DEBUG|INFO|WARN|ERROR"),
+        msg   = ng("msg", ".*"),
+    ))
 
     def __init__(self, log_level=INFO, clk_freq=None, clk_freq_cd=None, with_csrs=False):
         self.ops = []
