@@ -361,8 +361,52 @@ class LPDDR5PHY(Module, AutoCSR):
 
         wck_out = {2: wck_pattern[::2], 4: wck_pattern}[wck_ck_ratio]
         assert len(wck_out) == len(self.out.wck[0]), (len(wck_out), len(self.out.wck))
-        for byte in range(databits//8):
-            self.comb += self.out.wck[byte].eq(wck_out)
+
+        # WCK2CK leveling --------------------------------------------------------------------------
+
+        # Strobe needs to be high for tWCKTGGL which is 8 tWCK periods
+        # NOTE: WCK2CK leveling always happens at 2:1 WCK2CK ratio.
+        twcktggl = 4
+        wckl_strobe_dly = TappedDelayLine(
+            signal = self._wlevel_strobe.re,
+            ntaps  = twcktggl
+        )
+        self.submodules += wckl_strobe_dly
+
+        wckl_strobe_en = Signal()
+        self.comb += [
+            wckl_strobe_en.eq(reduce(or_, wckl_strobe_dly.taps[0:twcktggl]))
+        ]
+
+        wckl_pattern = Signal(8)
+        self.comb += [
+            wckl_pattern.eq(bitpattern(patterns["disabled"])),
+            If(wckl_strobe_en,
+                wckl_pattern.eq(bitpattern(patterns["toggle"])),
+            )
+        ]
+
+        wckl_out = {2: wckl_pattern[::2], 4: wckl_pattern}[wck_ck_ratio]
+
+        wck_pattern_selected = Signal(2*wck_ck_ratio)
+        self.comb += [
+            If(self._wlevel_en.storage,
+                wck_pattern_selected.eq(wckl_out)
+            ).Else(
+                wck_pattern_selected.eq(wck_out)
+            )
+        ]
+
+        for byte in range(self.databits//8):
+            # output
+            self.submodules += BitSlip(
+                dw     = 2*wck_ck_ratio,
+                cycles = bitslip_cycles,
+                rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
+                slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
+                i      = wck_pattern_selected,
+                o      = self.out.wck[byte],
+            )
 
         # Write Control Path -----------------------------------------------------------------------
         wrtap = write_latency - 1
@@ -438,7 +482,6 @@ class LPDDR5PHY(Module, AutoCSR):
             self.dfi.p0.rddata.eq(rddata_converter.source.data),
             self.dfi.p0.rddata_valid.eq(rddata_converter.source.valid),
         ]
-
 
         # -2 is to take into account the serialization time for wck
         read_wck_latency = cmd_latency + cl + burst_ck_cycles - 2

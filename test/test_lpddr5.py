@@ -682,6 +682,38 @@ class LPDDR5Tests(unittest.TestCase):
                     },
                 )
 
+    def test_lpddr5_wck_leveling(self):
+
+        # Test that correct WCK sequence is generated during WCK sync before burst write for WCK:CK=4:1
+        for wck_ck_ratio in [2, 4]:
+            with self.subTest(wck_ck_ratio=wck_ck_ratio):
+                phy = LPDDR5SimPHY(sys_clk_freq=50e6, wck_ck_ratio=wck_ck_ratio)
+
+                def write_leveling(pads):
+                    for _ in range(4):
+                        yield from phy._wlevel_en.write(1)
+                        yield from phy._wlevel_strobe.write(1)
+                        for i in range(4):
+                            yield
+                        yield from phy._wlevel_en.write(0)
+
+
+                self.run_test(phy,
+                    dfi_sequence = {},
+                    pad_checkers = {
+                        f"sys4x_270": {
+                            "wck0": "0000" + \
+                                    "0000" * 3 + "1010" * 4 + \
+                                    "0000" * 3 + "1010" * 4 + \
+                                    "0000" * 3 + "1010" * 4 + \
+                                    "0000" * 3 + "1010" * 4,
+                        },
+                    },
+                    pad_generators = {
+                        "sys": write_leveling,
+                    }
+                )
+
 
 class VerilatorLPDDR5Tests(unittest.TestCase):
     def check_logs(self, logs, allowed):
