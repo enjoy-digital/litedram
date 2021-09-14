@@ -117,6 +117,10 @@ class S7DDRPHY(Module, AutoCSR):
         wdly_dq_bitslip  = cdc(self._wdly_dq_bitslip.re)
 
         # PHY settings -----------------------------------------------------------------------------
+        if not with_odelay:
+            # Write leveling is not possible on Artix7 due to the lack of ODELAYE2, adding +1 to cl
+            # in MR register increases sys_clk_freq range.
+            cl += 1
         self.settings = PhySettings(
             phytype                   = phytype,
             memtype                   = memtype,
