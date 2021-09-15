@@ -168,6 +168,7 @@ class SimSoC(SoCCore):
         self.submodules.lpddr5sim = LPDDR5Sim(
             pads          = self.ddrphy.pads,
             ck_freq       = dfi_converter_ratio*sys_clk_freq,
+            wck_ck_ratio  = wck_ck_ratio,
             check_timings = not disable_delay,
             log_level     = log_level,
             logger_kwargs = dict(
