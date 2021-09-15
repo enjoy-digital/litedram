@@ -51,9 +51,19 @@ class LPDDR5SimPHY(SimSerDesMixin, LPDDR5PHY):
 
         # fake delays (make no nsense in simulation, but sdram.c expects them)
         self.settings.read_leveling = True
-        self.settings.delays = 1
         self._rdly_dq_rst = CSR()
         self._rdly_dq_inc = CSR()
+
+        self.settings.write_leveling = True
+        self._cdly_rst = CSR()
+        self._cdly_inc = CSR()
+        self._wdly_dq_rst = CSR()
+        self._wdly_dq_inc = CSR()
+        self._wdly_dqs_rst = CSR()
+        self._wdly_dqs_inc = CSR()
+        self._half_sys8x_taps = CSR()
+
+        self.settings.delays = 1
 
         delay = lambda sig, cycles: delayed(self, sig, cycles=cycles)
         ddr_ck      = dict(clkdiv="sys", clk="sys2x")
