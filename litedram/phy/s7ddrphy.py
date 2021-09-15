@@ -37,6 +37,7 @@ class S7DDRPHY(Module, AutoCSR):
         cmd_delay        = None,
         ddr_clk          = None,
         csr_cdc          = None):
+        assert memtype in ["DDR2", "DDR3"]
         assert not (memtype == "DDR3" and nphases == 2)
         phytype     = self.__class__.__name__
         pads        = PHYPadsCombiner(pads)
@@ -117,9 +118,9 @@ class S7DDRPHY(Module, AutoCSR):
         wdly_dq_bitslip  = cdc(self._wdly_dq_bitslip.re)
 
         # PHY settings -----------------------------------------------------------------------------
-        if not with_odelay:
-            # Write leveling is not possible on Artix7 due to the lack of ODELAYE2, adding +1 to cl
-            # in MR register increases sys_clk_freq range.
+        if (memtype == "DDR3") and (not with_odelay):
+            # DDR3 Write leveling is not possible on Artix7 due to the lack of ODELAYE2, adding +1
+            # to cl in MR register increases sys_clk_freq range.
             cl += 1
         self.settings = PhySettings(
             phytype                   = phytype,
