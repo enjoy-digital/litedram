@@ -514,7 +514,10 @@ class LiteDRAMCore(SoCCore):
         else:
             self.submodules.uart_phy = RS232PHY(platform.request("uart"), self.clk_freq, 115200)
             self.submodules.uart = UART(self.uart_phy)
-        self.add_interrupt("uart")
+        if self.irq.enabled:
+            self.irq.add("uart", use_loc_if_exists=True)
+        else:
+            self.add_constant("UART_POLLING")
 
         # CRG --------------------------------------------------------------------------------------
         if isinstance(platform, SimPlatform):
