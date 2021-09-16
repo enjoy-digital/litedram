@@ -9,6 +9,7 @@
     "speedgrade": -2,         # FPGA speedgrade
     "cpu":        "vexriscv", # CPU type (ex vexriscv, serv, None)
     "memtype":    "DDR4",     # DRAM type
+    "uart":       "rs232",    # Type of UART interface (rs232, fifo)
 
     # PHY ----------------------------------------------------------------------
     "cmd_latency":     1,            # Command additional latency

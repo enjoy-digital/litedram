@@ -65,30 +65,47 @@ from litedram.frontend.fifo import LiteDRAMFIFO
 
 def get_common_ios():
     return [
-        # clk / rst
+        # Clk/Rst.
         ("clk", 0, Pins(1)),
         ("rst", 0, Pins(1)),
 
-        # serial
-        ("serial", 0,
-            Subsignal("tx", Pins(1)),
-            Subsignal("rx", Pins(1))
-        ),
-
-        # crg status
+        # PLL status.
         ("pll_locked", 0, Pins(1)),
 
-        # init status
+        # Init status.
         ("init_done",  0, Pins(1)),
         ("init_error", 0, Pins(1)),
 
-        # iodelay clk / rst
+        # IODELAY Clk/Rst.
         ("clk_iodelay", 0, Pins(1)),
         ("rst_iodelay", 0, Pins(1)),
 
-        # user clk / rst
+        # USER Clk/Rst.
         ("user_clk", 0, Pins(1)),
         ("user_rst", 0, Pins(1))
+    ]
+
+
+def get_uart_std_ios():
+    return [
+        ("uart", 0,
+            Subsignal("tx", Pins(1)),
+            Subsignal("rx", Pins(1))
+        ),
+    ]
+
+def get_uart_fifo_ios():
+    return [
+        ("uart_tx", 0,
+            Subsignal("valid", Pins(1)),
+            Subsignal("ready", Pins(1)),
+            Subsignal("data",  Pins(8))
+        ),
+        ("uart_rx", 0,
+            Subsignal("valid", Pins(1)),
+            Subsignal("ready", Pins(1)),
+            Subsignal("data",  Pins(8))
+        ),
     ]
 
 def get_dram_ios(core_config):
@@ -450,12 +467,17 @@ class LiteDRAMCoreControl(Module, AutoCSR):
 class LiteDRAMCore(SoCCore):
     def __init__(self, platform, core_config, **kwargs):
         platform.add_extension(get_common_ios())
+        if core_config["uart"] == "fifo":
+            platform.add_extension(get_uart_fifo_ios())
+        else:
+            platform.add_extension(get_uart_std_ios())
 
         # Parameters -------------------------------------------------------------------------------
         sys_clk_freq   = core_config["sys_clk_freq"]
         cpu_type       = core_config["cpu"]
         cpu_variant    = core_config.get("cpu_variant", "standard")
         csr_data_width = core_config.get("csr_data_width", 8)
+        uart_type      = core_config.get("uart", "rs232")
         if cpu_type is None:
             kwargs["integrated_rom_size"]  = 0
             kwargs["integrated_sram_size"] = 0
@@ -468,7 +490,31 @@ class LiteDRAMCore(SoCCore):
             cpu_type       = cpu_type,
             cpu_variant    = cpu_variant,
             csr_data_width = csr_data_width,
+            with_uart      = False,
             **kwargs)
+
+        # UART -------------------------------------------------------------------------------------
+        assert uart_type in ["rs232", "fifo"]
+        if uart_type == "fifo":
+            uart_interface = RS232PHYInterface()
+            self.submodules.uart = UART(uart_interface, tx_fifo_depth=1, rx_fifo_depth=1)
+            uart_tx_pads = platform.request("uart_tx")
+            uart_rx_pads = platform.request("uart_rx")
+            self.comb += [
+                # UART TX.
+                uart_tx_pads.valid.eq(uart_interface.sink.valid),
+                uart_interface.sink.ready.eq(uart_tx_pads.ready),
+                uart_tx_pads.data.eq(uart_interface.sink.data),
+
+                # UART RX.
+                uart_interface.source.valid.eq(uart_rx_pads.valid),
+                uart_rx_pads.ready.eq(uart_interface.source.ready),
+                uart_interface.source.data.eq(uart_rx_pads.data)
+            ]
+        else:
+            self.submodules.uart_phy = RS232PHY(platform.request("uart"), self.clk_freq, 115200)
+            self.submodules.uart = UART(self.uart_phy)
+        self.add_interrupt("uart")
 
         # CRG --------------------------------------------------------------------------------------
         if isinstance(platform, SimPlatform):
