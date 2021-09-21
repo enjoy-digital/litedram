@@ -1,7 +1,7 @@
 #
 # This file is part of LiteDRAM.
 #
-# Copyright (c) 2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2019-2021 Florent Kermarrec <florent@enjoy-digital.fr>
 # Copyright (c) 2020 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
@@ -21,7 +21,7 @@ from test.common import *
 
 
 class FIFODUT(Module):
-    def __init__(self, base, depth, data_width=8, address_width=32):
+    def __init__(self, base, depth, data_width=8, address_width=32, with_bypass=False):
         self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=data_width)
         self.read_port  = LiteDRAMNativeReadPort(address_width=32,  data_width=data_width)
         self.submodules.fifo = LiteDRAMFIFO(
@@ -30,6 +30,7 @@ class FIFODUT(Module):
             depth      = depth,
             write_port = self.write_port,
             read_port  = self.read_port,
+            with_bypass = with_bypass
         )
 
         margin = 8
@@ -231,7 +232,7 @@ class TestFIFO(unittest.TestCase):
 
     # LiteDRAMFIFO ---------------------------------------------------------------------------------
 
-    def test_fifo_continuous_stream_short(self):
+    def fifo_continuous_stream_short_test(self, with_bypass):
         # Verify FIFO operation with continuous writes and reads without wrapping
         def generator(dut):
             for i in range(64):
@@ -242,7 +243,7 @@ class TestFIFO(unittest.TestCase):
                 data = (yield from dut.read())
                 self.assertEqual(data, 10 + i)
 
-        dut = FIFODUT(base=16, depth=128)
+        dut = FIFODUT(base=16, depth=128, with_bypass=with_bypass)
         generators = [
             generator(dut),
             checker(dut),
@@ -252,7 +253,13 @@ class TestFIFO(unittest.TestCase):
         ]
         run_simulation(dut, generators)
 
-    def test_fifo_continuous_stream_long(self):
+    def test_fifo_continuous_stream_short(self):
+        self.fifo_continuous_stream_short_test(with_bypass=False)
+
+    def test_fifo_continuous_stream_short_with_bypass(self):
+        self.fifo_continuous_stream_short_test(with_bypass=True)
+
+    def fifo_continuous_stream_long_test(self, with_bypass):
         # Verify FIFO operation with continuous writes and reads with wrapping
         def generator(dut):
             for i in range(64):
@@ -263,7 +270,39 @@ class TestFIFO(unittest.TestCase):
                 data = (yield from dut.read())
                 self.assertEqual(data, 10 + i)
 
-        dut = FIFODUT(base=16, depth=32)
+        dut = FIFODUT(base=16, depth=32, with_bypass=with_bypass)
+        generators = [
+            generator(dut),
+            checker(dut),
+            dut.memory.write_handler(dut.write_port),
+            dut.memory.read_handler(dut.read_port),
+            timeout_generator(1500),
+        ]
+        run_simulation(dut, generators)
+
+    def test_fifo_continuous_stream_long(self):
+        self.fifo_continuous_stream_long_test(with_bypass=False)
+
+    def test_fifo_continuous_stream_long_with_bypass(self):
+        self.fifo_continuous_stream_long_test(with_bypass=True)
+
+    def fifo_delayed_reader_test(self, with_bypass):
+        # Verify FIFO works correctly when reader starts reading only after writer is full
+        def generator(dut):
+            for i in range(128):
+                yield from dut.write(10 + i)
+
+        def checker(dut):
+            # Wait until both the internal writer FIFO and our in-memory FIFO are full
+            while (yield dut.fifo.dram_fifo.ctrl.writable):
+                yield
+            for i in range(128):
+                data = (yield from dut.read())
+                self.assertEqual(data, 10 + i)
+            for i in range(32):
+                yield
+
+        dut = FIFODUT(base=16, depth=32, with_bypass=with_bypass)
         generators = [
             generator(dut),
             checker(dut),
@@ -274,25 +313,7 @@ class TestFIFO(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_fifo_delayed_reader(self):
-        # Verify FIFO works correctly when reader starts reading only after writer is full
-        def generator(dut):
-            for i in range(64):
-                yield from dut.write(10 + i)
+        self.fifo_delayed_reader_test(with_bypass=False)
 
-        def checker(dut):
-            # Wait until both the internal writer FIFO and our in-memory FIFO are full
-            while (yield dut.fifo.ctrl.writable):
-                yield
-            for i in range(64):
-                data = (yield from dut.read())
-                self.assertEqual(data, 10 + i)
-
-        dut = FIFODUT(base=16, depth=32)
-        generators = [
-            generator(dut),
-            checker(dut),
-            dut.memory.write_handler(dut.write_port),
-            dut.memory.read_handler(dut.read_port),
-            timeout_generator(1500),
-        ]
-        run_simulation(dut, generators)
+    def test_fifo_delayed_reader_with_bypass(self):
+        self.fifo_delayed_reader_test(with_bypass=True)
