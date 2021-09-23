@@ -299,7 +299,7 @@ class LiteDRAMFIFO(Module):
             )
             dram_data_inc = Signal()
             dram_data_dec = Signal()
-            dram_data_cnt = Signal(int(math.log2(depth)))
+            dram_data_cnt = Signal(int(math.log2(depth + writer_fifo_depth + reader_fifo_depth) + 1))
             self.sync += dram_data_cnt.eq(dram_data_cnt + dram_data_inc - dram_data_dec)
             fsm.act("DRAM",
                 # Increment DRAM Data Count on Pre-Converter's Sink cycle.
