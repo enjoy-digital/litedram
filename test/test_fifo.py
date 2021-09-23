@@ -257,8 +257,8 @@ class TestFIFO(unittest.TestCase):
     def test_fifo_continuous_stream_short(self):
         self.fifo_continuous_stream_short_test(with_bypass=False)
 
-    #def test_fifo_continuous_stream_short_with_bypass(self):
-    #    self.fifo_continuous_stream_short_test(with_bypass=True)
+    def test_fifo_continuous_stream_short_with_bypass(self):
+        self.fifo_continuous_stream_short_test(with_bypass=True)
 
     def fifo_continuous_stream_long_test(self, with_bypass):
         # Verify FIFO operation with continuous writes and reads with wrapping
@@ -284,8 +284,8 @@ class TestFIFO(unittest.TestCase):
     def test_fifo_continuous_stream_long(self):
         self.fifo_continuous_stream_long_test(with_bypass=False)
 
-    #def test_fifo_continuous_stream_long_with_bypass(self):
-    #    self.fifo_continuous_stream_long_test(with_bypass=True)
+    def test_fifo_continuous_stream_long_with_bypass(self):
+        self.fifo_continuous_stream_long_test(with_bypass=True)
 
     def fifo_delayed_reader_test(self, with_bypass):
         # Verify FIFO works correctly when reader starts reading only after writer is full
