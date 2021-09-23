@@ -466,6 +466,7 @@ class LiteDRAMCoreControl(Module, AutoCSR):
 
 class LiteDRAMCore(SoCCore):
     def __init__(self, platform, core_config, **kwargs):
+        platform.add_extension(get_common_ios())
 
         # Parameters -------------------------------------------------------------------------------
         sys_clk_freq   = core_config["sys_clk_freq"]
@@ -479,24 +480,19 @@ class LiteDRAMCore(SoCCore):
             kwargs["with_timer"]           = False
             kwargs["with_ctrl"]            = False
 
-        platform.add_extension(get_common_ios())
-        if cpu_type is not None:
-            if core_config["uart"] == "fifo":
-                platform.add_extension(get_uart_fifo_ios())
-            else:
-                platform.add_extension(get_uart_std_ios())
-
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, sys_clk_freq,
             cpu_type       = cpu_type,
             cpu_variant    = cpu_variant,
             csr_data_width = csr_data_width,
+            with_uart      = False,
             **kwargs)
 
         # UART -------------------------------------------------------------------------------------
         if cpu_type is not None:
             assert uart_type in ["rs232", "fifo"]
             if uart_type == "fifo":
+                platform.add_extension(get_uart_fifo_ios())
                 uart_interface = RS232PHYInterface()
                 self.submodules.uart = UART(uart_interface, tx_fifo_depth=1, rx_fifo_depth=1)
                 uart_tx_pads = platform.request("uart_tx")
@@ -513,6 +509,7 @@ class LiteDRAMCore(SoCCore):
                     uart_interface.source.data.eq(uart_rx_pads.data)
                 ]
             else:
+                platform.add_extension(get_uart_std_ios())
                 self.submodules.uart_phy = RS232PHY(platform.request("uart"), self.clk_freq, 115200)
                 self.submodules.uart = UART(self.uart_phy)
             if self.irq.enabled:
