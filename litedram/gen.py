@@ -631,6 +631,8 @@ class LiteDRAMCore(SoCCore):
             self.comb += wb_bus.connect_to_pads(wb_pads, mode="slave")
 
         # User ports -------------------------------------------------------------------------------
+        user_enable = Signal()
+        self.sync += user_enable.eq(self.ddrctrl.init_done.storage & ~self.ddrctrl.init_error.storage)
         self.comb += [
             platform.request("user_clk").eq(ClockSignal()),
             platform.request("user_rst").eq(ResetSignal()),
@@ -644,21 +646,21 @@ class LiteDRAMCore(SoCCore):
                     user_port.data_width))
                 _user_port_io = platform.request("user_port_{}".format(name))
                 self.comb += [
-                    # cmd
-                    user_port.cmd.valid.eq(_user_port_io.cmd_valid),
-                    _user_port_io.cmd_ready.eq(user_port.cmd.ready),
+                    # Cmd Channel.
+                    user_port.cmd.valid.eq(_user_port_io.cmd_valid & user_enable),
+                    _user_port_io.cmd_ready.eq(user_port.cmd.ready & user_enable),
                     user_port.cmd.we.eq(_user_port_io.cmd_we),
                     user_port.cmd.addr.eq(_user_port_io.cmd_addr),
 
-                    # wdata
-                    user_port.wdata.valid.eq(_user_port_io.wdata_valid),
-                    _user_port_io.wdata_ready.eq(user_port.wdata.ready),
+                    # WData Channel.
+                    user_port.wdata.valid.eq(_user_port_io.wdata_valid & user_enable),
+                    _user_port_io.wdata_ready.eq(user_port.wdata.ready & user_enable),
                     user_port.wdata.we.eq(_user_port_io.wdata_we),
                     user_port.wdata.data.eq(_user_port_io.wdata_data),
 
-                    # rdata
-                    _user_port_io.rdata_valid.eq(user_port.rdata.valid),
-                    user_port.rdata.ready.eq(_user_port_io.rdata_ready),
+                    # RData Channel.
+                    _user_port_io.rdata_valid.eq(user_port.rdata.valid & user_enable),
+                    user_port.rdata.ready.eq(_user_port_io.rdata_ready & user_enable),
                     _user_port_io.rdata_data.eq(user_port.rdata.data),
                 ]
             # Wishbone -----------------------------------------------------------------------------
@@ -678,9 +680,9 @@ class LiteDRAMCore(SoCCore):
                     wb_port.dat_w.eq(_wb_port_io.dat_w),
                     _wb_port_io.dat_r.eq(wb_port.dat_r),
                     wb_port.sel.eq(_wb_port_io.sel),
-                    wb_port.cyc.eq(_wb_port_io.cyc),
-                    wb_port.stb.eq(_wb_port_io.stb),
-                    _wb_port_io.ack.eq(wb_port.ack),
+                    wb_port.cyc.eq(_wb_port_io.cyc & user_enable),
+                    wb_port.stb.eq(_wb_port_io.stb & user_enable),
+                    _wb_port_io.ack.eq(wb_port.ack & user_enable),
                     wb_port.we.eq(_wb_port_io.we),
                     _wb_port_io.err.eq(wb_port.err),
                 ]
@@ -699,38 +701,38 @@ class LiteDRAMCore(SoCCore):
                         port["id_width"]))
                 _axi_port_io = platform.request("user_port_{}".format(name))
                 self.comb += [
-                    # aw
-                    axi_port.aw.valid.eq(_axi_port_io.awvalid),
-                    _axi_port_io.awready.eq(axi_port.aw.ready),
+                    # AW Channel.
+                    axi_port.aw.valid.eq(_axi_port_io.awvalid & user_enable),
+                    _axi_port_io.awready.eq(axi_port.aw.ready & user_enable),
                     axi_port.aw.addr.eq(_axi_port_io.awaddr),
                     axi_port.aw.burst.eq(_axi_port_io.awburst),
                     axi_port.aw.len.eq(_axi_port_io.awlen),
                     axi_port.aw.size.eq(_axi_port_io.awsize),
                     axi_port.aw.id.eq(_axi_port_io.awid),
 
-                    # w
+                    # W Channel.
                     axi_port.w.valid.eq(_axi_port_io.wvalid),
                     _axi_port_io.wready.eq(axi_port.w.ready),
                     axi_port.w.last.eq(_axi_port_io.wlast),
                     axi_port.w.strb.eq(_axi_port_io.wstrb),
                     axi_port.w.data.eq(_axi_port_io.wdata),
 
-                    # b
+                    # B Channel.
                     _axi_port_io.bvalid.eq(axi_port.b.valid),
                     axi_port.b.ready.eq(_axi_port_io.bready),
                     _axi_port_io.bresp.eq(axi_port.b.resp),
                     _axi_port_io.bid.eq(axi_port.b.id),
 
-                    # ar
-                    axi_port.ar.valid.eq(_axi_port_io.arvalid),
-                    _axi_port_io.arready.eq(axi_port.ar.ready),
+                    # AR Channel.
+                    axi_port.ar.valid.eq(_axi_port_io.arvalid & user_enable),
+                    _axi_port_io.arready.eq(axi_port.ar.ready & user_enable),
                     axi_port.ar.addr.eq(_axi_port_io.araddr),
                     axi_port.ar.burst.eq(_axi_port_io.arburst),
                     axi_port.ar.len.eq(_axi_port_io.arlen),
                     axi_port.ar.size.eq(_axi_port_io.arsize),
                     axi_port.ar.id.eq(_axi_port_io.arid),
 
-                    # r
+                    # R Channel.
                     _axi_port_io.rvalid.eq(axi_port.r.valid),
                     axi_port.r.ready.eq(_axi_port_io.rready),
                     _axi_port_io.rlast.eq(axi_port.r.last),
@@ -754,14 +756,14 @@ class LiteDRAMCore(SoCCore):
                 )
                 self.submodules += fifo
                 self.comb += [
-                    # in
-                    fifo.sink.valid.eq(_user_fifo_io.in_valid),
-                    _user_fifo_io.in_ready.eq(fifo.sink.ready),
+                    # In.
+                    fifo.sink.valid.eq(_user_fifo_io.in_valid & user_enable),
+                    _user_fifo_io.in_ready.eq(fifo.sink.ready & user_enable),
                     fifo.sink.data.eq(_user_fifo_io.in_data),
 
-                    # out
-                    _user_fifo_io.out_valid.eq(fifo.source.valid),
-                    fifo.source.ready.eq(_user_fifo_io.out_ready),
+                    # Out.
+                    _user_fifo_io.out_valid.eq(fifo.source.valid & user_enable),
+                    fifo.source.ready.eq(_user_fifo_io.out_ready & user_enable),
                     _user_fifo_io.out_data.eq(fifo.source.data),
                 ]
             else:
