@@ -62,11 +62,7 @@ class _LiteDRAMFIFOCtrl(Module):
             If(self.read,
                 _inc(consume, depth)
             ),
-            If(self.write & ~self.read,
-                self.level.eq(self.level + 1),
-            ).Elif(self.read & ~self.write,
-                self.level.eq(self.level - 1)
-            )
+            self.level.eq(self.level + self.write - self.read),
         ]
 
         self.comb += [
@@ -88,9 +84,7 @@ class _LiteDRAMFIFOWriter(Module):
             writer.sink.address.eq(ctrl.base + ctrl.write_address),
             writer.sink.data.eq(sink.data),
             If(writer.sink.valid & writer.sink.ready,
-                sink.ready.eq(1)
-            ),
-            If(port.wdata.valid & port.wdata.ready,
+                sink.ready.eq(1),
                 ctrl.write.eq(1)
             ),
         ]
