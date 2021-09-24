@@ -495,6 +495,7 @@ class LiteDRAMCore(SoCCore):
                 platform.add_extension(get_uart_fifo_ios())
                 uart_interface = RS232PHYInterface()
                 self.submodules.uart = UART(uart_interface, tx_fifo_depth=1, rx_fifo_depth=1)
+                self.uart.add_auto_tx_flush(sys_clk_freq=sys_clk_freq, timeout=1, interval=128)
                 uart_tx_pads = platform.request("uart_tx")
                 uart_rx_pads = platform.request("uart_rx")
                 self.comb += [
