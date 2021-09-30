@@ -779,9 +779,12 @@ class IS43TR16512B(DDR3Module):
     nrows  = 65536
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6), tZQCS=(64, 80))
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10), tZQCS=(64, 80))
     speedgrade_timings = {
-        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 260), tFAW=(None, 30), tRAS=35),
+        "800":  _SpeedgradeTimings(tRP=15,     tRCD=15,     tWR=15, tRFC=(None, 350), tFAW=(None, 50), tRAS=37.5),
+        "1066": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=(None, 350), tFAW=(None, 50), tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5,   tRCD=13.5,   tWR=15, tRFC=(None, 350), tFAW=(None, 50), tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75,  tRCD=13.75,  tWR=15, tRFC=(None, 350), tFAW=(None, 50), tRAS=35),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
