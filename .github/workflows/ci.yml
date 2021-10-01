@@ -13,10 +13,11 @@ jobs:
       # Install Tools
       - name: Install Tools
         run: |
-          sudo apt-get install wget build-essential python3
+          sudo apt-get install wget build-essential python3 ninja-build
           pip3 install setuptools
           pip3 install requests
           pip3 install pexpect
+          pip3 install meson
 
       # Install (n)Migen / LiteX / Cores
       - name: Install LiteX
