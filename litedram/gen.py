@@ -567,6 +567,10 @@ class LiteDRAMCore(SoCCore):
             self.submodules.ddrphy = sdram_phy = core_config["sdram_phy"](
                 pads         = platform.request("ddram"),
                 sys_clk_freq = sys_clk_freq)
+            self.ddrphy.settings.add_electrical_settings(
+                rtt_nom = core_config["rtt_nom"],
+                rtt_wr  = core_config["rtt_wr"],
+                ron     = core_config["ron"])
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
             self.comb += crg.reset.eq(self.ddrphy.init.reset)
 
