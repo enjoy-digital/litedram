@@ -904,6 +904,26 @@ class MT40A1G8(DDR4Module):
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
 
+class MT40A2G8(DDR4Module):
+    # geometry
+    ngroupbanks = 4
+    ngroups     = 4
+    nbanks      = ngroups * ngroupbanks
+    nrows       = 131072
+    ncols       = 1024
+    # timings
+    trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
+    trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6.4), tZQCS=(128, 80))
+    speedgrade_timings = {
+        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
+        "2666": _SpeedgradeTimings(tRP=13.50, tRCD=13.50, tWR=15, tRFC=trfc, tFAW=(20, 21), tRAS=32),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["2400"]
+
+class MT40A2G16(MT40A2G8):
+    pass # TwinDie MT40A2G8.
+
 class MT40A256M16(DDR4Module):
     # geometry
     ngroupbanks = 4
