@@ -224,6 +224,8 @@ class LiteDRAMFIFO(Module):
         data_width_ratio = port_data_width//data_width
         if not with_bypass:
             assert data_width_ratio == 1
+        fifo_base       = int(base/(port_data_width/8))
+        fifo_depth      = int(depth/(port_data_width/8))
         pre_fifo_depth  = max( pre_fifo_depth, 2*data_width_ratio)
         post_fifo_depth = max(post_fifo_depth, 2*data_width_ratio)
 
@@ -238,8 +240,8 @@ class LiteDRAMFIFO(Module):
         # DRAM-FIFO.
         self.submodules.dram_fifo = dram_fifo = _LiteDRAMFIFO(
             data_width = port_data_width,
-            base       = base,
-            depth      = depth,
+            base       = fifo_base,
+            depth      = fifo_depth,
             write_port = write_port,
             read_port  = read_port,
         )
@@ -300,7 +302,7 @@ class LiteDRAMFIFO(Module):
             )
             dram_cnt_inc = Signal()
             dram_cnt_dec = Signal()
-            dram_cnt     = Signal(int(math.log2(depth + pre_fifo_depth + post_fifo_depth) + 1))
+            dram_cnt     = Signal(int(math.log2(fifo_depth + pre_fifo_depth + post_fifo_depth) + 2))
             self.sync += dram_cnt.eq(dram_cnt + dram_cnt_inc - dram_cnt_dec)
             fsm.act("DRAM",
                 # Increment DRAM Data Count on Pre-Converter's Sink cycle.
