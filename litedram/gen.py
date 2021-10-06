@@ -33,6 +33,7 @@ import math
 import struct
 import yaml
 import argparse
+import inspect
 
 from migen import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
@@ -602,7 +603,11 @@ class LiteDRAMCore(SoCCore):
             raise NotImplementedError
 
         # Controller Settings.
-        controller_settings = controller_settings = ControllerSettings(cmd_buffer_depth=core_config["cmd_buffer_depth"])
+        controller_kwargs = {}
+        for name in inspect.getfullargspec(ControllerSettings. __init__).args:
+            if core_config.get(name, None) is not None:
+                controller_kwargs[name] = core_config[name]
+        controller_settings = controller_settings = ControllerSettings(**controller_kwargs)
 
         # Add LiteDRAM Core to SoC.
         self.add_sdram("sdram",
