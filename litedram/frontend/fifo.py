@@ -219,7 +219,8 @@ class LiteDRAMFIFO(Module):
         # Parameters.
         # -----------
         assert write_port.data_width == read_port.data_width
-        port_data_width = write_port.data_width
+        port_data_width    = write_port.data_width
+        port_address_width = write_port.address_width
         assert data_width <= port_data_width
         data_width_ratio = port_data_width//data_width
         if not with_bypass:
@@ -261,9 +262,9 @@ class LiteDRAMFIFO(Module):
             # Sink --> Pre-FIFO.
             self.sink.connect(pre_fifo.sink),
 
-            # DRAM Threshold. We can only enable path to DRAAM when we have enough data for a full
+            # DRAM Threshold. We can only enable path to DRAM when we have enough data for a full
             # DRAM word.
-            dram_store_threshold.eq(pre_fifo.level > data_width_ratio),
+            dram_store_threshold.eq(pre_fifo.level >= data_width_ratio),
 
             # Bypass / DRAM.
             If(with_bypass & dram_bypass,
@@ -291,36 +292,46 @@ class LiteDRAMFIFO(Module):
         # FSM.
         # ----
         if with_bypass:
+            dram_first   = Signal()
+            dram_inc     = Signal()
+            dram_dec     = Signal()
+            dram_cnt     = Signal(port_address_width)
+            dram_inc_mod = Signal(int(math.log2(data_width_ratio)))
+            dram_dec_mod = Signal(int(math.log2(data_width_ratio)))
+
             self.submodules.fsm = fsm = FSM(reset_state="BYPASS")
             fsm.act("BYPASS",
                 dram_bypass.eq(1),
                 # Switch to DRAM mode when enough data to store a DRAM word.
                 If(dram_store_threshold,
-                    NextValue(dram_store, 1),
+                    NextValue(dram_first, 1),
+                    NextValue(dram_cnt,   0),
                     NextState("DRAM")
                 )
             )
-            dram_cnt_inc = Signal()
-            dram_cnt_dec = Signal()
-            dram_cnt     = Signal(int(math.log2(fifo_depth + pre_fifo_depth + post_fifo_depth) + 2))
-            self.sync += dram_cnt.eq(dram_cnt + dram_cnt_inc - dram_cnt_dec)
             fsm.act("DRAM",
+                # Store in DRAM.
+                dram_store.eq(1),
+
                 # Increment DRAM Data Count on Pre-Converter's Sink cycle.
-                dram_cnt_inc.eq(pre_converter.sink.valid & pre_converter.sink.ready),
+                If(pre_converter.sink.valid & pre_converter.sink.ready,
+                    dram_inc.eq(1),
+                    NextValue(dram_first, 0),
+                    NextValue(dram_inc_mod, dram_inc_mod + 1),
+                ),
 
                 # Decrement DRAM Data Count on Post-Converter's Source cycle.
-                dram_cnt_dec.eq(post_converter.source.valid & post_converter.source.ready),
-
-                # Update DRAM store..
-                If(pre_converter.source.valid,
-                    NextValue(dram_store, dram_store_threshold),
+                If(post_converter.source.valid & post_converter.source.ready,
+                    dram_dec.eq(1),
+                    NextValue(dram_dec_mod, dram_dec_mod + 1),
                 ),
 
                 # Maintain DRAM Data Count.
-                NextValue(dram_cnt, dram_cnt + dram_cnt_inc - dram_cnt_dec),
+                NextValue(dram_cnt, dram_cnt + dram_inc - dram_dec),
 
-                # Switch back to Bypass mode when DRAM Data count
-                If((dram_store_threshold == 0) & (dram_cnt == 0),
+                # Switch back to Bypass mode when no remaining DRAM word.
+                If((dram_first == 0) & (dram_cnt == 0) & (dram_inc_mod == 0) & (dram_dec_mod == 0),
+                    dram_store.eq(0),
                     NextState("BYPASS")
                 )
             )

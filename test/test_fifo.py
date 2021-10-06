@@ -235,8 +235,9 @@ class TestFIFO(unittest.TestCase):
 
     def fifo_continuous_stream_short_test(self, with_bypass):
         # Verify FIFO operation with continuous writes and reads without wrapping
+        @passive
         def generator(dut):
-            for i in range(64):
+            for i in range(2*64):
                 yield from dut.write(10 + i)
 
         def checker(dut):
@@ -262,8 +263,9 @@ class TestFIFO(unittest.TestCase):
 
     def fifo_continuous_stream_long_test(self, with_bypass):
         # Verify FIFO operation with continuous writes and reads with wrapping
+        @passive
         def generator(dut):
-            for i in range(64):
+            for i in range(2*64):
                 yield from dut.write(10 + i)
 
         def checker(dut):
