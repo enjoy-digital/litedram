@@ -296,8 +296,8 @@ class LiteDRAMFIFO(Module):
             dram_inc     = Signal()
             dram_dec     = Signal()
             dram_cnt     = Signal(port_address_width)
-            dram_inc_mod = Signal(int(math.log2(data_width_ratio)))
-            dram_dec_mod = Signal(int(math.log2(data_width_ratio)))
+            dram_inc_mod = Signal(max(int(math.log2(data_width_ratio)), 1))
+            dram_dec_mod = Signal(max(int(math.log2(data_width_ratio)), 1))
 
             self.submodules.fsm = fsm = FSM(reset_state="BYPASS")
             fsm.act("BYPASS",
@@ -317,13 +317,17 @@ class LiteDRAMFIFO(Module):
                 If(pre_converter.sink.valid & pre_converter.sink.ready,
                     dram_inc.eq(1),
                     NextValue(dram_first, 0),
-                    NextValue(dram_inc_mod, dram_inc_mod + 1),
+                    If(data_width_ratio > 1,
+                        NextValue(dram_inc_mod, dram_inc_mod + 1),
+                    )
                 ),
 
                 # Decrement DRAM Data Count on Post-Converter's Source cycle.
                 If(post_converter.source.valid & post_converter.source.ready,
                     dram_dec.eq(1),
-                    NextValue(dram_dec_mod, dram_dec_mod + 1),
+                    If(data_width_ratio > 1,
+                        NextValue(dram_dec_mod, dram_dec_mod + 1),
+                    )
                 ),
 
                 # Maintain DRAM Data Count.
