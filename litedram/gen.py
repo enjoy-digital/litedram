@@ -293,6 +293,7 @@ class LiteDRAMGENSDRPHYCRG(Module):
 class LiteDRAMECP5DDRPHYCRG(Module):
     def __init__(self, platform, core_config):
         assert core_config["memtype"] in ["DDR3"]
+        self.rst = Signal()
         self.clock_domains.cd_init    = ClockDomain()
         self.clock_domains.cd_por     = ClockDomain(reset_less=True)
         self.clock_domains.cd_sys     = ClockDomain()
@@ -317,7 +318,7 @@ class LiteDRAMECP5DDRPHYCRG(Module):
 
         # PLL.
         self.submodules.pll = pll = ECP5PLL()
-        self.comb += pll.reset.eq(~por_done | rst)
+        self.comb += pll.reset.eq(~por_done | rst | self.rst)
         pll.register_clkin(clk, core_config["input_clk_freq"])
         pll.create_clkout(self.cd_sys2x_i, 2*core_config["sys_clk_freq"])
         pll.create_clkout(self.cd_init, core_config["init_clk_freq"])
@@ -339,6 +340,7 @@ class LiteDRAMECP5DDRPHYCRG(Module):
 class LiteDRAMS7DDRPHYCRG(Module):
     def __init__(self, platform, core_config):
         assert core_config["memtype"] in ["DDR2", "DDR3"]
+        self.rst = Signal()
         self.clock_domains.cd_sys = ClockDomain()
         if core_config["memtype"] == "DDR2":
             self.clock_domains.cd_sys2x     = ClockDomain(reset_less=True)
@@ -358,20 +360,20 @@ class LiteDRAMS7DDRPHYCRG(Module):
         rst = platform.request("rst")
 
         # PLL.
-        self.submodules.sys_pll = sys_pll = S7PLL(speedgrade=core_config["speedgrade"])
-        self.comb += sys_pll.reset.eq(rst)
-        sys_pll.register_clkin(clk, core_config["input_clk_freq"])
-        sys_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
-        sys_pll.create_clkout(self.cd_sys, core_config["sys_clk_freq"])
+        self.submodules.pll = pll = S7PLL(speedgrade=core_config["speedgrade"])
+        self.comb += pll.reset.eq(rst | self.rst)
+        pll.register_clkin(clk, core_config["input_clk_freq"])
+        pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
+        pll.create_clkout(self.cd_sys, core_config["sys_clk_freq"])
         if core_config["memtype"] == "DDR2":
-            sys_pll.create_clkout(self.cd_sys2x,     2*core_config["sys_clk_freq"])
-            sys_pll.create_clkout(self.cd_sys2x_dqs, 2*core_config["sys_clk_freq"], phase=90)
+            pll.create_clkout(self.cd_sys2x,     2*core_config["sys_clk_freq"])
+            pll.create_clkout(self.cd_sys2x_dqs, 2*core_config["sys_clk_freq"], phase=90)
         elif core_config["memtype"] == "DDR3":
-            sys_pll.create_clkout(self.cd_sys4x,     4*core_config["sys_clk_freq"])
-            sys_pll.create_clkout(self.cd_sys4x_dqs, 4*core_config["sys_clk_freq"], phase=90)
+            pll.create_clkout(self.cd_sys4x,     4*core_config["sys_clk_freq"])
+            pll.create_clkout(self.cd_sys4x_dqs, 4*core_config["sys_clk_freq"], phase=90)
         else:
             raise NotImplementedError
-        self.comb += platform.request("pll_locked").eq(sys_pll.locked)
+        self.comb += platform.request("pll_locked").eq(pll.locked)
 
         # IODelay Ctrl.
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_iodelay)
@@ -379,6 +381,7 @@ class LiteDRAMS7DDRPHYCRG(Module):
 class LiteDRAMUSDDRPHYCRG(Module):
     def __init__(self, platform, core_config):
         assert core_config["memtype"] in ["DDR4"]
+        self.rst = Signal()
         self.clock_domains.cd_por       = ClockDomain(reset_less=True)
         self.clock_domains.cd_sys       = ClockDomain()
         self.clock_domains.cd_sys4x     = ClockDomain()
@@ -399,12 +402,12 @@ class LiteDRAMUSDDRPHYCRG(Module):
         self.sync.por += If(~por_done, por_count.eq(por_count - 1))
 
         # PLL.
-        self.submodules.sys_pll = sys_pll = USMMCM(speedgrade=core_config["speedgrade"])
-        self.comb += sys_pll.reset.eq(rst)
-        sys_pll.register_clkin(clk, core_config["input_clk_freq"])
-        sys_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
-        sys_pll.create_clkout(self.cd_sys4x_pll, 4*core_config["sys_clk_freq"], buf=None)
-        self.comb += platform.request("pll_locked").eq(sys_pll.locked)
+        self.submodules.pll = pll = USMMCM(speedgrade=core_config["speedgrade"])
+        self.comb += pll.reset.eq(rst | self.rst)
+        pll.register_clkin(clk, core_config["input_clk_freq"])
+        pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
+        pll.create_clkout(self.cd_sys4x_pll, 4*core_config["sys_clk_freq"], buf=None)
+        self.comb += platform.request("pll_locked").eq(pll.locked)
         self.specials += [
             Instance("BUFGCE_DIV", name="main_bufgce_div",
                 p_BUFGCE_DIVIDE=4,
@@ -419,6 +422,7 @@ class LiteDRAMUSDDRPHYCRG(Module):
 class LiteDRAMUSPDDRPHYCRG(Module):
     def __init__(self, platform, core_config):
         assert core_config["memtype"] in ["DDR4"]
+        self.rst = Signal()
         self.clock_domains.cd_por       = ClockDomain(reset_less=True)
         self.clock_domains.cd_sys       = ClockDomain()
         self.clock_domains.cd_sys4x     = ClockDomain()
@@ -439,12 +443,12 @@ class LiteDRAMUSPDDRPHYCRG(Module):
         self.sync.por += If(~por_done, por_count.eq(por_count - 1))
 
         # PLL.
-        self.submodules.sys_pll = sys_pll = USPMMCM(speedgrade=core_config["speedgrade"])
-        self.comb += sys_pll.reset.eq(rst)
-        sys_pll.register_clkin(clk, core_config["input_clk_freq"])
-        sys_pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
-        sys_pll.create_clkout(self.cd_sys4x_pll, 4*core_config["sys_clk_freq"], buf=None)
-        self.comb += platform.request("pll_locked").eq(sys_pll.locked)
+        self.submodules.pll = pll = USPMMCM(speedgrade=core_config["speedgrade"])
+        self.comb += pll.reset.eq(rst | self.rst)
+        pll.register_clkin(clk, core_config["input_clk_freq"])
+        pll.create_clkout(self.cd_iodelay, core_config["iodelay_clk_freq"])
+        pll.create_clkout(self.cd_sys4x_pll, 4*core_config["sys_clk_freq"], buf=None)
+        self.comb += platform.request("pll_locked").eq(pll.locked)
         self.specials += [
             Instance("BUFGCE_DIV", name="main_bufgce_div",
                 p_BUFGCE_DIVIDE=4,
