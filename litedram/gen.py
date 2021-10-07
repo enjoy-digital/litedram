@@ -621,7 +621,6 @@ class LiteDRAMCore(SoCCore):
         self.add_sdram("sdram",
             phy                     = sdram_phy,
             module                  = sdram_module,
-            origin                  = self.mem_map["main_ram"],
             size                    = 0x01000000, # Only expose 16MB to the CPU, enough for Init/Calib.
             with_soc_interconnect   = cpu_type is not None,
             l2_cache_size           = 8,
