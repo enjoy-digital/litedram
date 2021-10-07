@@ -523,28 +523,30 @@ class LiteDRAMCore(SoCCore):
             else:
                 self.add_constant("UART_POLLING")
 
-        # CRG --------------------------------------------------------------------------------------
+        # CRG / Rate -------------------------------------------------------------------------------
         if isinstance(platform, SimPlatform):
-            crg = CRG(platform.request("clk"))
+            crg  = CRG(platform.request("clk"))
+            rate = {"SDR" : "1:1", "DDR2": "1:2", "DDR3": "1:4", "DDR4": "1:4"}[core_config["memtype"]]
         elif core_config["sdram_phy"] in [litedram_phys.GENSDRPHY]:
-            crg = LiteDRAMGENSDRPHYCRG(platform, core_config)
+            crg  = LiteDRAMGENSDRPHYCRG(platform, core_config)
+            rate = {"SDR" : "1:1"}[core_config["memtype"]]
         elif core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
-            crg = LiteDRAMECP5DDRPHYCRG(platform, core_config)
+            crg  = LiteDRAMECP5DDRPHYCRG(platform, core_config)
+            rate = {"DDR3": "1:2"}[core_config["memtype"]]
         elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
-            crg = LiteDRAMS7DDRPHYCRG(platform, core_config)
+            crg  = LiteDRAMS7DDRPHYCRG(platform, core_config)
+            rate = {"DDR3": "1:4", "DDR4": "1:4"}[core_config["memtype"]]
         elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY]:
-            crg = LiteDRAMUSDDRPHYCRG(platform, core_config)
+            crg  = LiteDRAMUSDDRPHYCRG(platform, core_config)
+            rate = {"DDR3": "1:4", "DDR4": "1:4"}[core_config["memtype"]]
         elif core_config["sdram_phy"] in [litedram_phys.USPDDRPHY]:
-            crg = LiteDRAMUSPDDRPHYCRG(platform, core_config)
+            crg  = LiteDRAMUSPDDRPHYCRG(platform, core_config)
+            rate = {"DDR3": "1:4", "DDR4": "1:4"}[core_config["memtype"]]
         self.submodules.crg = crg
 
         # DRAM -------------------------------------------------------------------------------------
         platform.add_extension(get_dram_ios(core_config))
-        sdram_module = core_config["sdram_module"](sys_clk_freq, rate={
-            "SDR" : "1:1",
-            "DDR2": "1:2",
-            "DDR3": "1:4",
-            "DDR4": "1:4"}[core_config["memtype"]])
+        sdram_module = core_config["sdram_module"](sys_clk_freq, rate=rate)
 
         # Collect Electrical Settings.
         electrical_settings_kwargs = {}
