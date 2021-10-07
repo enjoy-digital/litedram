@@ -542,6 +542,12 @@ class LiteDRAMCore(SoCCore):
             "DDR3": "1:4",
             "DDR4": "1:4"}[core_config["memtype"]])
 
+        # Collect Electrical Settings.
+        electrical_settings_kwargs = {}
+        for name in ["rtt_nom", "rtt_wr", "ron"]:
+            if core_config.get(name, None) is not None:
+                electrical_settings_kwargs[name] = core_config[name]
+
         # Sim.
         if isinstance(platform, SimPlatform):
             from litex.tools.litex_sim import get_sdram_phy_settings
@@ -568,11 +574,8 @@ class LiteDRAMCore(SoCCore):
             self.submodules.ddrphy = sdram_phy = core_config["sdram_phy"](
                 pads         = platform.request("ddram"),
                 sys_clk_freq = sys_clk_freq,
-                cmd_delay    = core_config["cmd_delay"])
-            self.ddrphy.settings.add_electrical_settings(
-                rtt_nom = core_config["rtt_nom"],
-                rtt_wr  = core_config["rtt_wr"],
-                ron     = core_config["ron"])
+                cmd_delay    = core_config.get("cmd_delay", 0))
+            self.ddrphy.settings.add_electrical_settings(**electrical_settings_kwargs)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
             self.comb += crg.reset.eq(self.ddrphy.init.reset)
 
@@ -586,11 +589,8 @@ class LiteDRAMCore(SoCCore):
                 sys_clk_freq     = sys_clk_freq,
                 iodelay_clk_freq = core_config["iodelay_clk_freq"],
                 cmd_latency      = core_config["cmd_latency"])
-            if core_config["memtype"] == "DDR3":
-                self.ddrphy.settings.add_electrical_settings(
-                    rtt_nom = core_config["rtt_nom"],
-                    rtt_wr  = core_config["rtt_wr"],
-                    ron     = core_config["ron"])
+            if core_config["memtype"] ==  "DDR3":
+                self.ddrphy.settings.add_electrical_settings(**electrical_settings_kwargs)
 
         # USDDRPHY.
         elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:
@@ -600,19 +600,16 @@ class LiteDRAMCore(SoCCore):
                 sys_clk_freq     = sys_clk_freq,
                 iodelay_clk_freq = core_config["iodelay_clk_freq"],
                 cmd_latency      = core_config["cmd_latency"])
-            self.ddrphy.settings.add_electrical_settings(
-                rtt_nom = core_config["rtt_nom"],
-                rtt_wr  = core_config["rtt_wr"],
-                ron     = core_config["ron"])
+            self.ddrphy.settings.add_electrical_settings(**electrical_settings_kwargs)
         else:
             raise NotImplementedError
 
-        # Controller Settings.
-        controller_kwargs = {}
+        # Collect Controller Settings.
+        controller_settings_kwargs = {}
         for name in inspect.getfullargspec(ControllerSettings. __init__).args:
             if core_config.get(name, None) is not None:
-                controller_kwargs[name] = core_config[name]
-        controller_settings = controller_settings = ControllerSettings(**controller_kwargs)
+                controller_settings_kwargs[name] = core_config[name]
+        controller_settings = controller_settings = ControllerSettings(**controller_settings_kwargs)
 
         # Add LiteDRAM Core to SoC.
         self.add_sdram("sdram",

@@ -192,21 +192,11 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
         "34ohm" : 1,
     }
 
-    # default electrical settings (point to point)
-    rtt_nom = "60ohm"
-    rtt_wr  = "60ohm"
-    ron     = "34ohm"
-    tdqs    = 0
-
-    # override electrical settings if specified
-    if hasattr(phy_settings, "rtt_nom"):
-        rtt_nom = phy_settings.rtt_nom
-    if hasattr(phy_settings, "rtt_wr"):
-        rtt_wr = phy_settings.rtt_wr
-    if hasattr(phy_settings, "ron"):
-        ron = phy_settings.ron
-    if getattr(phy_settings, "tdqs", False):
-        tdqs = 1
+    # Get Electrical Settings (or use default: Point to Point).
+    rtt_nom = getattr(phy_settings, "rtt_nom", "60ohm")
+    rtt_wr  = getattr(phy_settings, "rtt_wr",  "60ohm")
+    ron     = getattr(phy_settings, "ron",     "34ohm")
+    tdqs    = getattr(phy_settings, "tdqs",    0)
 
     wr  = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
     mr0 = format_mr0(bl, cl, wr, 1)
@@ -354,23 +344,13 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
         "48ohm" : 0b01,
     }
 
-    # default electrical settings (point to point)
-    rtt_nom = "40ohm"
-    rtt_wr  = "120ohm"
-    ron     = "34ohm"
-    tdqs    = 0
+    # Get Electrical Settings (or use default: Point to Point).
+    rtt_nom = getattr(phy_settings, "rtt_nom", "40ohm")
+    rtt_wr  = getattr(phy_settings, "rtt_wr",  "120ohm")
+    ron     = getattr(phy_settings, "ron",     "34ohm")
+    tdqs    = getattr(phy_settings, "tdqs",    0)
     dm      = 1
     assert not (dm and tdqs)
-
-    # override electrical settings if specified
-    if hasattr(phy_settings, "rtt_nom"):
-        rtt_nom = phy_settings.rtt_nom
-    if hasattr(phy_settings, "rtt_wr"):
-        rtt_wr = phy_settings.rtt_wr
-    if hasattr(phy_settings, "ron"):
-        ron = phy_settings.ron
-    if getattr(phy_settings, "tdqs", False):
-        tdqs = 1
 
     wr  = max(timing_settings.tWTR*phy_settings.nphases, 10) # >= ceiling(tWR/tCK)
     mr0 = format_mr0(bl, cl, wr, 1)
