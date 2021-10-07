@@ -8,7 +8,7 @@
     # General ------------------------------------------------------------------
     "device":  "LFE5UM5G-45F-8BG381C", # FPGA device.
     "cpu":     "vexriscv",             # CPU type (ex vexriscv, serv, None)
-    "memtype": "SDR",                  # DRAM type
+    "memtype": "DDR3",                 # DRAM type
     "uart":    "rs232",                # Type of UART interface (rs232, fifo)
 
     # PHY ----------------------------------------------------------------------
