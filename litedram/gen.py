@@ -535,7 +535,7 @@ class LiteDRAMCore(SoCCore):
             rate = {"DDR3": "1:2"}[core_config["memtype"]]
         elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             crg  = LiteDRAMS7DDRPHYCRG(platform, core_config)
-            rate = {"DDR3": "1:4", "DDR4": "1:4"}[core_config["memtype"]]
+            rate = {"DDR2": "1:2", "DDR3": "1:4"}[core_config["memtype"]]
         elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY]:
             crg  = LiteDRAMUSDDRPHYCRG(platform, core_config)
             rate = {"DDR3": "1:4", "DDR4": "1:4"}[core_config["memtype"]]
