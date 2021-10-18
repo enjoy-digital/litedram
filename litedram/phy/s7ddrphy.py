@@ -159,7 +159,7 @@ class S7DDRPHY(Module, AutoCSR):
             )
 
         # DFI Interface ----------------------------------------------------------------------------
-        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
+        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, max(4, nphases))
         if memtype == "DDR4":
             self.submodules += DDR4DFIMux(self.dfi, dfi)
 
