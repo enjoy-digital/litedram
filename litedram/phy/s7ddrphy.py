@@ -36,13 +36,16 @@ class S7DDRPHY(Module, AutoCSR):
         cmd_latency      = 0,
         cmd_delay        = None,
         ddr_clk          = None,
-        csr_cdc          = None):
-        assert memtype in ["DDR2", "DDR3"]
+        csr_cdc          = None,
+        is_rdimm         = False):
+        assert memtype in ["DDR2", "DDR3", "DDR4"]
         assert not (memtype == "DDR3" and nphases == 2)
         phytype     = self.__class__.__name__
         pads        = PHYPadsCombiner(pads)
         tck         = 2/(2*nphases*sys_clk_freq)
         addressbits = len(pads.a)
+        if memtype == "DDR4":
+            addressbits += 3 # cas_n/ras_n/we_n multiplexed with address
         bankbits    = len(pads.ba)
         nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits    = len(pads.dq)
@@ -145,8 +148,20 @@ class S7DDRPHY(Module, AutoCSR):
             bitslips                  = 8,
         )
 
+        if is_rdimm:
+            # All drive settings for an 8-chip load
+            self.settings.set_rdimm(
+                tck               = tck,
+                rcd_pll_bypass    = False,
+                rcd_ca_cs_drive   = 0x5,
+                rcd_odt_cke_drive = 0x5,
+                rcd_clk_drive     = 0x5
+            )
+
         # DFI Interface ----------------------------------------------------------------------------
-        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, 4)
+        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
+        if memtype == "DDR4":
+            self.submodules += DDR4DFIMux(self.dfi, dfi)
 
         # # #
 
@@ -317,9 +332,12 @@ class S7DDRPHY(Module, AutoCSR):
         # DM ---------------------------------------------------------------------------------------
         if hasattr(pads, "dm"):
             for i in range(databits//8):
+                dm_i = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)])
+                if memtype == "DDR4":  # Inverted polarity for DDR4
+                    dm_i = ~dm_i
                 dm_o_nodelay = Signal()
                 dm_o_bitslip = BitSlip(8,
-                    i      = Cat(*[dfi.phases[n//2].wrdata_mask[n%2*databits//8+i] for n in range(8)]),
+                    i      = dm_i,
                     rst    = (self._dly_sel.storage[i] & wdly_dq_bitslip_rst) | self._rst.storage,
                     slp    = self._dly_sel.storage[i] & wdly_dq_bitslip,
                     cycles = 1)
