@@ -226,7 +226,7 @@ class LiteDRAMFIFO(Module):
         if not with_bypass:
             assert data_width_ratio == 1
         fifo_base       = int(base/(port_data_width/8))
-        fifo_depth      = int(depth/(port_data_width/8))
+        fifo_depth      = int(depth/data_width_ratio)
         pre_fifo_depth  = max( pre_fifo_depth, 2*data_width_ratio)
         post_fifo_depth = max(post_fifo_depth, 2*data_width_ratio)
 
