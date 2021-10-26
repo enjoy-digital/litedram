@@ -14,6 +14,7 @@ jobs:
       - name: Install Tools
         run: |
           sudo apt-get install wget build-essential python3 ninja-build
+          sudo apt-get install verilator libevent-dev libjson-c-dev
           pip3 install setuptools
           pip3 install requests
           pip3 install pexpect
@@ -32,11 +33,6 @@ jobs:
           python3 litex_setup.py gcc
           sudo mkdir /usr/local/riscv
           sudo cp -r $PWD/../riscv64-*/* /usr/local/riscv
-
-      # Install Verilator with dependencies
-      - name: Install Verilator
-        run: |
-          sudo apt-get install verilator libevent-dev libjson-c-dev
 
       # Install Project
       - name: Install Project
