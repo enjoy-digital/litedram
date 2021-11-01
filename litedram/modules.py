@@ -865,6 +865,35 @@ class MT16KTF1G64HZ(DDR3Module):
     }
     speedgrade_timings["default"] = speedgrade_timings["1866"]
 
+# RPC ----------------------------------------------------------------------------------------------
+
+class RPCModule(SDRAMModule): memtype = "RPC"
+
+class EM6GA16L(RPCModule):
+    # 64MBits per bank => 256Mb
+    # TODO: the timings may need further verification
+    # geometry
+    nbanks = 4     #
+    ncols = 1024
+    nrows = 4096  # 64M / 1024 / 16 = 4k
+    # timings
+    technology_timings = _TechnologyTimings(
+        tREFI=64e6/8192,
+        # It seems that we need to calculate tCCD from tBESL by assuming BC=1, then it is:
+        # RL=WL + burst_time + tBESL
+        tCCD=(13+1 + 8 + 7, None),
+        # CCD enforces tBESL for read commands, we use tWTR to ensure it for writes
+        tWTR=(11 + 2, None),  # 11 for tBESL + 2 for STB low before a command
+        tRRD=(None, 7.5),
+        tZQCS=(None, 90),
+    )
+    speedgrade_timings = {
+        # FIXME: we're increasing tWR by 1 sysclk to compensate for long write (assuming max sysclk 200 MHz)
+        # Should we use tRFQSd for tRFC?
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15 + 1e9/200e6, tRFC=(3*100, None), tFAW=None, tRAS=35),
+        "1866": _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=15 + 1e9/200e6, tRFC=(3*100, None), tFAW=None, tRAS=34),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 # DDR4 (Chips) -------------------------------------------------------------------------------------
 

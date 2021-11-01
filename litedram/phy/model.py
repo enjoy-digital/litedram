@@ -523,6 +523,7 @@ class SDRAMPHYModel(Module):
             "LPDDR": 2,
             "DDR2":  2,
             "DDR3":  2,
+            "RPC":   4,
             "DDR4":  2,
             }[settings.memtype]
 
