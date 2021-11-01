@@ -28,6 +28,7 @@ burst_lengths = {
     "RPC":    16,
     "DDR4":   8,
     "LPDDR4": 16,
+    "LPDDR5": 16,
 }
 
 def get_default_cl_cwl(memtype, tck):

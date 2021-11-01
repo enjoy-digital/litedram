@@ -4,6 +4,8 @@
 # Copyright (c) 2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import re
+
 from migen import *
 
 from litex.build.sim import SimPlatform
@@ -128,6 +130,11 @@ class Platform(SimPlatform):
 
 # Logging ------------------------------------------------------------------------------------------
 
+# Named regex group
+def ng(name, regex):
+    return r"(?P<{}>{})".format(name, regex)
+
+
 class SimLogger(Module, AutoCSR):
     """Logger for use in simulation
 
@@ -136,6 +143,13 @@ class SimLogger(Module, AutoCSR):
     used inside `FSM` code. It also provides logging levels that can be used to
     filter messages, either by specifying the default `log_level` or in runtime
     by driving to the `level` signal or using a corresponding CSR.
+
+    If `clk_freq` is provided, than the logger will prepend timestamps to the
+    messages (in picoseconds). This will work as long as the clock domain in which
+    this module operates is always running with a constant frequency. On the other
+    hand, if the frequency varies or the clock is sometimes disabled, `clk_freq_cd`
+    can be specified to select a different clock domain (`clk_freq` must specify
+    the frequecy of that new clock domain).
     """
     # Allows to use Display inside FSM and to filter log messages by level (statically or dynamically)
     DEBUG = 0
@@ -144,15 +158,25 @@ class SimLogger(Module, AutoCSR):
     ERROR = 3
     NONE  = 4
 
-    def __init__(self, log_level=INFO, clk_freq=None):
+    # Regex pattern for parsing logs
+    LOG_PATTERN = re.compile(r"\[\s*{time} ps] \[{level}]\s*{msg}".format(
+        time  = ng("time", r"[0-9]+"),
+        level = ng("level", r"DEBUG|INFO|WARN|ERROR"),
+        msg   = ng("msg", ".*"),
+    ))
+
+    def __init__(self, log_level=INFO, clk_freq=None, clk_freq_cd=None, with_csrs=False):
         self.ops = []
-        self.level = Signal(reset=log_level, max=self.NONE)
+        self.level = Signal(reset=log_level, max=self.NONE + 1)
         self.time_ps = None
         if clk_freq is not None:
             self.time_ps = Signal(64)
             cnt = Signal(64)
-            self.sync += cnt.eq(cnt + 1)
+            sd_cnt = self.sync if clk_freq_cd is None else getattr(self.sync, clk_freq_cd)
+            sd_cnt += cnt.eq(cnt + 1)
             self.comb += self.time_ps.eq(cnt * int(1e12/clk_freq))
+        if with_csrs:
+            self.add_csrs()
 
     def debug(self, fmt, *args, **kwargs):
         return self.log("[DEBUG] " + fmt, *args, level=self.DEBUG, **kwargs)
@@ -206,6 +230,57 @@ def log_level_getter(log_level):
 
 # Simulator ----------------------------------------------------------------------------------------
 
+class Timing(Module):
+    # slight modification of tXXDController
+    def __init__(self, t):
+        self.valid = Signal()
+        self.ready = Signal()
+
+        if t is None:
+            t = 0
+
+        if isinstance(t, Signal):
+            count = Signal.like(t)
+        else:
+            count = Signal(max=max(t, 2))
+
+        self._t = t
+        self._count = count
+
+        ready = Signal()
+        ready_reg = Signal()
+        self.comb += [
+            self.ready.eq(ready_reg | ready),
+            ready.eq((t == 0) & self.valid),
+        ]
+
+        self.sync += \
+            If(self.valid,
+                If(t == 0,
+                    ready_reg.eq(1)
+                ).Else(
+                    count.eq(t - 1),
+                    If(t == 1,
+                        ready_reg.eq(1)
+                    ).Else(
+                        ready_reg.eq(0)
+                    )
+                ),
+            ).Elif(~ready,
+                If(count > 1,
+                    count.eq(count - 1),
+                ),
+                If(count == 1,
+                    ready_reg.eq(1)
+                )
+            )
+
+    def progress(self):
+        full = self._t
+        current = Signal.like(self._count)
+        self.comb += current.eq(full - self._count)  # down-counting
+        return (current, full)
+
 class PulseTiming(Module):
     """Timing monitor with pulse input/output
 
@@ -214,20 +289,31 @@ class PulseTiming(Module):
     * countdown triggered by a low to high pulse on `trigger`
     * `ready` is initially low, only after a trigger it can become high
     * provides `ready_p` which is high only for 1 cycle when `ready` becomes high
+    * supports t values starting from 0, with t=0 `ready_p` will pulse in the same
+      cycle in which `trigger` is high
     """
     def __init__(self, t):
         self.trigger = Signal()
         self.ready   = Signal()
         self.ready_p = Signal()
 
-        ready_d = Signal()
+        trigger_d = Signal()
         triggered = Signal()
-        tctrl = tXXDController(t)
-        self.submodules += tctrl
+        self.submodules.timing = timing = Timing(t)
 
-        self.sync += If(self.trigger, triggered.eq(1)),
-        self.comb += [
-            self.ready.eq(triggered & tctrl.ready),
-            self.ready_p.eq(edge(self, self.ready)),
-            tctrl.valid.eq(edge(self, self.trigger)),
+        self.sync += [
+            If(self.trigger, triggered.eq(1)),
+            trigger_d.eq(self.trigger),
         ]
+        self.comb += [
+            self.ready.eq((triggered & timing.ready) | ((t == 0) & self.trigger)),
+            self.ready_p.eq(reduce(or_, [
+                edge(self, self.ready),
+                (t == 0) & edge(self, self.trigger),
+                (t == 1) & edge(self, trigger_d),
+            ])),
+            timing.valid.eq(edge(self, self.trigger)),
+        ]
+
+    def progress(self):
+        return self.timing.progress()

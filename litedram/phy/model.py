@@ -2,7 +2,7 @@
 # This file is part of LiteDRAM.
 #
 # Copyright (c) 2015-2020 Florent Kermarrec <florent@enjoy-digital.fr>
-# Copyright (c) 2020 Antmicro <www.antmicro.com>
+# Copyright (c) 2020-2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
 # SDRAM simulation PHY at DFI level tested with SDR/DDR/DDR2/LPDDR/DDR3
@@ -230,6 +230,8 @@ class DFITimingsChecker(Module):
         self.timings = new_timings
 
     def __init__(self, dfi, nbanks, nphases, timings, refresh_mode, memtype, verbose=False):
+        self.logging_enabled = Signal(reset=1)
+
         self.prepare_timings(timings, refresh_mode, memtype)
         self.add_cmds()
         self.add_rules()
@@ -266,7 +268,7 @@ class DFITimingsChecker(Module):
             if verbose:
                 for _, cmd in self.cmds.items():
                     self.sync += [
-                        If(state == cmd.enc,
+                        If((state == cmd.enc) & self.logging_enabled,
                             If(all_banks,
                                 Display("[%016dps] P%0d " + cmd.name, ps, np)
                             ).Else(
@@ -286,7 +288,7 @@ class DFITimingsChecker(Module):
                         for rule in self.rules:
                             if rule.prev == prev.name and rule.curr == curr.name:
                                 self.sync += [
-                                    If(cmd_recv & (last_cmd[i] == prev.enc) &
+                                    If(self.logging_enabled & cmd_recv & (last_cmd[i] == prev.enc) &
                                        (ps < (last_cmd_ps[i][prev.idx] + rule.delay)),
                                         Display("[%016dps] {} violation on bank %0d".format(rule.name), ps, i)
                                     )
@@ -302,14 +304,14 @@ class DFITimingsChecker(Module):
 
                         # act_curr points to newest ACT timestamp
                         self.sync += [
-                            If(cmd_recv & (ps < (act_ps[act_curr] + self.timings["tRRD"])),
+                            If(self.logging_enabled & cmd_recv & (ps < (act_ps[act_curr] + self.timings["tRRD"])),
                                 Display("[%016dps] tRRD violation on bank %0d", ps, i)
                             )
                         ]
 
                         # act_next points to the oldest ACT timestamp
                         self.sync += [
-                            If(cmd_recv & (ps < (act_ps[act_next] + self.timings["tFAW"])),
+                            If(self.logging_enabled & cmd_recv & (ps < (act_ps[act_next] + self.timings["tFAW"])),
                                 Display("[%016dps] tFAW violation on bank %0d", ps, i)
                             )
                         ]
@@ -338,7 +340,7 @@ class DFITimingsChecker(Module):
         self.sync += If(ref_issued != 0, ref_ps.eq(ps), ref_ps_diff.eq(ref_ps_diff - curr_diff))
 
         self.sync += [
-            If((ref_ps_mod == 0) & (ref_ps_diff > 0),
+            If((self.logging_enabled & ref_ps_mod == 0) & (ref_ps_diff > 0),
                 Display("[%016dps] tREFI violation (64ms period): %0d", ps, ref_ps_diff)
             )
         ]
@@ -349,14 +351,14 @@ class DFITimingsChecker(Module):
             self.sync += [
                 If(ref_issued != 0,
                     ref_done.eq(1),
-                    If(~ref_done,
+                    If(self.logging_enabled & ~ref_done,
                         Display("[%016dps] Late refresh", ps)
                     )
                 )
             ]
 
             self.sync += [
-                If((curr_diff > 0) & ref_done & (ref_issued == 0),
+                If(self.logging_enabled & (curr_diff > 0) & ref_done & (ref_issued == 0),
                     Display("[%016dps] tREFI violation", ps),
                     ref_done.eq(0)
                 )
@@ -369,7 +371,7 @@ class DFITimingsChecker(Module):
             ref_done = Signal()
             self.sync += If(ref_issued != 0, ref_done.eq(1))
             self.sync += [
-                If((ref_issued == 0) & ref_done &
+                If(self.logging_enabled & (ref_issued == 0) & ref_done &
                    (ref_ps > (ps + ref_limit[refresh_mode] * self.timings['tREFI'])),
                     Display("[%016dps] tREFI violation (too many postponed refreshes)", ps),
                     ref_done.eq(0)
