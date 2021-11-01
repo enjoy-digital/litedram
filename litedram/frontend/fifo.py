@@ -205,6 +205,21 @@ class LiteDRAMFIFO(Module):
 
         Once we no longer have data in the Pre-Converter/DRAM FIFO/Post-Converter path and Pre-FIFO's
         level is below threshold, the modules switches back to Bypass mode.
+
+    Parameters
+    ----------
+    data_width : int, in
+        FIFO data-width.
+    base : int, in
+        FIFO base address in DRAM (bytes).
+    depth: in, in
+        FIFO depth (bytes).
+    write_port: LiteDRAMNativePort
+        DRAM Write port.
+    read_port: LiteDRAMNativePort
+        DRAM Read port.
+    with_bypass: bool, in
+        Automatic Bypass Mode Enable.
     """
     def __init__(self, data_width, base, depth, write_port, read_port, with_bypass=False,
         pre_fifo_depth  = 16,
