@@ -536,44 +536,13 @@ class M12L16161A(SDRModule):
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 55), tFAW=None, tRAS=40)}
 
 class W9825G6KH6(SDRModule):
-    """
-    Winbond W9825G6KH-6 chip on Mister SDRAM XS board v2.2
-    This is the smallest and cheapest module.
-    running it at 100MHz (1:2 if system clock is 50MHz)
-    works well on my SoCKit and all 32MB test error free
-    I get a number of data errors if I run it at 50MHz,
-    so this defaults to 1:2. If you want to use a higher
-    system clock (eg 100MHz), you might want to consider
-    using 1:1 clocking, because the -6 speedgrade
-    can be clocked up to 166MHz (CL3) or 133MHz (CL2)
-    Nevertheless I could not get it to work flawlessly
-    at 1:1 rate, so currently it only runs well at
-    50 MHz and 1:2 rate.
-    """
     # geometry
     nbanks = 4
     nrows  = 8192
     ncols  = 512
-
-    @staticmethod
-    def clock_cycles_to_ns(cycles, clk_freq, sdram_rate) -> float:
-        d = {
-            "1:1" : 1,
-            "1:2" : 2,
-            "1:4" : 4
-        }
-        return cycles / (d[sdram_rate] * clk_freq) / 1e-9
-
-    def __init__(self, clk_freq, sdram_rate):
-        # The datasheet specifies tWr in clock cycles, not in
-        # ns but to me it looks like litedram expects
-        # ns for these two parameters, so I have to convert them
-        # to ns first.
-        tWr  = self.clock_cycles_to_ns(2, clk_freq, sdram_rate)
-        tRRD = self.clock_cycles_to_ns(2, clk_freq, sdram_rate)
-        self.technology_timings = _TechnologyTimings(tREFI=64e6/8000, tWTR=(2, None), tCCD=(1, None), tRRD=(None, tRRD))
-        self.speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=tWr, tRFC=(None, 60), tFAW=None, tRAS=42)}
-        super().__init__(clk_freq, sdram_rate)
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8000, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 10))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 60), tFAW=None, tRAS=42)}
 
 # DDR ----------------------------------------------------------------------------------------------
 
