@@ -1078,14 +1078,36 @@ class HMA82GR7DJR4N(DDR4RegisteredModule):
     nrows       = 131072
     ncols       = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
+    trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
+    trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=416, tFAW=30, tRAS=32),
+        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=10, tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["3200"]
 
 class HMA84GR7DJR4N(HMA82GR7DJR4N): pass
     # This module is similar to HMA82GR7DJR4N, with the exception that it is a dual-rank module. The rank number
+    # can be specified in the PHY settings.
+
+class M393A2K40DB3(DDR4RegisteredModule):
+    # geometry
+    ngroupbanks = 4
+    ngroups     = 4
+    nbanks      = ngroups * ngroupbanks
+    nrows       = 131072
+    ncols       = 1024
+    # timings
+    trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
+    trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
+    speedgrade_timings = {
+        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=10, tRAS=32),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["3200"]
+
+class M393A4K40DB3(M393A2K40DB3): pass
+    # This module is similar to M393A2K40DB3, with the exception that it is a dual-rank module. The rank number
     # can be specified in the PHY settings.
 
 # LPDDR4 -------------------------------------------------------------------------------------------
