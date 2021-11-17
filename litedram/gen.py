@@ -582,10 +582,15 @@ class LiteDRAMCore(SoCCore):
         # ECP5DDRPHY.
         elif core_config["sdram_phy"] in  [litedram_phys.ECP5DDRPHY]:
             assert core_config["memtype"] in ["DDR3"]
+            kwargs = {}
+            if core_config.get("dm_swap", False):
+                kwargs['dm_remapping'] = {0:1, 1:0}
+
             self.submodules.ddrphy = sdram_phy = core_config["sdram_phy"](
                 pads         = platform.request("ddram"),
                 sys_clk_freq = sys_clk_freq,
-                cmd_delay    = core_config.get("cmd_delay", 0))
+                cmd_delay    = core_config.get("cmd_delay", 0),
+                **kwargs)
             self.ddrphy.settings.add_electrical_settings(**electrical_settings_kwargs)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
             self.comb += crg.reset.eq(self.ddrphy.init.reset)
