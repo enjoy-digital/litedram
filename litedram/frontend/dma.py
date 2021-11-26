@@ -221,6 +221,9 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             wdata.data.eq(fifo.source.data)
         ]
 
+        if is_axi:
+            self.comb += port.b.ready.eq(1)
+
         if with_csr:
             self.add_csr()
 
