@@ -59,7 +59,7 @@ class LiteDRAMDMAReader(Module, AutoCSR):
 
         # # #
 
-        # Native / AXI selection
+        # Native / AXI selection -------------------------------------------------------------------
         is_native = isinstance(port, LiteDRAMNativePort)
         is_axi    = isinstance(port, LiteDRAMAXIPort)
         if is_native:
@@ -85,8 +85,8 @@ class LiteDRAMDMAReader(Module, AutoCSR):
         ]
 
         # FIFO reservation level counter -----------------------------------------------------------
-        # incremented when data is planned to be queued
-        # decremented when data is dequeued
+        # - Incremented when data is planned to be queued.
+        # - Decremented when data is dequeued.
         data_dequeued = Signal()
         self.rsv_level = rsv_level = Signal(max=fifo_depth+1)
         self.sync += [
@@ -192,6 +192,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             (cmd, wdata) = port.cmd, port.wdata
         elif is_axi:
             (cmd, wdata) = port.aw, port.w
+            self.comb += port.b.ready.eq(1) # Always ack write responses.
         else:
             raise NotImplementedError
 
@@ -220,9 +221,6 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             fifo.source.ready.eq(wdata.ready),
             wdata.data.eq(fifo.source.data)
         ]
-
-        if is_axi:
-            self.comb += port.b.ready.eq(1)
 
         if with_csr:
             self.add_csr()
