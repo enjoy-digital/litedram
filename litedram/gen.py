@@ -317,14 +317,19 @@ class LiteDRAMECP5DDRPHYCRG(Module):
         self.sync.por += If(~por_done, por_count.eq(por_count - 1))
 
         # PLL.
+        sys2x_clk_ecsout = Signal()
         self.submodules.pll = pll = ECP5PLL()
         self.comb += pll.reset.eq(~por_done | rst | self.rst)
         pll.register_clkin(clk, core_config["input_clk_freq"])
         pll.create_clkout(self.cd_sys2x_i, 2*core_config["sys_clk_freq"])
         pll.create_clkout(self.cd_init, core_config["init_clk_freq"])
         self.specials += [
+            Instance("ECLKBRIDGECS",
+                i_CLK0   = self.cd_sys2x_i.clk,
+                i_SEL    = 0,
+                o_ECSOUT = sys2x_clk_ecsout),
             Instance("ECLKSYNCB",
-                i_ECLKI = self.cd_sys2x_i.clk,
+                i_ECLKI = sys2x_clk_ecsout,
                 i_STOP  = self.stop,
                 o_ECLKO = self.cd_sys2x.clk),
             Instance("CLKDIVF",
@@ -336,6 +341,7 @@ class LiteDRAMECP5DDRPHYCRG(Module):
             AsyncResetSynchronizer(self.cd_sys,   ~pll.locked | self.reset),
             AsyncResetSynchronizer(self.cd_sys2x, ~pll.locked | self.reset),
         ]
+        self.comb += platform.request("pll_locked").eq(pll.locked)
 
 class LiteDRAMS7DDRPHYCRG(Module):
     def __init__(self, platform, core_config):
@@ -576,10 +582,15 @@ class LiteDRAMCore(SoCCore):
         # ECP5DDRPHY.
         elif core_config["sdram_phy"] in  [litedram_phys.ECP5DDRPHY]:
             assert core_config["memtype"] in ["DDR3"]
+            kwargs = {}
+            if core_config.get("dm_swap", False):
+                kwargs['dm_remapping'] = {0:1, 1:0}
+
             self.submodules.ddrphy = sdram_phy = core_config["sdram_phy"](
                 pads         = platform.request("ddram"),
                 sys_clk_freq = sys_clk_freq,
-                cmd_delay    = core_config.get("cmd_delay", 0))
+                cmd_delay    = core_config.get("cmd_delay", 0),
+                **kwargs)
             self.ddrphy.settings.add_electrical_settings(**electrical_settings_kwargs)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
             self.comb += crg.reset.eq(self.ddrphy.init.reset)
