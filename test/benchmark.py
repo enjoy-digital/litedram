@@ -19,7 +19,7 @@ from migen.genlib.misc import WaitTimer
 from litex.build.sim.config import SimConfig
 
 from litex.soc.interconnect.csr import *
-from litex.soc.integration.soc_sdram import *
+from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 
 from litex.tools.litex_sim import SimSoC
@@ -207,7 +207,7 @@ def load_access_pattern(filename):
 def main():
     parser = argparse.ArgumentParser(description="LiteDRAM Benchmark SoC Simulation")
     builder_args(parser)
-    soc_sdram_args(parser)
+    soc_core_args(parser)
     parser.add_argument("--threads",          default=1,              help="Set number of threads (default=1)")
     parser.add_argument("--sdram-module",     default="MT48LC16M16",  help="Select SDRAM chip")
     parser.add_argument("--sdram-data-width", default=32,             help="Set SDRAM chip data width")
@@ -230,7 +230,7 @@ def main():
     root_logger = logging.getLogger()
     root_logger.setLevel(getattr(logging, args.log_level.upper()))
 
-    soc_kwargs     = soc_sdram_argdict(args)
+    soc_kwargs     = soc_core_argdict(args)
     builder_kwargs = builder_argdict(args)
 
     sim_config = SimConfig(default_clk="sys_clk")
