@@ -142,7 +142,7 @@ class S7DDRPHY(Module, AutoCSR):
             cmd_delay                 = cmd_delay,
             write_leveling            = with_odelay,
             write_dq_dqs_training     = with_odelay,
-            write_latency_calibration = True,
+            write_latency_calibration = with_odelay,
             read_leveling             = True,
             delays                    = 32,
             bitslips                  = 8,
