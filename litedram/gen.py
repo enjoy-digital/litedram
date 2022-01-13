@@ -655,7 +655,13 @@ class LiteDRAMCore(SoCCore):
 
         # User ports -------------------------------------------------------------------------------
         user_enable = Signal()
-        self.sync += user_enable.eq(self.ddrctrl.init_done.storage & ~self.ddrctrl.init_error.storage)
+        if cpu_type is not None:
+            # block user port access until ready
+            self.sync += user_enable.eq(self.ddrctrl.init_done.storage & ~self.ddrctrl.init_error.storage)
+        else:
+            # memtest without CPU uses the user port, so don't block
+            self.comb += user_enable.eq(1)
+
         self.comb += [
             platform.request("user_clk").eq(ClockSignal()),
             platform.request("user_rst").eq(ResetSignal()),
