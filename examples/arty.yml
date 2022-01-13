@@ -38,7 +38,8 @@
             "id_width": 32,
         },
         "wishbone_0" : {
-            "type": "wishbone",
+            "type":  "wishbone",
+            "block_until_ready": True,
         },
         "native_0" : {
             "type": "native",

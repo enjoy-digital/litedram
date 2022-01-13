@@ -654,13 +654,21 @@ class LiteDRAMCore(SoCCore):
             self.comb += wb_bus.connect_to_pads(wb_pads, mode="slave")
 
         # User ports -------------------------------------------------------------------------------
-        user_enable = Signal()
-        self.sync += user_enable.eq(self.ddrctrl.init_done.storage & ~self.ddrctrl.init_error.storage)
         self.comb += [
             platform.request("user_clk").eq(ClockSignal()),
             platform.request("user_rst").eq(ResetSignal()),
         ]
         for name, port in core_config["user_ports"].items():
+
+            # Common -------------------------------------------------------------------------------
+            user_enable = Signal()
+            # By default, block port until controller is ready.
+            if port.get("block_until_ready", True):
+                self.sync += user_enable.eq(self.ddrctrl.init_done.storage & ~self.ddrctrl.init_error.storage)
+            # Else never block.
+            else:
+                self.comb += user_enable.eq(1)
+
             # Native -------------------------------------------------------------------------------
             if port["type"] == "native":
                 user_port = self.sdram.crossbar.get_port(data_width=port.get("data_width", None))
