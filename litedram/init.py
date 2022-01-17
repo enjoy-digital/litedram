@@ -927,8 +927,11 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     if phy_settings.read_leveling:
         r.define("SDRAM_PHY_READ_LEVELING_CAPABLE")
 
+    # Define DQ / DQS ratio
+    r.define("SDRAM_PHY_DQ_DQS_RATIO", phy_settings.databits // phy_settings.strobes)
+
     # Define number of modules/delays/bitslips
-    r.define("SDRAM_PHY_MODULES", "(SDRAM_PHY_DATABITS/8)")
+    r.define("SDRAM_PHY_MODULES", phy_settings.strobes)
     if phy_settings.delays > 0:
         r.define("SDRAM_PHY_DELAYS", phy_settings.delays)
     if phy_settings.bitslips > 0:

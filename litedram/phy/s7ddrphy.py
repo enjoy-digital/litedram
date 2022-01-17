@@ -50,9 +50,9 @@ class S7DDRPHY(Module, AutoCSR):
         bankbits    = len(pads.ba) if memtype != "DDR4" else len(pads.ba) + len(pads.bg)
         nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits    = len(pads.dq)
+        strobes     = len(pads.dqs_p)
         nphases     = nphases
         assert databits%8 == 0
-        x4_dimm_mode = (databits / len(pads.dqs_p)) == 4
 
         # Parameters -------------------------------------------------------------------------------
         iodelay_tap_average = {
@@ -72,7 +72,7 @@ class S7DDRPHY(Module, AutoCSR):
         # Registers --------------------------------------------------------------------------------
         self._rst             = CSRStorage()
 
-        self._dly_sel         = CSRStorage(databits//8)
+        self._dly_sel         = CSRStorage(strobes)
         self._half_sys8x_taps = CSRStorage(5, reset=half_sys8x_taps)
 
         self._wlevel_en     = CSRStorage()
@@ -81,8 +81,6 @@ class S7DDRPHY(Module, AutoCSR):
         if with_odelay:
             self._cdly_rst = CSR()
             self._cdly_inc = CSR()
-
-        self._dly_sel = CSRStorage(databits//8)
 
         self._rdly_dq_rst         = CSR()
         self._rdly_dq_inc         = CSR()
@@ -131,6 +129,7 @@ class S7DDRPHY(Module, AutoCSR):
             phytype                   = phytype,
             memtype                   = memtype,
             databits                  = databits,
+            strobes                   = strobes,
             dfi_databits              = 2*databits,
             nranks                    = nranks,
             nphases                   = nphases,
@@ -286,63 +285,58 @@ class S7DDRPHY(Module, AutoCSR):
             register      = not with_odelay)
         self.submodules += dqs_oe_delay, dqs_pattern
         self.comb += dqs_oe_delay.input.eq(dqs_preamble | dqs_oe | dqs_postamble)
-        for i in range(databits//8):
+        for i in range(strobes):
+            dqs_o_no_delay = Signal()
+            dqs_o_delayed  = Signal()
+            dqs_t          = Signal()
             dqs_bitslip    = BitSlip(8,
                 i      = dqs_pattern.o,
                 rst    = (self._dly_sel.storage[i] & wdly_dq_bitslip_rst) | self._rst.storage,
                 slp    = self._dly_sel.storage[i] & wdly_dq_bitslip,
                 cycles = 1)
-            if x4_dimm_mode:
-                dqs_pads = ((pads.dqs_p[i*2], pads.dqs_n[i*2]), (pads.dqs_p[i*2 + 1], pads.dqs_n[i*2 + 1]))
-            else:
-                dqs_pads = ((pads.dqs_p[i], pads.dqs_n[i]), )
 
-            for j, (dqs_p, dqs_n) in enumerate(dqs_pads):
-                dqs_o_no_delay = Signal()
-                dqs_o_delayed  = Signal()
-                dqs_t          = Signal()
-                self.submodules += dqs_bitslip
-                self.specials += Instance("OSERDESE2",
-                    p_SERDES_MODE    = "MASTER",
-                    p_DATA_WIDTH     = 2*nphases,
-                    p_TRISTATE_WIDTH = 1,
-                    p_DATA_RATE_OQ   = "DDR",
-                    p_DATA_RATE_TQ   = "BUF",
-                    i_RST    = ResetSignal("sys") | self._rst.storage,
-                    i_CLK    = ClockSignal(ddr_clk) if with_odelay else ClockSignal(ddr_clk+"_dqs"),
-                    i_CLKDIV = ClockSignal("sys"),
-                    **{f"i_D{n+1}": dqs_bitslip.o[n] for n in range(8)},
-                    i_OCE    = 1,
-                    o_OFB    = dqs_o_no_delay if with_odelay else Signal(),
-                    o_OQ     = Signal() if with_odelay else dqs_o_no_delay,
-                    i_TCE    = 1,
-                    i_T1     = ~dqs_oe_delay.output,
-                    o_TQ     = dqs_t,
+            self.submodules += dqs_bitslip
+            self.specials += Instance("OSERDESE2",
+                p_SERDES_MODE    = "MASTER",
+                p_DATA_WIDTH     = 2*nphases,
+                p_TRISTATE_WIDTH = 1,
+                p_DATA_RATE_OQ   = "DDR",
+                p_DATA_RATE_TQ   = "BUF",
+                i_RST    = ResetSignal("sys") | self._rst.storage,
+                i_CLK    = ClockSignal(ddr_clk) if with_odelay else ClockSignal(ddr_clk+"_dqs"),
+                i_CLKDIV = ClockSignal("sys"),
+                **{f"i_D{n+1}": dqs_bitslip.o[n] for n in range(8)},
+                i_OCE    = 1,
+                o_OFB    = dqs_o_no_delay if with_odelay else Signal(),
+                o_OQ     = Signal() if with_odelay else dqs_o_no_delay,
+                i_TCE    = 1,
+                i_T1     = ~dqs_oe_delay.output,
+                o_TQ     = dqs_t,
+            )
+            if with_odelay:
+                self.specials += Instance("ODELAYE2",
+                    p_DELAY_SRC             = "ODATAIN",
+                    p_SIGNAL_PATTERN        = "DATA",
+                    p_CINVCTRL_SEL          = "FALSE",
+                    p_HIGH_PERFORMANCE_MODE = "TRUE",
+                    p_REFCLK_FREQUENCY      = iodelay_clk_freq/1e6,
+                    p_PIPE_SEL              = "FALSE",
+                    p_ODELAY_TYPE           = "VARIABLE",
+                    p_ODELAY_VALUE          = half_sys8x_taps,
+                    i_C        = ClockSignal("sys"),
+                    i_LD       = (self._dly_sel.storage[i] & wdly_dqs_rst) | self._rst.storage,
+                    i_CE       = self._dly_sel.storage[i] & wdly_dqs_inc,
+                    i_LDPIPEEN = 0,
+                    i_INC      = 1,
+                    o_ODATAIN  = dqs_o_no_delay,
+                    o_DATAOUT  = dqs_o_delayed
                 )
-                if with_odelay:
-                    self.specials += Instance("ODELAYE2",
-                        p_DELAY_SRC             = "ODATAIN",
-                        p_SIGNAL_PATTERN        = "DATA",
-                        p_CINVCTRL_SEL          = "FALSE",
-                        p_HIGH_PERFORMANCE_MODE = "TRUE",
-                        p_REFCLK_FREQUENCY      = iodelay_clk_freq/1e6,
-                        p_PIPE_SEL              = "FALSE",
-                        p_ODELAY_TYPE           = "VARIABLE",
-                        p_ODELAY_VALUE          = half_sys8x_taps,
-                        i_C        = ClockSignal("sys"),
-                        i_LD       = (self._dly_sel.storage[i] & wdly_dqs_rst) | self._rst.storage,
-                        i_CE       = self._dly_sel.storage[i] & wdly_dqs_inc,
-                        i_LDPIPEEN = 0,
-                        i_INC      = 1,
-                        o_ODATAIN  = dqs_o_no_delay,
-                        o_DATAOUT  = dqs_o_delayed
-                    )
-                self.specials += Instance("IOBUFDS",
-                    i_T    = dqs_t,
-                    i_I    = dqs_o_delayed if with_odelay else dqs_o_no_delay,
-                    io_IO  = dqs_p,
-                    io_IOB = dqs_n,
-                )
+            self.specials += Instance("IOBUFDS",
+                i_T    = dqs_t,
+                i_I    = dqs_o_delayed if with_odelay else dqs_o_no_delay,
+                io_IO  = pads.dqs_p[i],
+                io_IOB = pads.dqs_n[i],
+            )
 
         # DM ---------------------------------------------------------------------------------------
         if hasattr(pads, "dm"):
@@ -394,6 +388,10 @@ class S7DDRPHY(Module, AutoCSR):
         dq_oe_delay = TappedDelayLine(ntaps=2 if nphases == 4 else 1)
         self.submodules += dq_oe_delay
         self.comb += dq_oe_delay.input.eq(dqs_preamble | dq_oe | dqs_postamble)
+
+        dq_dqs_ratio = databits // strobes
+        assert (dq_dqs_ratio in [4, 8])
+
         for i in range(databits):
             dq_o_nodelay = Signal()
             dq_o_delayed = Signal()
@@ -403,8 +401,8 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_data    = Signal(8)
             dq_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
-                rst    = (self._dly_sel.storage[i//8] & wdly_dq_bitslip_rst) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//8] & wdly_dq_bitslip,
+                rst    = (self._dly_sel.storage[i//dq_dqs_ratio] & wdly_dq_bitslip_rst) | self._rst.storage,
+                slp    = self._dly_sel.storage[i//dq_dqs_ratio] & wdly_dq_bitslip,
                 cycles = 1)
             self.submodules += dq_o_bitslip
             self.specials += Instance("OSERDESE2",
@@ -424,8 +422,8 @@ class S7DDRPHY(Module, AutoCSR):
                 o_OQ     = dq_o_nodelay,
             )
             dq_i_bitslip = BitSlip(8,
-                rst    = (self._dly_sel.storage[i//8] & rdly_dq_bitslip_rst) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//8] & rdly_dq_bitslip,
+                rst    = (self._dly_sel.storage[i//dq_dqs_ratio] & rdly_dq_bitslip_rst) | self._rst.storage,
+                slp    = self._dly_sel.storage[i//dq_dqs_ratio] & rdly_dq_bitslip,
                 cycles = 1)
             self.submodules += dq_i_bitslip
             self.specials += Instance("ISERDESE2",
@@ -457,9 +455,9 @@ class S7DDRPHY(Module, AutoCSR):
                     p_ODELAY_TYPE           = "VARIABLE",
                     p_ODELAY_VALUE          = 0,
                     i_C        = ClockSignal("sys"),
-                    i_LD       = (self._dly_sel.storage[i//8] & wdly_dq_rst)| self._rst.storage,
+                    i_LD       = (self._dly_sel.storage[i//dq_dqs_ratio] & wdly_dq_rst)| self._rst.storage,
                     i_LDPIPEEN = 0,
-                    i_CE       = self._dly_sel.storage[i//8] & wdly_dq_inc,
+                    i_CE       = self._dly_sel.storage[i//dq_dqs_ratio] & wdly_dq_inc,
                     i_INC      = 1,
                     o_ODATAIN  = dq_o_nodelay,
                     o_DATAOUT  = dq_o_delayed,
@@ -474,9 +472,9 @@ class S7DDRPHY(Module, AutoCSR):
                 p_IDELAY_TYPE           = "VARIABLE",
                 p_IDELAY_VALUE          = 0,
                 i_C        = ClockSignal("sys"),
-                i_LD       = (self._dly_sel.storage[i//8] & rdly_dq_rst) | self._rst.storage,
+                i_LD       = (self._dly_sel.storage[i//dq_dqs_ratio] & rdly_dq_rst) | self._rst.storage,
                 i_LDPIPEEN = 0,
-                i_CE       = self._dly_sel.storage[i//8] & rdly_dq_inc,
+                i_CE       = self._dly_sel.storage[i//dq_dqs_ratio] & rdly_dq_inc,
                 i_INC      = 1,
                 i_IDATAIN  = dq_i_nodelay,
                 o_DATAOUT  = dq_i_delayed
