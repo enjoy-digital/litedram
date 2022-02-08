@@ -721,9 +721,9 @@ class LiteDRAMCore(SoCCore):
             elif port["type"] == "axi":
                 user_port = self.sdram.crossbar.get_port(data_width=port.get("data_width", None))
                 axi_port  = LiteDRAMAXIPort(
-                    user_port.data_width,
-                    user_port.address_width + log2_int(user_port.data_width//8),
-                    port["id_width"])
+                    data_width    = user_port.data_width,
+                    address_width = user_port.address_width + log2_int(user_port.data_width//8),
+                    id_width      = port["id_width"])
                 axi2native = LiteDRAMAXI2Native(axi_port, user_port)
                 self.submodules += axi2native
                 platform.add_extension(get_axi_user_port_ios(name,
