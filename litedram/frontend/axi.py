@@ -1,7 +1,7 @@
 #
 # This file is part of LiteDRAM.
 #
-# Copyright (c) 2018-2019 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2018-2022 Florent Kermarrec <florent@enjoy-digital.fr>
 # SPDX-License-Identifier: BSD-2-Clause
 
 """
@@ -86,7 +86,7 @@ class LiteDRAMAXI2NativeW(Module):
                 port.cmd.valid.eq(1),
                 port.cmd.we.eq(1),
                 port.cmd.addr.eq((aw.addr - base_address) >> ashift),
-                If(port.cmd.valid & port.cmd.ready,
+                If(port.cmd.ready,
                     aw.ready.eq(1),
                 )
             )
@@ -160,11 +160,13 @@ class LiteDRAMAXI2NativeR(Module):
         # Command ----------------------------------------------------------------------------------
         self.comb += [
             self.cmd_request.eq(ar.valid & can_read),
-            If(self.cmd_grant,
-                port.cmd.valid.eq(ar.valid & can_read),
-                ar.ready.eq(port.cmd.ready & can_read),
+            If(self.cmd_request & self.cmd_grant,
+                port.cmd.valid.eq(1),
                 port.cmd.we.eq(0),
-                port.cmd.addr.eq((ar.addr - base_address) >> ashift)
+                port.cmd.addr.eq((ar.addr - base_address) >> ashift),
+                If(port.cmd.ready,
+                    ar.ready.eq(1),
+                )
             )
         ]
 
