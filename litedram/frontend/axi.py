@@ -84,6 +84,7 @@ class LiteDRAMAXI2NativeW(Module):
             self.cmd_request.eq(aw.valid & w_buffer.source.valid),
             If(self.cmd_request & self.cmd_grant,
                 port.cmd.valid.eq(1),
+                port.cmd.last.eq(aw.last),
                 port.cmd.we.eq(1),
                 port.cmd.addr.eq((aw.addr - base_address) >> ashift),
                 If(port.cmd.ready,
@@ -162,6 +163,7 @@ class LiteDRAMAXI2NativeR(Module):
             self.cmd_request.eq(ar.valid & can_read),
             If(self.cmd_request & self.cmd_grant,
                 port.cmd.valid.eq(1),
+                port.cmd.last.eq(ar.last),
                 port.cmd.we.eq(0),
                 port.cmd.addr.eq((ar.addr - base_address) >> ashift),
                 If(port.cmd.ready,
@@ -193,7 +195,7 @@ class LiteDRAMAXI2Native(Module):
         # Write / Read arbitration -----------------------------------------------------------------
         arbiter = RoundRobin(2, SP_CE)
         self.submodules += arbiter
-        self.comb += arbiter.ce.eq(~port.cmd.valid | port.cmd.ready)
+        self.comb += arbiter.ce.eq(~port.cmd.valid | (port.cmd.ready & port.cmd.last))
         for i, master in enumerate([self.write, self.read]):
             self.comb += arbiter.request[i].eq(master.cmd_request)
             self.comb += master.cmd_grant.eq(arbiter.grant == i)
