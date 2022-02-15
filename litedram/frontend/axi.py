@@ -79,24 +79,22 @@ class LiteDRAMAXI2NativeW(Module):
         # Command ----------------------------------------------------------------------------------
         # Accept and send command to the controller only if:
         # - Address & Data request are *both* valid.
-        # - Data buffer is not full.
+        # - Data buffer is not empty.
         self.comb += [
-            self.cmd_request.eq(aw.valid & axi.w.valid & w_buffer.sink.ready),
+            self.cmd_request.eq(aw.valid & w_buffer.source.valid),
             If(self.cmd_request & self.cmd_grant,
                 port.cmd.valid.eq(1),
                 port.cmd.we.eq(1),
                 port.cmd.addr.eq((aw.addr - base_address) >> ashift),
-                aw.ready.eq(port.cmd.ready),
-                axi.w.connect(w_buffer.sink, omit={"valid", "ready"}),
-                If(port.cmd.ready,
-                    w_buffer.sink.valid.eq(1),
-                    axi.w.ready.eq(1)
+                If(port.cmd.valid & port.cmd.ready,
+                    aw.ready.eq(1),
                 )
             )
         ]
 
         # Write Data -------------------------------------------------------------------------------
         self.comb += [
+            axi.w.connect(w_buffer.sink),
             w_buffer.source.connect(port.wdata, omit={"strb", "id"}),
             port.wdata.we.eq(w_buffer.source.strb)
         ]
