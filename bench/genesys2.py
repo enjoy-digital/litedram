@@ -66,7 +66,6 @@ class BenchSoC(SoCCore):
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, clk_freq=sys_clk_freq,
             ident               = "LiteDRAM bench on Genesys2",
-            ident_version       = True,
             integrated_rom_size = 0x10000,
             integrated_rom_mode = "rw",
             uart_name           = uart)

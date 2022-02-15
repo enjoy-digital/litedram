@@ -76,7 +76,6 @@ class SimSoC(SoCCore):
         super().__init__(platform,
             clk_freq      = sys_clk_freq,
             ident         = "LiteX Simulation",
-            ident_version = True,
             cpu_variant   = "lite",
             **kwargs)
 
