@@ -34,8 +34,10 @@
     # User Ports ---------------------------------------------------------------
     "user_ports": {
         "axi_0" : {
-            "type": "axi",
-            "id_width": 32,
+            "type"       : "axi",
+            "ecc"        : True,
+            "data_width" : 256,
+            "id_width"   : 32,
         },
         "wishbone_0" : {
             "type": "wishbone",

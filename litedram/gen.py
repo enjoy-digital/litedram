@@ -55,12 +55,15 @@ from litedram import phy as litedram_phys
 from litedram.phy.ecp5ddrphy import ECP5DDRPHY
 from litedram.phy.s7ddrphy import S7DDRPHY
 from litedram.phy.model import SDRAMPHYModel
+
 from litedram.core.controller import ControllerSettings
+
 from litedram.frontend.axi import *
 from litedram.frontend.wishbone import *
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
 from litedram.frontend.fifo import LiteDRAMFIFO
+from litedram.frontend.ecc import LiteDRAMNativePortECC
 
 # IOs/Interfaces -----------------------------------------------------------------------------------
 
@@ -270,11 +273,6 @@ def get_fifo_user_port_ios(_id, dw):
             Subsignal("out_data",  Pins(dw)),
         ),
     ]
-
-
-class Platform(XilinxPlatform):
-    def __init__(self):
-        XilinxPlatform.__init__(self, "", io=[], toolchain="vivado")
 
 # CRG ----------------------------------------------------------------------------------------------
 
@@ -654,10 +652,9 @@ class LiteDRAMCore(SoCCore):
             self.comb += wb_bus.connect_to_pads(wb_pads, mode="slave")
 
         # User ports -------------------------------------------------------------------------------
-        self.comb += [
-            platform.request("user_clk").eq(ClockSignal()),
-            platform.request("user_rst").eq(ResetSignal()),
-        ]
+        self.comb += platform.request("user_clk").eq(ClockSignal())
+        self.comb += platform.request("user_rst").eq(ResetSignal())
+
         for name, port in core_config["user_ports"].items():
 
             # Common -------------------------------------------------------------------------------
@@ -669,9 +666,25 @@ class LiteDRAMCore(SoCCore):
             else:
                 self.comb += user_enable.eq(1)
 
+            # Request user port on crossbar and add optional ECC.
+            if port["type"] in ["native", "wishbone", "axi"]:
+                # With ECC.
+                if port.get("ecc", False):
+                    assert port.get("data_width", None) is not None
+                    ecc_port  = self.sdram.crossbar.get_port()
+                    user_port = LiteDRAMNativePort(
+                        mode = ecc_port.mode,
+                        address_width = ecc_port.address_width,
+                        data_width = port.get("data_width")
+                    )
+                    ecc = LiteDRAMNativePortECC(user_port, ecc_port, with_error_injection=False)
+                    setattr(self.submodules, f"ecc_{name}", ecc)
+                # Without ECC.
+                else:
+                    user_port = self.sdram.crossbar.get_port(data_width=port.get("data_width", None))
+
             # Native -------------------------------------------------------------------------------
             if port["type"] == "native":
-                user_port = self.sdram.crossbar.get_port(data_width=port.get("data_width", None))
                 platform.add_extension(get_native_user_port_ios(name,
                     user_port.address_width,
                     user_port.data_width))
@@ -696,7 +709,6 @@ class LiteDRAMCore(SoCCore):
                 ]
             # Wishbone -----------------------------------------------------------------------------
             elif port["type"] == "wishbone":
-                user_port = self.sdram.crossbar.get_port(data_width=port.get("data_width", None))
                 wb_port = wishbone.Interface(
                     user_port.data_width,
                     user_port.address_width)
@@ -719,7 +731,6 @@ class LiteDRAMCore(SoCCore):
                 ]
             # AXI ----------------------------------------------------------------------------------
             elif port["type"] == "axi":
-                user_port = self.sdram.crossbar.get_port(data_width=port.get("data_width", None))
                 axi_port  = LiteDRAMAXIPort(
                     data_width    = user_port.data_width,
                     address_width = user_port.address_width + log2_int(user_port.data_width//8),
