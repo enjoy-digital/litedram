@@ -43,6 +43,8 @@ class LiteDRAMAXI2NativeW(Module):
 
         # # #
 
+        can_write = Signal()
+
         ashift = log2_int(port.data_width//8)
 
         # Burst to Beat ----------------------------------------------------------------------------
@@ -76,12 +78,31 @@ class LiteDRAMAXI2NativeW(Module):
             resp_buffer.source.connect(axi.b)
         ]
 
+        # Write Buffer reservation ------------------------------------------------------------------
+        # - Incremented when data cmd is send
+        # - Decremented when data is read
+        w_buffer_queue   = Signal()
+        w_buffer_dequeue = Signal()
+        w_buffer_level   = Signal(max=buffer_depth + 1)
+        self.comb += [
+            w_buffer_queue.eq(port.cmd.valid & port.cmd.ready & port.cmd.we),
+            w_buffer_dequeue.eq(w_buffer.source.valid & w_buffer.source.ready)
+        ]
+        self.sync += [
+            If(w_buffer_queue,
+                If(~w_buffer_dequeue, w_buffer_level.eq(w_buffer_level + 1))
+            ).Elif(w_buffer_dequeue,
+                w_buffer_level.eq(w_buffer_level - 1)
+            )
+        ]
+        self.comb += can_write.eq(w_buffer.level > w_buffer_level)
+
         # Command ----------------------------------------------------------------------------------
         # Accept and send command to the controller only if:
         # - Address & Data request are *both* valid.
         # - Data buffer is not empty.
         self.comb += [
-            self.cmd_request.eq(aw.valid & w_buffer.source.valid),
+            self.cmd_request.eq(aw.valid & can_write),
             If(self.cmd_request & self.cmd_grant,
                 port.cmd.valid.eq(1),
                 port.cmd.last.eq(aw.last),
