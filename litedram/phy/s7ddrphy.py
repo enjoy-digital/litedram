@@ -37,7 +37,8 @@ class S7DDRPHY(Module, AutoCSR):
         cmd_delay        = None,
         ddr_clk          = None,
         csr_cdc          = None,
-        is_rdimm         = False):
+        is_rdimm         = False,
+        write_latency_calibration = True):
         assert memtype in ["DDR2", "DDR3", "DDR4"]
         assert not (memtype == "DDR3" and nphases == 2)
         phytype     = self.__class__.__name__
@@ -142,7 +143,7 @@ class S7DDRPHY(Module, AutoCSR):
             cmd_delay                 = cmd_delay,
             write_leveling            = with_odelay,
             write_dq_dqs_training     = with_odelay,
-            write_latency_calibration = with_odelay,
+            write_latency_calibration = write_latency_calibration,
             read_leveling             = True,
             delays                    = 32,
             bitslips                  = 8,
