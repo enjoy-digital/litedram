@@ -70,17 +70,23 @@ z_to_ron = {
     "34ohm" : 0b1,
 }
 
+def r2rzq(r):
+    r = r.replace("ohm", "")
+    if r == "disabled":
+        return ""
+    return f"(RZQ/{240//int(r)})"
+
 if args.list:
   print("Supported DDR3 Electrical settings:")
   print("rtt_nom:")
   for v in z_to_rtt_nom.keys():
-    print(f" - {v}")
+    print(f" - {v} {' '*(8-len(v))} {r2rzq(v)}")
   print("rtt_wr:")
   for v in z_to_rtt_wr.keys():
-    print(f" - {v}")
+    print(f" - {v} {' '*(8-len(v))} {r2rzq(v)}")
   print("ron:")
   for v in z_to_ron.keys():
-    print(f" - {v}")
+    print(f" - {v} {' '*(8-len(v))} {r2rzq(v)}")
 
 # DDR4 Mode Register formating ---------------------------------------------------------------------
 
