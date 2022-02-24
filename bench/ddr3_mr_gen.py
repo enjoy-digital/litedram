@@ -134,9 +134,9 @@ print(f"cl:  {args.cl}")
 print(f"cwl: {args.cwl}")
 
 print("DDR3 Electrical Settings:")
-print(f"rtt_nom: {args.rtt_nom}")
-print(f"rtt_wr:  {args.rtt_wr}")
-print(f"ron:     {args.ron}")
+print(f"rtt_nom: {args.rtt_nom} {r2rzq(args.rtt_nom)}")
+print(f"rtt_wr:  {args.rtt_wr} {r2rzq(args.rtt_wr)}")
+print(f"ron:     {args.ron} {r2rzq(args.ron)}")
 
 print("Commands to be used with LiteX BIOS:")
 print("sdram_mr_write 0 {:d}".format(format_mr0(
