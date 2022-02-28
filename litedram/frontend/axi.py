@@ -14,6 +14,7 @@ Features:
 - Write/Read data buffers (configurable depth).
 - Burst support (FIXED/INCR/WRAP).
 - ID support (configurable width).
+- Optional Read-Modify-Write support (When only full words can be written on the DRAM, ex with ECC).
 
 Limitations:
 - Response always okay.
@@ -35,7 +36,7 @@ class LiteDRAMAXIPort(AXIInterface):
 # LiteDRAMAXI2NativeW ------------------------------------------------------------------------------
 
 class LiteDRAMAXI2NativeW(Module):
-    def __init__(self, axi, port, buffer_depth, base_address):
+    def __init__(self, axi, port, buffer_depth, base_address, with_read_modify_write=False):
         assert axi.address_width >= log2_int(base_address)
         assert axi.data_width    == port.data_width
         self.cmd_request = Signal()
@@ -121,10 +122,103 @@ class LiteDRAMAXI2NativeW(Module):
             port.wdata.we.eq(w_buffer.source.strb)
         ]
 
+        # Read-Modify-Write ------------------------------------------------------------------------
+        if with_read_modify_write:
+            # RMW Request/Grant signals.
+            self.rmw_request = Signal()
+            self.rmw_rgrant  = Signal()
+            self.rmw_wgrant  = Signal()
+
+            # # #
+
+            rmw_data      = Signal(port.data_width)
+            rmw_mask      = Signal(port.data_width)
+            rmw_cmd_done  = Signal()
+            rmw_data_done = Signal()
+
+            # Grant write when write buffer is empty.
+            self.comb += self.rmw_wgrant.eq(~w_buffer_queue & (w_buffer_level == 0))
+
+            # Prevent new write on Read-Modify-Write request.
+            self.comb += If(self.rmw_request,
+                can_write.eq(0)
+            )
+
+            # Disconnect regular Datapath on a Read-Modify-Write cycle.
+            self.comb += If(self.rmw_request,
+                axi.w.ready.eq(0),
+                w_buffer.sink.valid.eq(0)
+            )
+
+            # Read-Modify-Write FSM.
+            self.submodules.rmw_fsm = rmw_fsm = FSM(reset_state="IDLE")
+            rmw_fsm.act("IDLE",
+                # Clear RMW Cmd/Data done signals.
+                NextValue(rmw_cmd_done,  0),
+                NextValue(rmw_data_done, 0),
+                # Detect partial data and initiate a RMW access.
+                If(axi.w.valid & (axi.w.strb != (2**len(axi.w.strb) - 1)),
+                    # Before issuing the RMW sequence, we must ensure that all pending writes/reads
+                    # access have been done, so issue a request and wait for grant.
+                    self.rmw_request.eq(1),
+                    If(self.rmw_rgrant & self.rmw_wgrant,
+                        NextState("READ")
+                    )
+                )
+            )
+            rmw_fsm.act("READ",
+                self.rmw_request.eq(1),
+                # Issue Read Cmd.
+                port.cmd.valid.eq(1),
+                port.cmd.last.eq(aw.last),
+                port.cmd.we.eq(0),
+                port.cmd.addr.eq((aw.addr - base_address) >> ashift),
+                If(port.cmd.ready,
+                    NextState("MODIFY")
+                )
+            )
+            rmw_fsm.act("MODIFY",
+                self.rmw_request.eq(1),
+                # Generate mask.
+                *[rmw_mask[8*i:8*(i+1)].eq(Replicate(axi.w.strb[i], 8)) for i in range(port.data_width//8)],
+                # Receive Read Data and modify it.
+                port.rdata.ready.eq(1),
+                If(port.rdata.valid,
+                    # Keep previous unmasked data and replace masked data with new ones.
+                    NextValue(rmw_data, (port.rdata.data & (~rmw_mask) | (axi.w.data & rmw_mask))),
+                    NextState("WRITE")
+                )
+            )
+            rmw_fsm.act("WRITE",
+                self.rmw_request.eq(1),
+                # Isssue Write Cmd.
+                port.cmd.valid.eq(~rmw_cmd_done),
+                port.cmd.last.eq(aw.last),
+                port.cmd.we.eq(1),
+                port.cmd.addr.eq((aw.addr - base_address) >> ashift),
+                If(port.cmd.valid & port.cmd.ready,
+                    aw.ready.eq(1),
+                    NextValue(rmw_cmd_done, 1)
+                ),
+                # Issue Write Data.
+                w_buffer.sink.valid.eq(~rmw_data_done),
+                w_buffer.sink.last.eq(axi.w.last),
+                w_buffer.sink.data.eq(rmw_data),
+                w_buffer.sink.strb.eq(2**len(w_buffer.sink.strb) - 1),
+                If(w_buffer.sink.valid & w_buffer.sink.ready,
+                    axi.w.ready.eq(1),
+                    NextValue(rmw_data_done, 1)
+                ),
+                # Return to Idle when both Cmd/Data are done.
+                If((port.cmd.ready | rmw_cmd_done) & (w_buffer.sink.ready | rmw_data_done),
+                    NextState("IDLE")
+                )
+            )
+
 # LiteDRAMAXI2NativeR ------------------------------------------------------------------------------
 
 class LiteDRAMAXI2NativeR(Module):
-    def __init__(self, axi, port, buffer_depth, base_address):
+    def __init__(self, axi, port, buffer_depth, base_address, with_read_modify_write=False):
         assert axi.address_width >= log2_int(base_address)
         assert axi.data_width    == port.data_width
         self.cmd_request = Signal()
@@ -200,18 +294,41 @@ class LiteDRAMAXI2NativeR(Module):
             axi.r.resp.eq(RESP_OKAY)
         ]
 
+        # Read-Modify-Write ------------------------------------------------------------------------
+        if with_read_modify_write:
+            # RMW Request/Grant signals.
+            self.rmw_request = Signal()
+            self.rmw_rgrant  = Signal()
+
+            # # #
+
+            # Grant read when read buffer is empty.
+            self.comb += self.rmw_rgrant.eq(~r_buffer_queue & (r_buffer_level == 0))
+
+            # Prevent new read on Read-Modify-Write request.
+            self.comb += If(self.rmw_request,
+                r_buffer_queue.eq(0),
+                can_read.eq(0)
+            )
+
+            # Disconnect regular Datapath on a Read-Modify-Write cycle.
+            self.comb += If(self.rmw_request & self.rmw_rgrant,
+                port.rdata.ready.eq(1),
+                r_buffer.sink.valid.eq(0)
+            )
+
 # LiteDRAMAXI2Native -------------------------------------------------------------------------------
 
 class LiteDRAMAXI2Native(Module):
-    def __init__(self, axi, port, w_buffer_depth=16, r_buffer_depth=16, base_address=0x00000000):
+    def __init__(self, axi, port, w_buffer_depth=16, r_buffer_depth=16, base_address=0x00000000, with_read_modify_write=False):
 
         # # #
 
         # Write path -------------------------------------------------------------------------------
-        self.submodules.write = LiteDRAMAXI2NativeW(axi, port, w_buffer_depth, base_address)
+        self.submodules.write = LiteDRAMAXI2NativeW(axi, port, w_buffer_depth, base_address, with_read_modify_write)
 
         # Read path --------------------------------------------------------------------------------
-        self.submodules.read = LiteDRAMAXI2NativeR(axi, port, r_buffer_depth, base_address)
+        self.submodules.read = LiteDRAMAXI2NativeR(axi, port, r_buffer_depth, base_address, with_read_modify_write)
 
         # Write / Read arbitration -----------------------------------------------------------------
         arbiter = RoundRobin(2, SP_CE)
@@ -220,3 +337,11 @@ class LiteDRAMAXI2Native(Module):
         for i, master in enumerate([self.write, self.read]):
             self.comb += arbiter.request[i].eq(master.cmd_request)
             self.comb += master.cmd_grant.eq(arbiter.grant == i)
+
+        # Read-Modify-Write ------------------------------------------------------------------------
+        if with_read_modify_write:
+            self.comb += [
+                # Connect RMW-Request/Grant between Write and Read paths.
+                self.read.rmw_request.eq(self.write.rmw_request),
+                self.write.rmw_rgrant.eq(self.read.rmw_rgrant),
+            ]

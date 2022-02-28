@@ -194,7 +194,7 @@ class TestAXI(unittest.TestCase):
         # DUT
         axi_port  = LiteDRAMAXIPort(32, 32, 8)
         dram_port = LiteDRAMNativePort("both", 32, 32)
-        dut       = LiteDRAMAXI2Native(axi_port, dram_port)
+        dut       = LiteDRAMAXI2Native(axi_port, dram_port, with_read_modify_write=True)
         mem       = DRAMMemory(32, 1024)
 
         # Generate writes/reads
