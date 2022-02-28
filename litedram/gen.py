@@ -673,9 +673,9 @@ class LiteDRAMCore(SoCCore):
                     assert port.get("data_width", None) is not None
                     ecc_port  = self.sdram.crossbar.get_port()
                     user_port = LiteDRAMNativePort(
-                        mode = ecc_port.mode,
+                        mode          = ecc_port.mode,
                         address_width = ecc_port.address_width,
-                        data_width = port.get("data_width")
+                        data_width    = port.get("data_width")
                     )
                     ecc = LiteDRAMNativePortECC(user_port, ecc_port, with_error_injection=False)
                     setattr(self.submodules, f"ecc_{name}", ecc)
@@ -735,7 +735,11 @@ class LiteDRAMCore(SoCCore):
                     data_width    = user_port.data_width,
                     address_width = user_port.address_width + log2_int(user_port.data_width//8),
                     id_width      = port["id_width"])
-                axi2native = LiteDRAMAXI2Native(axi_port, user_port)
+                axi2native = LiteDRAMAXI2Native(
+                    axi  = axi_port,
+                    port = user_port,
+                    with_read_modify_write = port.get("ecc", False)
+                )
                 self.submodules += axi2native
                 platform.add_extension(get_axi_user_port_ios(name,
                         axi_port.address_width,
