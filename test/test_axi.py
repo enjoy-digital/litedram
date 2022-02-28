@@ -17,6 +17,8 @@ from test.common import *
 from litex.gen.sim import *
 
 
+# Burst/Beat Helpers -------------------------------------------------------------------------------
+
 class Burst:
     def __init__(self, addr, type=BURST_FIXED, len=0, size=0):
         self.addr = addr
@@ -42,21 +44,29 @@ class Beat:
     def __init__(self, addr):
         self.addr = addr
 
+# Access Helpers -----------------------------------------------------------------------------------
 
 class Access(Burst):
-    def __init__(self, addr, data, id, **kwargs):
+    def __init__(self, addr, data, strb, id, **kwargs):
         Burst.__init__(self, addr, **kwargs)
         self.data = data
+        self.strb = strb
         self.id   = id
 
 
-class Write(Access):
-    pass
+class Write(Access): pass
 
+class Read(Access): pass
 
-class Read(Access):
-    pass
+def strb_to_mask(strb, data_width):
+    mask = 0
+    for i in reversed(range(data_width//8)):
+        mask <<= 8
+        if (strb >> i) & 0x1:
+            mask |= 0xff
+    return mask
 
+# Test AXI -----------------------------------------------------------------------------------------
 
 class TestAXI(unittest.TestCase):
     def _test_axi2native(self,
@@ -97,7 +107,7 @@ class TestAXI(unittest.TestCase):
         def writes_data_generator(axi_port, writes):
             prng = random.Random(42)
             for write in writes:
-                for i, data in enumerate(write.data):
+                for i, (data, strb) in enumerate(zip(write.data, write.strb)):
                     while prng.randrange(100) < w_valid_random:
                         yield
                     # Send data
@@ -107,7 +117,7 @@ class TestAXI(unittest.TestCase):
                     else:
                         yield axi_port.w.last.eq(0)
                     yield axi_port.w.data.eq(data)
-                    yield axi_port.w.strb.eq(2**axi_port.w.strb.nbits - 1)
+                    yield axi_port.w.strb.eq(strb)
                     yield
                     while (yield axi_port.w.ready) == 0:
                         yield
@@ -157,7 +167,7 @@ class TestAXI(unittest.TestCase):
             while not axi_port.reads_enable:
                 yield
             for read in reads:
-                for i, data in enumerate(read.data):
+                for i, (data, strb) in enumerate(zip(read.data, read.strb)):
                     # Wait data / response
                     yield axi_port.r.ready.eq(0)
                     yield
@@ -167,7 +177,10 @@ class TestAXI(unittest.TestCase):
                         yield
                     yield axi_port.r.ready.eq(1)
                     yield
-                    if (yield axi_port.r.data) != data:
+                    data_ref = data                    & strb_to_mask(strb, axi_port.data_width)
+                    data_cur = (yield axi_port.r.data) & strb_to_mask(strb, axi_port.data_width)
+                    if data_ref != data_cur:
+                        print(f"ref: {data_ref:08x} vs cur: {data_cur:08x}")
                         self.reads_data_errors += 1
                     if (yield axi_port.r.id) != read.id:
                         self.reads_id_errors += 1
@@ -189,13 +202,14 @@ class TestAXI(unittest.TestCase):
         writes = []
         offset = 1
         for i in range(naccesses):
-            _id   = prng.randrange(2**8) if id_rand_enable else i
-            _len  = prng.randrange(32) if len_rand_enable else i
-            _data = [prng.randrange(2**32) if data_rand_enable else j for j in range(_len + 1)]
-            writes.append(Write(offset, _data, _id, type=BURST_INCR, len=_len, size=log2_int(32//8)))
+            _id   = prng.randrange(2**8)        if   id_rand_enable else i
+            _len  = prng.randrange(32)          if  len_rand_enable else i
+            _data = [prng.randrange(2**32)      if data_rand_enable else    j for j in range(_len + 1)]
+            _strb = [prng.randrange(2**(32//8)) if data_rand_enable else 0xff for j in range(_len + 1)]
+            writes.append(Write(offset, _data, _strb, _id, type=BURST_INCR, len=_len, size=log2_int(32//8)))
             offset += _len + 1
         # Dummy reads to ensure datas have been written before the effective reads start.
-        dummy_reads = [Read(1023, [0], 0, type=BURST_FIXED, len=0, size=log2_int(32//8)) for _ in range(32)]
+        dummy_reads = [Read(1023, [0], [2**(32//8)-1], 0, type=BURST_FIXED, len=0, size=log2_int(32//8)) for _ in range(32)]
         reads = dummy_reads + writes
 
         # Simulation
@@ -212,7 +226,7 @@ class TestAXI(unittest.TestCase):
             mem.read_handler(dram_port, rdata_valid_random=r_valid_random),
             mem.write_handler(dram_port, wdata_ready_random=w_ready_random)
         ]
-        run_simulation(dut, generators)
+        run_simulation(dut, generators, vcd_name="sim.vcd")
         #mem.show_content()
         self.assertEqual(self.writes_id_errors, 0)
         self.assertEqual(self.reads_data_errors, 0)
