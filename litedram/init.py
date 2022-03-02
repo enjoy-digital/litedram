@@ -462,6 +462,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
         f0rc03 = 0x030 | phy_settings.rcd_ca_cs_drive    # F0RC03: CA/CS drive strength
         f0rc04 = 0x040 | phy_settings.rcd_odt_cke_drive  # F0RC04: ODT/CKE drive strength
         f0rc05 = 0x050 | phy_settings.rcd_clk_drive      # F0RC04: ODT/CKE drive strength
+        f0rc0d = 0x0D0 | 0x4                             # F0RC0D: DIMM configration; 4: Direct DualCS RDIMM
 
         f0rc0a = 0x0A0 | coarse_speed                    # F0RC0A: coarse speed selection and PLL bypass
         f0rc3x = 0x300 | fine_speed                      # F0RC3x: fine speed selection
@@ -472,6 +473,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
             ("Load RCD F0RC03", f0rc03, 7, cmds["MODE_REGISTER"], 100),
             ("Load RCD F0RC04", f0rc04, 7, cmds["MODE_REGISTER"], 100),
             ("Load RCD F0RC05", f0rc05, 7, cmds["MODE_REGISTER"], 100),
+            ("Load RCD F0RC0D", f0rc0d, 7, cmds["MODE_REGISTER"], 100),
             ("Load RCD F0RC0A", f0rc0a, 7, cmds["MODE_REGISTER"], 100),
             ("Load RCD F0RC3X", f0rc3x, 7, cmds["MODE_REGISTER"], 100),
         ]
@@ -1036,6 +1038,22 @@ def get_sdram_phy_py_header(phy_settings, timing_settings):
 
     r += "init_sequence = [\n"
     for comment, a, ba, cmd, delay in init_sequence:
-        r += f"    (\"{comment}\", {a}, {ba}, {cmd.lower()}, {delay}),\n"
+        invert_masks = [(0, 0), ]
+        if phy_settings.is_rdimm:
+            assert phy_settings.memtype == "DDR4"
+            # JESD82-31A page 38
+            #
+            # B-side chips have certain usually-inconsequential address and BA
+            # bits inverted by the RCD to reduce SSO current. For mode register
+            # writes, however, we must compensate for this. BG[1] also directs
+            # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
+            #
+            # The 'ba != 7' is because we don't do this to writes to the RCD
+            # itself.
+            if ba != 7:
+                invert_masks.append((0b10101111111000, 0b1111))
+
+        for a_inv, ba_inv in invert_masks:
+            r += f"    (\"{comment}\", {a ^ a_inv:d}, {ba ^ ba_inv:d}, {cmd.lower()}, {delay}),\n"
     r += "]\n"
     return r
