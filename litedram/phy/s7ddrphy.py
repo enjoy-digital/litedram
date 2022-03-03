@@ -47,11 +47,12 @@ class S7DDRPHY(Module, AutoCSR):
         addressbits = len(pads.a)
         if memtype == "DDR4":
             addressbits += 3 # cas_n/ras_n/we_n multiplexed with address
-        bankbits    = len(pads.ba)
+        bankbits    = len(pads.ba) if memtype != "DDR4" else len(pads.ba) + len(pads.bg)
         nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits    = len(pads.dq)
         nphases     = nphases
         assert databits%8 == 0
+        x4_dimm_mode = (databits / len(pads.dqs_p)) == 4
 
         # Parameters -------------------------------------------------------------------------------
         iodelay_tap_average = {
@@ -162,6 +163,7 @@ class S7DDRPHY(Module, AutoCSR):
         # DFI Interface ----------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, max(4, nphases))
         if memtype == "DDR4":
+            dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
             self.submodules += DDR4DFIMux(self.dfi, dfi)
 
         # # #
@@ -213,20 +215,22 @@ class S7DDRPHY(Module, AutoCSR):
                 )
 
             # Commands -----------------------------------------------------------------------------
+            pads_ba = Signal(bankbits)
             commands = {
                 # Pad name: (DFI name,   Pad type (required or optional))
                 "reset_n" : ("reset_n", "optional"),
                 "cs_n"    : ("cs_n",    "optional"),
                 "a"       : ("address", "required"),
-                "ba"      : ("bank"   , "required"),
+                pads_ba   : ("bank"   , "required"),
                 "ras_n"   : ("ras_n"  , "required"),
                 "cas_n"   : ("cas_n"  , "required"),
                 "we_n"    : ("we_n"   , "required"),
                 "cke"     : ("cke"    , "optional"),
                 "odt"     : ("odt"    , "optional"),
+                "act_n"   : ("act_n"  , "optional"),
             }
             for pad_name, (dfi_name, pad_type) in commands.items():
-                pad = getattr(pads, pad_name, None)
+                pad = pad_name if isinstance(pad_name, Signal) else getattr(pads, pad_name, None)
                 if (pad is None):
                     if (pad_type == "required"):
                         raise ValueError(f"DRAM pad {pad_name} required but not found in pads.")
@@ -265,6 +269,10 @@ class S7DDRPHY(Module, AutoCSR):
                             o_DATAOUT  = pad[i],
                         )
 
+            self.comb += pads.ba.eq(pads_ba)
+            if hasattr(pads, "bg"):
+                self.comb += pads.bg.eq(pads_ba[len(pads.ba):])
+
         # DQS --------------------------------------------------------------------------------------
         dqs_oe        = Signal()
         dqs_preamble  = Signal()
@@ -279,56 +287,62 @@ class S7DDRPHY(Module, AutoCSR):
         self.submodules += dqs_oe_delay, dqs_pattern
         self.comb += dqs_oe_delay.input.eq(dqs_preamble | dqs_oe | dqs_postamble)
         for i in range(databits//8):
-            dqs_o_no_delay = Signal()
-            dqs_o_delayed  = Signal()
-            dqs_t          = Signal()
             dqs_bitslip    = BitSlip(8,
                 i      = dqs_pattern.o,
                 rst    = (self._dly_sel.storage[i] & wdly_dq_bitslip_rst) | self._rst.storage,
                 slp    = self._dly_sel.storage[i] & wdly_dq_bitslip,
                 cycles = 1)
-            self.submodules += dqs_bitslip
-            self.specials += Instance("OSERDESE2",
-                p_SERDES_MODE    = "MASTER",
-                p_DATA_WIDTH     = 2*nphases,
-                p_TRISTATE_WIDTH = 1,
-                p_DATA_RATE_OQ   = "DDR",
-                p_DATA_RATE_TQ   = "BUF",
-                i_RST    = ResetSignal("sys") | self._rst.storage,
-                i_CLK    = ClockSignal(ddr_clk) if with_odelay else ClockSignal(ddr_clk+"_dqs"),
-                i_CLKDIV = ClockSignal("sys"),
-                **{f"i_D{n+1}": dqs_bitslip.o[n] for n in range(8)},
-                i_OCE    = 1,
-                o_OFB    = dqs_o_no_delay if with_odelay else Signal(),
-                o_OQ     = Signal() if with_odelay else dqs_o_no_delay,
-                i_TCE    = 1,
-                i_T1     = ~dqs_oe_delay.output,
-                o_TQ     = dqs_t,
-            )
-            if with_odelay:
-                self.specials += Instance("ODELAYE2",
-                    p_DELAY_SRC             = "ODATAIN",
-                    p_SIGNAL_PATTERN        = "DATA",
-                    p_CINVCTRL_SEL          = "FALSE",
-                    p_HIGH_PERFORMANCE_MODE = "TRUE",
-                    p_REFCLK_FREQUENCY      = iodelay_clk_freq/1e6,
-                    p_PIPE_SEL              = "FALSE",
-                    p_ODELAY_TYPE           = "VARIABLE",
-                    p_ODELAY_VALUE          = half_sys8x_taps,
-                    i_C        = ClockSignal("sys"),
-                    i_LD       = (self._dly_sel.storage[i] & wdly_dqs_rst) | self._rst.storage,
-                    i_CE       = self._dly_sel.storage[i] & wdly_dqs_inc,
-                    i_LDPIPEEN = 0,
-                    i_INC      = 1,
-                    o_ODATAIN  = dqs_o_no_delay,
-                    o_DATAOUT  = dqs_o_delayed
+            if x4_dimm_mode:
+                dqs_pads = ((pads.dqs_p[i*2], pads.dqs_n[i*2]), (pads.dqs_p[i*2 + 1], pads.dqs_n[i*2 + 1]))
+            else:
+                dqs_pads = ((pads.dqs_p[i], pads.dqs_n[i]), )
+
+            for j, (dqs_p, dqs_n) in enumerate(dqs_pads):
+                dqs_o_no_delay = Signal()
+                dqs_o_delayed  = Signal()
+                dqs_t          = Signal()
+                self.submodules += dqs_bitslip
+                self.specials += Instance("OSERDESE2",
+                    p_SERDES_MODE    = "MASTER",
+                    p_DATA_WIDTH     = 2*nphases,
+                    p_TRISTATE_WIDTH = 1,
+                    p_DATA_RATE_OQ   = "DDR",
+                    p_DATA_RATE_TQ   = "BUF",
+                    i_RST    = ResetSignal("sys") | self._rst.storage,
+                    i_CLK    = ClockSignal(ddr_clk) if with_odelay else ClockSignal(ddr_clk+"_dqs"),
+                    i_CLKDIV = ClockSignal("sys"),
+                    **{f"i_D{n+1}": dqs_bitslip.o[n] for n in range(8)},
+                    i_OCE    = 1,
+                    o_OFB    = dqs_o_no_delay if with_odelay else Signal(),
+                    o_OQ     = Signal() if with_odelay else dqs_o_no_delay,
+                    i_TCE    = 1,
+                    i_T1     = ~dqs_oe_delay.output,
+                    o_TQ     = dqs_t,
                 )
-            self.specials += Instance("IOBUFDS",
-                i_T    = dqs_t,
-                i_I    = dqs_o_delayed if with_odelay else dqs_o_no_delay,
-                io_IO  = pads.dqs_p[i],
-                io_IOB = pads.dqs_n[i],
-            )
+                if with_odelay:
+                    self.specials += Instance("ODELAYE2",
+                        p_DELAY_SRC             = "ODATAIN",
+                        p_SIGNAL_PATTERN        = "DATA",
+                        p_CINVCTRL_SEL          = "FALSE",
+                        p_HIGH_PERFORMANCE_MODE = "TRUE",
+                        p_REFCLK_FREQUENCY      = iodelay_clk_freq/1e6,
+                        p_PIPE_SEL              = "FALSE",
+                        p_ODELAY_TYPE           = "VARIABLE",
+                        p_ODELAY_VALUE          = half_sys8x_taps,
+                        i_C        = ClockSignal("sys"),
+                        i_LD       = (self._dly_sel.storage[i] & wdly_dqs_rst) | self._rst.storage,
+                        i_CE       = self._dly_sel.storage[i] & wdly_dqs_inc,
+                        i_LDPIPEEN = 0,
+                        i_INC      = 1,
+                        o_ODATAIN  = dqs_o_no_delay,
+                        o_DATAOUT  = dqs_o_delayed
+                    )
+                self.specials += Instance("IOBUFDS",
+                    i_T    = dqs_t,
+                    i_I    = dqs_o_delayed if with_odelay else dqs_o_no_delay,
+                    io_IO  = dqs_p,
+                    io_IOB = dqs_n,
+                )
 
         # DM ---------------------------------------------------------------------------------------
         if hasattr(pads, "dm"):
