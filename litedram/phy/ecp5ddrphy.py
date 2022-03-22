@@ -246,14 +246,14 @@ class ECP5DDRPHY(Module, AutoCSR):
         dqs_preamble  = Signal()
         for i in range(databits//8):
             # DQSBUFM
-            dqs_i   = Signal()
-            dqsr90  = Signal()
-            dqsw270 = Signal()
-            dqsw    = Signal()
-            rdpntr  = Signal(3)
-            wrpntr  = Signal(3)
-            rdly    = Signal(7)
-            burstdet  = Signal()
+            dqs_i    = Signal()
+            dqsr90   = Signal()
+            dqsw270  = Signal()
+            dqsw     = Signal()
+            rdpntr   = Signal(3)
+            wrpntr   = Signal(3)
+            rdly     = Signal(3)
+            burstdet = Signal()
             self.sync += [
                 If(self._dly_sel.storage[i] & self._rdly_dq_rst.re, rdly.eq(0)),
                 If(self._dly_sel.storage[i] & self._rdly_dq_inc.re, rdly.eq(rdly + 1))
