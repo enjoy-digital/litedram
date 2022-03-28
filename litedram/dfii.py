@@ -78,15 +78,23 @@ class DFIInjector(Module, AutoCSR):
 
         # # #
 
-        self.comb += If(self._control.fields.sel,  # Hardware
-                If(self.ext_dfi_sel,  # Hardware through ext_dfi
+        self.comb += [
+            # Hardware Control.
+            # -----------------
+            If(self._control.fields.sel,
+                # Through External DFI.
+                If(self.ext_dfi_sel,
                     self.ext_dfi.connect(self.master)
-                ).Else(  # Hardware by LiteDRAM controller
+                # Through LiteDRAM controller.
+                ).Else(
                     self.slave.connect(self.master)
                 )
-            ).Else(  # Software through CSRs
+            # Software Control (through CSRs).
+            # --------------------------------
+            ).Else(
                 csr_dfi.connect(self.master)
             )
+        ]
         for i in range(nranks):
             self.comb += [phase.cke[i].eq(self._control.fields.cke) for phase in csr_dfi.phases]
             self.comb += [phase.odt[i].eq(self._control.fields.odt) for phase in csr_dfi.phases if hasattr(phase, "odt")]
