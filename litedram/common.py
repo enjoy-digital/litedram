@@ -217,6 +217,7 @@ class PhySettings(Settings):
             cl: int,  # latency (DRAM clk) from READ command to first data
             read_latency: int,  # latency (MC clk) from DFI.rddata_en to DFI.rddata_valid
             write_latency: int,  # latency (MC clk) from DFI.wrdata_en to DFI.wrdata
+            strobes: Optional[int] = None,  # number of DQS lines
             nranks: int = 1,  # number of DRAM ranks
             cwl: Optional[int] = None,  # latency (DRAM clk) from WRITE command to first data
             cmd_latency: Optional[int] = None,  # additional command latency (MC clk)
@@ -229,6 +230,8 @@ class PhySettings(Settings):
             write_latency_calibration: bool = False,
             read_leveling: bool = False,
         ):
+        if strobes is None:
+            strobes = databits // 8
         self.set_attributes(locals())
         self.cwl = cl if cwl is None else cwl
         self.is_rdimm = False
