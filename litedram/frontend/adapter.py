@@ -32,7 +32,8 @@ class LiteDRAMNativePortCDC(Module):
             layout  = [("we", 1), ("addr", address_width)],
             cd_from = port_from.clock_domain,
             cd_to   = port_to.clock_domain,
-            depth   = cmd_depth)
+            depth   = cmd_depth,
+            with_common_rst = False)
         self.submodules += cmd_cdc
         self.submodules += stream.Pipeline(port_from.cmd, cmd_cdc, port_to.cmd)
 
@@ -41,7 +42,8 @@ class LiteDRAMNativePortCDC(Module):
                 layout  = [("data", data_width), ("we", data_width//8)],
                 cd_from = port_from.clock_domain,
                 cd_to   = port_to.clock_domain,
-                depth   = wdata_depth)
+                depth   = wdata_depth,
+                with_common_rst = False)
             self.submodules += wdata_cdc
             self.submodules += stream.Pipeline(port_from.wdata, wdata_cdc, port_to.wdata)
 
@@ -50,7 +52,8 @@ class LiteDRAMNativePortCDC(Module):
                 layout  = [("data", data_width)],
                 cd_from = port_to.clock_domain,
                 cd_to   = port_from.clock_domain,
-                depth   = rdata_depth)
+                depth   = rdata_depth,
+                with_common_rst = False)
             self.submodules += rdata_cdc
             self.submodules += stream.Pipeline(port_to.rdata, rdata_cdc, port_from.rdata)
 
