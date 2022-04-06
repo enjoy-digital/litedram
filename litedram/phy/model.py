@@ -387,6 +387,7 @@ sdram_module_nphases = {
     "DDR2":  2,
     "DDR3":  4,
     "DDR4":  4,
+    "DDR5":  8,
 }
 
 def get_sdram_phy_settings(memtype, data_width, clk_freq):
@@ -428,6 +429,7 @@ def get_sdram_phy_settings(memtype, data_width, clk_freq):
         wrphase         = get_sys_phase(nphases, cwl_sys_latency, cwl)
         read_latency    = cl_sys_latency + 5
         write_latency   = cwl_sys_latency - 1
+    # TODO: Add case for DDR5
 
     sdram_phy_settings = {
         "nphases":       nphases,

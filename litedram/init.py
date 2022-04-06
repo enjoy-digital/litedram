@@ -809,6 +809,8 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
         "RPC":    get_rpc_phy_init_sequence,
         "DDR4":   get_ddr4_phy_init_sequence,
         "LPDDR4": get_lpddr4_phy_init_sequence,
+        # TODO: need to create a correct init sequence for DDR5
+        "DDR5": get_lpddr4_phy_init_sequence,
         "LPDDR5": get_lpddr5_phy_init_sequence,
     }[phy_settings.memtype](phy_settings, timing_settings)
 
@@ -972,7 +974,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
         r.define("DDRX_MR_WRLVL_RESET", mr[1])
         r.define("DDRX_MR_WRLVL_BIT", 7)
         r.newline()
-    elif phy_settings.memtype in ["LPDDR4"]:
+    elif phy_settings.memtype in ["LPDDR4", "DDR5"]: # TODO Need to verify what needs to be done here for DDR5
         # Write leveling enabled by MR2[7]
         r.define("DDRX_MR_WRLVL_ADDRESS", 2)
         r.define("DDRX_MR_WRLVL_RESET", mr[2])
