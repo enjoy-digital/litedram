@@ -116,8 +116,9 @@ class LiteDRAMAXI2NativeW(Module):
         ]
 
         # Write Data -------------------------------------------------------------------------------
+        axi_w_connect = Signal(reset=1)
         self.comb += [
-            axi.w.connect(w_buffer.sink),
+            If(axi_w_connect, axi.w.connect(w_buffer.sink)),
             w_buffer.source.connect(port.wdata, omit={"strb", "id"}),
             port.wdata.we.eq(w_buffer.source.strb)
         ]
@@ -146,8 +147,7 @@ class LiteDRAMAXI2NativeW(Module):
 
             # Disconnect regular Datapath on a Read-Modify-Write cycle.
             self.comb += If(self.rmw_request,
-                axi.w.ready.eq(0),
-                w_buffer.sink.valid.eq(0)
+                axi_w_connect.eq(0),
             )
 
             # Read-Modify-Write FSM.
@@ -185,7 +185,7 @@ class LiteDRAMAXI2NativeW(Module):
                 port.rdata.ready.eq(1),
                 If(port.rdata.valid,
                     # Keep previous unmasked data and replace masked data with new ones.
-                    NextValue(rmw_data, (port.rdata.data & (~rmw_mask) | (axi.w.data & rmw_mask))),
+                    NextValue(rmw_data, (port.rdata.data & ~rmw_mask) | (axi.w.data & rmw_mask)),
                     NextState("WRITE")
                 )
             )
