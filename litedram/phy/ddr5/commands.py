@@ -111,27 +111,24 @@ class DFIPhaseAdapter(Module):
             "MRS": 0b111,
         }
 
-        def cmds(cmd1, cmd2, valid=1):
-            return self.cmd1.set(cmd1) + self.cmd2.set(cmd2) + [self.valid.eq(valid)]
+        def cmds(cmd2, valid=1):
+            return self.cmd1.set("DESELECT") + self.cmd2.set(cmd2) + [self.valid.eq(valid)]
 
         self.comb += If(dfi_phase.cs_n == 0,  # require dfi.cs_n
             Case(dfi_cmd, {
-                _cmd["ACT"]: cmds("ACTIVATE-1", "ACTIVATE-2"),
-                _cmd["RD"]:  cmds("READ-1",     "CAS-2"),
-                _cmd["WR"]:  Case(masked_write, {
-                    0: cmds("WRITE-1",      "CAS-2"),
-                    1: cmds("MASK WRITE-1", "CAS-2"),
-                }),
-                _cmd["PRE"]: cmds("DESELECT",   "PRECHARGE"),
-                _cmd["REF"]: cmds("DESELECT",   "REFRESH"),
+                _cmd["ACT"]: cmds("ACTIVATE"),
+                _cmd["RD"]:  cmds("READ"),
+                _cmd["WR"]:  cmds("WRITE"),
+                _cmd["PRE"]: cmds("PRECHARGE"),
+                _cmd["REF"]: cmds("REFRESH"),
                 # Use bank address to select command type
                 _cmd["ZQC"]: Case(dfi_phase.bank, {
-                    SpecialCmd.MPC: cmds("DESELECT", "MPC"),
-                    SpecialCmd.MRR: cmds("MRR-1",    "CAS-2"),
-                    "default": cmds("DESELECT", "DESELECT", valid=0),
+                    SpecialCmd.MPC: cmds("MPC"),
+                    SpecialCmd.MRR: cmds("MRR"),
+                    "default": cmds("DESELECT", valid=0),
                 }),
-                _cmd["MRS"]: cmds("MRW-1",    "MRW-2"),
-                "default": cmds("DESELECT", "DESELECT", valid=0),
+                _cmd["MRS"]: cmds("MRW"),
+                "default": cmds("DESELECT", valid=0),
             })
         )
 
