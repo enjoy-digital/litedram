@@ -119,8 +119,8 @@ class DFIPhaseAdapter(Module):
                 _cmd["ACT"]: cmds("ACTIVATE"),
                 _cmd["RD"]:  cmds("READ"),
                 _cmd["WR"]:  cmds("WRITE"),
-                _cmd["PRE"]: cmds("PRECHARGE"),
-                _cmd["REF"]: cmds("REFRESH"),
+                _cmd["PRE"]: cmds("PRECHARGE ALL"),
+                _cmd["REF"]: cmds("REFRESH ALL"),
                 # Use bank address to select command type
                 _cmd["ZQC"]: Case(dfi_phase.bank, {
                     SpecialCmd.MPC: cmds("MPC"),
@@ -158,21 +158,33 @@ class Command(Module):
     # String description of 1st and 2nd edge of each command, later parsed to
     # construct the value. CS is assumed to be H for 1st edge and L for 2nd edge.
     # TODO: Fix currently fake truth table to be consistent with the JEDEC specs for DDR5
+    # Here, in contrary to LPDDR4's table, first element of array is related to CS low,
+    # the second to CS high. Something will have to be changed, because other parts of code
+    # rely on order from LPDDR4, but there are commands that have only row related to low.
+    # At this moment I keep it as it is now.
     TRUTH_TABLE = {
-        "MRW-1":        ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "MRW-2":        ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "MRR-1":        ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "REFRESH":      ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "ACTIVATE-1":   ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "ACTIVATE-2":   ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "WRITE-1":      ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "MASK WRITE-1": ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "READ-1":       ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "CAS-2":        ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "PRECHARGE":    ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "MPC":          ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
-        "DESELECT":     ["H H H H H H H H H H H H H H", "H H H H H H H H H H H H H H"],
+        "ACTIVATE":      ["L L L R0 R1 R2 R3 BA0 BA1 BG0 BG1 BG2 CID0 CID1 CID2",
+                          "R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16, CID3/R17"],
+        "READ":          ["H L H H H BL BA0 BA1 BG0 BG1 BG2 CID0 CID1 CID2",
+                          "C2 C3 C4 C5 C6 C7 C8 C9 C10 V H V V CID3"],
+        "WRITE":         ["H L H H L BL BA0 BA1 BG0 BG1 BG2 CID0 CID1 CID2",
+                          "V C3 C4 C5 C6 C7 C8 C9 C10 V H WRP V CID3"],
+        "MRR":           ["H L H L H MRA0 MRA1 MRA2 MRA3 MRA4 MRA5 MRA6 MRA7 V",
+                          "L L V V V V V V V V CW V V V"],
+        "MRW":           ["H L H L L MRA0 MRA1 MRA2 MRA3 MRA4 MRA5 MRA6 MRA7 V",
+                          "OP0 OP1 OP2 OP3 OP4 OP5 OP6 OP7 V V CW V V V"],
+        "PRECHARGE ALL": ["H H L H L CID3 V V V V L CID0 CID1 CID2",
+                          "X X X X X X X X X X X X X X"],
+        "REFRESH ALL":   ["H H L L H CID3 V V VorRIR VorH L CID0 CID1 CID2",
+                          "X X X X X X X X X X X X X X"],
+        "MPC":           ["H H H H L OP0 OP1 OP2 OP3 OP4 OP5 OP6 OP7 V",
+                          "X X X X X X X X X X X X X X"],
+        "DESELECT":      ["X X X X X X X X X X X X X X",
+                          "X X X X X X X X X X X X X X"]
     }
+
+    # BL is abbreviation for BL*=L from table from standard
+    # WRP is abbreviation for WR_partial=L
 
     for cmd, (subcmd1, subcmd2) in TRUTH_TABLE.items():
         assert len(subcmd1.split()) == 14, (cmd, subcmd1)
@@ -197,18 +209,23 @@ class Command(Module):
         assert len(self.dfi.address) >= 17, "At least 17 DFI addressbits needed for row address"
         mr_address = self.dfi.bank if is_mrw else self.dfi.address
         rules = {
-            "H":       lambda: 1,  # high
-            "L":       lambda: 0,  # low
-            "V":       lambda: 0,  # defined logic
-            "X":       lambda: 0,  # don't care
-            "BL":      lambda: 0,  # on-the-fly burst length, not using
-            "AP":      lambda: self.dfi.address[10],  # auto precharge
-            "AB":      lambda: self.dfi.address[10],  # all banks
-            "BA(\d+)": lambda i: self.dfi.bank[i],
-            "R(\d+)":  lambda i: self.dfi.address[i],  # row
-            "C(\d+)":  lambda i: self.dfi.address[i],  # column
-            "MA(\d+)": lambda i: mr_address[i],  # mode register address
-            "OP(\d+)": lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
+            "H":        lambda: 1,  # high
+            "L":        lambda: 0,  # low
+            "V":        lambda: 0,  # defined logic
+            "X":        lambda: 0,  # don't care
+            "BL":       lambda: 1, # disable placing into the alternate Burst mode
+            "WRP":      lambda: 1, # disable partial write
+            "VorRIR":   lambda: 0, # Assume for now that Refresh Management Required bit is 0
+            "VorH":     lambda: 1, # depending Refresh Management Required bit, it has to be just valid or H, let's use 1 as more general
+            "BG(\d+)":  lambda i: self.dfi.bank[i + 2], # bank group address
+            "BA(\d+)":  lambda i: self.dfi.bank[i], # bank address
+            "R(\d+)":   lambda i: self.dfi.address[i],  # row
+            "C(\d+)":   lambda i: self.dfi.address[i],  # column
+            "MRA(\d+)": lambda i: mr_address[i],  # mode register address
+            "OP(\d+)":  lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
+            "CID(\d+)": lambda: 0, # chip id; used for 3DS stacking, need to be just valid if unused
+            "CID3/R17": lambda: self.dfi.address[17], # we chose R17 variant, because 3DS stacking is unsupported for now
+            "CW":       lambda: 0 # control word
         }
         for pattern, value in rules.items():
             m = re.match(pattern, bit)
