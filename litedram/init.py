@@ -797,6 +797,74 @@ def get_lpddr5_phy_init_sequence(phy_settings, timing_settings):
 
     return init_sequence, mr
 
+# DDR5 -------------------------------------------------------------------------------------------
+
+def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
+    cl = phy_settings.cl
+    bl = 16
+
+    mr = {}
+    mr[0] = reg([
+        (0, 2, 0b00),
+        (2, 5, {  # RL assuming DBI-RD disabled
+            22: 0b00000,
+            24: 0b00001,
+            26: 0b00010,
+            28: 0b00011,
+            30: 0b00100,
+            32: 0b00101,
+            34: 0b00110,
+            36: 0b00111,
+        }[cl]),
+    ])
+    mr[6] = reg([(0, 8, 0b00000000)])
+    mr[10] = reg([(0, 8, 0b00101101)])
+    mr[11] = reg([(0, 8, 0b00101101)])
+    mr[12] = reg([(0, 8, 0b00101101)])
+    mr[15] = reg([(0, 3, 0b011)])
+    mr[23] = reg([(0, 2, 0b00)])
+    mr[32] = reg([(0, 6, 0b000000)])
+    mr[33] = reg([(0, 6, 0b000000)])
+    mr[34] = reg([
+        (0, 3, 0b000),
+        (3, 3, 0b001)
+    ])
+    mr[35] = reg([
+        (0, 3, 0b011),
+        (3, 3, 0b011)
+    ])
+    mr[36] = reg([
+        (0, 3, 0b000)
+    ])
+
+    from litedram.phy.lpddr4.commands import SpecialCmd, MPC
+
+    def cmd_mr(ma):
+        # Convert Mode Register Write command to DFI as expected by PHY
+        op = mr[ma]
+        assert ma < 2**6, "MR address too big: {}".format(ma)
+        assert op < 2**8, "MR opcode too big: {}".format(op)
+        a = op
+        ba = ma
+        return ("Load More Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
+
+    def ck(sec):
+        # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
+        fmax = 200e6
+        return int(math.ceil(sec * fmax))
+
+    init_sequence = [
+        # Perform "Reset Initialization with Stable Power"
+        # We assume that loading the bistream will take at least tINIT1 (200us)
+        # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
+        ("Release reset", 0x0000, 0, cmds["UNRESET"], ck(2e-3)),
+        *[cmd_mr(ma) for ma in sorted(mr.keys())],
+        ("ZQ Calibration start", MPC.ZQC_START, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
+        ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
+    ]
+
+    return init_sequence, mr
+
 # Init Sequence ------------------------------------------------------------------------------------
 
 def get_sdram_phy_init_sequence(phy_settings, timing_settings):
@@ -809,9 +877,8 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
         "RPC":    get_rpc_phy_init_sequence,
         "DDR4":   get_ddr4_phy_init_sequence,
         "LPDDR4": get_lpddr4_phy_init_sequence,
-        # TODO: need to create a correct init sequence for DDR5
-        "DDR5": get_lpddr4_phy_init_sequence,
         "LPDDR5": get_lpddr5_phy_init_sequence,
+        "DDR5":   get_ddr5_phy_init_sequence,
     }[phy_settings.memtype](phy_settings, timing_settings)
 
 # C Header -----------------------------------------------------------------------------------------
