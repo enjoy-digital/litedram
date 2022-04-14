@@ -81,21 +81,17 @@ class DFIPhaseAdapter(Module):
             assert len(masked_write) == 1
 
         # CS/CA values for 4 SDR cycles
-        self.cs = Signal(4)
-        self.ca = Array([Signal(14) for _ in range(4)])
+        self.cs = Signal(2)
+        self.ca = Array([Signal(14) for _ in range(2)])
         self.valid = Signal()
 
         # # #
 
-        self.submodules.cmd1 = Command(dfi_phase)
-        self.submodules.cmd2 = Command(dfi_phase)
+        self.submodules.cmd = Command(dfi_phase)
         self.comb += [
-            self.cs[:2].eq(self.cmd1.cs),
-            self.cs[2:].eq(self.cmd2.cs),
-            self.ca[0].eq(self.cmd1.ca[0]),
-            self.ca[1].eq(self.cmd1.ca[1]),
-            self.ca[2].eq(self.cmd2.ca[0]),
-            self.ca[3].eq(self.cmd2.ca[1]),
+            self.cs.eq(self.cmd.cs),
+            self.ca[0].eq(self.cmd.ca[0]),
+            self.ca[1].eq(self.cmd.ca[1]),
         ]
 
         dfi_cmd = Signal(3)
@@ -111,8 +107,8 @@ class DFIPhaseAdapter(Module):
             "MRS": 0b111,
         }
 
-        def cmds(cmd2, valid=1):
-            return self.cmd1.set("DESELECT") + self.cmd2.set(cmd2) + [self.valid.eq(valid)]
+        def cmds(cmd, valid=1):
+            return self.cmd.set(cmd) + [self.valid.eq(valid)]
 
         self.comb += If(dfi_phase.cs_n == 0,  # require dfi.cs_n
             Case(dfi_cmd, {
@@ -156,14 +152,12 @@ class Command(Module):
     """
 
     # String description of 1st and 2nd edge of each command, later parsed to
-    # construct the value. CS is assumed to be H for 1st edge and L for 2nd edge.
-    # TODO: Fix currently fake truth table to be consistent with the JEDEC specs for DDR5
-    # Here, in contrary to LPDDR4's table, first element of array is related to CS low,
-    # the second to CS high. Something will have to be changed, because other parts of code
-    # rely on order from LPDDR4, but there are commands that have only row related to low.
-    # At this moment I keep it as it is now.
+    # construct the value. CS is assumed to be L for 1st edge and H for 2nd edge.
+    # It is in countrary to the table in LPDDR4.
+
     TRUTH_TABLE = {
-        "ACTIVATE":      ["L L L R0 R1 R2 R3 BA0 BA1 BG0 BG1 BG2 CID0 CID1 CID2",
+        # 2-cycle commands:
+        "ACTIVATE":      ["L L R0 R1 R2 R3 BA0 BA1 BG0 BG1 BG2 CID0 CID1 CID2",
                           "R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16, CID3/R17"],
         "READ":          ["H L H H H BL BA0 BA1 BG0 BG1 BG2 CID0 CID1 CID2",
                           "C2 C3 C4 C5 C6 C7 C8 C9 C10 V H V V CID3"],
@@ -173,6 +167,7 @@ class Command(Module):
                           "L L V V V V V V V V CW V V V"],
         "MRW":           ["H L H L L MRA0 MRA1 MRA2 MRA3 MRA4 MRA5 MRA6 MRA7 V",
                           "OP0 OP1 OP2 OP3 OP4 OP5 OP6 OP7 V V CW V V V"],
+        # 1-cycle commands:
         "PRECHARGE ALL": ["H H L H L CID3 V V V V L CID0 CID1 CID2",
                           "X X X X X X X X X X X X X X"],
         "REFRESH ALL":   ["H H L L H CID3 V V VorRIR VorH L CID0 CID1 CID2",
@@ -186,22 +181,27 @@ class Command(Module):
     # BL is abbreviation for BL*=L from table from standard
     # WRP is abbreviation for WR_partial=L
 
-    for cmd, (subcmd1, subcmd2) in TRUTH_TABLE.items():
-        assert len(subcmd1.split()) == 14, (cmd, subcmd1)
-        assert len(subcmd2.split()) == 14, (cmd, subcmd2)
+    for cmd, (ca_pins_low, ca_pins_high) in TRUTH_TABLE.items():
+        assert len(ca_pins_low.split()) == 14, (cmd, ca_pins_low)
+        assert len(ca_pins_high.split()) == 14, (cmd, ca_pins_high)
 
     def __init__(self, dfi_phase):
         self.cs = Signal(2)
-        self.ca = Array([Signal(14), Signal(14)])  # CS high, CS low
+        self.ca = Array([Signal(14), Signal(14)])  # CS low, CS high
         self.dfi = dfi_phase
 
     def set(self, cmd):
         ops = []
         for cyc, description in enumerate(self.TRUTH_TABLE[cmd]):
             for bit, bit_desc in enumerate(description.split()):
-                ops.append(self.ca[cyc][bit].eq(self.parse_bit(bit_desc, is_mrw=cmd.startswith("MRW"))))
-        if cmd != "DESELECT":
+                ops.append(self.ca[cyc][bit].eq(self.parse_bit(bit_desc, is_mrw=(cmd == "MRW"))))
+
+        if cmd == "DESELECT":
             ops.append(self.cs[0].eq(1))
+        else:
+            ops.append(self.cs[0].eq(0)) # CS needs to be low on the first cycle
+            ops.append(self.cs[1].eq(1)) # CS needs to be high on the second cycle
+
         return ops
 
     def parse_bit(self, bit, is_mrw):
@@ -213,19 +213,19 @@ class Command(Module):
             "L":        lambda: 0,  # low
             "V":        lambda: 0,  # defined logic
             "X":        lambda: 0,  # don't care
-            "BL":       lambda: 1, # disable placing into the alternate Burst mode
-            "WRP":      lambda: 1, # disable partial write
-            "VorRIR":   lambda: 0, # Assume for now that Refresh Management Required bit is 0
-            "VorH":     lambda: 1, # depending Refresh Management Required bit, it has to be just valid or H, let's use 1 as more general
-            "BG(\d+)":  lambda i: self.dfi.bank[i + 2], # bank group address
-            "BA(\d+)":  lambda i: self.dfi.bank[i], # bank address
+            "BL":       lambda: 1,  # disable placing into the alternate Burst mode
+            "WRP":      lambda: 1,  # disable partial write
+            "VorRIR":   lambda: 0,  # Assume for now that Refresh Management Required bit is 0
+            "VorH":     lambda: 1,  # depending Refresh Management Required bit, it has to be just valid or H, let's use 1 as more general
+            "BG(\d+)":  lambda i: self.dfi.bank[i + 2],  # bank group address
+            "BA(\d+)":  lambda i: self.dfi.bank[i],  # bank address
             "R(\d+)":   lambda i: self.dfi.address[i],  # row
             "C(\d+)":   lambda i: self.dfi.address[i],  # column
             "MRA(\d+)": lambda i: mr_address[i],  # mode register address
             "OP(\d+)":  lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
-            "CID(\d+)": lambda: 0, # chip id; used for 3DS stacking, need to be just valid if unused
-            "CID3/R17": lambda: self.dfi.address[17], # we chose R17 variant, because 3DS stacking is unsupported for now
-            "CW":       lambda: 0 # control word
+            "CID(\d+)": lambda i: 0,  # chip id; used for 3DS stacking, need to be just valid if unused
+            "CID3/R17": lambda: self.dfi.address[17],  # we chose R17 variant, because 3DS stacking is unsupported for now
+            "CW":       lambda: 0  # control word
         }
         for pattern, value in rules.items():
             m = re.match(pattern, bit)
