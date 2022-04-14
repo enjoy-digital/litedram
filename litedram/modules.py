@@ -1174,13 +1174,13 @@ class MT60B2G8HB48B(SDRAMModule):
     # TODO: These data below is taken from the LPDDR4 module. It needs to be changed and verified
 
     # TODO: find a way to select if we need masked writes
-    tccd = {"write": (8, None), "masked-write": (32, None)}
+    tccd = {"write": (32, 20)}
 
     # TODO: tZQCS - performing ZQC during runtime will require modifying Refresher, as ZQC has to be done in 2 phases
     # 1. ZQCAL START is issued 2. ZQCAL LATCH updates the values, the time START->LATCH tZQCAL=1us, so we cannot block
     # the controller during this time, after ZQCAL LATCH we have to wait tZQLAT=max(8ck, 30ns)
-    technology_timings = _TechnologyTimings(tREFI=32e6/8192, tWTR=(8, 10), tCCD=tccd["masked-write"], tRRD=(4, 10), tZQCS=None)
+    technology_timings = _TechnologyTimings(tREFI=32e6/8192, tWTR=(16, 10), tCCD=tccd["write"], tRRD=(8, 5), tZQCS=(30, 8))
     speedgrade_timings = {
-        "1866": _SpeedgradeTimings(tRP=(3, 21), tRCD=(4, 18), tWR=(4, 18), tRFC=180, tFAW=40, tRAS=(3, 42)),  # TODO: tRAS_max
+        "1866": _SpeedgradeTimings(tRP=15.00, tRCD=15.00, tWR=15, tRFC=260, tFAW=40, tRAS=32),  # TODO: tRAS_max
     }
     speedgrade_timings["default"] = speedgrade_timings["1866"]
