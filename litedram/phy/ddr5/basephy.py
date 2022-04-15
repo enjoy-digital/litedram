@@ -97,17 +97,17 @@ class DDR5PHY(Module, AutoCSR):
         def get_cl_cw(memtype, tck):
             # MT53E256M16D1, No DBI, Set A
             f_to_cl_cwl = OrderedDict()
-            f_to_cl_cwl[ 532e6] = ( 6,  4)
-            f_to_cl_cwl[1066e6] = (10,  6)
-            f_to_cl_cwl[1600e6] = (14,  8)
-            f_to_cl_cwl[2132e6] = (20, 10)
-            f_to_cl_cwl[2666e6] = (24, 12)
-            f_to_cl_cwl[3200e6] = (28, 14)
-            f_to_cl_cwl[3732e6] = (32, 16)
-            f_to_cl_cwl[4266e6] = (36, 18)
-            for f, (cl, cwl) in f_to_cl_cwl.items():
+            f_to_cl_cwl[ 532e6] = 20
+            f_to_cl_cwl[1066e6] = 22
+            f_to_cl_cwl[1600e6] = 24
+            f_to_cl_cwl[2132e6] = 26
+            f_to_cl_cwl[2666e6] = 28
+            f_to_cl_cwl[3200e6] = 30
+            f_to_cl_cwl[3732e6] = 32
+            f_to_cl_cwl[4266e6] = 34
+            for f, cl in f_to_cl_cwl.items():
                 if tck >= 2/f:
-                    return cl, cwl
+                    return cl
             raise ValueError
 
         # Bitslip introduces latency from 1 up to `cycles + 1`
@@ -120,7 +120,8 @@ class DDR5PHY(Module, AutoCSR):
         # Commands read from adapters are delayed on ConstBitSlips
         ca_latency      = 1
 
-        cl, cwl         = get_cl_cw(memtype, tck)
+        cl              = get_cl_cw(memtype, tck)
+        cwl = cl - 2
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
         # For reads we need to account for ser+des latency to make sure we get the data in-phase with sys clock
