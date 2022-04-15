@@ -109,7 +109,7 @@ class CommandsSim(Module, AutoCSR):
         self.active_banks = Array([Signal() for _ in range(8)])
         self.active_rows = Array([Signal(18) for _ in range(8)])
         # Connection to DataSim
-        self.data_en = TappedDelayLine(ntaps=20)
+        self.data_en = TappedDelayLine(ntaps=26)
         self.data = data_cdc
         self.submodules += self.data, self.data_en
 
@@ -121,7 +121,7 @@ class CommandsSim(Module, AutoCSR):
         self.cs_low     = Signal(14)
         self.cs_high    = Signal(14)
         self.handle_cmd = Signal()
-        self.mpc_op     = Signal(7)
+        self.mpc_op     = Signal(8)
 
         cmds_enabled = Signal()
         cmd_handlers = OrderedDict(
@@ -129,19 +129,19 @@ class CommandsSim(Module, AutoCSR):
             REF = self.refresh_handler(),
             ACT = self.activate_handler(),
             PRE = self.precharge_handler(),
-            CAS = self.cas_handler(),
+            #CAS = self.cas_handler(),
             MPC = self.mpc_handler(),
         )
         self.comb += [
             If(cmds_enabled,
-                If(Cat(cs.taps) == 0b10,
+                If(Cat(cs.taps) == 0b01,
                     self.handle_cmd.eq(1),
-                    self.cs_high.eq(ca.taps[1]),
-                    self.cs_low.eq(ca.taps[0]),
+                    self.cs_low.eq(ca.taps[1]),
+                    self.cs_high.eq(ca.taps[0]),
                 )
             ),
             If(self.handle_cmd & ~reduce(or_, cmd_handlers.values()),
-                self.log.error("Unexpected command: cs_high=0b%06b cs_low=0b%06b", self.cs_high, self.cs_low)
+                self.log.error("Unexpected command: cs_low=0b%14b cs_high=0b%14b", self.cs_low, self.cs_high)
             ),
         ]
 
@@ -253,102 +253,68 @@ class CommandsSim(Module, AutoCSR):
             )
         return matched
 
-    def cmd_two_step(self, name, cond1, body1, cond2, body2):
-        state1, state2 = f"{name}-1", f"{name}-2"
-        matched = Signal()
-
-        fsm = FSM()
-        fsm.act(state1,
-            If(self.handle_cmd & cond1,
-                self.log.debug(state1),
-                matched.eq(1),
-                *body1,
-                NextState(state2)
-            )
-        )
-        fsm.act(state2,
-            If(self.handle_cmd,
-                If(cond2,
-                    self.log.debug(state2),
-                    matched.eq(1),
-                    *body2
-                ).Else(
-                    self.log.error(f"Waiting for {state2} but got unexpected cs_high=0b%06b cs_low=0b%06b", self.cs_high, self.cs_low)
-                ),
-                NextState(state1)  # always back to first
-            )
-        )
-        self.submodules += fsm
-
-        return matched
-
     def mrw_handler(self):
-        ma  = Signal(6)
-        op7 = Signal()
+        ma  = Signal(8)
         op  = Signal(8)
-        return self.cmd_two_step("MRW",
-            cond1 = self.cs_high[:5] == 0b00110,
-            body1 = [
-                NextValue(ma, self.cs_low),
-                NextValue(op7, self.cs_high[5]),
-            ],
-            cond2 = self.cs_high[:5] == 0b10110,
-            body2 = [
+        return self.cmd_one_step("MWR",
+            cond = self.cs_low[:5] == 0b00101,
+            comb = [
                 self.log.info("MRW: MR[%d] = 0x%02x", ma, op),
-                op.eq(Cat(self.cs_low, self.cs_high[5], op7)),
+                op.eq(self.cs_high[:7]),
+                ma.eq(self.cs_low[5:12]),
                 NextValue(self.mode_regs[ma], op),
-            ]
+            ],
         )
 
     def refresh_handler(self):
+        bank = Signal(2)
         return self.cmd_one_step("REFRESH",
-            cond = self.cs_high[:5] == 0b01000,
+            cond = self.cs_low[:5] == 0b10011,
             comb = [
-                If(reduce(or_, self.active_banks),
-                    self.log.error("Not all banks precharged during REFRESH")
+                If(~self.cs_low[10],
+                    self.log.info("REF: all banks"),
+                    If(reduce(or_, self.active_banks),
+                        self.log.error("Not all banks precharged during REFRESH")
+                    )
+                ).Else(
+                    self.log.info("REF: bank = %d", bank),
+                    bank.eq(self.cs_low[6:7]),
                 )
             ]
         )
 
     def activate_handler(self):
-        bank = Signal(3)
-        row1 = Signal(7)
-        row2 = Signal(10)
-        row  = Signal(17)
-        return self.cmd_two_step("ACTIVATE",
-            cond1 = self.cs_high[:2] == 0b01,
-            body1 = [
-                NextValue(bank, self.cs_low[:3]),
-                NextValue(row1, Cat(self.cs_low[4:6], self.cs_high[2:6], self.cs_low[3])),
-            ],
-            cond2 = self.cs_high[:2] == 0b11,
-            body2 = [
+        bank = Signal(5)
+        row  = Signal(18)
+        return self.cmd_one_step("ACTIVATE",
+            cond = self.cs_low[:2] == 0b00,
+            comb = [
+                bank.eq(self.cs_low[6:10]),
+                row.eq(Cat(self.cs_low[2:5], self.cs_high)),
                 self.log.info("ACT: bank=%d row=%d", bank, row),
-                row2.eq(Cat(self.cs_low, self.cs_high[2:])),
-                row.eq(Cat(row2, row1)),
                 NextValue(self.active_banks[bank], 1),
                 NextValue(self.active_rows[bank], row),
                 If(self.active_banks[bank],
                     self.log.error("ACT on already active bank: bank=%d row=%d", bank, row)
                 ),
-            ]
+            ],
         )
 
     def precharge_handler(self):
-        bank = Signal(3)
+        bank = Signal(2)
         return self.cmd_one_step("PRECHARGE",
-            cond = self.cs_high[:5] == 0b10000,
+            cond = self.cs_low[:5] == 0b11011,
             comb = [
-                If(self.cs_high[5],
+                If(~self.cs_low[10],
                     self.log.info("PRE: all banks"),
                     bank.eq(2**len(bank) - 1),
                 ).Else(
                     self.log.info("PRE: bank = %d", bank),
-                    bank.eq(self.cs_low[:3]),
+                    bank.eq(self.cs_low[6:7]),
                 ),
             ],
             sync = [
-                If(self.cs_high[5],
+                If(~self.cs_low[10],
                     *[self.active_banks[b].eq(0) for b in range(2**len(bank))]
                 ).Else(
                     self.active_banks[bank].eq(0),
@@ -361,76 +327,12 @@ class CommandsSim(Module, AutoCSR):
 
     def mpc_handler(self):
         cases = {value: self.log.info(f"MPC: {name}") for name, value in MPC.__members__.items()}
-        cases["default"] = self.log.error("Invalid MPC op=0b%07b", self.mpc_op)
+        cases["default"] = self.log.error("Invalid MPC op=0b%08b", self.mpc_op)
         return self.cmd_one_step("MPC",
-            cond = self.cs_high[:5] == 0b00000,
+            cond = self.cs_low[:5] == 0b01111,
             comb = [
-                self.mpc_op.eq(Cat(self.cs_low, self.cs_high[5])),
-                If(self.cs_high[5] == 0,
-                    self.log.info("MPC: NOOP")
-                ).Else(
-                    Case(self.mpc_op, cases)
-                )
-            ],
-        )
-
-    def cas_handler(self):
-        cas1 = Signal(5)
-        cas2 = 0b10010
-        cas1_cmds = {
-            "WRITE":        0b00100,
-            "READ":         0b00010,
-        }
-
-        bank           = Signal(5)
-        row            = Signal(18)
-        col9           = Signal()
-        col            = Signal(11)
-        burst_len      = Signal()
-        auto_precharge = Signal()
-
-        return self.cmd_two_step("CAS",
-            cond1 = reduce(or_, [self.cs_high[:5] == cmd for cmd in cas1_cmds.values()]),
-            body1 = [
-                NextValue(cas1, self.cs_high[:5]),
-                NextValue(bank, self.cs_low[:3]),
-                NextValue(col9, self.cs_low[4]),
-                NextValue(burst_len, self.cs_high[5]),
-                NextValue(auto_precharge, self.cs_low[5]),
-            ],
-            cond2 = self.cs_high[:5] == cas2,
-            body2 = [
-                row.eq(self.active_rows[bank]),
-                col.eq(Cat(Replicate(0, 2), self.cs_low, self.cs_high[5], col9)),
-                # command type info
-                Case(cas1, {
-                    value: self.log.info(f"{name}: bank=%d row=%d col=%d", bank, row, col)
-                    for name, value in cas1_cmds.items()
-                }),
-                # sanity checks
-                If(~self.active_banks[bank],
-                    self.log.error("CAS command on inactive bank: bank=%d row=%d col=%d", bank, row, col)
-                ),
-                If((cas1 != cas1_cmds["READ"]) & (col[:4] != 0),
-                    self.log.error("WRITE commands must use C[3:2]=0 (must be aligned to full burst)")
-                ),
-                If(self.mode_regs[3][6] | self.mode_regs[3][7],
-                    self.log.error("DBI currently not supported in the simulator")
-                ),
-                If(auto_precharge,
-                    self.log.info("AUTO-PRECHARGE: bank=%d row=%d", bank, row),
-                    NextValue(self.active_banks[bank], 0),
-                ),
-                # pass the data to data simulator
-                self.data_en.input.eq(1),
-                self.data.sink.valid.eq(1),
-                self.data.sink.we.eq(cas1 != cas1_cmds["READ"]),
-                self.data.sink.bank.eq(bank),
-                self.data.sink.row.eq(row),
-                self.data.sink.col.eq(col),
-                If(~self.data.sink.ready,
-                    self.log.error("Simulator data FIFO overflow")
-                )
+                self.mpc_op.eq(self.cs_low[5:12]),
+                Case(self.mpc_op, cases)
             ],
         )
 

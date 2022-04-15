@@ -840,7 +840,7 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
         (0, 3, 0b000)
     ])
 
-    from litedram.phy.lpddr4.commands import SpecialCmd, MPC
+    from litedram.phy.ddr5.commands import SpecialCmd, MPC
 
     def cmd_mr(ma):
         # Convert Mode Register Write command to DFI as expected by PHY

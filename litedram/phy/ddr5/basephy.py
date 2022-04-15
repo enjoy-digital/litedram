@@ -178,7 +178,7 @@ class DDR5PHY(Module, AutoCSR):
             write_latency = write_latency,
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
-            bitslips      = 16,
+            bitslips      = 2, # TODO: Just to speed up simulation
         )
 
         # DFI Interface ----------------------------------------------------------------------------
@@ -219,7 +219,7 @@ class DDR5PHY(Module, AutoCSR):
         )
 
         self.comb += self.out.cs.eq(self.commands.cs)
-        for bit in range(6):
+        for bit in range(14):
             self.comb += self.out.ca[bit].eq(self.commands.ca[bit])
 
         # DQ ---------------------------------------------------------------------------------------
