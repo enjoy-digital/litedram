@@ -74,20 +74,18 @@ class DDR5PHY(Module, AutoCSR):
         Name of the PHY (concrete implementation).
     cmd_delay : int
         Used to force cmd delay during initialization in BIOS.
-    masked_write : bool
-        Use MASKED-WRITE commands if True else use WRITE commands (data masking will not work).
     extended_overlaps_check : bool
         Include additional command overlap checks. Makes no sense during normal operation
         (when the DRAM controller works correctly), so use `False` to avoid wasting resources.
     """
     def __init__(self, pads, *,
                  sys_clk_freq, ser_latency, des_latency, phytype,
-                 cmd_delay=None, masked_write=True, extended_overlaps_check=False):
+                 cmd_delay=None, extended_overlaps_check=False):
         self.pads        = pads
         self.memtype     = memtype     = "DDR5"
         self.nranks      = nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         self.databits    = databits    = len(pads.dq)
-        self.addressbits = addressbits = 17  # for activate row address
+        self.addressbits = addressbits = 18 # for activate row address
         self.bankbits    = bankbits    = 8  # 5 bankbits, but we use 8 for Mode Register address in MRS
         self.nphases     = nphases     = 8
         self.tck         = tck         = 1 / (nphases*sys_clk_freq)
@@ -190,7 +188,7 @@ class DDR5PHY(Module, AutoCSR):
 
         # # #
 
-        adapters = [DFIPhaseAdapter(phase, masked_write=masked_write) for phase in self.dfi.phases]
+        adapters = [DFIPhaseAdapter(phase) for phase in self.dfi.phases]
         self.submodules += adapters
 
         # Now prepare the data by converting the sequences on adapters into sequences on the pads.

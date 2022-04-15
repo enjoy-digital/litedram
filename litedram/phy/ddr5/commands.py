@@ -59,10 +59,6 @@ class DFIPhaseAdapter(Module):
     ----------
     dfi_phase : Record(dfi.phase_description), in
         Input from a single DFI phase.
-    masked_write : bool or Signal(1)
-        Specifies how DFI write command (cas_n=0, ras_n=1, we_n=0) is interpreted, either
-        as DDR5 WRITE or MASKED-WRITE. MASKED-WRITE requires larger tCCD, but WRITE does
-        not permit masking of data, so if masking is needed MASKED-WRITE has to be used.
 
     Attributes
     ----------
@@ -73,13 +69,7 @@ class DFIPhaseAdapter(Module):
     valid : Signal, out
         Indicates that a valid command is presented on the `cs` and `ca` outputs.
     """
-    def __init__(self, dfi_phase, masked_write=True):
-        assert isinstance(masked_write, (bool, Signal)), "Use boolean (static) or Signal (dynamic)"
-        if isinstance(masked_write, bool):
-            masked_write = int(masked_write)
-        else:
-            assert len(masked_write) == 1
-
+    def __init__(self, dfi_phase):
         # CS/CA values for 4 SDR cycles
         self.cs = Signal(2)
         self.ca = Array([Signal(14) for _ in range(2)])
@@ -206,7 +196,7 @@ class Command(Module):
 
     def parse_bit(self, bit, is_mrw):
         assert len(self.dfi.bank) >= 8, "At least 8 DFI bankbits needed for Mode Register address"
-        assert len(self.dfi.address) >= 17, "At least 17 DFI addressbits needed for row address"
+        assert len(self.dfi.address) >= 18, "At least 18 DFI addressbits needed for row address"
         mr_address = self.dfi.bank if is_mrw else self.dfi.address
         rules = {
             "H":        lambda: 1,  # high
