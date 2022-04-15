@@ -33,17 +33,14 @@ class MPC(enum.IntEnum):
     DFI ZQC command is used to send DDR5 MPC. DFI address A[6:0] is
     translated to MPC op code OP[6:0]. DFI bank address BA should be 0.
     """
-    NOP           = 0b0000000  # only OP[6] must be 0
-    READ_FIFO     = 0b1000001
-    READ_DQ_CAL   = 0b1000011
-    # RFU           0b1000101
-    WRITE_FIFO    = 0b1000111
-    # RFU           0b1001001
-    START_DQS_OSC = 0b1001011
-    STOP_DQS_OSC  = 0b1001101
-    ZQC_START     = 0b1001111
-    ZQC_LATCH     = 0b1010001
 
+    CS_EX     = 0b00000000 # Exit CS training mode
+    CS_EN     = 0b00000001 # Enter CS training mode
+    DLL_RST   = 0b00000010
+    CA_EN     = 0b00000011 # Enter CA training mode
+    ZQC_LATCH = 0b00000100
+    ZQC_START = 0b00000101
+    RFU       = 0b00001101
 
 class DFIPhaseAdapter(Module):
     """Translates DFI phase into DDR5 command (2- or 4-cycle)
@@ -123,7 +120,7 @@ class Command(Module):
     """DDR5 command decoder
 
     Decodes a command from single DFI phase into DDR5 "small command"
-    consisting of 2 CS values and 2 CA[5:0] values.
+    consisting of 2 CS values and 2 CA[13:0] values.
 
     DDR5 "small commands" are transmited over 2 clock cycles. In the first
     cycle CS is driven high and in the second cycle it stays low. In each
