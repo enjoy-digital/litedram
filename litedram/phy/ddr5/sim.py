@@ -129,8 +129,9 @@ class CommandsSim(Module, AutoCSR):
             REF = self.refresh_handler(),
             ACT = self.activate_handler(),
             PRE = self.precharge_handler(),
-            RD =  self.read_handler(),
+            RD  = self.read_handler(),
             MPC = self.mpc_handler(),
+            WR  = self.write_handler(),
         )
 
         self.comb += [
@@ -364,6 +365,33 @@ class CommandsSim(Module, AutoCSR):
             ],
         )
 
+    def write_handler(self):
+        bank = Signal(5)
+        row  = Signal(18)
+        col  = Signal(9)
+        return self.cmd_one_step("READ",
+            cond = self.cs_low[:5] == 0b01101,
+            comb = [
+                If(~self.cs_low[5],
+                   self.log.warn("Command places the DRAM into alternate burst mode; currently unsupported")
+                   ),                
+                bank.eq(self.cs_low[6:11]),
+                row.eq(self.active_rows[bank]),
+                col.eq(self.cs_high[1:9]),
+                self.log.info("WRITE: bank=%d row=%d, col=%d", bank, row, col),
+
+                # pass the data to data simulator
+                self.data_en.input.eq(1),
+                self.data.sink.valid.eq(1),
+                self.data.sink.we.eq(1),
+                self.data.sink.bank.eq(bank),
+                self.data.sink.row.eq(row),
+                self.data.sink.col.eq(col),
+                If(~self.data.sink.ready,
+                    self.log.error("Simulator data FIFO overflow")
+                ),
+            ],
+        )
 # Data ---------------------------------------------------------------------------------------------
 
 class DataSim(Module, AutoCSR):
