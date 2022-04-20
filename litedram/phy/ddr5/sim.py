@@ -342,6 +342,8 @@ class CommandsSim(Module, AutoCSR):
         bank = Signal(5)
         row  = Signal(18)
         col  = Signal(9)
+        auto_precharge = Signal()
+
         return self.cmd_one_step("READ",
             cond = self.cs_low[:5] == 0b11101,
             comb = [
@@ -351,7 +353,17 @@ class CommandsSim(Module, AutoCSR):
                 bank.eq(self.cs_low[6:11]),
                 row.eq(self.active_rows[bank]),
                 col.eq(self.cs_high[:9]),
+                auto_precharge.eq(~self.cs_high[10]),
                 self.log.info("READ: bank=%d row=%d, col=%d", bank, row, col),
+
+                # sanity checks
+                If(~self.active_banks[bank],
+                    self.log.error("READ command on inactive bank: bank=%d row=%d col=%d", bank, row, col)
+                ),
+                If(auto_precharge,
+                    self.log.info("AUTO-PRECHARGE: bank=%d row=%d", bank, row),
+                    NextValue(self.active_banks[bank], 0),
+                ),
 
                 # pass the data to data simulator
                 self.data_en.input.eq(1),
@@ -369,6 +381,8 @@ class CommandsSim(Module, AutoCSR):
         bank = Signal(5)
         row  = Signal(18)
         col  = Signal(9)
+        auto_precharge = Signal()
+
         return self.cmd_one_step("READ",
             cond = self.cs_low[:5] == 0b01101,
             comb = [
@@ -378,7 +392,17 @@ class CommandsSim(Module, AutoCSR):
                 bank.eq(self.cs_low[6:11]),
                 row.eq(self.active_rows[bank]),
                 col.eq(self.cs_high[1:9]),
+                auto_precharge.eq(~self.cs_high[10]),
                 self.log.info("WRITE: bank=%d row=%d, col=%d", bank, row, col),
+
+                # sanity checks
+                If(~self.active_banks[bank],
+                    self.log.error("WRITE command on inactive bank: bank=%d row=%d col=%d", bank, row, col)
+                ),
+                If(auto_precharge,
+                    self.log.info("AUTO-PRECHARGE: bank=%d row=%d", bank, row),
+                    NextValue(self.active_banks[bank], 0),
+                ),
 
                 # pass the data to data simulator
                 self.data_en.input.eq(1),
