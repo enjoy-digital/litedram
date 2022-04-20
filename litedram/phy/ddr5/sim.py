@@ -304,7 +304,7 @@ class CommandsSim(Module, AutoCSR):
     def precharge_handler(self):
         bank = Signal(2)
         return self.cmd_one_step("PRECHARGE",
-            cond = self.cs_low[:5] == 0b11011,
+            cond = self.cs_low[:5] == 0b01011,
             comb = [
                 If(~self.cs_low[10],
                     self.log.info("PRE: all banks"),
