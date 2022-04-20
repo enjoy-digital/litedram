@@ -262,8 +262,8 @@ class CommandsSim(Module, AutoCSR):
             cond = self.cs_low[:5] == 0b00101,
             comb = [
                 self.log.info("MRW: MR[%d] = 0x%02x", ma, op),
-                op.eq(self.cs_high[:7]),
-                ma.eq(self.cs_low[5:12]),
+                op.eq(self.cs_high[:8]),
+                ma.eq(self.cs_low[5:13]),
                 NextValue(self.mode_regs[ma], op),
             ],
         )
@@ -280,7 +280,7 @@ class CommandsSim(Module, AutoCSR):
                     )
                 ).Else(
                     self.log.info("REF: bank = %d", bank),
-                    bank.eq(self.cs_low[6:7]),
+                    bank.eq(self.cs_low[6:8]),
                 )
             ]
         )
@@ -291,8 +291,8 @@ class CommandsSim(Module, AutoCSR):
         return self.cmd_one_step("ACTIVATE",
             cond = self.cs_low[:2] == 0b00,
             comb = [
-                bank.eq(self.cs_low[6:10]),
-                row.eq(Cat(self.cs_low[2:5], self.cs_high)),
+                bank.eq(self.cs_low[6:11]),
+                row.eq(Cat(self.cs_low[2:6], self.cs_high)),
                 self.log.info("ACT: bank=%d row=%d", bank, row),
                 NextValue(self.active_banks[bank], 1),
                 NextValue(self.active_rows[bank], row),
@@ -312,7 +312,7 @@ class CommandsSim(Module, AutoCSR):
                     bank.eq(2**len(bank) - 1),
                 ).Else(
                     self.log.info("PRE: bank = %d", bank),
-                    bank.eq(self.cs_low[6:7]),
+                    bank.eq(self.cs_low[6:8]),
                 ),
             ],
             sync = [
@@ -333,7 +333,7 @@ class CommandsSim(Module, AutoCSR):
         return self.cmd_one_step("MPC",
             cond = self.cs_low[:5] == 0b01111,
             comb = [
-                self.mpc_op.eq(self.cs_low[5:12]),
+                self.mpc_op.eq(self.cs_low[5:13]),
                 Case(self.mpc_op, cases)
             ],
         )
