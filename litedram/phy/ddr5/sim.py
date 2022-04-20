@@ -258,7 +258,7 @@ class CommandsSim(Module, AutoCSR):
     def mrw_handler(self):
         ma  = Signal(8)
         op  = Signal(8)
-        return self.cmd_one_step("MWR",
+        return self.cmd_one_step("MRW",
             cond = self.cs_low[:5] == 0b00101,
             comb = [
                 self.log.info("MRW: MR[%d] = 0x%02x", ma, op),
