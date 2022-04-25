@@ -43,14 +43,10 @@ class MPC(enum.IntEnum):
     RFU       = 0b00001101
 
 class DFIPhaseAdapter(Module):
-    """Translates DFI phase into DDR5 command (2- or 4-cycle)
+    """Translates DFI phase into DDR5 command (2-cycle)
 
-    DDR5 "full command" consists of 1 or 2 "small commands". Each "small command"
-    is transmitted over 2 DRAM clock cycles (SDR). This module translates DFI commands
-    on a single DFI phase into sequencs on CS/CA[5:0] buses (4 cycles). Some DFI commands
-    consist only of a single "small command". To make counting DRAM timings easier, such
-    a "small command" shall be sent on the 2nd slot (i.e. 3rd and 4th cycle). All timings
-    are then counted starting from CS low on the 4th cycle.
+    Each DDR5 command is transmitted over 2 DRAM clock cycles (SDR). This module translates DFI commands
+    on a single DFI phase into sequencs on CS_n/CA[13:0] buses (2 cycles).
 
     Parameters
     ----------
@@ -59,10 +55,10 @@ class DFIPhaseAdapter(Module):
 
     Attributes
     ----------
-    cs : Signal(4), out
-        Values of CS on 4 subsequent DRAM SDR clock cycles.
-    ca : Array(4, Signal(6)), out
-        Values of CA[5:0] on 4 subsequent DRAM SDR clock cycles.
+    cs : Signal(2), out
+        Values of CS on 2 subsequent DRAM SDR clock cycles.
+    ca : Array(2, Signal(14)), out
+        Values of CA[13:0] on 2 subsequent DRAM SDR clock cycles.
     valid : Signal, out
         Indicates that a valid command is presented on the `cs` and `ca` outputs.
     """
@@ -76,7 +72,7 @@ class DFIPhaseAdapter(Module):
 
         self.submodules.cmd = Command(dfi_phase)
         self.comb += [
-            self.cs.eq(self.cmd.cs),
+            self.cs.eq(~self.cmd.cs_n),
             self.ca[0].eq(self.cmd.ca[0]),
             self.ca[1].eq(self.cmd.ca[1]),
         ]
@@ -119,28 +115,27 @@ class DFIPhaseAdapter(Module):
 class Command(Module):
     """DDR5 command decoder
 
-    Decodes a command from single DFI phase into DDR5 "small command"
+    Decodes a command from single DFI phase into DDR5 command
     consisting of 2 CS values and 2 CA[13:0] values.
 
-    DDR5 "small commands" are transmited over 2 clock cycles. In the first
-    cycle CS is driven high and in the second cycle it stays low. In each
-    of the cycles the bits on CA[5:0] are latched and interpreted differently.
-    This module translates a DFI command into the values of CS/CA that shall
+    DDR5 commands are transmited over 2 clock cycles. In the first
+    cycle CS_n is driven low and in the second cycle it stays high. In each
+    of the cycles the bits on CA[13:0] are latched and interpreted differently.
+    This module translates a DFI command into the values of CS_n/CA that shall
     be transmitted over 2 DRAM clock cycles.
 
     Attributes
     ----------
     dfi : Record(dfi.phase_description), in
         Input from single DFI phase.
-    cs : Signal(2), out
-        CS values over 2 subsequent DRAM SDR clock cycles.
+    cs_n : Signal(2), out
+        CS_n values over 2 subsequent DRAM SDR clock cycles.
     ca : Array(2, Signal(14)), out
         CA[13:0] values over 2 subsequent DRAM SDR clock cycles.
     """
 
     # String description of 1st and 2nd edge of each command, later parsed to
-    # construct the value. CS is assumed to be L for 1st edge and H for 2nd edge.
-    # It is in countrary to the table in LPDDR4.
+    # construct the value. CS_n is assumed to be L for 1st edge and H for 2nd edge.
 
     TRUTH_TABLE = {
         # 2-cycle commands:
@@ -173,8 +168,8 @@ class Command(Module):
         assert len(ca_pins_high.split()) == 14, (cmd, ca_pins_high)
 
     def __init__(self, dfi_phase):
-        self.cs = Signal(2)
-        self.ca = Array([Signal(14), Signal(14)])  # CS low, CS high
+        self.cs_n = Signal(2)
+        self.ca = Array([Signal(14), Signal(14)])  # CS_n low, CS_n high
         self.dfi = dfi_phase
 
     def set(self, cmd):
@@ -184,10 +179,10 @@ class Command(Module):
                 ops.append(self.ca[cyc][bit].eq(self.parse_bit(bit_desc, is_mrw=(cmd == "MRW"))))
 
         if cmd == "DESELECT":
-            ops.append(self.cs[0].eq(1))
+            ops.append(self.cs_n[0].eq(1))
         else:
-            ops.append(self.cs[0].eq(0)) # CS needs to be low on the first cycle
-            ops.append(self.cs[1].eq(1)) # CS needs to be high on the second cycle
+            ops.append(self.cs_n[0].eq(0)) # CS_n needs to be low on the first cycle
+            ops.append(self.cs_n[1].eq(1)) # CS_n needs to be high on the second cycle
 
         return ops
 
