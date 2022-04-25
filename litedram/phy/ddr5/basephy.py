@@ -22,10 +22,10 @@ from litedram.phy.ddr5.commands import DFIPhaseAdapter
 class DDR5Output:
     """Unserialized output of DDR5PHY. Has to be serialized by concrete implementation."""
     def __init__(self, nphases, databits):
-        # Pads: RESET_N, CS, CK, CA[13:0], DQ[7:0], DQS
+        # Pads: RESET_N, CS_N, CK, CA[13:0], DQ[7:0], DQS
         self.clk     = Signal(2*nphases)
         self.reset_n = Signal(nphases)
-        self.cs      = Signal(nphases)
+        self.cs_n     = Signal(nphases)
         self.ca      = [Signal(nphases)   for _ in range(14)]
         self.dq_o    = [Signal(2*nphases) for _ in range(databits)]
         self.dq_i    = [Signal(2*nphases) for _ in range(databits)]
@@ -211,14 +211,14 @@ class DDR5PHY(Module, AutoCSR):
         # overlap. No overlap should be guaranteed by the controller based on module timings, but
         # we also include an overlaps check in PHY logic.
         self.submodules.commands = CommandsPipeline(adapters,
-            cs_ser_width = len(self.out.cs),
+            cs_ser_width = len(self.out.cs_n),
             ca_ser_width = len(self.out.ca[0]),
             ca_nbits     = len(self.out.ca),
             cmd_nphases_span = 4,
             extended_overlaps_check = extended_overlaps_check
         )
 
-        self.comb += self.out.cs.eq(self.commands.cs)
+        self.comb += self.out.cs_n.eq(~self.commands.cs)
         for bit in range(14):
             self.comb += self.out.ca[bit].eq(self.commands.ca[bit])
 

@@ -18,7 +18,7 @@ class DDR5SimulationPads(SimulationPads):
         return [
             SimPad("clk", 1),
             SimPad("reset_n", 1),
-            SimPad("cs", 1),
+            SimPad("cs_n", 1),
             SimPad("ca", 14),
             SimPad("dq", databits, io=True),
             SimPad("dqs", databits//8, io=True),
@@ -65,7 +65,7 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
         self.ser(i=self.out.reset_n, o=self.pads.reset_n, name='reset_n', **sdr)
 
         # Command/address
-        self.ser(i=self.out.cs, o=self.pads.cs, name='cs', **sdr)
+        self.ser(i=self.out.cs_n, o=self.pads.cs_n, name='cs_n', **sdr)
         for i in range(14):
             self.ser(i=self.out.ca[i], o=self.pads.ca[i], name=f'ca{i}', **sdr)
 
