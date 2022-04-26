@@ -77,7 +77,7 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_empty_command_sequence(self):
         # Test CS_n/CA values for empty dfi commands sequence
-        latency = '00000000' * self.CMD_LATENCY
+        latency   = '00000000' * self.CMD_LATENCY
         latency_n = '11111111' * self.CMD_LATENCY
 
         self.run_test(DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
@@ -103,17 +103,18 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_ca_addressing(self):
         # Test that bank/address for different commands are correctly serialized to CA pads
-        latency = '00000000' * self.CMD_LATENCY
+        latency   = '00000000' * self.CMD_LATENCY
         latency_n = '11111111' * self.CMD_LATENCY
-        read       = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, bank=0b101, address=0b1100110000)
-        write_ap   = dict(cs_n=0, cas_n=0, ras_n=1, we_n=0, bank=0b111, address=0b10000000000)
-        activate   = dict(cs_n=0, cas_n=1, ras_n=0, we_n=1, bank=0b010, address=0b11110000111100001)
-        refresh_ab = dict(cs_n=0, cas_n=0, ras_n=0, we_n=1, bank=0b100, address=0)
-        precharge_ab  = dict(cs_n=0, cas_n=1, ras_n=0, we_n=0, bank=0b011, address=0)
-        mrw        = dict(cs_n=0, cas_n=0, ras_n=0, we_n=0, bank=0b110011, address=0b10101010)  # bank=6-bit address, address=8-bit op code
-        zqc_start  = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,     address=0b0000101)  # MPC with ZQCAL START operand
-        zqc_latch  = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,     address=0b0000100)  # MPC with ZQCAL LATCH operand
-        mrr        = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=1,     address=0b101101)  # 6-bit address (bank=1 selects MRR)
+
+        read          = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, bank=0b101,    address=0b1100110000)
+        write_ap      = dict(cs_n=0, cas_n=0, ras_n=1, we_n=0, bank=0b111,    address=0b10000000000)
+        activate      = dict(cs_n=0, cas_n=1, ras_n=0, we_n=1, bank=0b010,    address=0b11110000111100001)
+        refresh_ab    = dict(cs_n=0, cas_n=0, ras_n=0, we_n=1, bank=0b100,    address=0)
+        precharge_ab  = dict(cs_n=0, cas_n=1, ras_n=0, we_n=0, bank=0b011,    address=0)
+        mrw           = dict(cs_n=0, cas_n=0, ras_n=0, we_n=0, bank=0b110011, address=0b10101010)  # bank=6-bit address, address=8-bit op code
+        zqc_start     = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,        address=0b0000101)  # MPC with ZQCAL START operand
+        zqc_latch     = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,        address=0b0000100)  # MPC with ZQCAL LATCH operand
+        mrr           = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=1,        address=0b101101)  # 6-bit address (bank=1 selects MRR)
 
         self.run_test(DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
                       dfi_sequence = [
