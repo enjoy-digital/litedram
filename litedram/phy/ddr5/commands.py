@@ -109,7 +109,7 @@ class DFIPhaseAdapter(Module):
                 _cmd["MRS"]: cmds("MRW"),
                 "default": cmds("DESELECT", valid=0),
             })
-        )
+        ).Else(cmds("DESELECT", valid=0))
 
 
 class Command(Module):
@@ -180,6 +180,7 @@ class Command(Module):
 
         if cmd == "DESELECT":
             ops.append(self.cs_n[0].eq(1))
+            ops.append(self.cs_n[1].eq(1))
         else:
             ops.append(self.cs_n[0].eq(0)) # CS_n needs to be low on the first cycle
             ops.append(self.cs_n[1].eq(1)) # CS_n needs to be high on the second cycle
