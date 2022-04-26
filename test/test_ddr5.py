@@ -75,6 +75,32 @@ class DDR5Tests(unittest.TestCase):
         PadChecker.assert_ok(self, checkers)
         dfi.assert_ok(self)
 
+    def test_ddr5_empty_command_sequence(self):
+        # Test CS_n/CA values for empty dfi commands sequence
+        latency = '00000000' * self.CMD_LATENCY
+        latency_n = '11111111' * self.CMD_LATENCY
+
+        self.run_test(DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
+                      dfi_sequence = [],
+                      pad_checkers = {"sys8x_90": {
+                          'cs_n': latency_n,
+                          'ca0':  latency,
+                          'ca1':  latency,
+                          'ca2':  latency,
+                          'ca3':  latency,
+                          'ca4':  latency,
+                          'ca5':  latency,
+                          'ca6':  latency,
+                          'ca7':  latency,
+                          'ca8':  latency,
+                          'ca9':  latency,
+                          'ca10': latency,
+                          'ca11': latency,
+                          'ca12': latency,
+                          'ca13': latency,
+                      }},
+                      )
+
     def test_ddr5_ca_addressing(self):
         # Test that bank/address for different commands are correctly serialized to CA pads
         latency = '00000000' * self.CMD_LATENCY
