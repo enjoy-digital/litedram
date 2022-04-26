@@ -140,7 +140,7 @@ class Latency:
 
 
 class CommandsPipeline(Module):
-    """Commands pipeline logic for LPDDR4/LPDDR5
+    """Commands pipeline logic for LPDDR4/LPDDR5/DDR5
 
     Single DFI command may require more than one LPDDR4/LPDDR5 command, effectively
     spanning multiple DFI phases. This module given a list of DFI phase adapters
@@ -150,7 +150,7 @@ class CommandsPipeline(Module):
     Basic check will make sure that no command will be sent to DRAM if there was any command
     sent by the controller on DFI during previous phases. The extended version will instead
     make sure no command is sent to DRAM if there was any command _actually sent to DRAM_
-    during the previous phasess. This is more expensive in terms of resources and generally
+    during the previous phases. This is more expensive in terms of resources and generally
     not needed.
 
     Adapters have to provide the following fields: valid, cs, ca.
