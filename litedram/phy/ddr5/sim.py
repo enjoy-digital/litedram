@@ -118,8 +118,8 @@ class CommandsSim(Module, AutoCSR):
         ca = TappedDelayLine(pads.ca, ntaps=2)
         self.submodules += cs_n, ca
 
-        self.cs_low     = Signal(14)
-        self.cs_high    = Signal(14)
+        self.cs_n_low   = Signal(14)
+        self.cs_n_high  = Signal(14)
         self.handle_cmd = Signal()
         self.mpc_op     = Signal(8)
 
@@ -138,12 +138,12 @@ class CommandsSim(Module, AutoCSR):
             If(cmds_enabled,
                 If(Cat(cs_n.taps) == 0b01,
                     self.handle_cmd.eq(1),
-                    self.cs_low.eq(ca.taps[1]),
-                    self.cs_high.eq(ca.taps[0]),
+                    self.cs_n_low.eq(ca.taps[1]),
+                    self.cs_n_high.eq(ca.taps[0]),
                 )
             ),
             If(self.handle_cmd & ~reduce(or_, cmd_handlers.values()),
-                self.log.error("Unexpected command: cs_low=0b%14b cs_high=0b%14b", self.cs_low, self.cs_high)
+                self.log.error("Unexpected command: cs_n_low=0b%14b cs_n_high=0b%14b", self.cs_n_low, self.cs_n_high)
             ),
         ]
 
@@ -259,11 +259,11 @@ class CommandsSim(Module, AutoCSR):
         ma  = Signal(8)
         op  = Signal(8)
         return self.cmd_one_step("MRW",
-            cond = self.cs_low[:5] == 0b00101,
+            cond = self.cs_n_low[:5] == 0b00101,
             comb = [
                 self.log.info("MRW: MR[%d] = 0x%02x", ma, op),
-                op.eq(self.cs_high[:8]),
-                ma.eq(self.cs_low[5:13]),
+                op.eq(self.cs_n_high[:8]),
+                ma.eq(self.cs_n_low[5:13]),
                 NextValue(self.mode_regs[ma], op),
             ],
         )
@@ -271,16 +271,16 @@ class CommandsSim(Module, AutoCSR):
     def refresh_handler(self):
         bank = Signal(2)
         return self.cmd_one_step("REFRESH",
-            cond = self.cs_low[:5] == 0b10011,
+            cond = self.cs_n_low[:5] == 0b10011,
             comb = [
-                If(~self.cs_low[10],
+                If(~self.cs_n_low[10],
                     self.log.info("REF: all banks"),
                     If(reduce(or_, self.active_banks),
                         self.log.error("Not all banks precharged during REFRESH")
                     )
                 ).Else(
                     self.log.info("REF: bank = %d", bank),
-                    bank.eq(self.cs_low[6:8]),
+                    bank.eq(self.cs_n_low[6:8]),
                 )
             ]
         )
@@ -289,10 +289,10 @@ class CommandsSim(Module, AutoCSR):
         bank = Signal(5)
         row  = Signal(18)
         return self.cmd_one_step("ACTIVATE",
-            cond = self.cs_low[:2] == 0b00,
+            cond = self.cs_n_low[:2] == 0b00,
             comb = [
-                bank.eq(self.cs_low[6:11]),
-                row.eq(Cat(self.cs_low[2:6], self.cs_high)),
+                bank.eq(self.cs_n_low[6:11]),
+                row.eq(Cat(self.cs_n_low[2:6], self.cs_n_high)),
                 self.log.info("ACT: bank=%d row=%d", bank, row),
                 NextValue(self.active_banks[bank], 1),
                 NextValue(self.active_rows[bank], row),
@@ -305,18 +305,18 @@ class CommandsSim(Module, AutoCSR):
     def precharge_handler(self):
         bank = Signal(2)
         return self.cmd_one_step("PRECHARGE",
-            cond = self.cs_low[:5] == 0b01011,
+            cond = self.cs_n_low[:5] == 0b01011,
             comb = [
-                If(~self.cs_low[10],
+                If(~self.cs_n_low[10],
                     self.log.info("PRE: all banks"),
                     bank.eq(2**len(bank) - 1),
                 ).Else(
                     self.log.info("PRE: bank = %d", bank),
-                    bank.eq(self.cs_low[6:8]),
+                    bank.eq(self.cs_n_low[6:8]),
                 ),
             ],
             sync = [
-                If(~self.cs_low[10],
+                If(~self.cs_n_low[10],
                     *[self.active_banks[b].eq(0) for b in range(2**len(bank))]
                 ).Else(
                     self.active_banks[bank].eq(0),
@@ -331,9 +331,9 @@ class CommandsSim(Module, AutoCSR):
         cases = {value: self.log.info(f"MPC: {name}") for name, value in MPC.__members__.items()}
         cases["default"] = self.log.error("Invalid MPC op=0b%08b", self.mpc_op)
         return self.cmd_one_step("MPC",
-            cond = self.cs_low[:5] == 0b01111,
+            cond = self.cs_n_low[:5] == 0b01111,
             comb = [
-                self.mpc_op.eq(self.cs_low[5:13]),
+                self.mpc_op.eq(self.cs_n_low[5:13]),
                 Case(self.mpc_op, cases)
             ],
         )
@@ -345,15 +345,15 @@ class CommandsSim(Module, AutoCSR):
         auto_precharge = Signal()
 
         return self.cmd_one_step("READ",
-            cond = self.cs_low[:5] == 0b11101,
+            cond = self.cs_n_low[:5] == 0b11101,
             comb = [
-                If(~self.cs_low[5],
+                If(~self.cs_n_low[5],
                    self.log.warn("Command places the DRAM into alternate burst mode; currently unsupported")
                    ),                
-                bank.eq(self.cs_low[6:11]),
+                bank.eq(self.cs_n_low[6:11]),
                 row.eq(self.active_rows[bank]),
-                col.eq(self.cs_high[:9]),
-                auto_precharge.eq(~self.cs_high[10]),
+                col.eq(self.cs_n_high[:9]),
+                auto_precharge.eq(~self.cs_n_high[10]),
                 self.log.info("READ: bank=%d row=%d, col=%d", bank, row, col),
 
                 # sanity checks
@@ -384,15 +384,15 @@ class CommandsSim(Module, AutoCSR):
         auto_precharge = Signal()
 
         return self.cmd_one_step("READ",
-            cond = self.cs_low[:5] == 0b01101,
+            cond = self.cs_n_low[:5] == 0b01101,
             comb = [
-                If(~self.cs_low[5],
+                If(~self.cs_n_low[5],
                    self.log.warn("Command places the DRAM into alternate burst mode; currently unsupported")
                    ),                
-                bank.eq(self.cs_low[6:11]),
+                bank.eq(self.cs_n_low[6:11]),
                 row.eq(self.active_rows[bank]),
-                col.eq(self.cs_high[1:9]),
-                auto_precharge.eq(~self.cs_high[10]),
+                col.eq(self.cs_n_high[1:9]),
+                auto_precharge.eq(~self.cs_n_high[10]),
                 self.log.info("WRITE: bank=%d row=%d, col=%d", bank, row, col),
 
                 # sanity checks
