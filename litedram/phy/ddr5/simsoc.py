@@ -37,7 +37,7 @@ _io = [
         Subsignal("mir",     Pins(1)),
         Subsignal("cai",     Pins(1)),
         Subsignal("reset_n", Pins(1)),
-        Subsignal("cs",      Pins(1)),
+        Subsignal("cs_n",      Pins(1)),
         Subsignal("ca",      Pins(14)),
         Subsignal("dqs",     Pins(1)),
         Subsignal("dq",      Pins(8)),
@@ -92,7 +92,7 @@ class SimSoC(SoCCore):
             aligned_reset_zero = True,
         )
 
-        for p in ["clk", "mir", "cai", "ca_odt", "reset_n", "cs", "ca", "dq", "dqs"]:
+        for p in ["clk", "mir", "cai", "ca_odt", "reset_n", "cs_n", "ca", "dq", "dqs"]:
             self.comb += getattr(pads, p).eq(getattr(self.ddrphy.pads, p))
 
         controller_settings = ControllerSettings()
@@ -216,11 +216,11 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             else:
                 ser_groups = [("out", soc.ddrphy.out)]
             for name, out in ser_groups:
-                save.group([out.cs, out.dqs_o[0], out.dqs_oe],
+                save.group([out.cs_n, out.dqs_o[0], out.dqs_oe],
                     group_name = name,
                     mappers = [
                         gtkw.regex_colorer({
-                            "yellow": gtkw.suffixes2re(["cs"]),
+                            "yellow": gtkw.suffixes2re(["cs_n"]),
                             "orange": ["_o[^e]"],
                             "red": gtkw.suffixes2re(["oe"]),
                         })
@@ -244,9 +244,9 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             group_name = "pads",
             mappers = [
                 gtkw.regex_filter(["_[io]$"], negate=True),
-                gtkw.regex_sorter(gtkw.suffixes2re(["clk", "mir", "cai", "ca_odt", "reset_n", "cs", "ca", "dq", "dqs"])),
+                gtkw.regex_sorter(gtkw.suffixes2re(["clk", "mir", "cai", "ca_odt", "reset_n", "cs_n", "ca", "dq", "dqs"])),
                 gtkw.regex_colorer({
-                    "yellow": gtkw.suffixes2re(["cs", "ca"]),
+                    "yellow": gtkw.suffixes2re(["cs_n", "ca"]),
                     "orange": gtkw.suffixes2re(["dq", "dqs"]),
                 }),
             ],

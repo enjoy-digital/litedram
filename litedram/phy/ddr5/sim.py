@@ -27,7 +27,7 @@ class DDR5Sim(Module, AutoCSR):
     It does not aim to simulate the internals of an DDR5 chip, rather it's behavior
     as seen by the PHY.
 
-    The simulator monitors CS/CA pads listening for DDR5 commands and updates the module
+    The simulator monitors CS_n/CA pads listening for DDR5 commands and updates the module
     state depending on the command received. Any unexpected sequences are logged in simulation
     as errors/warnings. On read/write commands the data simulation module is triggered
     after CL/CWL and a data burst is handled, updating memory state.
@@ -92,7 +92,7 @@ class DDR5Sim(Module, AutoCSR):
 class CommandsSim(Module, AutoCSR):
     """Command simulation
 
-    This module interprets DDR5 commands found on the CS/CA pads. It keeps track of currently
+    This module interprets DDR5 commands found on the CS_n/CA pads. It keeps track of currently
     opened rows (per bank) and stores the values of Mode Registers. It also checks that the DRAM
     initialization sequence is performed according to specification. On any read/write commands
     signals indicating a burst are sent to the data simulator for handling.
@@ -113,10 +113,10 @@ class CommandsSim(Module, AutoCSR):
         self.data = data_cdc
         self.submodules += self.data, self.data_en
 
-        # CS/CA shift registers
-        cs = TappedDelayLine(pads.cs, ntaps=2)
+        # CS_n/CA shift registers
+        cs_n = TappedDelayLine(pads.cs_n, ntaps=2)
         ca = TappedDelayLine(pads.ca, ntaps=2)
-        self.submodules += cs, ca
+        self.submodules += cs_n, ca
 
         self.cs_low     = Signal(14)
         self.cs_high    = Signal(14)
@@ -136,7 +136,7 @@ class CommandsSim(Module, AutoCSR):
 
         self.comb += [
             If(cmds_enabled,
-                If(Cat(cs.taps) == 0b01,
+                If(Cat(cs_n.taps) == 0b01,
                     self.handle_cmd.eq(1),
                     self.cs_low.eq(ca.taps[1]),
                     self.cs_high.eq(ca.taps[0]),
