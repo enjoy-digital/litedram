@@ -349,7 +349,7 @@ class CommandsSim(Module, AutoCSR):
             comb = [
                 If(~self.cs_n_low[5],
                    self.log.warn("Command places the DRAM into alternate burst mode; currently unsupported")
-                   ),                
+                   ),
                 bank.eq(self.cs_n_low[6:11]),
                 row.eq(self.active_rows[bank]),
                 col.eq(self.cs_n_high[:9]),
@@ -383,12 +383,12 @@ class CommandsSim(Module, AutoCSR):
         col  = Signal(9)
         auto_precharge = Signal()
 
-        return self.cmd_one_step("READ",
+        return self.cmd_one_step("WRITE",
             cond = self.cs_n_low[:5] == 0b01101,
             comb = [
                 If(~self.cs_n_low[5],
                    self.log.warn("Command places the DRAM into alternate burst mode; currently unsupported")
-                   ),                
+                   ),
                 bank.eq(self.cs_n_low[6:11]),
                 row.eq(self.active_rows[bank]),
                 col.eq(self.cs_n_high[1:9]),
