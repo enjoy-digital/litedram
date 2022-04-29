@@ -106,8 +106,9 @@ class CommandsSim(Module, AutoCSR):
         # Mode Registers storage
         self.mode_regs = Array([Signal(8) for _ in range(64)])
         # Active banks
-        self.active_banks = Array([Signal() for _ in range(8)])
-        self.active_rows = Array([Signal(18) for _ in range(8)])
+        self.number_of_banks = 32;
+        self.active_banks = Array([Signal() for _ in range(self.number_of_banks)])
+        self.active_rows = Array([Signal(18) for _ in range(self.number_of_banks)])
         # Connection to DataSim
         self.data_en = TappedDelayLine(ntaps=26)
         self.data = data_cdc
@@ -318,7 +319,7 @@ class CommandsSim(Module, AutoCSR):
             ],
             sync = [
                 If(~self.cs_n_low[10],
-                    *[self.active_banks[b].eq(0) for b in range(2**len(bank))]
+                    *[self.active_banks[b].eq(0) for b in range(self.number_of_banks)]
                 ).Else(
                     self.active_banks[bank].eq(0),
                     If(~self.active_banks[bank],
