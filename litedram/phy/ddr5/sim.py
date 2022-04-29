@@ -309,7 +309,6 @@ class CommandsSim(Module, AutoCSR):
             comb = [
                 If(~self.cs_n_low[10],
                     self.log.info("PRE: all banks"),
-                    bank.eq(2**len(bank) - 1),
                 ).Else(
                     self.log.info("PRE: bank = %d", bank),
                     bank.eq(self.cs_n_low[6:8]),
