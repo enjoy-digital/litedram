@@ -294,11 +294,13 @@ class CommandsSim(Module, AutoCSR):
                 bank.eq(self.cs_n_low[6:11]),
                 row.eq(Cat(self.cs_n_low[2:6], self.cs_n_high)),
                 self.log.info("ACT: bank=%d row=%d", bank, row),
-                NextValue(self.active_banks[bank], 1),
-                NextValue(self.active_rows[bank], row),
                 If(self.active_banks[bank],
-                    self.log.error("ACT on already active bank: bank=%d row=%d", bank, row)
+                   self.log.error("ACT on already active bank: bank=%d row=%d", bank, row)
                 ),
+            ],
+            sync = [
+                self.active_banks[bank].eq(1),
+                self.active_rows[bank].eq(row),
             ],
         )
 
