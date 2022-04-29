@@ -4,6 +4,16 @@
 # This file is Copyright (c) 2020 Antmicro <www.antmicro.com>
 # License: BSD
 
+# Setup:
+# https://user-images.githubusercontent.com/1450143/165936416-faebe814-e727-44e5-8392-72931f2abb68.JPG
+# - Replace Arty's DDR3 with EM6GA16L.
+# - Connect Arty's I2C to PMIC's I2C.
+
+# Build/Use:
+# ./arty.py --build --load
+# litex_server --udp
+# litex_term crossover
+
 import os
 import argparse
 
@@ -79,12 +89,36 @@ def ddram_dbg_pmod_io(pmod_db, pmod_others, len_db=1):
 
 _ddram_dbg_io = ddram_dbg_pmod_io("pmoda", "pmodd")
 
-def pmic_i2c_io():
+def ddram_io():
     return [
-        ("pmic_i2c", 0,
-            Subsignal("scl", Pins("ck_io:ck_io41")),
-            Subsignal("sda", Pins("ck_io:ck_io40")),
-            IOStandard("LVCMOS33"),
+        ("ddram_sstl15", 0,
+            Subsignal("a", Pins(
+                "R2 M6 N4 T1 N6 R7 V6 U7",
+                "R8 V7 R6 U6 T6 T8"),
+                IOStandard("SSTL15")),
+            Subsignal("ba",    Pins("R1 P4 P2"), IOStandard("SSTL15")),
+            Subsignal("ras_n", Pins("P3"), IOStandard("SSTL15")),
+            Subsignal("cas_n", Pins("M4"), IOStandard("SSTL15")),
+            Subsignal("we_n",  Pins("P5"), IOStandard("SSTL15")),
+            Subsignal("cs_n",  Pins("U8"), IOStandard("SSTL15")),
+            Subsignal("dm", Pins("L1 U1"), IOStandard("SSTL15")),
+            Subsignal("dq", Pins(
+                "K5 L3 K3 L6 M3 M1 L4 M2",
+                "V4 T5 U4 V5 V1 T3 U3 R3"),
+                IOStandard("SSTL15"),
+                Misc("IN_TERM=UNTUNED_SPLIT_40")),
+            Subsignal("dqs_p", Pins("N2 U2"),
+                IOStandard("DIFF_SSTL15"),
+                Misc("IN_TERM=UNTUNED_SPLIT_40")),
+            Subsignal("dqs_n", Pins("N1 V2"),
+                IOStandard("DIFF_SSTL15"),
+                Misc("IN_TERM=UNTUNED_SPLIT_40")),
+            Subsignal("clk_p", Pins("U9"), IOStandard("DIFF_SSTL15")),
+            Subsignal("clk_n", Pins("V9"), IOStandard("DIFF_SSTL15")),
+            Subsignal("cke",   Pins("N5"), IOStandard("SSTL15")),
+            Subsignal("odt",   Pins("R5"), IOStandard("SSTL15")),
+            Subsignal("reset_n", Pins("K6"), IOStandard("SSTL15")),
+            Misc("SLEW=FAST"),
         )
     ]
 
@@ -154,8 +188,7 @@ class BaseSoC(SoCCore):
 
         # SoCCore ----------------------------------------------------------------------------------
         kwargs["integrated_rom_size"] = 0xa000
-        if dynamic_freq:
-            kwargs["uart_name"] = "crossover"
+        kwargs["uart_name"]           = "crossover"
         SoCCore.__init__(self, platform, sys_clk_freq,
             ident               = "LiteX SoC on Arty A7",
             integrated_rom_mode = "rw", # to allow reloading BIOS
@@ -165,6 +198,8 @@ class BaseSoC(SoCCore):
         self.submodules.crg = _CRG(platform, sys_clk_freq, dynamic=dynamic_freq)
 
         # DDR3 SDRAM -------------------------------------------------------------------------------
+        platform.add_extension(ddram_io())
+        platform.add_platform_command("set_property INTERNAL_VREF 0.750 [get_iobanks 34]")
         if debug_pmod:
             from pprint import pprint
             print()
@@ -181,7 +216,7 @@ class BaseSoC(SoCCore):
                 dbg_pmod[2].eq(ClockSignal("sys4x_180")),
             ]
         else:
-            ddram_pads = RPCPadsDDR3(platform.request("ddram"))
+            ddram_pads = RPCPadsDDR3(platform.request("ddram_sstl15"))
 
         self.submodules.ddrphy = A7RPCPHY(pads=ddram_pads,
                                           sys_clk_freq=100e6 if debug_pmod else sys_clk_freq,
@@ -215,9 +250,13 @@ class BaseSoC(SoCCore):
         # Used to configure the power management chip (DA9062) on the board to use different DDRVCC.
         # We explicitly use tristate SCL, because the chip operates on 5V logic (pull ups are
         # through 100k resistors so shouldn't damage FPGA pins).
-        self.platform.add_extension(pmic_i2c_io())
-        # self.submodules.i2c = I2CMaster(platform.request("pmic_i2c"), tristate_scl=True)
-        self.submodules.i2c = I2CMaster(platform.request("pmic_i2c"))
+        self.submodules.i2c = I2CMaster(platform.request("i2c"))
+        self.i2c.add_init(addr=0x58, init=[
+            # Vbuck2A / 1.5V.
+            (0xa3, 0x78),
+            # Vbuck2B / 1.5V.
+            (0xb4, 0x78),
+        ])
 
         if dynamic_freq:
             # UartBone -----------------------------------------------------------------------------
