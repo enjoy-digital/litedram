@@ -158,14 +158,11 @@ class BaseSoC(SoCCore):
             kwargs["uart_name"] = "crossover"
         SoCCore.__init__(self, platform, sys_clk_freq,
             ident               = "LiteX SoC on Arty A7",
-            ident_version       = True,
             integrated_rom_mode = "rw", # to allow reloading BIOS
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
         self.submodules.crg = _CRG(platform, sys_clk_freq, dynamic=dynamic_freq)
-        if dynamic_freq:
-            self.add_csr("crg")
 
         # DDR3 SDRAM -------------------------------------------------------------------------------
         if debug_pmod:
@@ -198,16 +195,10 @@ class BaseSoC(SoCCore):
         controller_settings.auto_precharge = False
         controller_settings.with_refresh = self.ddrphy.refresh_enable.storage
 
-        self.add_csr("ddrphy")
         self.add_sdram("sdram",
-            phy                     = self.ddrphy,
-            module                  = module,
-            origin                  = self.mem_map["main_ram"],
-            size                    = kwargs.get("max_sdram_size", 0x40000000),
-            l2_cache_size           = kwargs.get("l2_size", 8192),
-            l2_cache_min_data_width = kwargs.get("min_l2_data_width", 256),
-            l2_cache_reverse        = True,
-            controller_settings     = controller_settings,
+            phy                 = self.ddrphy,
+            module              = module,
+            controller_settings = controller_settings,
         )
 
         self.add_constant("SET_DDR_VCC_15")
@@ -227,7 +218,6 @@ class BaseSoC(SoCCore):
         self.platform.add_extension(pmic_i2c_io())
         # self.submodules.i2c = I2CMaster(platform.request("pmic_i2c"), tristate_scl=True)
         self.submodules.i2c = I2CMaster(platform.request("pmic_i2c"))
-        self.add_csr("i2c")
 
         if dynamic_freq:
             # UartBone -----------------------------------------------------------------------------
@@ -237,14 +227,12 @@ class BaseSoC(SoCCore):
             self.submodules.ethphy = LiteEthPHYMII(
                 clock_pads = self.platform.request("eth_clocks"),
                 pads       = self.platform.request("eth"))
-            self.add_csr("ethphy")
             self.add_etherbone(phy=self.ethphy, ip_address=ip_address)
 
         # Leds -------------------------------------------------------------------------------------
         self.submodules.leds = LedChaser(
             pads         = Cat(*[platform.request("user_led", i) for i in range(4)]),
             sys_clk_freq = sys_clk_freq)
-        self.add_csr("leds")
 
         # Analyzer ---------------------------------------------------------------------------------
 
@@ -281,7 +269,6 @@ class BaseSoC(SoCCore):
                 register     = True,
                 clock_domain = "sys",
                 csr_csv      = "analyzer.csv")
-            self.add_csr("analyzer")
 
         self.add_constant("SDRAM_DEBUG")
 
@@ -346,7 +333,7 @@ def main():
     soc = BaseSoC(ip_address=args.ip_address, dynamic_freq=args.dynamic_freq,
                   debug_pmod=args.debug_pmod, sys_clk_freq=int(float(args.sys_clk_freq)),
                   no_sdram_init=args.no_sdram_init, with_analyzer=not args.no_analyzer,
-                  l2_size=args.l2_size, **soc_core_argdict(args))
+                  **soc_core_argdict(args))
     assert not (args.with_spi_sdcard and args.with_sdcard)
     soc.platform.add_extension(arty._sdcard_pmod_io)
     if args.with_spi_sdcard:
