@@ -121,6 +121,7 @@ class SimSoC(SoCCore):
             sys_clk_freq  = sys_clk_freq,
             log_level     = log_level,
             disable_delay = disable_delay,
+            geom_settings = sdram_module.geom_settings
         )
         self.add_csr("ddr5sim")
 
