@@ -84,7 +84,7 @@ class SimSoC(SoCCore):
         platform.add_debug(self, reset=trace_reset)
 
         # DDR5 -----------------------------------------------------------------------------------
-        sdram_module = litedram_modules.MT53E256M16D1(sys_clk_freq, "1:8")
+        sdram_module = litedram_modules.MT60B2G8HB48B(sys_clk_freq, "1:8")
         pads = platform.request("ddr5")
         sim_phy_cls = DoubleRateDDR5SimPHY if double_rate_phy else DDR5SimPHY
         self.submodules.ddrphy = sim_phy_cls(
