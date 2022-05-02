@@ -19,7 +19,7 @@ import argparse
 
 from migen import *
 
-from litex_boards.platforms import arty
+from litex_boards.platforms import digilent_arty
 from litex.build.generic_platform import *
 from litex.build.xilinx.vivado import vivado_build_args, vivado_build_argdict
 
@@ -184,7 +184,7 @@ class _CRG(Module, AutoCSR):
 class BaseSoC(SoCCore):
     def __init__(self, sys_clk_freq=int(100e6), ip_address="192.168.1.50", debug_pmod=False,
                  no_sdram_init=False, dynamic_freq=False, with_analyzer=False, **kwargs):
-        platform = arty.Platform()
+        platform = digilent_arty.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
         kwargs["integrated_rom_size"] = 0xa000
@@ -374,7 +374,7 @@ def main():
                   no_sdram_init=args.no_sdram_init, with_analyzer=not args.no_analyzer,
                   **soc_core_argdict(args))
     assert not (args.with_spi_sdcard and args.with_sdcard)
-    soc.platform.add_extension(arty._sdcard_pmod_io)
+    soc.platform.add_extension(digilent_arty._sdcard_pmod_io)
     if args.with_spi_sdcard:
         soc.add_spi_sdcard()
     if args.with_sdcard:

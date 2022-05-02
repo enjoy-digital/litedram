@@ -11,7 +11,7 @@ import argparse
 
 from migen import *
 
-from litex_boards.platforms import arty
+from litex_boards.platforms import digilent_arty
 
 from litex.soc.cores.clock import *
 from litex.soc.interconnect.csr import *
@@ -69,7 +69,7 @@ class _CRG(Module, AutoCSR):
 
 class BenchSoC(SoCCore):
     def __init__(self, uart="crossover", sys_clk_freq=int(125e6), with_bist=False, with_analyzer=False):
-        platform = arty.Platform()
+        platform = digilent_arty.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, clk_freq=sys_clk_freq,
@@ -134,7 +134,7 @@ def main():
     args = parser.parse_args()
 
     soc     = BenchSoC(uart=args.uart, with_bist=args.with_bist, with_analyzer=args.with_analyzer)
-    builder = Builder(soc, output_dir="build/arty", csr_csv="csr.csv")
+    builder = Builder(soc, csr_csv="csr.csv")
     builder.build(run=args.build)
 
     if args.load:
@@ -143,7 +143,7 @@ def main():
 
     if args.load_bios:
         from common import load_bios
-        load_bios("build/arty/software/bios/bios.bin")
+        load_bios("build/digilent_arty/software/bios/bios.bin")
 
     if args.sys_clk_freq is not None:
         from common import s7_set_sys_clk
@@ -156,7 +156,7 @@ def main():
             freq_max      = 150e6,
             freq_step     = 1e6,
             vco_freq      = soc.crg.main_pll.compute_config()["vco"],
-            bios_filename = "build/arty/software/bios/bios.bin")
+            bios_filename = "build/digilent_arty/software/bios/bios.bin")
 
 if __name__ == "__main__":
     main()
