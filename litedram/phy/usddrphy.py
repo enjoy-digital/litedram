@@ -167,7 +167,7 @@ class USDDRPHY(Module, AutoCSR):
                         i_EN_VTC       = self._en_vtc.storage,
                         i_CE           = self._cdly_inc.re,
                         i_INC          = 1,
-                        o_CNTVALUEOUT  = self._cdly_value.status,
+                        o_CNTVALUEOUT  = self._cdly_value.status if i == 0 else Signal(),
                         i_ODATAIN      = clk_o_nodelay,
                         o_DATAOUT      = clk_o_delayed,
                     ),
