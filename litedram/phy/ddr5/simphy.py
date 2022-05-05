@@ -82,6 +82,8 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
             self.pads.ca_odt.eq(self.out.ca_odt),
             self.pads.mir.eq(self.out.mir),
             self.pads.cai.eq(self.out.cai),
+            self.pads.dqs_oe.eq(delay(self.out.dqs_oe, cycles=Serializer.LATENCY)),
+            self.pads.dq_oe.eq(delay(self.out.dq_oe, cycles=Serializer.LATENCY)),
         ]
 
 
