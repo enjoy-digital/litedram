@@ -93,7 +93,6 @@ class DDR5PHY(Module, AutoCSR):
 
         # Parameters -------------------------------------------------------------------------------
         def get_cl_cw(memtype, tck):
-            # MT53E256M16D1, No DBI, Set A
             f_to_cl_cwl = OrderedDict()
             f_to_cl_cwl[ 532e6] = 20
             f_to_cl_cwl[1066e6] = 22
