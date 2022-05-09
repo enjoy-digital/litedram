@@ -49,13 +49,12 @@ run_simulation = partial(test.phy_common.run_simulation, clocks={
     "sys8x_90_ddr": ( 4,  3),
 })
 
-dfi_data_to_dq = partial(test.phy_common.dfi_data_to_dq, databits=16, nphases=8, burst=16)
-dq_pattern = partial(test.phy_common.dq_pattern, databits=16, nphases=8, burst=16)
+dfi_data_to_dq = partial(test.phy_common.dfi_data_to_dq, databits=8, nphases=8, burst=16)
+dq_pattern = partial(test.phy_common.dq_pattern, databits=8, nphases=8, burst=16)
 
 
 class DDR5Tests(unittest.TestCase):
-    SYS_CLK_FREQ = 100e6
-    CMD_LATENCY = 2
+    SYS_CLK_FREQ = 50e6
 
     def run_test(self, dut, dfi_sequence, pad_checkers: Mapping[str, Mapping[str, str]], pad_generators=None, **kwargs):
         # pad_checkers: {clock: {sig: values}}
@@ -77,10 +76,11 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_empty_command_sequence(self):
         # Test CS_n/CA values for empty dfi commands sequence
-        latency   = '00000000' * self.CMD_LATENCY
-        latency_n = '11111111' * self.CMD_LATENCY
+        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
+        latency   = '00000000' * phy.settings.cmd_latency
+        latency_n = '11111111' * phy.settings.cmd_latency
 
-        self.run_test(DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
+        self.run_test(dut = phy,
                       dfi_sequence = [],
                       pad_checkers = {"sys8x_90": {
                           'cs_n': latency_n,
@@ -103,8 +103,9 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_ca_addressing(self):
         # Test that bank/address for different commands are correctly serialized to CA pads
-        latency   = '00000000' * self.CMD_LATENCY
-        latency_n = '11111111' * self.CMD_LATENCY
+        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
+        latency   = '00000000' * phy.settings.cmd_latency
+        latency_n = '11111111' * phy.settings.cmd_latency
 
         read          = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, bank=0b101,    address=0b1100110000)
         write_ap      = dict(cs_n=0, cas_n=0, ras_n=1, we_n=0, bank=0b111,    address=0b10000000000)
@@ -116,7 +117,7 @@ class DDR5Tests(unittest.TestCase):
         zqc_latch     = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,        address=0b0000100)  # MPC with ZQCAL LATCH operand
         mrr           = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=1,        address=0b101101)  # 6-bit address (bank=1 selects MRR)
 
-        self.run_test(DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
+        self.run_test(dut = phy,
                       dfi_sequence = [
                           {0: read, 4: write_ap},
                           {0: activate, 4: refresh_ab},
