@@ -860,13 +860,5 @@ def main():
     builder = Builder(soc, **builder_arguments)
     builder.build(build_name=args.name, regular_comb=False)
 
-    if soc.cpu_type is not None:
-        init_filename = "mem.init"
-        os.system("mv {} {}".format(
-            os.path.join(builder.gateware_dir, init_filename),
-            os.path.join(builder.gateware_dir, f"{args.name}.init"),
-        ))
-        replace_in_file(os.path.join(builder.gateware_dir, f"{args.name}.v"), init_filename, f"{args.name}.init")
-
 if __name__ == "__main__":
     main()
