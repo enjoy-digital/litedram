@@ -27,7 +27,7 @@ def update_c_reference(content, filename):
 
 class TestInit(unittest.TestCase):
     def test_sdr(self):
-        from litex_boards.targets.minispartan6 import BaseSoC
+        from litex_boards.targets.scarabhardware_minispartan6 import BaseSoC
         soc       = BaseSoC()
         c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
@@ -36,7 +36,7 @@ class TestInit(unittest.TestCase):
         compare_with_reference(self, py_header, "sdr_init.py")
 
     def test_ddr3(self):
-        from litex_boards.targets.kc705 import BaseSoC
+        from litex_boards.targets.xilinx_kc705 import BaseSoC
         soc       = BaseSoC()
         c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
@@ -45,7 +45,7 @@ class TestInit(unittest.TestCase):
         compare_with_reference(self, py_header, "ddr3_init.py")
 
     def test_ddr4(self):
-        from litex_boards.targets.kcu105 import BaseSoC
+        from litex_boards.targets.xilinx_kcu105 import BaseSoC
         soc       = BaseSoC(max_sdram_size=0x4000000)
         c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
         py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
