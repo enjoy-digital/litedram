@@ -74,6 +74,81 @@ class DDR5Tests(unittest.TestCase):
         PadChecker.assert_ok(self, checkers)
         dfi.assert_ok(self)
 
+    def test_ddr5_cs_n_phase_0(self):
+        # Test that CS_n is serialized correctly when sending command on phase 0
+        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
+        latency_n = '11111111' * phy.settings.cmd_latency
+
+        self.run_test(dut = phy,
+            dfi_sequence = [
+                {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},  # p0: READ
+            ],
+            pad_checkers = {"sys8x_90": {
+                'cs_n': latency_n + '01111111',
+            }},
+        )
+
+    def test_ddr5_cs_n_phase_3(self):
+        # Test that CS_n is serialized correctly when sending command on phase 3
+        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
+        latency_n = '11111111' * phy.settings.cmd_latency
+
+        self.run_test(dut = phy,
+            dfi_sequence = [
+                {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=0)},  # p3: WRITE
+            ],
+            pad_checkers = {"sys8x_90": {
+                'cs_n': latency_n + '11101111',
+            }},
+        )
+
+    def test_ddr5_clk(self):
+        # Test clock serialization
+        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
+
+        self.run_test(dut = phy,
+            dfi_sequence = [
+                {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
+            ],
+            pad_checkers = {"sys8x_90_ddr": {
+                'clk': '01010101' * (phy.settings.cmd_latency + 1),
+            }},
+        )
+
+    def test_ddr5_cs_n_multiple_phases(self):
+        # Test that CS_n is serialized on different phases and that overlapping commands are handled
+        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
+        latency_n = '11111111' * phy.settings.cmd_latency
+
+        self.run_test(dut = phy,
+            dfi_sequence = [
+                {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
+                {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
+                {
+                    1: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1),
+                    2: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1),  # should be ignored
+                },
+                {
+                    1: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1),
+                    5: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1),  # should NOT be ignored
+                },
+                {7: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
+                {0: dict(cs_n=0, cas_n=1, ras_n=0, we_n=0)},  # should be ignored due to command on previous cycle
+                {2: dict(cs_n=1, cas_n=0, ras_n=1, we_n=1)},  # ignored due to cs_n=1
+            ],
+            pad_checkers = {"sys8x_90": {
+                'cs_n': latency_n + ''.join([
+                    '01111111',  # p0
+                    '11101111',  # p3
+                    '10111111',  # p1, p2 ignored
+                    '10111011',  # p1, p5
+                    '11111110',  # p7 (1st part)
+                    '11111111',  # (2nd part of the previous command), p0 ignored
+                    '11111111',  # p2 ignored
+                ])
+            }},
+        )
+
     def test_ddr5_empty_command_sequence(self):
         # Test CS_n/CA values for empty dfi commands sequence
         phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
