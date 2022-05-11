@@ -105,7 +105,7 @@ class S7DDR5PHY(DoubleRateDDR5PHY, S7Common):
         # Clock
         clk_dly = Signal()
         clk_ser = Signal()
-        # Invert clk to have it phase shifted in relation to CS/CA, because we serialize it with DDR,
+        # Invert clk to have it phase shifted in relation to CS_n/CA, because we serialize it with DDR,
         # rising edge will then be in the middle of a data bit.
         self.oserdese2_ddr(din=~self.out.clk, dout=clk_ser if with_odelay else clk_dly, clk="sys8x")
         if with_odelay:
@@ -127,12 +127,12 @@ class S7DDR5PHY(DoubleRateDDR5PHY, S7Common):
                 self.odelaye2(din=cmd_ser, dout=cmd_o, rst=cdly_rst, inc=cdly_inc)
 
         # Commands
-        cs_ser = Signal()
+        cs_n_ser = Signal()
         if with_odelay:
-            self.oserdese2_sdr(din=self.out.cs, dout=cs_ser, clk="sys8x")
-            self.odelaye2(din=cs_ser, dout=self.pads.cs, rst=cdly_rst, inc=cdly_inc)
+            self.oserdese2_sdr(din=self.out.cs_n, dout=cs_n_ser, clk="sys8x")
+            self.odelaye2(din=~cs_n_ser, dout=self.pads.cs, rst=cdly_rst, inc=cdly_inc)
         else:
-            self.oserdese2_sdr(din=self.out.cs, dout=self.pads.cs, clk="sys8x")
+            self.oserdese2_sdr(din=~self.out.cs_n, dout=self.pads.cs, clk="sys8x")
         for bit in range(6):
             ca_ser = Signal()
             if with_odelay:
