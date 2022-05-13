@@ -14,7 +14,7 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
-from litedram.phy.utils import (bitpattern, delayed, DQSPattern, Serializer, Deserializer, Latency,
+from litedram.phy.utils import (bitpattern, delayed, Serializer, Deserializer, Latency,
     CommandsPipeline)
 from litedram.phy.ddr5.commands import DFIPhaseAdapter
 
@@ -36,6 +36,38 @@ class DDR5Output:
         self.ca_odt  = Signal()
         self.mir     = Signal()
         self.cai     = Signal()
+
+
+class DDR5DQSPattern(Module):
+    def __init__(self, preamble=None, postamble=None, wlevel_en=0, wlevel_strobe=0, register=False):
+        self.preamble  = Signal() if preamble  is None else preamble
+        self.postamble = Signal() if postamble is None else postamble
+        self.o = Signal(16)
+
+        # # #
+
+        # DQS Pattern transmitted as LSB-first.
+
+        self.comb += [
+            self.o.eq(0b0101010101010101),
+            If(self.preamble,
+                self.o.eq(0b0100010101010101)  # 2tCK write preamble (0100 prefix matters only)
+            ),
+            If(self.postamble,
+                self.o.eq(0b0010101010101010) # 0.5 tCK write postamble (0 prefix matters only)
+            ),
+            If(wlevel_en,
+                self.o.eq(0b0000000000000000),
+                If(wlevel_strobe,
+                    # use 2 toggles as, according to datasheet, the first one may not be registered
+                    self.o.eq(0b0000000000000101)
+                )
+            )
+        ]
+        if register:
+            o = Signal.like(self.o)
+            self.sync += o.eq(self.o)
+            self.o = o
 
 
 class DDR5PHY(Module, AutoCSR):
@@ -257,7 +289,7 @@ class DDR5PHY(Module, AutoCSR):
         dqs_oe        = Signal()
         dqs_preamble  = Signal()
         dqs_postamble = Signal()
-        dqs_pattern   = DQSPattern(
+        dqs_pattern   = DDR5DQSPattern(
             preamble      = dqs_preamble,
             postamble     = dqs_postamble,
             wlevel_en     = self._wlevel_en.storage,
