@@ -219,3 +219,160 @@ class DDR5Tests(unittest.TestCase):
                           'ca13': latency   + 'xx00'+'xx00' + 'x000'+'x000' + 'x000'+'xx00' + 'x000'+'x000' + 'xx00'+'0000',
                       }},
                       )
+
+    def test_ddr5_dq_out(self):
+        # Test serialization of dfi wrdata to DQ pads
+        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
+        zero = '00000000' * 2  # zero for 1 sysclk clock in sys8x_ddr clock domain
+        write_latency = phy.settings.write_latency
+
+        dfi_data = {
+            0: dict(wrdata=0x1122),
+            1: dict(wrdata=0x3344),
+            2: dict(wrdata=0x5566),
+            3: dict(wrdata=0x7788),
+            4: dict(wrdata=0x99aa),
+            5: dict(wrdata=0xbbcc),
+            6: dict(wrdata=0xddee),
+            7: dict(wrdata=0xff00),
+        }
+        dfi_wrdata_en = {0: dict(wrdata_en=1)}  # wrdata_en=1 required on any single phase
+
+        self.run_test(dut = phy,
+            dfi_sequence = [
+                dfi_wrdata_en,
+                *[{} for _ in range(write_latency - 1)],
+                dfi_data,
+            ],
+            pad_checkers = {"sys8x_90_ddr": {
+                f'dq{i}': (phy.settings.cmd_latency + write_latency) * zero + dq_pattern(i, dfi_data, "wrdata") + zero for i in range(8)
+            }},
+            vcd_name="ddr_dq_out.vcd"
+        )
+
+    def test_ddr5_dq_only_1cycle(self):
+        # Test that DQ data is sent to pads only during expected cycle, on other cycles there is no data
+        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
+        zero = '00000000' * 2
+        write_latency = phy.settings.write_latency
+
+        dfi_data = {
+            0: dict(wrdata=0x1122),
+            1: dict(wrdata=0x3344),
+            2: dict(wrdata=0x5566),
+            3: dict(wrdata=0x7788),
+            4: dict(wrdata=0x99aa),
+            5: dict(wrdata=0xbbcc),
+            6: dict(wrdata=0xddee),
+            7: dict(wrdata=0xff00),
+        }
+        dfi_wrdata_en = copy.deepcopy(dfi_data)
+        dfi_wrdata_en[0].update(dict(wrdata_en=1))
+
+        self.run_test(dut = phy,
+            dfi_sequence = [
+                dfi_wrdata_en,
+                *[dfi_data for _ in range(write_latency)], # only last should be handled
+            ],
+            pad_checkers = {"sys8x_90_ddr": {
+                f'dq{i}': (phy.settings.cmd_latency + write_latency)*zero + dq_pattern(i, dfi_data, "wrdata") + zero for i in range(8)
+            }},
+            vcd_name="ddr_dq_only_1cycle.vcd"
+        )
+
+    def test_ddr5_dqs(self):
+        # Test serialization of DQS pattern in relation to DQ data, with proper preamble and postamble
+        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
+        zero = '00000000' * 2
+        xs = 'xxxxxxxx' * 2
+        write_latency = phy.settings.write_latency
+
+        self.run_test(dut = phy,
+            dfi_sequence = [
+                {0: dict(wrdata_en=1)},
+                *[{} for _ in range(write_latency - 1)],
+                {  # to get 10101010... pattern on dq0 and only 1s on others
+                    0: dict(wrdata=0xfeff),
+                    1: dict(wrdata=0xfeff),
+                    2: dict(wrdata=0xfeff),
+                    3: dict(wrdata=0xfeff),
+                    4: dict(wrdata=0xfeff),
+                    5: dict(wrdata=0xfeff),
+                    6: dict(wrdata=0xfeff),
+                    7: dict(wrdata=0xfeff),
+                },
+            ],
+            pad_checkers = {
+                "sys8x_90_ddr": {
+                    'dq0':  (phy.settings.cmd_latency + write_latency) * zero + '10101010'+'10101010' + '00000000'+'00000000' + zero,
+                    'dq1':  (phy.settings.cmd_latency + write_latency) * zero + '11111111'+'11111111' + '00000000'+'00000000' + zero,
+                },
+                "sys8x_ddr": {
+                    "dqs0": (phy.settings.cmd_latency + write_latency - 1) * xs + 'xxxxxxxx'+'xxxxx001' + '01010101'+'01010101' + '0xxxxxxxx' + xs,
+                }
+            },
+            vcd_name="ddr5_dqs.vcd"
+        )
+
+    def test_ddr5_cmd_write(self):
+        # Test whole WRITE command sequence verifying data on pads and write_latency from MC perspective
+        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
+        latency   = '00000000' * phy.settings.cmd_latency
+        latency_n = '11111111' * phy.settings.cmd_latency
+        zeros = '00000000' * 2
+        ones = '11111111' * 2
+        xs = 'xxxxxxxx' * 2
+        write_latency = phy.settings.write_latency
+        wrphase = phy.settings.wrphase.reset.value
+
+        dfi_data = {
+            0: dict(wrdata=0x1122),
+            1: dict(wrdata=0x3344),
+            2: dict(wrdata=0x5566),
+            3: dict(wrdata=0x7788),
+            4: dict(wrdata=0x99aa),
+            5: dict(wrdata=0xbbcc),
+            6: dict(wrdata=0xddee),
+            7: dict(wrdata=0xff00),
+        }
+        dfi_sequence = [
+            {wrphase: dict(cs_n=0, cas_n=0, ras_n=1, we_n=0, wrdata_en=1)},
+            *[{} for _ in range(write_latency - 1)],
+            dfi_data,
+            {},
+            {},
+            {},
+            {},
+            {},
+        ]
+
+        self.run_test(dut = phy,
+            dfi_sequence = dfi_sequence,
+            pad_checkers = {
+                "sys8x_90": {
+                    "cs_n": latency_n + "11011111" + ones,
+                    "ca0":  latency   + "00100000" + zeros,
+                    "ca1":  latency   + "00000000" + zeros,
+                    "ca2":  latency   + "00100000" + zeros,
+                    "ca3":  latency   + "00100000" + zeros,
+                    "ca4":  latency   + "00000000" + zeros,
+                    "ca5":  latency   + "00100000" + zeros,
+                    "ca6":  latency   + "00000000" + zeros,
+                    "ca7":  latency   + "00000000" + zeros,
+                    "ca8":  latency   + "00000000" + zeros,
+                    "ca9":  latency   + "00000000" + zeros,
+                    "ca10":  latency  + "00010000" + zeros,
+                    "ca11":  latency  + "00010000" + zeros,
+                    "ca12":  latency  + "00000000" + zeros,
+                    "ca13":  latency  + "00000000" + zeros,
+                },
+                "sys8x_90_ddr": {
+                    f'dq{i}': (phy.settings.cmd_latency + write_latency) * zeros + dq_pattern(i, dfi_data, "wrdata") + zeros
+                            for i in range(8)
+                },
+                "sys8x_ddr": {
+                    "dqs0": (phy.settings.cmd_latency + write_latency - 1) * xs + 'xxxxxxxx'+'xxxxx001' + '01010101'+'01010101' + '0xxxxxxxx' + xs,
+                },
+            },
+            vcd_name="ddr5_write.vcd"
+        )
