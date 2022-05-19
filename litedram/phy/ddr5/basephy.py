@@ -22,11 +22,14 @@ from litedram.phy.ddr5.commands import DFIPhaseAdapter
 class DDR5Output:
     """Unserialized output of DDR5PHY. Has to be serialized by concrete implementation."""
     def __init__(self, nphases, databits):
-        # Pads: RESET_N, CS_N, CK, CA[13:0], DQ[7:0], DQS
+        # Pads: RESET_N, CS_N, CK, DMI, CA[13:0], DQ[7:0], DQS
         self.clk     = Signal(2*nphases)
         self.reset_n = Signal(nphases)
         self.cs_n     = Signal(nphases)
         self.ca      = [Signal(nphases)   for _ in range(14)]
+        self.dmi_o   = [Signal(2*nphases) for _ in range(databits//8)]
+        self.dmi_i   = [Signal(2*nphases) for _ in range(databits//8)]
+        self.dmi_oe  = Signal()  # no serialization
         self.dq_o    = [Signal(2*nphases) for _ in range(databits)]
         self.dq_i    = [Signal(2*nphases) for _ in range(databits)]
         self.dq_oe   = Signal()  # no serialization
@@ -106,13 +109,15 @@ class DDR5PHY(Module, AutoCSR):
         Name of the PHY (concrete implementation).
     cmd_delay : int
         Used to force cmd delay during initialization in BIOS.
+    masked_write : bool
+        Use masked variant of WRITE command.
     extended_overlaps_check : bool
         Include additional command overlap checks. Makes no sense during normal operation
         (when the DRAM controller works correctly), so use `False` to avoid wasting resources.
     """
     def __init__(self, pads, *,
                  sys_clk_freq, ser_latency, des_latency, phytype,
-                 cmd_delay=None, extended_overlaps_check=False):
+                 cmd_delay=None, masked_write=True, extended_overlaps_check=False):
         self.pads        = pads
         self.memtype     = memtype     = "DDR5"
         self.nranks      = nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
@@ -219,7 +224,7 @@ class DDR5PHY(Module, AutoCSR):
 
         # # #
 
-        adapters = [DFIPhaseAdapter(phase) for phase in self.dfi.phases]
+        adapters = [DFIPhaseAdapter(phase, masked_write=masked_write) for phase in self.dfi.phases]
         self.submodules += adapters
 
         # Now prepare the data by converting the sequences on adapters into sequences on the pads.
@@ -309,6 +314,30 @@ class DDR5PHY(Module, AutoCSR):
                 i      = dqs_pattern.o,
                 o      = self.out.dqs_o[byte],
             )
+
+        # DMI --------------------------------------------------------------------------------------
+        # DMI signal is used for Data Mask or Data Bus Invertion depending on Mode Registers values.
+        # With DM and DBI disabled, this signal is a Don't Care.
+        # With DM enabled, masking is performed only when the command used is WRITE-MASKED.
+        # We don't support DBI, DM support is configured statically with `masked_write`.
+        for byte in range(self.databits//8):
+            if isinstance(masked_write, Signal) or masked_write:
+                self.comb += self.out.dmi_oe.eq(self.out.dq_oe)
+                wrdata_mask = [
+                    self.dfi.phases[i//2].wrdata_mask[i%2 * self.databits//8 + byte]
+                    for i in range(2*nphases)
+                ]
+                self.submodules += BitSlip(
+                    dw     = 2*nphases,
+                    cycles = bitslip_cycles,
+                    rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
+                    slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
+                    i      = Cat(*wrdata_mask),
+                    o      = self.out.dmi_o[byte],
+                )
+            else:
+                self.comb += self.out.dmi_o[byte].eq(0)
+                self.comb += self.out.dmi_oe.eq(0)
 
         # Read Control Path ------------------------------------------------------------------------
         # Creates a delay line of read commands coming from the DFI interface. The output is used to

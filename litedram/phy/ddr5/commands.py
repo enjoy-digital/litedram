@@ -52,6 +52,8 @@ class DFIPhaseAdapter(Module):
     ----------
     dfi_phase : Record(dfi.phase_description), in
         Input from a single DFI phase.
+    masked_write : bool or Signal(1)
+        Specifies if masked write variant of write command should be chosen.
 
     Attributes
     ----------
@@ -62,7 +64,7 @@ class DFIPhaseAdapter(Module):
     valid : Signal, out
         Indicates that a valid command is presented on the `cs` and `ca` outputs.
     """
-    def __init__(self, dfi_phase):
+    def __init__(self, dfi_phase, masked_write=True):
         # CS/CA values for 4 SDR cycles
         self.cs = Signal(2)
         self.ca = Array([Signal(14) for _ in range(2)])
@@ -70,7 +72,7 @@ class DFIPhaseAdapter(Module):
 
         # # #
 
-        self.submodules.cmd = Command(dfi_phase)
+        self.submodules.cmd = Command(dfi_phase, masked_write)
         self.comb += [
             self.cs.eq(~self.cmd.cs_n),
             self.ca[0].eq(self.cmd.ca[0]),
@@ -167,10 +169,11 @@ class Command(Module):
         assert len(ca_pins_low.split()) == 14, (cmd, ca_pins_low)
         assert len(ca_pins_high.split()) == 14, (cmd, ca_pins_high)
 
-    def __init__(self, dfi_phase):
+    def __init__(self, dfi_phase, masked_write):
         self.cs_n = Signal(2)
         self.ca = Array([Signal(14), Signal(14)])  # CS_n low, CS_n high
         self.dfi = dfi_phase
+        self.masked_write = masked_write
 
     def set(self, cmd):
         ops = []
@@ -197,7 +200,7 @@ class Command(Module):
             "V":        lambda: 0,  # defined logic
             "X":        lambda: 0,  # don't care
             "BL":       lambda: 1,  # disable placing into the alternate Burst mode
-            "WRP":      lambda: 1,  # disable partial write
+            "WRP":      lambda: ~self.masked_write,  # LOW value means masked variant
             "VorRIR":   lambda: 0,  # Assume for now that Refresh Management Required bit is 0
             "VorH":     lambda: 1,  # depending Refresh Management Required bit, it has to be just valid or H, let's use 1 as more general
             "BG(\d+)":  lambda i: self.dfi.bank[i + 2],  # bank group address

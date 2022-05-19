@@ -40,6 +40,7 @@ _io = [
         Subsignal("cs_n",      Pins(1)),
         Subsignal("ca",      Pins(14)),
         Subsignal("dqs",     Pins(1)),
+        Subsignal("dmi",     Pins(1)),
         Subsignal("dq",      Pins(8)),
     ),
 ]
@@ -66,7 +67,7 @@ class SimSoC(SoCCore):
     """
     def __init__(self, clocks, log_level,
             auto_precharge=False, with_refresh=True, trace_reset=0, disable_delay=False,
-            double_rate_phy=False, finish_after_memtest=False, **kwargs):
+            masked_write=True, double_rate_phy=False, finish_after_memtest=False, **kwargs):
         platform     = Platform(_io, clocks)
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
@@ -90,9 +91,10 @@ class SimSoC(SoCCore):
         self.submodules.ddrphy = sim_phy_cls(
             sys_clk_freq       = sys_clk_freq,
             aligned_reset_zero = True,
+            masked_write       = masked_write,
         )
 
-        for p in ["clk", "mir", "cai", "ca_odt", "reset_n", "cs_n", "ca", "dq", "dqs"]:
+        for p in ["clk", "mir", "cai", "ca_odt", "reset_n", "cs_n", "ca", "dq", "dqs", "dmi"]:
             self.comb += getattr(pads, p).eq(getattr(self.ddrphy.pads, p))
 
         controller_settings = ControllerSettings()
@@ -205,6 +207,11 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             gtkw.dfi_sorter(),
             gtkw.dfi_per_phase_colorer(),
         ])
+        save.add(soc.ddrphy.dfi, group_name="dfi wrdata_mask", mappers=[
+            gtkw.regex_filter(gtkw.suffixes2re(["wrdata_mask"])),
+            gtkw.dfi_sorter(),
+            gtkw.dfi_per_phase_colorer(),
+        ])
         save.add(soc.ddrphy.dfi, group_name="dfi rddata", mappers=[
             gtkw.regex_filter(gtkw.suffixes2re(["rddata", "p0.*rddata_valid"])),
             gtkw.dfi_sorter(),
@@ -217,7 +224,7 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             else:
                 ser_groups = [("out", soc.ddrphy.out)]
             for name, out in ser_groups:
-                save.group([out.cs_n, out.dqs_o[0], out.dqs_oe],
+                save.group([out.cs_n, out.dqs_o[0], out.dqs_oe, out.dmi_o[0], out.dmi_oe],
                     group_name = name,
                     mappers = [
                         gtkw.regex_colorer({
@@ -245,10 +252,11 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             group_name = "pads",
             mappers = [
                 gtkw.regex_filter(["_[io]$"], negate=True),
-                gtkw.regex_sorter(gtkw.suffixes2re(["clk", "mir", "cai", "ca_odt", "reset_n", "cs_n", "ca", "dq", "dqs"])),
+                gtkw.regex_sorter(gtkw.suffixes2re(["clk", "mir", "cai", "ca_odt", "reset_n", "cs_n", "ca", "dq", "dqs", "dmi", "oe"])),
                 gtkw.regex_colorer({
                     "yellow": gtkw.suffixes2re(["cs_n", "ca"]),
-                    "orange": gtkw.suffixes2re(["dq", "dqs"]),
+                    "orange": gtkw.suffixes2re(["dq", "dqs", "dmi"]),
+                    "red": gtkw.suffixes2re(["oe"]),
                 }),
             ],
         )
@@ -270,6 +278,7 @@ def main():
     group.add_argument("--log-level",            default="all=INFO",      help="Set simulation logging level")
     group.add_argument("--disable-delay",        action="store_true",     help="Disable CPU delays")
     group.add_argument("--gtkw-savefile",        action="store_true",     help="Generate GTKWave savefile")
+    group.add_argument("--no-masked-write",      action="store_true",     help="Use unmasked variant of WRITE command")
     group.add_argument("--no-run",               action="store_true",     help="Don't run the simulation, just generate files")
     group.add_argument("--double-rate-phy",      action="store_true",     help="Use sim PHY with 2-stage serialization")
     group.add_argument("--finish-after-memtest", action="store_true",     help="Stop simulation after DRAM memory test")
@@ -299,6 +308,7 @@ def main():
         trace_reset     = int(args.trace_reset),
         log_level       = args.log_level,
         disable_delay   = args.disable_delay,
+        masked_write    = not args.no_masked_write,
         double_rate_phy = args.double_rate_phy,
         finish_after_memtest = args.finish_after_memtest,
         **soc_kwargs)

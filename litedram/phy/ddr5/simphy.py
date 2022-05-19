@@ -22,6 +22,7 @@ class DDR5SimulationPads(SimulationPads):
             SimPad("ca", 14),
             SimPad("dq", databits, io=True),
             SimPad("dqs", databits//8, io=True),
+            SimPad("dmi", databits//8, io=True),
             SimPad("ca_odt", 1),
             SimPad("mir", 1),
             SimPad("cai", 1),
@@ -71,6 +72,8 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
 
         # Tristate I/O (separate for simulation)
         for i in range(self.databits//8):
+            self.ser(i=self.out.dmi_o[i], o=self.pads.dmi_o[i], name=f'dmi_o{i}', **ddr)
+            self.des(o=self.out.dmi_i[i], i=self.pads.dmi[i],   name=f'dmi_i{i}', **ddr)
             self.ser(i=self.out.dqs_o[i], o=self.pads.dqs_o[i], name=f'dqs_o{i}', **ddr_90)
             self.des(o=self.out.dqs_i[i], i=self.pads.dqs[i],   name=f'dqs_i{i}', **ddr_90)
         for i in range(self.databits):
@@ -82,6 +85,7 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
             self.pads.ca_odt.eq(self.out.ca_odt),
             self.pads.mir.eq(self.out.mir),
             self.pads.cai.eq(self.out.cai),
+            self.pads.dmi_oe.eq(delay(self.out.dmi_oe, cycles=Serializer.LATENCY)),
             self.pads.dqs_oe.eq(delay(self.out.dqs_oe, cycles=Serializer.LATENCY)),
             self.pads.dq_oe.eq(delay(self.out.dq_oe, cycles=Serializer.LATENCY)),
         ]
