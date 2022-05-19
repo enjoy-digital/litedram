@@ -344,7 +344,7 @@ class CommandsSim(Module, AutoCSR):
     def read_handler(self):
         bank = Signal(5)
         row  = Signal(18)
-        col  = Signal(9)
+        col  = Signal(11)
         auto_precharge = Signal()
 
         return self.cmd_one_step("READ",
@@ -355,7 +355,7 @@ class CommandsSim(Module, AutoCSR):
                    ),
                 bank.eq(self.cs_n_low[6:11]),
                 row.eq(self.active_rows[bank]),
-                col.eq(self.cs_n_high[:9]),
+                col.eq(Cat(Replicate(0, 2), self.cs_n_high[:9])),
                 auto_precharge.eq(~self.cs_n_high[10]),
                 self.log.info("READ: bank=%d row=%d, col=%d", bank, row, col),
 
@@ -383,7 +383,7 @@ class CommandsSim(Module, AutoCSR):
     def write_handler(self):
         bank = Signal(5)
         row  = Signal(18)
-        col  = Signal(9)
+        col  = Signal(11)
         auto_precharge = Signal()
 
         return self.cmd_one_step("WRITE",
@@ -394,7 +394,7 @@ class CommandsSim(Module, AutoCSR):
                    ),
                 bank.eq(self.cs_n_low[6:11]),
                 row.eq(self.active_rows[bank]),
-                col.eq(self.cs_n_high[1:9]),
+                col.eq(Cat(Replicate(0, 3), self.cs_n_high[1:9])),
                 auto_precharge.eq(~self.cs_n_high[10]),
                 self.log.info("WRITE: bank=%d row=%d, col=%d", bank, row, col),
 
@@ -509,7 +509,7 @@ class DQBurst(DataBurst):
     def __init__(self, *, nrows, ncols, row, col, **kwargs):
         super().__init__(**kwargs)
         self.addr = Signal(max=nrows * ncols)
-        self.col_burst = Signal(10)
+        self.col_burst = Signal(11)
         self.comb += [
             self.col_burst.eq(col + self.burst_counter),
             self.addr.eq(row * ncols + self.col_burst),
@@ -521,7 +521,7 @@ class DQWrite(DQBurst):
 
         self.add_fsm(
             ops = [
-                self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%04x",
+                self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%02x",
                     self.burst_counter, bank, row, self.col_burst, dq, once=False),
                 ports[bank].we.eq(2**len(ports[bank].we) - 1),
                 ports[bank].adr.eq(self.addr),
@@ -533,7 +533,7 @@ class DQRead(DQBurst):
     def __init__(self, *, dq, ports, nrows, ncols, bank, row, col, **kwargs):
         super().__init__(nrows=nrows, ncols=ncols, row=row, col=col, **kwargs)
         self.add_fsm([
-            self.log.debug("READ[%d]: bank=%d, row=%d, col=%d, dq=0x%04x",
+            self.log.debug("READ[%d]: bank=%d, row=%d, col=%d, dq=0x%02x",
                 self.burst_counter, bank, row, self.col_burst, dq, once=False),
             ports[bank].we.eq(0),
             ports[bank].adr.eq(self.addr),
