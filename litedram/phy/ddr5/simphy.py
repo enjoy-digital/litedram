@@ -130,18 +130,17 @@ class DoubleRateDDR5SimPHY(SimSerDesMixin, DoubleRateDDR5PHY):
         # To achieve that we send negated clock on clk (clk_p).
         self.ser(i=~self.out.clk, o=self.pads.clk, name='clk', **ddr)
 
-        self.ser(i=self.out.ca_odt, o=self.pads.ca_odt, name='ca_odt', **sdr)
-        self.ser(i=self.out.mir, o=self.pads.mir, name='mir', **sdr)
-        self.ser(i=self.out.cai, o=self.pads.cai, name='cai', **sdr)
         self.ser(i=self.out.reset_n, o=self.pads.reset_n, name='reset_n', **sdr)
 
         # Command/address
-        self.ser(i=self.out.cs, o=self.pads.cs, name='cs', **sdr)
+        self.ser(i=self.out.cs_n, o=self.pads.cs_n, name='cs_n', **sdr)
         for i in range(14):
             self.ser(i=self.out.ca[i], o=self.pads.ca[i], name=f'ca{i}', **sdr)
 
         # Tristate I/O (separate for simulation)
         for i in range(self.databits//8):
+            self.ser(i=self.out.dmi_o[i], o=self.pads.dmi_o[i], name=f'dmi_o{i}', **ddr)
+            self.des(o=self.out.dmi_i[i], i=self.pads.dmi[i],   name=f'dmi_i{i}', **ddr)
             self.ser(i=self.out.dqs_o[i], o=self.pads.dqs_o[i], name=f'dqs_o{i}', **ddr_90)
             self.des(o=self.out.dqs_i[i], i=self.pads.dqs[i],   name=f'dqs_i{i}', **ddr_90)
         for i in range(self.databits):
@@ -153,4 +152,7 @@ class DoubleRateDDR5SimPHY(SimSerDesMixin, DoubleRateDDR5PHY):
             self.pads.ca_odt.eq(self.out.ca_odt),
             self.pads.mir.eq(self.out.mir),
             self.pads.cai.eq(self.out.cai),
+            self.pads.dmi_oe.eq(delay(self.out.dmi_oe, cycles=Serializer.LATENCY)),
+            self.pads.dqs_oe.eq(delay(self.out.dqs_oe, cycles=Serializer.LATENCY)),
+            self.pads.dq_oe.eq(delay(self.out.dq_oe, cycles=Serializer.LATENCY)),
         ]
