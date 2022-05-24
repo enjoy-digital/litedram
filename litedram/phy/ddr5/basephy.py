@@ -426,7 +426,7 @@ class DoubleRateDDR5PHY(DDR5PHY):
                 reset_cnt = serdes_reset_cnt,
             )
 
-        # handle ser/des for both the lists (like dq) and just Signal (like cs)
+        # handle ser/des for both the lists (like dq) and just Signal (like cs_n)
         def apply(fn, i, o):
             if not isinstance(i, list):
                 i, o = [i], [o]

@@ -43,7 +43,7 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
             phytype      = "DDR5SimPHY",
             **kwargs)
 
-        # fake delays (make no nsense in simulation, but sdram.c expects them)
+        # fake delays (make no sense in simulation, but sdram.c expects them)
         self.settings.read_leveling = True
         self.settings.delays = 1
         self._rdly_dq_rst = CSR()
@@ -109,7 +109,7 @@ class DoubleRateDDR5SimPHY(SimSerDesMixin, DoubleRateDDR5PHY):
             **kwargs)
         self.submodules.half_delay = ClockDomainsRenamer("sys2x")(Module())
 
-        # fake delays (make no nsense in simulation, but sdram.c expects them)
+        # fake delays (make no sense in simulation, but sdram.c expects them)
         self.settings.read_leveling = True
         self.settings.delays = 1
         self._rdly_dq_rst = CSR()

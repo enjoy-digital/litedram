@@ -65,7 +65,7 @@ class DFIPhaseAdapter(Module):
         Indicates that a valid command is presented on the `cs` and `ca` outputs.
     """
     def __init__(self, dfi_phase, masked_write=True):
-        # CS/CA values for 4 SDR cycles
+        # CS/CA values for 2 SDR cycles
         self.cs = Signal(2)
         self.ca = Array([Signal(14) for _ in range(2)])
         self.valid = Signal()
