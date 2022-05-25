@@ -131,16 +131,18 @@ class DDR5PHY(Module, AutoCSR):
         # Parameters -------------------------------------------------------------------------------
         def get_cl_cw(memtype, tck):
             f_to_cl_cwl = OrderedDict()
-            f_to_cl_cwl[ 532e6] = 20
-            f_to_cl_cwl[1066e6] = 22
-            f_to_cl_cwl[1600e6] = 24
-            f_to_cl_cwl[2132e6] = 26
-            f_to_cl_cwl[2666e6] = 28
-            f_to_cl_cwl[3200e6] = 30
-            f_to_cl_cwl[3732e6] = 32
-            f_to_cl_cwl[4266e6] = 34
+            f_to_cl_cwl[3200e6] = 22
+            f_to_cl_cwl[3600e6] = 28
+            f_to_cl_cwl[4000e6] = 32
+            f_to_cl_cwl[4400e6] = 36
+            f_to_cl_cwl[4800e6] = 40
+            f_to_cl_cwl[5200e6] = 42
+            f_to_cl_cwl[5600e6] = 46
+            f_to_cl_cwl[6000e6] = 50
+            f_to_cl_cwl[6400e6] = 54
+            f_to_cl_cwl[6800e6] = 56
             for f, cl in f_to_cl_cwl.items():
-                if tck >= 2/f:
+                if tck > 1/f:
                     return cl
             raise ValueError
 
