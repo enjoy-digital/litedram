@@ -214,7 +214,7 @@ class DDR5PHY(Module, AutoCSR):
             write_latency = write_latency,
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
-            bitslips      = 2, # TODO: Just to speed up simulation
+            bitslips      = 16,
         )
 
         # DFI Interface ----------------------------------------------------------------------------
