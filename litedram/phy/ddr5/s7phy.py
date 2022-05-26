@@ -133,7 +133,7 @@ class S7DDR5PHY(DoubleRateDDR5PHY, S7Common):
             self.odelaye2(din=cs_n_ser, dout=self.pads.cs_n, rst=cdly_rst, inc=cdly_inc)
         else:
             self.oserdese2_sdr(din=self.out.cs_n, dout=self.pads.cs_n, clk="sys8x")
-        for bit in range(6):
+        for bit in range(14):
             ca_ser = Signal()
             if with_odelay:
                 self.oserdese2_sdr(din=self.out.ca[bit], dout=ca_ser, clk="sys8x")
