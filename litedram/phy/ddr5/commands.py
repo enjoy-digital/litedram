@@ -142,7 +142,7 @@ class Command(Module):
     TRUTH_TABLE = {
         # 2-cycle commands:
         "ACTIVATE":      ["L L R0 R1 R2 R3 BA0 BA1 BG0 BG1 BG2 CID0 CID1 CID2",
-                          "R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16, CID3/R17"],
+                          "R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16 CID3/R17"],
         "READ":          ["H L H H H BL BA0 BA1 BG0 BG1 BG2 CID0 CID1 CID2",
                           "C2 C3 C4 C5 C6 C7 C8 C9 C10 V H V V CID3"],
         "WRITE":         ["H L H H L BL BA0 BA1 BG0 BG1 BG2 CID0 CID1 CID2",

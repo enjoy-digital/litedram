@@ -850,7 +850,7 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
         assert op < 2**8, "MR opcode too big: {}".format(op)
         a = op
         ba = ma
-        return ("Load More Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
+        return ("Load Mode Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
 
     def ck(sec):
         # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
