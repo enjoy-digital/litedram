@@ -30,8 +30,8 @@ class SpecialCmd(enum.IntEnum):
 class MPC(enum.IntEnum):
     """Op codes for DDR5 multipurpose command
 
-    DFI ZQC command is used to send DDR5 MPC. DFI address A[6:0] is
-    translated to MPC op code OP[6:0]. DFI bank address BA should be 0.
+    DFI ZQC command is used to send DDR5 MPC. DFI address A[7:0] is
+    translated to MPC op code OP[7:0]. DFI bank address BA should be 0.
     """
 
     CS_EX     = 0b00000000 # Exit CS training mode
