@@ -105,7 +105,7 @@ class DoubleRateDDR5SimPHY(SimSerDesMixin, DoubleRateDDR5PHY):
         super().__init__(pads,
             ser_latency  = Latency(sys2x=Serializer.LATENCY),
             des_latency  = Latency(sys2x=Deserializer.LATENCY),
-            phytype      = "DDR5SimPHY",
+            phytype      = "DoubleRateDDR5SimPHY",
             **kwargs)
         self.submodules.half_delay = ClockDomainsRenamer("sys2x")(Module())
 
