@@ -18,6 +18,7 @@ from litedram.common import TappedDelayLine
 from litedram.phy.utils import delayed, edge
 from litedram.phy.sim_utils import SimLogger, PulseTiming, log_level_getter
 from litedram.phy.ddr5.commands import MPC
+from litedram.modules import MT60B2G8HB48B
 
 
 class DDR5Sim(Module, AutoCSR):
@@ -437,9 +438,11 @@ class DataSim(Module, AutoCSR):
 
         bl = 16
 
+        nbanks = MT60B2G8HB48B.nbanks
         # Per-bank memory
-        nrows, ncols = 65535, 1024
-        mems = [Memory(len(pads.dq), depth=nrows * ncols) for _ in range(8)]
+        nrows = MT60B2G8HB48B.nrows
+        ncols = MT60B2G8HB48B.ncols
+        mems = [Memory(len(pads.dq), depth=nrows * ncols) for _ in range(nbanks)]
         ports = [mem.get_port(write_capable=True, we_granularity=8, async_read=True) for mem in mems]
         self.specials += mems + ports
         ports = Array(ports)
