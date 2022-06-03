@@ -1167,7 +1167,7 @@ class MT53E256M16D1(SDRAMModule):
 class MT60B2G8HB48B(SDRAMModule):
     memtype = "DDR5"
 
-    nbanks = 16
+    nbanks = 32
     nrows = 65536
     ncols = 1024
 
