@@ -195,26 +195,26 @@ class Command(Module):
         assert len(self.dfi.address) >= 18, "At least 18 DFI addressbits needed for row address"
         mr_address = self.dfi.bank if is_mrw else self.dfi.address
         rules = {
-            "H":        lambda: 1,  # high
-            "L":        lambda: 0,  # low
-            "V":        lambda: 0,  # defined logic
-            "X":        lambda: 0,  # don't care
-            "BL":       lambda: 1,  # disable placing into the alternate Burst mode
-            "WRP":      lambda: ~self.masked_write,  # LOW value means masked variant
-            "VorRIR":   lambda: 0,  # Assume for now that Refresh Management Required bit is 0
-            "VorH":     lambda: 1,  # depending Refresh Management Required bit, it has to be just valid or H, let's use 1 as more general
-            "BG(\d+)":  lambda i: self.dfi.bank[i + 2],  # bank group address
-            "BA(\d+)":  lambda i: self.dfi.bank[i],  # bank address
-            "R(\d+)":   lambda i: self.dfi.address[i],  # row
-            "C(\d+)":   lambda i: self.dfi.address[i],  # column
-            "MRA(\d+)": lambda i: mr_address[i],  # mode register address
-            "OP(\d+)":  lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
-            "CID(\d+)": lambda i: 0,  # chip id; used for 3DS stacking, need to be just valid if unused
-            "CID3/R17": lambda: self.dfi.address[17],  # we chose R17 variant, because 3DS stacking is unsupported for now
-            "CW":       lambda: 0  # control word
+            r"H":        lambda: 1,  # high
+            r"L":        lambda: 0,  # low
+            r"V":        lambda: 0,  # defined logic
+            r"X":        lambda: 0,  # don't care
+            r"BL":       lambda: 1,  # disable placing into the alternate Burst mode
+            r"WRP":      lambda: ~self.masked_write,  # LOW value means masked variant
+            r"VorRIR":   lambda: 0,  # Assume for now that Refresh Management Required bit is 0
+            r"VorH":     lambda: 1,  # depending Refresh Management Required bit, it has to be just valid or H, let's use 1 as more general
+            r"BG(\d+)":  lambda i: self.dfi.bank[i + 2],  # bank group address
+            r"BA(\d+)":  lambda i: self.dfi.bank[i],  # bank address
+            r"R(\d+)":   lambda i: self.dfi.address[i],  # row
+            r"C(\d+)":   lambda i: self.dfi.address[i],  # column
+            r"MRA(\d+)": lambda i: mr_address[i],  # mode register address
+            r"OP(\d+)":  lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
+            r"CID(\d+)": lambda i: 0,  # chip id; used for 3DS stacking, need to be just valid if unused
+            r"CID3/R17": lambda: self.dfi.address[17],  # we chose R17 variant, because 3DS stacking is unsupported for now
+            r"CW":       lambda: 0  # control word
         }
         for pattern, value in rules.items():
-            m = re.match(pattern, bit)
+            m = re.fullmatch(pattern, bit)
             if m:
                 args = [int(g) for g in m.groups()]
                 return value(*args)
