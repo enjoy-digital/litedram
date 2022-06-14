@@ -818,19 +818,16 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
         }[cl]),
     ])
     mr[2] = reg([
-        (0, 8, 0b00000000),  # write leveling disabled
+        (1, 1, 0b0),  # write leveling disabled
     ])
-    mr[5] = reg([(0, 8, 0b00100000)]) # DM enabled
+    mr[5] = reg([(5, 1, 0b1)]) # DM enabled
     mr[6] = reg([(0, 8, 0b00000000)])
     mr[10] = reg([(0, 8, 0b00101101)])
     mr[11] = reg([(0, 8, 0b00101101)])
     mr[12] = reg([(0, 8, 0b00101101)])
     mr[15] = reg([(0, 3, 0b011)])
     mr[23] = reg([(0, 2, 0b00)])
-    mr[32] = reg([(0, 6, 0b000000)])
-    mr[33] = reg([(0, 6, 0b000000)])
     mr[34] = reg([
-        (0, 3, 0b000),
         (3, 3, 0b001)
     ])
     mr[35] = reg([
