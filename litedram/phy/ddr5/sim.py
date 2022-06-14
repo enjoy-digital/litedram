@@ -106,7 +106,7 @@ class CommandsSim(Module, AutoCSR):
         self.log.add_csrs()
 
         # Mode Registers storage
-        self.mode_regs = Array([Signal(8) for _ in range(64)])
+        self.mode_regs = Array([Signal(8) for _ in range(256)])
         # Active banks
         self.number_of_banks = 2 ** geom_settings.bankbits;
         self.active_banks = Array([Signal() for _ in range(self.number_of_banks)])
