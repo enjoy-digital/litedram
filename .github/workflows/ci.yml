@@ -38,6 +38,7 @@ jobs:
           sudo mkdir /usr/local/riscv
           sudo cp -r $PWD/../riscv64-*/* /usr/local/riscv
 
+      # Build / Install Verilator
       - name: Build Verilator
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
