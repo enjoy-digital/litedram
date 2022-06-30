@@ -1190,8 +1190,8 @@ class M329R8GA0BB0(SDRAMModule):
     memtype = "DDR5"
 
     nbanks = 32
-    nrows = 65536
-    ncols = 1024
+    nrows = 2 ** 18
+    ncols = 2 ** 11
 
     # TODO: These data below is taken from the MT60B2G8HB48B module. It needs to be changed and verified
 
