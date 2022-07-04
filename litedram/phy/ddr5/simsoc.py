@@ -29,21 +29,38 @@ from litedram.phy.sim_utils import Clocks, CRG, Platform
 
 # Platform -----------------------------------------------------------------------------------------
 
-_io = [
-    # clocks added in main()
-    ("ddr5", 0,
-        Subsignal("clk",     Pins(1)),
-        Subsignal("ca_odt",  Pins(1)),
-        Subsignal("mir",     Pins(1)),
-        Subsignal("cai",     Pins(1)),
-        Subsignal("reset_n", Pins(1)),
-        Subsignal("cs_n",      Pins(1)),
-        Subsignal("ca",      Pins(14)),
-        Subsignal("dqs",     Pins(1)),
-        Subsignal("dmi",     Pins(1)),
-        Subsignal("dq",      Pins(8)),
-    ),
-]
+# clocks added in main()
+_io = {
+    4: [
+        ("ddr5", 0,
+         Subsignal("clk",     Pins(1)),
+         Subsignal("ca_odt",  Pins(1)),
+         Subsignal("mir",     Pins(1)),
+         Subsignal("cai",     Pins(1)),
+         Subsignal("reset_n", Pins(1)),
+         Subsignal("cs_n",      Pins(1)),
+         Subsignal("ca",      Pins(14)),
+         # DQ and DQS are taken from DDR5 Tester board
+         Subsignal("dqs",     Pins(4)),
+         Subsignal("dq",      Pins(32)),
+         # dmi is not supported on x4 device
+        ),
+    ],
+    8: [
+        ("ddr5", 0,
+         Subsignal("clk",     Pins(1)),
+         Subsignal("ca_odt",  Pins(1)),
+         Subsignal("mir",     Pins(1)),
+         Subsignal("cai",     Pins(1)),
+         Subsignal("reset_n", Pins(1)),
+         Subsignal("cs_n",      Pins(1)),
+         Subsignal("ca",      Pins(14)),
+         Subsignal("dqs",     Pins(1)),
+         Subsignal("dmi",     Pins(1)),
+         Subsignal("dq",      Pins(8)),
+        ),
+    ]
+}
 
 # Clocks -------------------------------------------------------------------------------------------
 
@@ -67,8 +84,8 @@ class SimSoC(SoCCore):
     """
     def __init__(self, clocks, log_level,
             auto_precharge=False, with_refresh=True, trace_reset=0, disable_delay=False,
-            masked_write=True, double_rate_phy=False, finish_after_memtest=False, **kwargs):
-        platform     = Platform(_io, clocks)
+                 masked_write=True, double_rate_phy=False, finish_after_memtest=False, dq_dqs_rate=8, **kwargs):
+        platform     = Platform(_io[dq_dqs_rate], clocks)
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -85,7 +102,11 @@ class SimSoC(SoCCore):
         platform.add_debug(self, reset=trace_reset)
 
         # DDR5 -----------------------------------------------------------------------------------
-        sdram_module = litedram_modules.MT60B2G8HB48B(sys_clk_freq, "1:8")
+        if dq_dqs_rate == 8:
+            sdram_module = litedram_modules.MT60B2G8HB48B(sys_clk_freq, "1:8")
+        else:
+            sdram_module = litedram_modules.M329R8GA0BB0(sys_clk_freq, "1:4")
+
         pads = platform.request("ddr5")
         sim_phy_cls = DoubleRateDDR5SimPHY if double_rate_phy else DDR5SimPHY
         self.submodules.ddrphy = sim_phy_cls(
@@ -94,8 +115,8 @@ class SimSoC(SoCCore):
             masked_write       = masked_write,
         )
 
-        for p in ["clk", "mir", "cai", "ca_odt", "reset_n", "cs_n", "ca", "dq", "dqs", "dmi"]:
-            self.comb += getattr(pads, p).eq(getattr(self.ddrphy.pads, p))
+        for p in _io[dq_dqs_rate][2:]:
+            self.comb += getattr(pads, p.name).eq(getattr(self.ddrphy.pads, p.name))
 
         controller_settings = ControllerSettings()
         controller_settings.auto_precharge = auto_precharge
