@@ -115,7 +115,7 @@ class SimSoC(SoCCore):
             masked_write       = masked_write,
         )
 
-        for p in _io[dq_dqs_rate][2:]:
+        for p in _io[dq_dqs_rate][0][2:]:
             self.comb += getattr(pads, p.name).eq(getattr(self.ddrphy.pads, p.name))
 
         controller_settings = ControllerSettings()
@@ -303,6 +303,7 @@ def main():
     group.add_argument("--no-run",               action="store_true",     help="Don't run the simulation, just generate files")
     group.add_argument("--double-rate-phy",      action="store_true",     help="Use sim PHY with 2-stage serialization")
     group.add_argument("--finish-after-memtest", action="store_true",     help="Stop simulation after DRAM memory test")
+    group.add_argument("--dq-dqs-ratio",         default=8,               help="Set DQ:DQS ratio", type=int, choices={4, 8})
     args = parser.parse_args()
 
     soc_kwargs     = soc_core_argdict(args)
@@ -332,6 +333,7 @@ def main():
         masked_write    = not args.no_masked_write,
         double_rate_phy = args.double_rate_phy,
         finish_after_memtest = args.finish_after_memtest,
+        dq_dqs_ratio    = args.dq_dqs_ratio,
         **soc_kwargs)
 
     # Build/Run ------------------------------------------------------------------------------------
