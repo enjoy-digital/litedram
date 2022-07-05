@@ -84,8 +84,8 @@ class SimSoC(SoCCore):
     """
     def __init__(self, clocks, log_level,
             auto_precharge=False, with_refresh=True, trace_reset=0, disable_delay=False,
-                 masked_write=True, double_rate_phy=False, finish_after_memtest=False, dq_dqs_rate=8, **kwargs):
-        platform     = Platform(_io[dq_dqs_rate], clocks)
+                 masked_write=True, double_rate_phy=False, finish_after_memtest=False, dq_dqs_ratio=8, **kwargs):
+        platform     = Platform(_io[dq_dqs_ratio], clocks)
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -102,10 +102,15 @@ class SimSoC(SoCCore):
         platform.add_debug(self, reset=trace_reset)
 
         # DDR5 -----------------------------------------------------------------------------------
-        if dq_dqs_rate == 8:
+        if dq_dqs_ratio == 8:
             sdram_module = litedram_modules.MT60B2G8HB48B(sys_clk_freq, "1:8")
-        else:
+        elif dq_dqs_ratio == 4:
             sdram_module = litedram_modules.M329R8GA0BB0(sys_clk_freq, "1:4")
+            if masked_write:
+                masked_write = False
+                print("Masked Write is unsupported for x4 device (JESD79-5A, section 4.8.1)")
+        else:
+            raise NotImplementedError(f"Unspupported DQ:DQS ratio: {dq_dqs_ratio}")
 
         pads = platform.request("ddr5")
         sim_phy_cls = DoubleRateDDR5SimPHY if double_rate_phy else DDR5SimPHY
@@ -113,9 +118,10 @@ class SimSoC(SoCCore):
             sys_clk_freq       = sys_clk_freq,
             aligned_reset_zero = True,
             masked_write       = masked_write,
+            dq_dqs_ratio       = dq_dqs_ratio,
         )
 
-        for p in _io[dq_dqs_rate][0][2:]:
+        for p in _io[dq_dqs_ratio][0][2:]:
             self.comb += getattr(pads, p.name).eq(getattr(self.ddrphy.pads, p.name))
 
         controller_settings = ControllerSettings()
@@ -305,7 +311,6 @@ def main():
     group.add_argument("--finish-after-memtest", action="store_true",     help="Stop simulation after DRAM memory test")
     group.add_argument("--dq-dqs-ratio",         default=8,               help="Set DQ:DQS ratio", type=int, choices={4, 8})
     args = parser.parse_args()
-
     soc_kwargs     = soc_core_argdict(args)
     builder_kwargs = builder_argdict(args)
 
