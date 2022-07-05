@@ -14,19 +14,25 @@ from litedram.phy.ddr5.basephy import DDR5PHY, DoubleRateDDR5PHY
 
 
 class DDR5SimulationPads(SimulationPads):
-    def layout(self, databits=8):
-        return [
+    def layout(self, databits=8, dq_dqs_ratio=8):
+        simulation_pads = [
             SimPad("clk", 1),
             SimPad("reset_n", 1),
             SimPad("cs_n", 1),
             SimPad("ca", 14),
             SimPad("dq", databits, io=True),
-            SimPad("dqs", databits//8, io=True),
-            SimPad("dmi", databits//8, io=True),
+            SimPad("dqs", databits // dq_dqs_ratio, io=True),
+        ]
+
+        if dq_dqs_ratio != 4:
+            simulation_pads += [SimPad("dmi", databits//8, io=True)]
+
+        simulation_pads += [
             SimPad("ca_odt", 1),
             SimPad("mir", 1),
             SimPad("cai", 1),
         ]
+        return simulation_pads
 
 
 class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
@@ -34,8 +40,15 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
 
     For simulation purpose two additional "DDR" clock domains are requires.
     """
-    def __init__(self, aligned_reset_zero=False, **kwargs):
-        pads = DDR5SimulationPads()
+    def __init__(self, aligned_reset_zero=False, dq_dqs_ratio=8, **kwargs):
+        if dq_dqs_ratio == 8:
+            pads = DDR5SimulationPads(databits=8, dq_dqs_ratio=8)
+        elif dq_dqs_ratio == 4:
+            # databits length taken from DDR5 Tester
+            pads = DDR5SimulationPads(databits=32, dq_dqs_ratio=4)
+        else:
+            raise NotImplementedError(f"Unspupported DQ:DQS ratio: {dq_dqs_ratio}")
+
         self.submodules += pads
         super().__init__(pads,
             ser_latency  = Latency(sys=Serializer.LATENCY),
