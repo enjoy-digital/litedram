@@ -41,9 +41,10 @@ _io = {
          Subsignal("cs_n",      Pins(1)),
          Subsignal("ca",      Pins(14)),
          # DQ and DQS are taken from DDR5 Tester board
-         Subsignal("dqs",     Pins(4)),
+         Subsignal("dqs",     Pins(8)),
+         # dmi is not supported on x4 device, I decided to keep it to make model simpler
+         Subsignal("dmi",     Pins(4)),
          Subsignal("dq",      Pins(32)),
-         # dmi is not supported on x4 device
         ),
     ],
     8: [
@@ -84,7 +85,7 @@ class SimSoC(SoCCore):
     """
     def __init__(self, clocks, log_level,
             auto_precharge=False, with_refresh=True, trace_reset=0, disable_delay=False,
-                 masked_write=True, double_rate_phy=False, finish_after_memtest=False, dq_dqs_ratio=8, **kwargs):
+            masked_write=True, double_rate_phy=False, finish_after_memtest=False, dq_dqs_ratio=8, **kwargs):
         platform     = Platform(_io[dq_dqs_ratio], clocks)
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
