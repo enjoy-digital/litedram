@@ -106,8 +106,15 @@ class DoubleRateDDR5SimPHY(SimSerDesMixin, DoubleRateDDR5PHY):
 
     For simulation purpose two additional "DDR" clock domains are requires.
     """
-    def __init__(self, aligned_reset_zero=False, **kwargs):
-        pads = DDR5SimulationPads()
+    def __init__(self, aligned_reset_zero=False, dq_dqs_ratio=8, **kwargs):
+        if dq_dqs_ratio == 8:
+            pads = DDR5SimulationPads(databits=8, dq_dqs_ratio=8)
+        elif dq_dqs_ratio == 4:
+            # databits length taken from DDR5 Tester
+            pads = DDR5SimulationPads(databits=32, dq_dqs_ratio=4)
+        else:
+            raise NotImplementedError(f"Unspupported DQ:DQS ratio: {dq_dqs_ratio}")
+
         self.submodules += pads
         super().__init__(pads,
             ser_latency  = Latency(sys2x=Serializer.LATENCY),
