@@ -121,6 +121,7 @@ class DDR5PHY(Module, AutoCSR):
         self.memtype     = memtype     = "DDR5"
         self.nranks      = nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         self.databits    = databits    = len(pads.dq)
+        self.strobes     = strobes     = len(pads.dqs_p) if not hasattr(pads, "dqs") else len(pads.dqs)
         self.addressbits = addressbits = 18 # for activate row address
         self.bankbits    = bankbits    = 8  # 5 bankbits, but we use 8 for Mode Register address in MRS
         self.nphases     = nphases     = 8
@@ -231,7 +232,7 @@ class DDR5PHY(Module, AutoCSR):
         # Now prepare the data by converting the sequences on adapters into sequences on the pads.
         # We have to ignore overlapping commands, and module timings have to ensure that there are
         # no overlapping commands anyway.
-        self.out = DDR5Output(nphases, databits, databits // len(pads.dqs_p))
+        self.out = DDR5Output(nphases, databits, databits // strobes)
 
         # Clocks -----------------------------------------------------------------------------------
         self.comb += self.out.clk.eq(bitpattern("-_-_-_-_" * 2))
@@ -401,7 +402,7 @@ class DoubleRateDDR5PHY(DDR5PHY):
             **kwargs)
 
         self._out = self.out
-        self.out = DDR5Output(nphases=self.nphases//2, databits=self.databits, dq_dqs_ratio=(self.databits // len(pads.dqs_p)))
+        self.out = DDR5Output(nphases=self.nphases//2, databits=self.databits, dq_dqs_ratio=(self.databits // self.strobes))
 
         def ser(i, o):
             assert len(o) == len(i)//2, (len(o), len(i)//2)
