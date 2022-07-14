@@ -438,7 +438,7 @@ class DataSim(Module, AutoCSR):
 
         bl = 16
 
-        dq_dqs_ratio = len(pads.dq) // len(pads.dqs)
+        dq_dqs_ratio = len(pads.dq) // len(pads.dqs_t)
         if dq_dqs_ratio == 8:
             module = modules.MT60B2G8HB48B
         elif dq_dqs_ratio == 4:
@@ -461,10 +461,10 @@ class DataSim(Module, AutoCSR):
             log_level=log_level, clk_freq=clk_freq)
         dqs_kwargs = dict(bl=bl, log_level=log_level, clk_freq=clk_freq)
 
-        self.submodules.dq_wr = ClockDomainsRenamer(cd_dq_wr)(DQWrite(dq=pads.dq, dmi=pads.dmi, ports=ports, **dq_kwargs))
+        self.submodules.dq_wr = ClockDomainsRenamer(cd_dq_wr)(DQWrite(dq=pads.dq, dmi=pads.dm_n, ports=ports, **dq_kwargs))
         self.submodules.dq_rd = ClockDomainsRenamer(cd_dq_rd)(DQRead(dq=pads.dq_i, ports=ports, **dq_kwargs))
-        self.submodules.dqs_wr = ClockDomainsRenamer(cd_dqs_wr)(DQSWrite(dqs=pads.dqs, **dqs_kwargs))
-        self.submodules.dqs_rd = ClockDomainsRenamer(cd_dqs_rd)(DQSRead(dqs=pads.dqs_i,**dqs_kwargs))
+        self.submodules.dqs_wr = ClockDomainsRenamer(cd_dqs_wr)(DQSWrite(dqs=pads.dqs_t, **dqs_kwargs))
+        self.submodules.dqs_rd = ClockDomainsRenamer(cd_dqs_rd)(DQSRead(dqs=pads.dqs_t_i,**dqs_kwargs))
 
         write = Signal()
         read = Signal()
