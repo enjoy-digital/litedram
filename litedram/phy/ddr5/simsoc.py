@@ -33,32 +33,42 @@ from litedram.phy.sim_utils import Clocks, CRG, Platform
 _io = {
     4: [
         ("ddr5", 0,
-         Subsignal("clk",     Pins(1)),
-         Subsignal("ca_odt",  Pins(1)),
-         Subsignal("mir",     Pins(1)),
-         Subsignal("cai",     Pins(1)),
-         Subsignal("reset_n", Pins(1)),
+         Subsignal("clk_t",     Pins(1)),
+         Subsignal("clk_c",     Pins(1)),
          Subsignal("cs_n",      Pins(1)),
-         Subsignal("ca",      Pins(14)),
-         # DQ and DQS are taken from DDR5 Tester board
-         Subsignal("dqs",     Pins(8)),
          # dmi is not supported on x4 device, I decided to keep it to make model simpler
-         Subsignal("dmi",     Pins(4)),
-         Subsignal("dq",      Pins(32)),
+         Subsignal("dm_n",      Pins(1)),
+
+         Subsignal("ca",        Pins(14)),
+         Subsignal("reset_n",   Pins(1)),
+         # DQ and DQS are taken from DDR5 Tester board
+         Subsignal("dq",        Pins(4)),
+         Subsignal("dqs_t",     Pins(1)),
+         Subsignal("dqs_c",     Pins(1)),
+
+         Subsignal("mir",       Pins(1)),
+         Subsignal("cai",       Pins(1)),
+         Subsignal("ca_odt",    Pins(1)),
         ),
     ],
     8: [
         ("ddr5", 0,
-         Subsignal("clk",     Pins(1)),
-         Subsignal("ca_odt",  Pins(1)),
-         Subsignal("mir",     Pins(1)),
-         Subsignal("cai",     Pins(1)),
-         Subsignal("reset_n", Pins(1)),
+         Subsignal("clk_t",     Pins(1)),
+         Subsignal("clk_c",     Pins(1)),
          Subsignal("cs_n",      Pins(1)),
-         Subsignal("ca",      Pins(14)),
-         Subsignal("dqs",     Pins(1)),
-         Subsignal("dmi",     Pins(1)),
-         Subsignal("dq",      Pins(8)),
+
+         Subsignal("dm_n",      Pins(1)),
+
+         Subsignal("ca",        Pins(14)),
+         Subsignal("reset_n",   Pins(1)),
+
+         Subsignal("dq",        Pins(8)),
+         Subsignal("dqs_t",     Pins(1)),
+         Subsignal("dqs_c",     Pins(1)),
+
+         Subsignal("mir",       Pins(1)),
+         Subsignal("cai",       Pins(1)),
+         Subsignal("ca_odt",    Pins(1)),
         ),
     ]
 }
@@ -74,6 +84,7 @@ def get_clocks(sys_clk_freq):
         "sys8x_ddr":     dict(freq_hz=2*8*sys_clk_freq),
         "sys8x_90":      dict(freq_hz=8*sys_clk_freq, phase_deg=90),
         "sys8x_90_ddr":  dict(freq_hz=2*8*sys_clk_freq, phase_deg=2*90),
+        "sys_1ns":       dict(freq_hz=int(1e9)),
     })
 
 # SoC ----------------------------------------------------------------------------------------------
@@ -252,7 +263,8 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             else:
                 ser_groups = [("out", soc.ddrphy.out)]
             for name, out in ser_groups:
-                save.group([out.cs_n, out.dqs_o[0], out.dqs_oe, out.dmi_o[0], out.dmi_oe],
+                print([out.cs_n, out.dqs_t_o[0], out.dqs_t_oe, out.dm_n_o[0], out.dm_n_oe])
+                save.group([out.cs_n, out.dqs_t_o[0], out.dqs_t_oe, out.dm_n_o[0], out.dm_n_oe],
                     group_name = name,
                     mappers = [
                         gtkw.regex_colorer({
@@ -268,7 +280,7 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             else:
                 ser_groups = [("in", soc.ddrphy.out)]
             for name, out in ser_groups:
-                save.group([out.dq_i[0], out.dq_oe, out.dqs_i[0], out.dqs_oe],
+                save.group([out.dq_i[0], out.dq_oe, out.dqs_t_i[0], out.dqs_t_oe],
                     group_name = name,
                     mappers = [gtkw.regex_colorer({
                         "yellow": ["dqs"],
