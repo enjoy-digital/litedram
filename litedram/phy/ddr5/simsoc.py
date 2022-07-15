@@ -80,11 +80,11 @@ def get_clocks(sys_clk_freq):
         "sys":           dict(freq_hz=sys_clk_freq),
         "sys_11_25":     dict(freq_hz=sys_clk_freq, phase_deg=11.25),
         "sys2x":         dict(freq_hz=2*sys_clk_freq),
-        "sys8x":         dict(freq_hz=8*sys_clk_freq),
-        "sys8x_ddr":     dict(freq_hz=2*8*sys_clk_freq),
-        "sys8x_90":      dict(freq_hz=8*sys_clk_freq, phase_deg=90),
-        "sys8x_90_ddr":  dict(freq_hz=2*8*sys_clk_freq, phase_deg=2*90),
-        "sys_1ns":       dict(freq_hz=int(1e9)),
+        "sys4x":         dict(freq_hz=4*sys_clk_freq),
+        "sys4x_ddr":     dict(freq_hz=2*4*sys_clk_freq),
+        "sys4x_90":      dict(freq_hz=4*sys_clk_freq, phase_deg=90),
+        "sys4x_90_ddr":  dict(freq_hz=2*4*sys_clk_freq, phase_deg=2*90),
+        "sys_10ns":       dict(freq_hz=int(1e8)),
     })
 
 # SoC ----------------------------------------------------------------------------------------------
@@ -115,7 +115,7 @@ class SimSoC(SoCCore):
 
         # DDR5 -----------------------------------------------------------------------------------
         if dq_dqs_ratio == 8:
-            sdram_module = litedram_modules.MT60B2G8HB48B(sys_clk_freq, "1:8")
+            sdram_module = litedram_modules.MT60B2G8HB48B(sys_clk_freq, "1:4")
         elif dq_dqs_ratio == 4:
             sdram_module = litedram_modules.M329R8GA0BB0(sys_clk_freq, "1:4")
             if masked_write:

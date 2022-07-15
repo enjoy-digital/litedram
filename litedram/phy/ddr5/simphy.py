@@ -61,10 +61,10 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
         self._rdly_dq_inc = CSR()
 
         delay = lambda sig, cycles: delayed(self, sig, cycles=cycles)
-        sdr    = dict(clkdiv="sys", clk="sys8x")
-        sdr_90 = dict(clkdiv="sys", clk="sys8x_90")
-        ddr    = dict(clkdiv="sys", clk="sys8x_ddr")
-        ddr_90 = dict(clkdiv="sys", clk="sys8x_90_ddr")
+        sdr    = dict(clkdiv="sys", clk="sys4x")
+        sdr_90 = dict(clkdiv="sys", clk="sys4x_90")
+        ddr    = dict(clkdiv="sys", clk="sys4x_ddr")
+        ddr_90 = dict(clkdiv="sys", clk="sys4x_90_ddr")
 
         if aligned_reset_zero:
             sdr["reset_cnt"] = 0

@@ -134,7 +134,7 @@ class DDR5PHY(Module, AutoCSR):
         self.strobes     = strobes     = len(pads.dqs_p) if not hasattr(pads, "dqs_t") else len(pads.dqs_t)
         self.addressbits = addressbits = 18 # for activate row address
         self.bankbits    = bankbits    = 8  # 5 bankbits, but we use 8 for Mode Register address in MRS
-        self.nphases     = nphases     = 8
+        self.nphases     = nphases     = 4
         self.tck         = tck         = 1 / (nphases*sys_clk_freq)
         assert databits % 4 == 0
 
@@ -161,7 +161,7 @@ class DDR5PHY(Module, AutoCSR):
         #   of read_latency, probably to have space for manipulating bitslip values
         bitslip_cycles  = 1
         bitslip_range   = 1
-        # Commands are sent over 2 DRAM clocks (sys8x) and we count cl/cwl from last bit
+        # Commands are sent over 2 DRAM clocks (sys4x) and we count cl/cwl from last bit
         cmd_latency     = 2
         # Commands read from adapters are delayed on ConstBitSlips
         ca_latency      = 1
@@ -171,7 +171,7 @@ class DDR5PHY(Module, AutoCSR):
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
         # For reads we need to account for ser+des latency to make sure we get the data in-phase with sys clock
-        rdphase = get_sys_phase(nphases, cl_sys_latency, cl + cmd_latency + ser_latency.sys8x % 8 + des_latency.sys8x % 8)
+        rdphase = get_sys_phase(nphases, cl_sys_latency, cl + cmd_latency + ser_latency.sys4x % 4 + des_latency.sys4x % 4)
         # No need to modify wrphase, because ser_latency applies the same to both CA and DQ
         wrphase = get_sys_phase(nphases, cwl_sys_latency, cwl + cmd_latency)
 
@@ -186,8 +186,8 @@ class DDR5PHY(Module, AutoCSR):
         rdphase, cl_sys_latency = updated_latency(rdphase, cl_sys_latency)
 
         # Read latency
-        read_data_delay = ca_latency + ser_latency.sys8x//8 + cl_sys_latency  # DFI cmd -> read data on DQ
-        read_des_delay  = des_latency.sys8x//8 + bitslip_cycles+bitslip_range  # data on DQ -> data on DFI rddata
+        read_data_delay = ca_latency + ser_latency.sys4x//4 + cl_sys_latency  # DFI cmd -> read data on DQ
+        read_des_delay  = des_latency.sys4x//4 + bitslip_cycles+bitslip_range  # data on DQ -> data on DFI rddata
         read_latency    = read_data_delay + read_des_delay
 
         # Write latency
@@ -231,9 +231,7 @@ class DDR5PHY(Module, AutoCSR):
         )
 
         # DFI Interface ----------------------------------------------------------------------------
-        # Due to the fact that DDR5 has 16n prefetch we use 8 phases to be able to read/write a
-        # whole burst during a single controller clock cycle. PHY should use sys8x clock.
-        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases=8)
+        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases=4)
 
         # # #
 
@@ -316,7 +314,7 @@ class DDR5PHY(Module, AutoCSR):
         self.submodules += dqs_pattern
         self.comb += [
             self.out.dqs_t_oe.eq(delayed(self, dqs_oe, cycles=1)),
-            self.out.dqs_t_oe.eq(delayed(self, dqs_oe, cycles=1)),
+            self.out.dqs_c_oe.eq(delayed(self, dqs_oe, cycles=1)),
         ]
 
         for byte in range(strobes):
@@ -328,6 +326,14 @@ class DDR5PHY(Module, AutoCSR):
                 slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
                 i      = dqs_pattern.o,
                 o      = self.out.dqs_t_o[byte],
+            )
+            self.submodules += BitSlip(
+                dw     = 2*nphases,
+                cycles = bitslip_cycles,
+                rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
+                slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
+                i      = ~dqs_pattern.o,
+                o      = self.out.dqs_c_o[byte],
             )
 
         # DMI --------------------------------------------------------------------------------------
