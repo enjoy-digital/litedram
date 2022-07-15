@@ -34,10 +34,10 @@ class DDR5Sim(Module, AutoCSR):
     after CL/CWL and a data burst is handled, updating memory state.
 
     The simulator requires the following clock domains:
-        sys8x:        8x the memory controller clock frequency, phase aligned.
-        sys8x_90:     Phase shifted by 90 degrees vs sys8x.
-        sys8x_ddr:    Phase aligned with sys8x, double the frequency.
-        sys8x_90_ddr: Phase aligned with sys8x_90, double the frequency.
+        sys4x:        4x the memory controller clock frequency, phase aligned.
+        sys4x_90:     Phase shifted by 90 degrees vs sys4x.
+        sys4x_ddr:    Phase aligned with sys4x, double the frequency.
+        sys4x_90_ddr: Phase aligned with sys4x_90, double the frequency.
 
     Parameters
     ----------
@@ -58,11 +58,11 @@ class DDR5Sim(Module, AutoCSR):
     def __init__(self, pads, *, sys_clk_freq, cl, cwl, disable_delay, log_level, geom_settings):
         log_level = log_level_getter(log_level)
 
-        cd_cmd    = "sys8x_90"
-        cd_dq_wr  = "sys8x_90_ddr"
-        cd_dqs_wr = "sys8x_ddr"
-        cd_dq_rd  = "sys8x_90_ddr"
-        cd_dqs_rd = "sys8x_ddr"
+        cd_cmd    = "sys4x_90"
+        cd_dq_wr  = "sys4x_90_ddr"
+        cd_dqs_wr = "sys4x_ddr"
+        cd_dq_rd  = "sys4x_90_ddr"
+        cd_dqs_rd = "sys4x_ddr"
 
         self.submodules.data_cdc = ClockDomainCrossing(
             [("we", 1), ("masked", 1), ("bank", geom_settings.bankbits), ("row", 18), ("col", 11)],
@@ -70,7 +70,7 @@ class DDR5Sim(Module, AutoCSR):
 
         cmd = CommandsSim(pads,
             data_cdc      = self.data_cdc,
-            clk_freq      = 8*sys_clk_freq,
+            clk_freq      = 4*sys_clk_freq,
             log_level     = log_level("cmd"),
             geom_settings = geom_settings,
             init_delays   = not disable_delay,
@@ -82,7 +82,7 @@ class DDR5Sim(Module, AutoCSR):
             cd_dqs_wr = cd_dqs_wr,
             cd_dq_rd  = cd_dq_rd,
             cd_dqs_rd = cd_dqs_rd,
-            clk_freq  = 2*8*sys_clk_freq,
+            clk_freq  = 2*4*sys_clk_freq,
             cl        = cl,
             cwl       = cwl,
             log_level = log_level("data"),
