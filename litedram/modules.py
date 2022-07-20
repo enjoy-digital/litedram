@@ -765,7 +765,7 @@ class IS43TR16256A(DDR3Module):
 # DDR3 (SO-DIMM) -----------------------------------------------------------------------------------
 
 class MT8JTF12864(DDR3Module):
-    # base chip: MT41J128M8
+    # FPGA built-in base chip: MT41J128M8 (Crucial Memory)
     # geometry
     nbanks = 8
     nrows  = 16384
@@ -776,7 +776,33 @@ class MT8JTF12864(DDR3Module):
         "1066": _SpeedgradeTimings(tRP=15,     tRCD=15,     tWR=15, tRFC=(None, 110), tFAW=(None, 37.5), tRAS=37.5),
         "1333": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=(None, 110), tFAW=(None, 30),   tRAS=36),
     }
-    speedgrade_timings["default"] = speedgrade_timings["1333"]
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
+class KVR16LS11(DDR3Module):
+    # Samsung M471B5173EB0-YK0 and Kingston KVR16LS11 Memories
+    # geometry
+    nbanks = 8
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=(None, 260), tFAW=(None, 30),   tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
+class KVR16S11S8(DDR3Module):
+    # Kingston KVR16S11S8 Memory
+    # geometry
+    nbanks = 8
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "1600": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=(None, 260), tFAW=(None, 30),   tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 class MT8KTF51264(DDR3Module):
     # base chip: MT41K512M8
