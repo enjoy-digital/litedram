@@ -86,7 +86,7 @@ class BankMachine(Module):
     cmd : Endpoint(cmd_request_rw_layout)
         Stream of commands to the Multiplexer
     """
-    def __init__(self, n, address_width, address_align, nranks, settings, TMRInterface):
+    def __init__(self, n, address_width, address_align, nranks, settings, TMRreq):
         self.req = req = Record(cmd_layout(address_width))
         self.refresh_req = refresh_req = Signal()
         self.refresh_gnt = refresh_gnt = Signal()
@@ -96,7 +96,7 @@ class BankMachine(Module):
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
         
         # TMRInterface to replace req
-        self.TMRInterface = TMRRecordSlave(TMRInterface)
+        self.TMRreq = TMRRecordSlave(TMRreq)
 
         # # #
 

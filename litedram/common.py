@@ -418,6 +418,7 @@ class TMRRecordMaster(Module):
 class TMRRecordSlave(Module):
     def __init__(self, cmd, name=None):
         self.name = get_obj_var_name(name, "")
+        print(cmd)
         self.layout = cmd.layout
         
         if self.name:
