@@ -6,10 +6,10 @@ class TMRRecordInput(Module):
     def __init__(self, cmd):
         for f in cmd.layout:
             if isinstance(f[1], (int, tuple)):
-                if len(f) == 3:
-                    sigName, sigSize, sigDir = f
-                else:
+                if len(f) == 2:
                     sigName, sigSize = f
+                else:
+                    raise TypeError
             else:
                 raise TypeError
             TMRIn = TMRInput(getattr(cmd, sigName))
