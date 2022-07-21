@@ -122,13 +122,6 @@ class BankMachine(Module):
         ]
         
         req.connect(sink)
-        
-        for f in req.layout:
-            self_e = signal
-            if m to s
-                slave.eq(self_e)
-            if s to m
-                self_e.eq(slave)
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
