@@ -32,4 +32,4 @@ class LiteDRAMCore(Module, AutoCSR):
             **kwargs)
         self.comb += controller.dfi.connect(self.dfii.slave)
 
-        self.submodules.crossbar = LiteDRAMCrossbar(controller.interface, controller.TMRinterface)
+        self.submodules.crossbar = LiteDRAMCrossbar(controller.interface, controller.TMRInterface)
