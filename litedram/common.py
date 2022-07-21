@@ -325,9 +325,7 @@ class TMRRecord(Record):
                     TMRf = (f[0], TMRLayout(f[1]))
                 TMRLay.append(TMRf)
             return TMRLay
-        print(rec.layout)
         self.layout = layout = TMRLayout(rec.layout)
-        print(layout)
         Record.__init__(self, layout)
         
 class TMRRecordInput(Module):
