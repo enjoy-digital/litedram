@@ -163,6 +163,17 @@ class DFIInjector(Module, AutoCSR):
 
             self.comb += [phase.reset_n.eq(self._control.fields.reset_n) for phase in csr2_dfi.phases if hasattr(phase, "reset_n")]
             self.comb += [phase.reset_n.eq(self._control.fields.reset_n) for phase in csr3_dfi.phases if hasattr(phase, "reset_n")]
+
+            for ddr5_phase, inter_phase in zip(ddr5_dfi.phases, self.intermediate.phases):
+                self.comb += [
+                    ddr5_phase.wrdata.eq(inter_phase.wrdata),
+                    ddr5_phase.wrdata_en.eq(inter_phase.wrdata_en),
+                    ddr5_phase.wrdata_mask.eq(inter_phase.wrdata_mask),
+                    ddr5_phase.rddata_en.eq(inter_phase.rddata_en),
+                    inter_phase.rddata.eq(ddr5_phase.rddata),
+                    inter_phase.rddata_valid.eq(ddr5_phase.rddata_valid),
+                ]
+
             for phase in ddr5_dfi.phases:
                 self.comb += [
                     phase.reset_n.eq(1),
@@ -171,7 +182,7 @@ class DFIInjector(Module, AutoCSR):
                     phase.address.eq(0),
                     phase.cke.eq(0),
                     phase.odt.eq(0),
-                    phase.mode_2n.eq(0)
+                    phase.mode_2n.eq(0),
                 ]
             for i, adapter in enumerate(adapters):
                 for j in range(2):

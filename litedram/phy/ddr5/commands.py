@@ -209,7 +209,7 @@ class Command(Module):
             r"L":        lambda: 0,  # low
             r"V":        lambda: 0,  # defined logic
             r"X":        lambda: 0,  # don't care
-            r"BL":       lambda: 1,  # disable placing into the alternate Burst mode
+            r"BL":       lambda: 0,  # Force BL8 for time being
             r"WRP":      lambda: ~self.masked_write,  # LOW value means masked variant
             r"VorRIR":   lambda: 0,  # Assume for now that Refresh Management Required bit is 0
             r"VorH":     lambda: 1,  # depending Refresh Management Required bit, it has to be just valid or H, let's use 1 as more general

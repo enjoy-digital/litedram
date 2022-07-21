@@ -60,18 +60,18 @@ class DDR5DQSPattern(Module):
         # DQS Pattern transmitted as LSB-first.
 
         self.comb += [
-            self.o.eq(0b0101010101010101),
+            self.o.eq(0b01010101),
             If(self.preamble,
-                self.o.eq(0b0100010101010101)  # 2tCK write preamble (0100 prefix matters only)
+                self.o.eq(0b01000000)  # 2tCK write preamble (0100 prefix matters only)
             ),
             If(self.postamble,
-                self.o.eq(0b0010101010101010) # 0.5 tCK write postamble (0 prefix matters only)
+                self.o.eq(0b00000000) # 0.5 tCK write postamble (0 prefix matters only)
             ),
             If(wlevel_en,
-                self.o.eq(0b0000000000000000),
+                self.o.eq(0b00000000),
                 If(wlevel_strobe,
                     # use 2 toggles as, according to datasheet, the first one may not be registered
-                    self.o.eq(0b0000000000000101)
+                    self.o.eq(0b00000101)
                 )
             )
         ]
@@ -125,7 +125,7 @@ class DDR5PHY(Module, AutoCSR):
     """
     def __init__(self, pads, *,
                  sys_clk_freq, ser_latency, des_latency, phytype,
-                 cmd_delay=None, masked_write=True, extended_overlaps_check=False):
+                 cmd_delay=None, masked_write=False, extended_overlaps_check=False):
         self.pads        = pads
         self.memtype     = memtype     = "DDR5"
         self.nranks      = nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
@@ -240,8 +240,8 @@ class DDR5PHY(Module, AutoCSR):
         self.out = DDR5Output(nphases, databits, nranks, strobes)
 
         # Clocks -----------------------------------------------------------------------------------
-        self.comb += self.out.ck_t.eq(bitpattern("-_-_-_-_" * 2))
-        self.comb += self.out.ck_c.eq(bitpattern("_-_-_-_-" * 2))
+        self.comb += self.out.ck_t.eq(bitpattern("-_-_-_-_"))
+        self.comb += self.out.ck_c.eq(bitpattern("_-_-_-_-"))
 
         # Simple commands --------------------------------------------------------------------------
         self.comb += self.out.reset_n.eq(Cat(delayed(self, phase.reset_n) for phase in self.dfi.phases))
@@ -251,9 +251,6 @@ class DDR5PHY(Module, AutoCSR):
         self.comb += self.out.ca_odt.eq(0)
 
         # DDR5 Commands --------------------------------------------------------------------------
-        # Each DDR5 command can span two phases, so in theory the commands could
-        # overlap. No overlap should be guaranteed by the controller based on module timings, but
-        # we also include an overlaps check in PHY logic.
 
         for rank in range(nranks):
             self.comb += self.out.cs_n[rank].eq(Cat([phase.cs_n[rank] for phase in self.dfi.phases]))
@@ -262,7 +259,7 @@ class DDR5PHY(Module, AutoCSR):
 
         # DQ ---------------------------------------------------------------------------------------
         dq_oe = Signal()
-        self.comb += self.out.dq_oe.eq(delayed(self, dq_oe, cycles=1))
+        self.comb += self.out.dq_oe.eq(dq_oe)
 
         for bit in range(self.databits):
             # output
@@ -303,8 +300,8 @@ class DDR5PHY(Module, AutoCSR):
             wlevel_strobe = self._wlevel_strobe.re)
         self.submodules += dqs_pattern
         self.comb += [
-            self.out.dqs_t_oe.eq(delayed(self, dqs_oe, cycles=1)),
-            self.out.dqs_c_oe.eq(delayed(self, dqs_oe, cycles=1)),
+            self.out.dqs_t_oe.eq(delayed(self, dqs_oe)),
+            self.out.dqs_c_oe.eq(delayed(self, dqs_oe)),
         ]
 
         for byte in range(strobes):
@@ -379,7 +376,7 @@ class DDR5PHY(Module, AutoCSR):
         )
         self.submodules += wrdata_en
 
-        self.comb += dq_oe.eq(wrdata_en.taps[wrtap])
+        self.comb += dq_oe.eq(wrdata_en.taps[wrtap-1])
         # Always enabled in write leveling mode, else during transfers
         self.comb += dqs_oe.eq(self._wlevel_en.storage | (dqs_preamble | dq_oe | dqs_postamble))
 
@@ -389,8 +386,8 @@ class DDR5PHY(Module, AutoCSR):
         # 1 for Preamble, 1 for the Write and 1 for the Postamble.
         def wrdata_en_tap(i):  # allows to have wrtap == 0
             return wrdata_en.input if i == -1 else wrdata_en.taps[i]
-        self.comb += dqs_preamble.eq( wrdata_en_tap(wrtap - 1)  & ~wrdata_en_tap(wrtap + 0))
-        self.comb += dqs_postamble.eq(wrdata_en_tap(wrtap + 1)  & ~wrdata_en_tap(wrtap + 0))
+        self.comb += dqs_preamble.eq( wrdata_en_tap(wrtap - 2)  & ~wrdata_en_tap(wrtap - 1))
+        self.comb += dqs_postamble.eq(wrdata_en_tap(wrtap + 0)  & ~wrdata_en_tap(wrtap - 1))
 
     def get_rst(self, byte, rst):
         return (self._dly_sel.storage[byte] & rst) | self._rst.storage

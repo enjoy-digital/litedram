@@ -801,11 +801,14 @@ def get_lpddr5_phy_init_sequence(phy_settings, timing_settings):
 
 def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
-    bl = 16
+    bl = 8
 
     mr = {}
     mr[0] = reg([
-        (0, 2, 0b00),
+        (0, 2, {16: 0b00,
+                8:  0b01,
+                32: 0b10,
+            }[bl]),
         (2, 5, {
             22: 0b00000,
             24: 0b00001,
@@ -822,6 +825,12 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
     ])
     mr[5] = reg([(5, 1, 0b1)]) # DM enabled
     mr[6] = reg([(0, 8, 0b00000000)])
+    mr[8] = reg([
+        (0, 3, 0b000),
+        (3, 2, 0b01),
+        (6, 1, 0b0),
+        (7, 1, 0b0),
+    ])
     mr[10] = reg([(0, 8, 0b00101101)])
     mr[11] = reg([(0, 8, 0b00101101)])
     mr[12] = reg([(0, 8, 0b00101101)])

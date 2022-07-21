@@ -43,14 +43,14 @@ from test.phy_common import DFISequencer, PadChecker
 run_simulation = partial(test.phy_common.run_simulation, clocks={
     "sys":          (64, 31),
     "sys2x":        (32, 15),
-    "sys8x":        ( 8,  3),
-    "sys8x_ddr":    ( 4,  1),
-    "sys8x_90":     ( 8,  1),
-    "sys8x_90_ddr": ( 4,  3),
+    "sys4x":        ( 8,  3),
+    "sys4x_ddr":    ( 4,  1),
+    "sys4x_90":     ( 8,  1),
+    "sys4x_90_ddr": ( 4,  3),
 })
 
-dfi_data_to_dq = partial(test.phy_common.dfi_data_to_dq, databits=8, nphases=8, burst=16)
-dq_pattern = partial(test.phy_common.dq_pattern, databits=8, nphases=8, burst=16)
+dfi_data_to_dq = partial(test.phy_common.dfi_data_to_dq, databits=8, nphases=4, burst=16)
+dq_pattern = partial(test.phy_common.dq_pattern, databits=8, nphases=4, burst=16)
 
 
 class DDR5Tests(unittest.TestCase):
@@ -83,7 +83,7 @@ class DDR5Tests(unittest.TestCase):
             dfi_sequence = [
                 {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},  # p0: READ
             ],
-            pad_checkers = {"sys8x_90": {
+            pad_checkers = {"sys4x_90": {
                 'cs_n': latency_n + '01111111',
             }},
         )
@@ -97,7 +97,7 @@ class DDR5Tests(unittest.TestCase):
             dfi_sequence = [
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=0)},  # p3: WRITE
             ],
-            pad_checkers = {"sys8x_90": {
+            pad_checkers = {"sys4x_90": {
                 'cs_n': latency_n + '11101111',
             }},
         )
@@ -110,7 +110,7 @@ class DDR5Tests(unittest.TestCase):
             dfi_sequence = [
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
             ],
-            pad_checkers = {"sys8x_90_ddr": {
+            pad_checkers = {"sys4x_90_ddr": {
                 'clk': '01010101' * (phy.settings.cmd_latency + 1),
             }},
         )
@@ -136,7 +136,7 @@ class DDR5Tests(unittest.TestCase):
                 {0: dict(cs_n=0, cas_n=1, ras_n=0, we_n=0)},  # should be ignored due to command on previous cycle
                 {2: dict(cs_n=1, cas_n=0, ras_n=1, we_n=1)},  # ignored due to cs_n=1
             ],
-            pad_checkers = {"sys8x_90": {
+            pad_checkers = {"sys4x_90": {
                 'cs_n': latency_n + ''.join([
                     '01111111',  # p0
                     '11101111',  # p3
@@ -157,7 +157,7 @@ class DDR5Tests(unittest.TestCase):
 
         self.run_test(dut = phy,
                       dfi_sequence = [],
-                      pad_checkers = {"sys8x_90": {
+                      pad_checkers = {"sys4x_90": {
                           'cs_n': latency_n,
                           'ca0':  latency,
                           'ca1':  latency,
@@ -200,7 +200,7 @@ class DDR5Tests(unittest.TestCase):
                           {0: zqc_start, 4: zqc_latch},
                           {0: mrr},
                       ],
-                      pad_checkers = {"sys8x_90": {
+                      pad_checkers = {"sys4x_90": {
                           #                    rd     wr       act    ref      pre    mrw      zqcs   zqcl     mrr
                           'cs_n': latency_n + '0111'+'0111' + '0111'+'0111' + '0111'+'0111' + '0111'+'0111' + '0111'+'1111',
                           'ca0':  latency   + '1000'+'1x00' + '0000'+'1000' + '1000'+'1000' + '1000'+'1000' + '1000'+'0000',
@@ -244,7 +244,7 @@ class DDR5Tests(unittest.TestCase):
                 *[{} for _ in range(write_latency - 1)],
                 dfi_data,
             ],
-            pad_checkers = {"sys8x_90_ddr": {
+            pad_checkers = {"sys4x_90_ddr": {
                 f'dq{i}': (phy.settings.cmd_latency + write_latency) * zero + dq_pattern(i, dfi_data, "wrdata") + zero for i in range(8)
             }},
             vcd_name="ddr_dq_out.vcd"
@@ -274,7 +274,7 @@ class DDR5Tests(unittest.TestCase):
                 dfi_wrdata_en,
                 *[dfi_data for _ in range(write_latency)], # only last should be handled
             ],
-            pad_checkers = {"sys8x_90_ddr": {
+            pad_checkers = {"sys4x_90_ddr": {
                 f'dq{i}': (phy.settings.cmd_latency + write_latency)*zero + dq_pattern(i, dfi_data, "wrdata") + zero for i in range(8)
             }},
             vcd_name="ddr_dq_only_1cycle.vcd"
@@ -303,11 +303,11 @@ class DDR5Tests(unittest.TestCase):
                 },
             ],
             pad_checkers = {
-                "sys8x_90_ddr": {
+                "sys4x_90_ddr": {
                     'dq0':  (phy.settings.cmd_latency + write_latency) * zero + '10101010'+'10101010' + '00000000'+'00000000' + zero,
                     'dq1':  (phy.settings.cmd_latency + write_latency) * zero + '11111111'+'11111111' + '00000000'+'00000000' + zero,
                 },
-                "sys8x_ddr": {
+                "sys4x_ddr": {
                     "dqs0": (phy.settings.cmd_latency + write_latency - 1) * xs + 'xxxxxxxx'+'xxxxx001' + '01010101'+'01010101' + '0xxxxxxxx' + xs,
                 }
             },
@@ -349,7 +349,7 @@ class DDR5Tests(unittest.TestCase):
         self.run_test(dut = phy,
             dfi_sequence = dfi_sequence,
             pad_checkers = {
-                "sys8x_90": {
+                "sys4x_90": {
                     "cs_n": latency_n + "11011111" + ones,
                     "ca0":  latency   + "00100000" + zeros,
                     "ca1":  latency   + "00000000" + zeros,
@@ -366,11 +366,11 @@ class DDR5Tests(unittest.TestCase):
                     "ca12":  latency  + "00000000" + zeros,
                     "ca13":  latency  + "00000000" + zeros,
                 },
-                "sys8x_90_ddr": {
+                "sys4x_90_ddr": {
                     f'dq{i}': (phy.settings.cmd_latency + write_latency) * zeros + dq_pattern(i, dfi_data, "wrdata") + zeros
                             for i in range(8)
                 },
-                "sys8x_ddr": {
+                "sys4x_ddr": {
                     "dqs0": (phy.settings.cmd_latency + write_latency - 1) * xs + 'xxxxxxxx'+'xxxxx001' + '01010101'+'01010101' + '0xxxxxxxx' + xs,
                 },
             },
@@ -433,7 +433,7 @@ class DDR5Tests(unittest.TestCase):
             dfi_sequence = dfi_sequence,
             pad_checkers = {},
             pad_generators = {
-                "sys8x_90_ddr": sim_dq,
+                "sys4x_90_ddr": sim_dq,
             },
             vcd_name="ddr_dq_in_rddata.vcd"
         )
@@ -551,7 +551,7 @@ class DDR5Tests(unittest.TestCase):
         self.run_test(phy,
             dfi_sequence = dfi_sequence,
             pad_checkers = {
-                "sys8x_90": {
+                "sys4x_90": {
                     "cs_n": ones  + rdphase * "1" + "0111" + ones,
                     "ca0":  zeros + rdphase * "0" + "1000" + zeros,
                     "ca1":  zeros + rdphase * "0" + "0000" + zeros,
@@ -568,17 +568,17 @@ class DDR5Tests(unittest.TestCase):
                     "ca12": zeros + rdphase * "0" + "0000" + zeros,
                     "ca13": zeros + rdphase * "0" + "0000" + zeros,
                 },
-                "sys8x_90_ddr": {
+                "sys4x_90_ddr": {
                     f'dq{i}': (cmd_latency + 3) * zeros + dq_pattern(i, data_to_read, "rddata") + zeros
                     for i in range(8)
                 },
-                "sys8x_ddr": {
+                "sys4x_ddr": {
                     "dqs0": (cmd_latency + 2) * xs + 'xxxxxxxx'+'xxxxx001' + '01010101'+'01010101' + '010xxxxx' + 'xxxxxxxx',
                 },
             },
             pad_generators = {
-                "sys8x_ddr": [sim.dq_generator, sim.dqs_generator],
-                "sys8x_90": sim.cmd_checker,
+                "sys4x_ddr": [sim.dq_generator, sim.dqs_generator],
+                "sys4x_90": sim.cmd_checker,
             },
             vcd_name="ddr5_cmd_read.vcd"
         )

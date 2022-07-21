@@ -95,8 +95,8 @@ class SimSoC(SoCCore):
     This is a SoC used to run Verilator-based simulations of LiteDRAM with a simulated DDR5 chip.
     """
     def __init__(self, clocks, log_level,
-            auto_precharge=False, with_refresh=True, trace_reset=0, disable_delay=False,
-            masked_write=True, double_rate_phy=False, finish_after_memtest=False, dq_dqs_ratio=8, **kwargs):
+            auto_precharge=False, with_refresh=True, trace_reset=0,
+            masked_write=False, double_rate_phy=False, finish_after_memtest=False, dq_dqs_ratio=8, **kwargs):
         platform     = Platform(_io[dq_dqs_ratio], clocks)
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
@@ -161,14 +161,11 @@ class SimSoC(SoCCore):
             cwl           = self.sdram.controller.settings.phy.cwl,
             sys_clk_freq  = sys_clk_freq,
             log_level     = log_level,
-            disable_delay = disable_delay,
             geom_settings = sdram_module.geom_settings
         )
         self.add_csr("ddr5sim")
 
         self.add_constant("CONFIG_SIM_DISABLE_BIOS_PROMPT")
-        if disable_delay:
-            self.add_constant("CONFIG_DISABLE_DELAYS")
         if finish_after_memtest:
             self.submodules.ddrctrl = LiteDRAMCoreControl()
             self.add_csr("ddrctrl")
@@ -347,7 +344,6 @@ def main():
         with_refresh    = not args.no_refresh,
         trace_reset     = int(args.trace_reset),
         log_level       = args.log_level,
-        disable_delay   = args.disable_delay,
         masked_write    = not args.no_masked_write,
         double_rate_phy = args.double_rate_phy,
         finish_after_memtest = args.finish_after_memtest,
