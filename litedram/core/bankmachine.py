@@ -96,7 +96,7 @@ class BankMachine(Module):
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
         
         # TMRInterface to replace req
-        self.TMRInterface = TMRInterface
+        self.TMRInterface = TMRRecordSlave(TMRInterface)
 
         # # #
 

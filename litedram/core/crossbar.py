@@ -63,7 +63,8 @@ class LiteDRAMCrossbar(Module):
     """
     def __init__(self, controller, TMRcontroller):
         self.controller = controller
-        self.TMRcontroller = TMRcontroller
+        # self.TMRcontroller = TMRcontroller
+        self.TMRcontroller = TMRRecordMaster(TMRcontroller)
 
         self.rca_bits         = controller.address_width
         self.nbanks           = controller.nbanks
