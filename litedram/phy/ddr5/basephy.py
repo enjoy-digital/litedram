@@ -21,13 +21,13 @@ from litedram.phy.ddr5.commands import DFIPhaseAdapter
 
 class DDR5Output:
     """Unserialized output of DDR5PHY. Has to be serialized by concrete implementation."""
-    def __init__(self, nphases, databits, dq_dqs_ratio):
-        self.clk_t   = Signal(2*nphases)
-        self.clk_c   = Signal(2*nphases)
-        self.cs_n    = Signal(nphases)
+    def __init__(self, nphases, databits, nranks, nstrobes):
+        self.ck_t   = Signal(2*nphases)
+        self.ck_c   = Signal(2*nphases)
+        self.cs_n   = [Signal(nphases) for _ in range(nranks)]
 
-        self.dm_n_o  = [Signal(2*nphases) for _ in range(databits // dq_dqs_ratio)]
-        self.dm_n_i  = [Signal(2*nphases) for _ in range(databits // dq_dqs_ratio)]
+        self.dm_n_o  = [Signal(2*nphases) for _ in range(nstrobes)]
+        self.dm_n_i  = [Signal(2*nphases) for _ in range(nstrobes)]
         self.dm_n_oe = Signal()  # no serialization
 
         self.ca      = [Signal(nphases)   for _ in range(14)]
@@ -37,11 +37,11 @@ class DDR5Output:
         self.dq_i    = [Signal(2*nphases) for _ in range(databits)]
         self.dq_oe   = Signal()  # no serialization
 
-        self.dqs_t_o   = [Signal(2*nphases) for _ in range(databits // dq_dqs_ratio)]
-        self.dqs_t_i   = [Signal(2*nphases) for _ in range(databits // dq_dqs_ratio)]
+        self.dqs_t_o   = [Signal(2*nphases) for _ in range(nstrobes)]
+        self.dqs_t_i   = [Signal(2*nphases) for _ in range(nstrobes)]
         self.dqs_t_oe  = Signal()  # no serialization
-        self.dqs_c_o   = [Signal(2*nphases) for _ in range(databits // dq_dqs_ratio)]
-        self.dqs_c_i   = [Signal(2*nphases) for _ in range(databits // dq_dqs_ratio)]
+        self.dqs_c_o   = [Signal(2*nphases) for _ in range(nstrobes)]
+        self.dqs_c_i   = [Signal(2*nphases) for _ in range(nstrobes)]
         self.dqs_c_oe  = Signal()  # no serialization
 
         self.ca_odt  = Signal()
@@ -231,21 +231,17 @@ class DDR5PHY(Module, AutoCSR):
         )
 
         # DFI Interface ----------------------------------------------------------------------------
-        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases=4)
+        self.dfi = dfi = Interface(14, 1, nranks, 2*databits, nphases=4)
 
-        # # #
-
-        adapters = [DFIPhaseAdapter(phase, masked_write=masked_write) for phase in self.dfi.phases]
-        self.submodules += adapters
 
         # Now prepare the data by converting the sequences on adapters into sequences on the pads.
         # We have to ignore overlapping commands, and module timings have to ensure that there are
         # no overlapping commands anyway.
-        self.out = DDR5Output(nphases, databits, databits // strobes)
+        self.out = DDR5Output(nphases, databits, nranks, strobes)
 
         # Clocks -----------------------------------------------------------------------------------
-        self.comb += self.out.clk_t.eq(bitpattern("-_-_-_-_" * 2))
-        self.comb += self.out.clk_c.eq(bitpattern("_-_-_-_-" * 2))
+        self.comb += self.out.ck_t.eq(bitpattern("-_-_-_-_" * 2))
+        self.comb += self.out.ck_c.eq(bitpattern("_-_-_-_-" * 2))
 
         # Simple commands --------------------------------------------------------------------------
         self.comb += self.out.reset_n.eq(Cat(delayed(self, phase.reset_n) for phase in self.dfi.phases))
@@ -258,17 +254,11 @@ class DDR5PHY(Module, AutoCSR):
         # Each DDR5 command can span two phases, so in theory the commands could
         # overlap. No overlap should be guaranteed by the controller based on module timings, but
         # we also include an overlaps check in PHY logic.
-        self.submodules.commands = CommandsPipeline(adapters,
-            cs_ser_width = len(self.out.cs_n),
-            ca_ser_width = len(self.out.ca[0]),
-            ca_nbits     = len(self.out.ca),
-            cmd_nphases_span = 2,
-            extended_overlaps_check = extended_overlaps_check
-        )
 
-        self.comb += self.out.cs_n.eq(~self.commands.cs)
+        for rank in range(nranks):
+            self.comb += self.out.cs_n[rank].eq(Cat([phase.cs_n[rank] for phase in self.dfi.phases]))
         for bit in range(14):
-            self.comb += self.out.ca[bit].eq(self.commands.ca[bit])
+            self.comb += self.out.ca[bit].eq(Cat([phase.address[bit] for phase in self.dfi.phases]))
 
         # DQ ---------------------------------------------------------------------------------------
         dq_oe = Signal()

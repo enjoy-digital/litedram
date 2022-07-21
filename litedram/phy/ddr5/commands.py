@@ -57,7 +57,7 @@ class DFIPhaseAdapter(Module):
 
     Attributes
     ----------
-    cs : Signal(2), out
+    cs : Array(2, Signal(nranks)), out
         Values of CS on 2 subsequent DRAM SDR clock cycles.
     ca : Array(2, Signal(14)), out
         Values of CA[13:0] on 2 subsequent DRAM SDR clock cycles.
@@ -66,29 +66,39 @@ class DFIPhaseAdapter(Module):
     """
     def __init__(self, dfi_phase, masked_write=True):
         # CS/CA values for 2 SDR cycles
-        self.cs = Signal(2)
-        self.ca = Array([Signal(14) for _ in range(2)])
+        self.cs_n     = Array([Signal(len(dfi_phase.cs_n)) for _ in range(2)])
+        self.cke      = Array([Signal(len(dfi_phase.cke)) for _ in range(2)])
+        self.odt      = Array([Signal(len(dfi_phase.odt)) for _ in range(2)])
+        self.reset_n  = Array([Signal() for _ in range(2)])
+        self.act_n    = Array([Signal() for _ in range(2)])
+        self.mode_2n  = Array([Signal() for _ in range(2)])
+        self.ca       = Array([Signal(14) for _ in range(2)])
         self.valid = Signal()
 
         # # #
 
         self.submodules.cmd = Command(dfi_phase, masked_write)
-        self.comb += [
-            self.cs.eq(~self.cmd.cs_n),
-            self.ca[0].eq(self.cmd.ca[0]),
-            self.ca[1].eq(self.cmd.ca[1]),
-        ]
+        for i in range(2):
+            self.comb += [
+                self.cs_n[i].eq(self.cmd.cs_n[i]),
+                self.cke[i].eq(dfi_phase.cke),
+                self.odt[i].eq(dfi_phase.odt),
+                self.reset_n[i].eq(dfi_phase.reset_n),
+                self.act_n[i].eq(dfi_phase.act_n),
+                self.mode_2n[i].eq(dfi_phase.mode_2n),
+                self.ca[i].eq(self.cmd.ca[i]),
+            ]
 
         dfi_cmd = Signal(3)
         self.comb += dfi_cmd.eq(Cat(~dfi_phase.we_n, ~dfi_phase.ras_n, ~dfi_phase.cas_n)),
         _cmd = {  # cas, ras, we
             "NOP": 0b000,
+            "ZQC": 0b001,
             "ACT": 0b010,
+            "PRE": 0b011,
             "RD":  0b100,
             "WR":  0b101,
-            "PRE": 0b011,
             "REF": 0b110,
-            "ZQC": 0b001,
             "MRS": 0b111,
         }
 
@@ -170,7 +180,7 @@ class Command(Module):
         assert len(ca_pins_high.split()) == 14, (cmd, ca_pins_high)
 
     def __init__(self, dfi_phase, masked_write):
-        self.cs_n = Signal(2)
+        self.cs_n = Array([Signal(), Signal()])
         self.ca = Array([Signal(14), Signal(14)])  # CS_n low, CS_n high
         self.dfi = dfi_phase
         self.masked_write = masked_write

@@ -14,11 +14,11 @@ from litedram.phy.ddr5.basephy import DDR5PHY, DoubleRateDDR5PHY
 
 
 class DDR5SimulationPads(SimulationPads):
-    def layout(self, databits=8, dq_dqs_ratio=8):
+    def layout(self, databits=8, nranks=1, dq_dqs_ratio=8):
         return [
-            SimPad("clk_t", 1),
-            SimPad("clk_c", 1),
-            SimPad("cs_n", 1),
+            SimPad("ck_t", 1),
+            SimPad("ck_c", 1),
+            SimPad("cs_n", nranks),
             SimPad("dm_n", databits // dq_dqs_ratio, io=True),
             SimPad("ca", 14),
             SimPad("reset_n", 1),
@@ -38,12 +38,12 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
 
     For simulation purpose two additional "DDR" clock domains are requires.
     """
-    def __init__(self, aligned_reset_zero=False, dq_dqs_ratio=8, **kwargs):
+    def __init__(self, aligned_reset_zero=False, dq_dqs_ratio=8, nranks=1, **kwargs):
         if dq_dqs_ratio == 8:
-            pads = DDR5SimulationPads(databits=8, dq_dqs_ratio=8)
+            pads = DDR5SimulationPads(databits=8, nranks=nranks, dq_dqs_ratio=8)
         elif dq_dqs_ratio == 4:
             # databits length taken from DDR5 Tester
-            pads = DDR5SimulationPads(databits=4, dq_dqs_ratio=4)
+            pads = DDR5SimulationPads(databits=4, nranks=nranks, dq_dqs_ratio=4)
         else:
             raise NotImplementedError(f"Unspupported DQ:DQS ratio: {dq_dqs_ratio}")
 
@@ -72,13 +72,14 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
 
         # Clock is shifted 180 degrees to get rising edge in the middle of SDR signals.
         # To achieve that we send negated clock on clk (clk_p).
-        self.ser(i=self.out.clk_t, o=self.pads.clk_t, name='clk_t', **ddr)
-        self.ser(i=self.out.clk_c, o=self.pads.clk_c, name='clk_c', **ddr)
+        self.ser(i=self.out.ck_t, o=self.pads.ck_t, name='ck_t', **ddr)
+        self.ser(i=self.out.ck_c, o=self.pads.ck_c, name='ck_c', **ddr)
 
         self.ser(i=self.out.reset_n, o=self.pads.reset_n, name='reset_n', **sdr)
 
         # Command/address
-        self.ser(i=self.out.cs_n, o=self.pads.cs_n, name='cs_n', **sdr)
+        for rank in range(nranks):
+            self.ser(i=self.out.cs_n[rank], o=self.pads.cs_n[rank], name='cs_n', **sdr)
         for i in range(14):
             self.ser(i=self.out.ca[i], o=self.pads.ca[i], name=f'ca{i}', **sdr)
 

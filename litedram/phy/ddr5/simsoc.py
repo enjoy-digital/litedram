@@ -33,8 +33,8 @@ from litedram.phy.sim_utils import Clocks, CRG, Platform
 _io = {
     4: [
         ("ddr5", 0,
-         Subsignal("clk_t",     Pins(1)),
-         Subsignal("clk_c",     Pins(1)),
+         Subsignal("ck_t",     Pins(1)),
+         Subsignal("ck_c",     Pins(1)),
          Subsignal("cs_n",      Pins(1)),
          # dmi is not supported on x4 device, I decided to keep it to make model simpler
          Subsignal("dm_n",      Pins(1)),
@@ -53,8 +53,8 @@ _io = {
     ],
     8: [
         ("ddr5", 0,
-         Subsignal("clk_t",     Pins(1)),
-         Subsignal("clk_c",     Pins(1)),
+         Subsignal("ck_t",     Pins(1)),
+         Subsignal("ck_c",     Pins(1)),
          Subsignal("cs_n",      Pins(1)),
 
          Subsignal("dm_n",      Pins(1)),
@@ -263,8 +263,8 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             else:
                 ser_groups = [("out", soc.ddrphy.out)]
             for name, out in ser_groups:
-                print([out.cs_n, out.dqs_t_o[0], out.dqs_t_oe, out.dm_n_o[0], out.dm_n_oe])
-                save.group([out.cs_n, out.dqs_t_o[0], out.dqs_t_oe, out.dm_n_o[0], out.dm_n_oe],
+                print([out.dqs_t_o[0], out.dqs_t_oe, out.dm_n_o[0], out.dm_n_oe])
+                save.group([out.dqs_t_o[0], out.dqs_t_oe, out.dm_n_o[0], out.dm_n_oe],
                     group_name = name,
                     mappers = [
                         gtkw.regex_colorer({

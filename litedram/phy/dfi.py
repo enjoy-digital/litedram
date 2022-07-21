@@ -24,7 +24,8 @@ def phase_cmd_description(addressbits, bankbits, nranks):
         ("cke",          nranks, DIR_M_TO_S),
         ("odt",          nranks, DIR_M_TO_S),
         ("reset_n",           1, DIR_M_TO_S),
-        ("act_n",             1, DIR_M_TO_S)
+        ("act_n",             1, DIR_M_TO_S),
+        ("mode_2n",           1, DIR_M_TO_S)
     ]
 
 
@@ -62,6 +63,7 @@ class Interface(Record):
             p.ras_n.reset = 1
             p.we_n.reset = 1
             p.act_n.reset = 1
+            p.mode_2n.reset = 0
 
     # Returns pairs (DFI-mandated signal name, Migen signal object)
     def get_standard_names(self, m2s=True, s2m=True):
