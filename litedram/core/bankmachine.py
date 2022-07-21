@@ -110,10 +110,11 @@ class BankMachine(Module):
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            TMRreq.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
-            cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
+            cmd_buffer.source.ready.eq(TMRreq.wdata_ready | TMRreq.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
+            TMRreq.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
         ]
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
@@ -181,10 +182,12 @@ class BankMachine(Module):
                         cmd.valid.eq(1),
                         If(cmd_buffer.source.we,
                             req.wdata_ready.eq(cmd.ready),
+                            TMRreq.wdata_ready.eq(cmd.ready),
                             cmd.is_write.eq(1),
                             cmd.we.eq(1),
                         ).Else(
                             req.rdata_valid.eq(cmd.ready),
+                            TMRreq.rdata_valid.eq(cmd.ready),
                             cmd.is_read.eq(1)
                         ),
                         cmd.cas.eq(1),

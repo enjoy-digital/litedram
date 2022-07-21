@@ -63,7 +63,6 @@ class LiteDRAMCrossbar(Module):
     """
     def __init__(self, controller, TMRcontroller):
         self.controller = controller
-        # self.TMRcontroller = TMRcontroller
         self.TMRcontroller = TMRRecordMaster(TMRcontroller)
 
         self.rca_bits         = controller.address_width
@@ -153,7 +152,8 @@ class LiteDRAMCrossbar(Module):
                 for other_nb, other_arbiter in enumerate(arbiters):
                     if other_nb != nb:
                         other_bank = getattr(controller, "bank"+str(other_nb))
-                        locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
+                        other_TMRbank = getattr(TMRcontroller, "bank"+str(other_nb))
+                        locked = locked | (other_TMRbank.lock & (other_arbiter.grant == nm))
                 master_locked.append(locked)
 
             # Arbitrate ----------------------------------------------------------------------------
@@ -161,20 +161,23 @@ class LiteDRAMCrossbar(Module):
             bank_requested = [bs & master.cmd.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 arbiter.request.eq(Cat(*bank_requested)),
-                arbiter.ce.eq(~bank.valid & ~bank.lock)
+                arbiter.ce.eq(~TMRbank.valid & ~TMRbank.lock)
             ]
 
             # Route requests -----------------------------------------------------------------------
             self.comb += [
                 bank.addr.eq(Array(m_rca)[arbiter.grant]),
+                TMRbank.addr.eq(Array(m_rca)[arbiter.grant]),
                 bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
-                bank.valid.eq(Array(bank_requested)[arbiter.grant])
+                TMRbank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
+                bank.valid.eq(Array(bank_requested)[arbiter.grant]),
+                TMRbank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
             ]
-            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & bank.ready)
+            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & TMRbank.ready)
                 for nm, master_ready in enumerate(master_readys)]
-            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & bank.wdata_ready)
+            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & TMRbank.wdata_ready)
                 for nm, master_wdata_ready in enumerate(master_wdata_readys)]
-            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & bank.rdata_valid)
+            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & TMRbank.rdata_valid)
                 for nm, master_rdata_valid in enumerate(master_rdata_valids)]
 
         # Delay write/read signals based on their latency
@@ -204,14 +207,18 @@ class LiteDRAMCrossbar(Module):
         for nm, master in enumerate(self.masters):
             wdata_cases[2**nm] = [
                 controller.wdata.eq(master.wdata.data),
-                controller.wdata_we.eq(master.wdata.we)
+                TMRcontroller.wdata.eq(master.wdata.data),
+                controller.wdata_we.eq(master.wdata.we),
+                TMRcontroller.wdata_we.eq(master.wdata.we)
             ]
         wdata_cases["default"] = [
             controller.wdata.eq(0),
-            controller.wdata_we.eq(0)
+            TMRcontroller.wdata.eq(0),
+            controller.wdata_we.eq(0),
+            TMRcontroller.wdata_we.eq(0)
         ]
         self.comb += Case(Cat(*master_wdata_readys), wdata_cases)
 
         # Route data reads -------------------------------------------------------------------------
         for master in self.masters:
-            self.comb += master.rdata.data.eq(controller.rdata)
+            self.comb += master.rdata.data.eq(TMRcontroller.rdata)
