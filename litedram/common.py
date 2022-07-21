@@ -314,7 +314,7 @@ class TMROutput(Module):
 class TMRRecord(Record):  
     def __init__(self, rec):
         def TMRLayout(layout):
-            TMRLayout = []
+            TMRLay = []
             for f in layout:
                 if isinstance(f[1], (int, tuple)):
                     if len(f) == 3:
@@ -323,8 +323,8 @@ class TMRRecord(Record):
                         TMRf = (f[0], 3*f[1])
                 elif isinstance(f[1], list):
                     TMRf = TMRLayout(f[1])
-                TMRLayout.append(TMRf)
-            return TMRLayout
+                TMRLay.append(TMRf)
+            return TMRLay
         self.layout = layout = TMRLayout(rec.layout)
         Record.__init__(self, layout)
         
