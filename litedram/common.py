@@ -307,16 +307,11 @@ class TMRInput(Module):
         self.comb += self.result.eq((sig1&sig2) | (sig2&sig3) | (sig1&sig3))
         
 class TMROutput(Module):
-
     def __init__(self, control_signal):
         self.control = control_signal
         self.output = Cat(control_signal, control_signal, control_signal)
 
 class TMRRecord(Record):
-    def __init__(self, rec):
-        self.layout = layout = TMRLayout(rec.layout)
-        Record.__init__(self, layout)
-        
     def TMRLayout(layout):
         TMRLayout = []
         for f in layout:
@@ -329,6 +324,10 @@ class TMRRecord(Record):
                 TMRf = TMRLayout(f[1])
             TMRLayout.append(TMRf)
         return TMRLayout
+        
+    def __init__(self, rec):
+        self.layout = layout = TMRLayout(rec.layout)
+        Record.__init__(self, layout)
         
 class TMRRecordInput(Module):
     def __init__(self, cmd, name=None):
