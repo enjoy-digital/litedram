@@ -314,19 +314,21 @@ class TMROutput(Module):
 
 class TMRRecord(Record):
     def __init__(self, rec):
-        layout = rec.layout
+        self.layout = layout = TMRLayout(rec.layout)
+        Record.__init__(self, layout)
+        
+    def TMRLayout(layout):
+        TMRLayout = []
         for f in layout:
             if isinstance(f[1], (int, tuple)):
-                f[2] = f[2]*3
+                if len(f) == 3:
+                    TMRf = (f[0], 3*f[1], f[2])
+                else:
+                    TMRf = (f[0], 3*f[1])
             elif isinstance(f[1], list):
-                for subF in f[1]:
-                    if isinstance(subF[1], (int, tuple)):
-                        subF[1] = (subF[1][0]*3, subF[1][1])
-                    else:
-                        raise TypeError
-            else:
-                raise TypeError
-        Record.__init__(self, layout)
+                TMRf = TMRLayout(f[1])
+            TMRLayout.append(TMRf)
+        return TMRLayout
         
 class TMRRecordInput(Module):
     def __init__(self, cmd, name=None):
