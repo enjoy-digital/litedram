@@ -291,6 +291,27 @@ class LiteDRAMInterface(Record):
         
 # TMR Modules --------------------------------------------------------------------------------------
 
+class TMRInput(Module):
+
+    def __init__(self, received):
+        self.result = Signal()
+        
+        ###
+
+        sig_length = int(len(received) / 3)
+        
+        sig1 = received[0:sig_length]
+        sig2 = received[sig_length:sig_length*2]
+        sig3 = received[sig_length*2:sig_length*3]
+    
+        self.comb += self.result.eq((sig1&sig2) | (sig2&sig3) | (sig1&sig3))
+        
+class TMROutput(Module):
+
+    def __init__(self, control_signal):
+        self.control = control_signal
+        self.output = Cat(control_signal, control_signal, control_signal)
+
 class TMRRecord(Record):
     def __init(self, rec):
         layout = rec.layout
@@ -306,6 +327,58 @@ class TMRRecord(Record):
             else:
                 raise TypeError
         Record.__init__(self, layout)
+        
+class TMRRecordInput(Module):
+    def __init__(self, cmd, name=None):
+        self.name = get_obj_var_name(name, "")
+        self.layout = cmd.layout
+        
+        if self.name:
+            prefix = self.name + "_"
+        else:
+            prefix = ""
+            
+        for f in self.layout:
+            if isinstance(f[1], (int, tuple)):
+                if len(f) == 2:
+                    sigName, sigSize = f
+                    TMRIn = TMRInput(getattr(cmd, sigName))
+                    self.submodules += TMRIn
+                    sig = TMRIn.result
+                else:
+                    raise TypeError
+            elif isinstance(f[1], list):
+                sigName, sigSublayout = f
+                sig = TMRRecordInput(sigSublayout, prefix+sigName)
+            else:
+                raise TypeError
+            setattr(self, sigName, sig)
+            
+class TMRRecordOutput(Module):
+    def __init__(self, cmd, name=None):
+        self.name = get_obj_var_name(name, "")
+        self.layout = cmd.layout
+        
+        if self.name:
+            prefix = self.name + "_"
+        else:
+            prefix = ""
+            
+        for f in self.layout:
+            if isinstance(f[1], (int, tuple)):
+                if len(f) == 2:
+                    sigName, sigSize = f
+                    TMROut = TMROutput(getattr(cmd, sigName))
+                    self.submodules += TMROut
+                    sig = TMROut.output
+                else:
+                    raise TypeError
+            elif isinstance(f[1], list):
+                sigName, sigSublayout = f
+                sig = TMRRecordOutput(sigSublayout, prefix+sigName)
+            else:
+                raise TypeError
+            setattr(self, sigName, sig)
         
 class TMRRecordMaster(Module):
     def __init__(self, cmd, name=None):
