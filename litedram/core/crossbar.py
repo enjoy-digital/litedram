@@ -153,7 +153,7 @@ class LiteDRAMCrossbar(Module):
                     if other_nb != nb:
                         other_bank = getattr(controller, "bank"+str(other_nb))
                         other_TMRbank = getattr(TMRcontroller, "bank"+str(other_nb))
-                        locked = locked | (other_TMRbank.lock & (other_arbiter.grant == nm))
+                        locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
                 master_locked.append(locked)
 
             # Arbitrate ----------------------------------------------------------------------------
@@ -161,7 +161,7 @@ class LiteDRAMCrossbar(Module):
             bank_requested = [bs & master.cmd.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 arbiter.request.eq(Cat(*bank_requested)),
-                arbiter.ce.eq(~TMRbank.valid & ~TMRbank.lock)
+                arbiter.ce.eq(~bank.valid & ~bank.lock)
             ]
 
             # Route requests -----------------------------------------------------------------------
@@ -173,11 +173,11 @@ class LiteDRAMCrossbar(Module):
                 bank.valid.eq(Array(bank_requested)[arbiter.grant]),
                 TMRbank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
             ]
-            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & TMRbank.ready)
+            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & bank.ready)
                 for nm, master_ready in enumerate(master_readys)]
-            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & TMRbank.wdata_ready)
+            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & bank.wdata_ready)
                 for nm, master_wdata_ready in enumerate(master_wdata_readys)]
-            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & TMRbank.rdata_valid)
+            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & bank.rdata_valid)
                 for nm, master_rdata_valid in enumerate(master_rdata_valids)]
 
         # Delay write/read signals based on their latency
@@ -221,4 +221,4 @@ class LiteDRAMCrossbar(Module):
 
         # Route data reads -------------------------------------------------------------------------
         for master in self.masters:
-            self.comb += master.rdata.data.eq(TMRcontroller.rdata)
+            self.comb += master.rdata.data.eq(controller.rdata)

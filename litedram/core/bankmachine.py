@@ -110,13 +110,14 @@ class BankMachine(Module):
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            #TMRreq.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
             TMRreq.ready.eq(cmd_buffer_lookahead.sink.ready),
-            cmd_buffer_lookahead.sink.valid.eq(TMRreq.valid),
-            cmd_buffer_lookahead.sink.we.eq(TMRreq.we),
-            cmd_buffer_lookahead.sink.addr.eq(TMRreq.addr),
+            #cmd_buffer_lookahead.sink.valid.eq(TMRreq.valid),
+            #cmd_buffer_lookahead.sink.we.eq(TMRreq.we),
+            #cmd_buffer_lookahead.sink.addr.eq(TMRreq.addr),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
-            cmd_buffer.source.ready.eq(TMRreq.wdata_ready | TMRreq.rdata_valid),
+            cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
+            #cmd_buffer.source.ready.eq(TMRreq.wdata_ready | TMRreq.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
             TMRreq.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
         ]
