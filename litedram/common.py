@@ -311,21 +311,20 @@ class TMROutput(Module):
         self.control = control_signal
         self.output = Cat(control_signal, control_signal, control_signal)
 
-class TMRRecord(Record):
-    def TMRLayout(layout):
-        TMRLayout = []
-        for f in layout:
-            if isinstance(f[1], (int, tuple)):
-                if len(f) == 3:
-                    TMRf = (f[0], 3*f[1], f[2])
-                else:
-                    TMRf = (f[0], 3*f[1])
-            elif isinstance(f[1], list):
-                TMRf = TMRLayout(f[1])
-            TMRLayout.append(TMRf)
-        return TMRLayout
-        
+class TMRRecord(Record):  
     def __init__(self, rec):
+        def TMRLayout(layout):
+            TMRLayout = []
+            for f in layout:
+                if isinstance(f[1], (int, tuple)):
+                    if len(f) == 3:
+                        TMRf = (f[0], 3*f[1], f[2])
+                    else:
+                        TMRf = (f[0], 3*f[1])
+                elif isinstance(f[1], list):
+                    TMRf = TMRLayout(f[1])
+                TMRLayout.append(TMRf)
+            return TMRLayout
         self.layout = layout = TMRLayout(rec.layout)
         Record.__init__(self, layout)
         
