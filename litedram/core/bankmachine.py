@@ -120,8 +120,6 @@ class BankMachine(Module):
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
             TMRreq.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
         ]
-        
-        req.connect(sink)
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
