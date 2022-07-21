@@ -313,7 +313,7 @@ class TMROutput(Module):
         self.output = Cat(control_signal, control_signal, control_signal)
 
 class TMRRecord(Record):
-    def __init(self, rec):
+    def __init__(self, rec):
         layout = rec.layout
         for f in layout:
             if isinstance(f[1], (int, tuple)):
