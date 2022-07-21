@@ -322,7 +322,7 @@ class TMRRecord(Record):
                     else:
                         TMRf = (f[0], 3*f[1])
                 elif isinstance(f[1], list):
-                    TMRf = TMRLayout(f[1])
+                    TMRf = (f[0], TMRLayout(f[1]))
                 TMRLay.append(TMRf)
             return TMRLay
         print(rec.layout)
