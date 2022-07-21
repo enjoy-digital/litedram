@@ -61,7 +61,7 @@ class LiteDRAMCrossbar(Module):
     masters : [LiteDRAMNativePort, ...]
         LiteDRAM memory ports
     """
-    def __init__(self, controller):
+    def __init__(self, controller, TMRcontroller):
         self.controller = controller
 
         self.rca_bits         = controller.address_width
