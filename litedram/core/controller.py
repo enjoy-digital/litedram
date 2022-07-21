@@ -90,7 +90,8 @@ class LiteDRAMController(Module):
                 address_width = interface.address_width,
                 address_align = address_align,
                 nranks        = nranks,
-                settings      = self.settings)
+                settings      = self.settings,
+                TMRInterface  = TMRInterface)
             bank_machines.append(bank_machine)
             self.submodules += bank_machine
             self.comb += getattr(interface, "bank"+str(n)).connect(bank_machine.req)

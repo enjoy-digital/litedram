@@ -63,6 +63,7 @@ class LiteDRAMCrossbar(Module):
     """
     def __init__(self, controller, TMRcontroller):
         self.controller = controller
+        self.TMRcontroller = TMRcontroller
 
         self.rca_bits         = controller.address_width
         self.nbanks           = controller.nbanks
@@ -124,6 +125,7 @@ class LiteDRAMCrossbar(Module):
 
     def do_finalize(self):
         controller = self.controller
+        TMRcontroller = self.TMRcontroller
         nmasters   = len(self.masters)
 
         # Address mapping --------------------------------------------------------------------------
@@ -141,6 +143,7 @@ class LiteDRAMCrossbar(Module):
 
         for nb, arbiter in enumerate(arbiters):
             bank = getattr(controller, "bank"+str(nb))
+            TMRbank = getattr(TMRcontroller, "bank"+str(nb))
 
             # For each master, determine if another bank locks it ----------------------------------
             master_locked = []
