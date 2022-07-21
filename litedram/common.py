@@ -441,7 +441,7 @@ class TMRRecordSlave(Module):
                     raise TypeError
             elif isinstance(f[1], list):
                 sigName, sigSublayout = f
-                sig = TMRRecordMaster(sigSublayout, prefix+sigName)
+                sig = TMRRecordSlave(sigSublayout, prefix+sigName)
             else:
                 raise TypeError
             setattr(self, sigName, sig)
