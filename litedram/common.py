@@ -319,9 +319,9 @@ class TMRRecord(Record):
             if isinstance(f[1], (int, tuple)):
                 f[2] = f[2]*3
             elif isinstance(f[1], list):
-                for subF in f[2]:
-                    if isinstance(f[1], (int, tuple)):
-                        f[2] = f[2]*3
+                for subF in f[1]:
+                    if isinstance(subF[1], (int, tuple)):
+                        subF[2] = subF[2]*3
                     else:
                         raise TypeError
             else:
