@@ -143,7 +143,17 @@ class LiteDRAMCrossbar(Module):
 
         for nb, arbiter in enumerate(arbiters):
             bank = getattr(controller, "bank"+str(nb))
+            
             TMRbank = getattr(TMRcontroller, "bank"+str(nb))
+            self.comb += [
+                TMRbank.valid.eq(bank.valid),
+                TMRbank.we.eq(bank.we),
+                TMRbank.addr.eq(bank.addr),
+                #bank.ready.eq(TMRbank.ready),
+                #bank.wdata_ready.eq(TMRbank.wdata_ready),
+                #bank.rdata_valid.eq(TMRbank.rdata_valid),
+                #bank.lock.eq(TMRbank.lock)
+            ]
 
             # For each master, determine if another bank locks it ----------------------------------
             master_locked = []
@@ -153,7 +163,7 @@ class LiteDRAMCrossbar(Module):
                     if other_nb != nb:
                         other_bank = getattr(controller, "bank"+str(other_nb))
                         other_TMRbank = getattr(TMRcontroller, "bank"+str(other_nb))
-                        locked = locked | (other_TMRbank.lock & (other_arbiter.grant == nm))
+                        locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
                 master_locked.append(locked)
 
             # Arbitrate ----------------------------------------------------------------------------
@@ -161,17 +171,14 @@ class LiteDRAMCrossbar(Module):
             bank_requested = [bs & master.cmd.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 arbiter.request.eq(Cat(*bank_requested)),
-                arbiter.ce.eq(~bank.valid & ~TMRbank.lock)
+                arbiter.ce.eq(~bank.valid & ~bank.lock)
             ]
 
             # Route requests -----------------------------------------------------------------------
             self.comb += [
                 bank.addr.eq(Array(m_rca)[arbiter.grant]),
-                TMRbank.addr.eq(Array(m_rca)[arbiter.grant]),
                 bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
-                TMRbank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
-                bank.valid.eq(Array(bank_requested)[arbiter.grant]),
-                TMRbank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
+                bank.valid.eq(Array(bank_requested)[arbiter.grant])
             ]
             master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & bank.ready)
                 for nm, master_ready in enumerate(master_readys)]

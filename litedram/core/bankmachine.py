@@ -97,20 +97,22 @@ class BankMachine(Module):
         
         # TMRInterface to replace req
         self.TMRreq = TMRreq = TMRRecordSlave(TMRreq)
+        
+        self.comb += [
+            TMRreq.ready.eq(req.ready),
+            TMRreq.lock.eq(req.lock),
+            TMRreq.wdata_ready.eq(req.wdata_ready),
+            TMRreq.rdata_valid.eq(req.rdata_valid),
+            #req.valid.eq(TMRreq.valid),
+            #req.we.eq(TMRreq.we),
+            #req.addr.eq(TMRreq.addr)
+        ]
 
         # # #
 
         auto_precharge = Signal()
 
         # Command buffer ---------------------------------------------------------------------------
-        
-        self.TMRBufferReq = Record(cmd_layout(address_width))
-        self.comb += [
-            self.TMRBufferReq.valid.eq(TMRreq.valid),
-            self.TMRBufferReq.ready.eq(TMRreq.ready),
-            self.TMRBufferReq.we.eq(TMRreq.we),
-            self.TMRBufferReq.addr.eq(TMRreq.addr)
-        ]
         
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
         cmd_buffer_lookahead = stream.SyncFIFO(
@@ -119,17 +121,10 @@ class BankMachine(Module):
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            #self.TMRBufferReq.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
             req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
-            #TMRreq.ready.eq(cmd_buffer_lookahead.sink.ready),
-            #cmd_buffer_lookahead.sink.valid.eq(TMRreq.valid),
-            #cmd_buffer_lookahead.sink.we.eq(TMRreq.we),
-            #cmd_buffer_lookahead.sink.addr.eq(TMRreq.addr),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
-            #cmd_buffer.source.ready.eq(TMRreq.wdata_ready | TMRreq.rdata_valid),
-            req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
-            TMRreq.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
+            req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
         ]
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
@@ -197,12 +192,10 @@ class BankMachine(Module):
                         cmd.valid.eq(1),
                         If(cmd_buffer.source.we,
                             req.wdata_ready.eq(cmd.ready),
-                            TMRreq.wdata_ready.eq(cmd.ready),
                             cmd.is_write.eq(1),
                             cmd.we.eq(1),
                         ).Else(
                             req.rdata_valid.eq(cmd.ready),
-                            TMRreq.rdata_valid.eq(cmd.ready),
                             cmd.is_read.eq(1)
                         ),
                         cmd.cas.eq(1),
