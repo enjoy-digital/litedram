@@ -103,6 +103,16 @@ class BankMachine(Module):
         auto_precharge = Signal()
 
         # Command buffer ---------------------------------------------------------------------------
+        
+        self.TMRBufferReq = Record(cmd_layout(address_width))
+        self.comb +=
+        [
+            self.TMRBufferReq.valid.eq(TMRreq.valid),
+            self.TMRBufferReq.ready.eq(TMRreq.ready),
+            self.TMRBufferReq.we.eq(TMRreq.we),
+            self.TMRBufferReq.addr.eq(TMRreq.addr)
+        ]
+        
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
         cmd_buffer_lookahead = stream.SyncFIFO(
             cmd_buffer_layout, settings.cmd_buffer_depth,
