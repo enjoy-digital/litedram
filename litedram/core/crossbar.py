@@ -173,11 +173,11 @@ class LiteDRAMCrossbar(Module):
                 bank.valid.eq(Array(bank_requested)[arbiter.grant]),
                 TMRbank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
             ]
-            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & TMRbank.ready)
+            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & bank.ready)
                 for nm, master_ready in enumerate(master_readys)]
-            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & TMRbank.wdata_ready)
+            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & bank.wdata_ready)
                 for nm, master_wdata_ready in enumerate(master_wdata_readys)]
-            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & TMRbank.rdata_valid)
+            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & bank.rdata_valid)
                 for nm, master_rdata_valid in enumerate(master_rdata_valids)]
 
         # Delay write/read signals based on their latency
