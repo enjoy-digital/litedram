@@ -161,7 +161,7 @@ class LiteDRAMCrossbar(Module):
             bank_requested = [bs & master.cmd.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 arbiter.request.eq(Cat(*bank_requested)),
-                arbiter.ce.eq(~bank.valid & ~bank.lock)
+                arbiter.ce.eq(~bank.valid & ~TMRbank.lock)
             ]
 
             # Route requests -----------------------------------------------------------------------
