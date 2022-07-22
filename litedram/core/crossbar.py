@@ -153,7 +153,7 @@ class LiteDRAMCrossbar(Module):
                     if other_nb != nb:
                         other_bank = getattr(controller, "bank"+str(other_nb))
                         other_TMRbank = getattr(TMRcontroller, "bank"+str(other_nb))
-                        locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
+                        locked = locked | (other_TMRbank.lock & (other_arbiter.grant == nm))
                 master_locked.append(locked)
 
             # Arbitrate ----------------------------------------------------------------------------
