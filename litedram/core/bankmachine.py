@@ -119,7 +119,7 @@ class BankMachine(Module):
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            TMRBufferReq.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            self.TMRBufferReq.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
             #TMRreq.ready.eq(cmd_buffer_lookahead.sink.ready),
             #cmd_buffer_lookahead.sink.valid.eq(TMRreq.valid),
             #cmd_buffer_lookahead.sink.we.eq(TMRreq.we),
