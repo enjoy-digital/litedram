@@ -105,8 +105,7 @@ class BankMachine(Module):
         # Command buffer ---------------------------------------------------------------------------
         
         self.TMRBufferReq = Record(cmd_layout(address_width))
-        self.comb +=
-        [
+        self.comb += [
             self.TMRBufferReq.valid.eq(TMRreq.valid),
             self.TMRBufferReq.ready.eq(TMRreq.ready),
             self.TMRBufferReq.we.eq(TMRreq.we),
