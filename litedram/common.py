@@ -288,6 +288,25 @@ class LiteDRAMInterface(Record):
         layout = [("bank"+str(i), cmd_layout(self.address_width)) for i in range(self.nbanks)]
         layout += data_layout(self.data_width)
         Record.__init__(self, layout)
+        
+def make_TMR_layout(layout):        
+    for f in layout:
+        if isinstance(f[1], (int, tuple)):
+            if len(f) == 3:
+                name, size, direction = f
+                TMRlayout.append((name, size*3, direction))
+            else:
+                name, size = f
+                TMRlayout.append((name, size*3))
+        elif isinstance(f[1], list):
+            name, sublayout = f
+            TMRlayout.append((name, make_TMR_layout(sublayout)))
+    
+class TMRRecord(Record):
+    def __init__(self, rec):
+        self.layout = make_TMR_layout(rec.layout)
+        Record.__init__(self, self.layout)
+        
 
 # Ports --------------------------------------------------------------------------------------------
 
