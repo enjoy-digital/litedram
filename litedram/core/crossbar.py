@@ -191,7 +191,7 @@ class LiteDRAMCrossbar(Module):
                 bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
                 bank.valid.eq(Array(bank_requested)[arbiter.grant])
             ]
-            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & bank.ready)
+            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & readyTMRIn.control)
                 for nm, master_ready in enumerate(master_readys)]
             master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & bank.wdata_ready)
                 for nm, master_wdata_ready in enumerate(master_wdata_readys)]
