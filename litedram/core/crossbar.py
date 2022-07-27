@@ -195,7 +195,7 @@ class LiteDRAMCrossbar(Module):
                 for nm, master_ready in enumerate(master_readys)]
             master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & wdata_readyTMRIn.control)
                 for nm, master_wdata_ready in enumerate(master_wdata_readys)]
-            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & bank.rdata_valid)
+            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & rdata_validTMRIn.control)
                 for nm, master_rdata_valid in enumerate(master_rdata_valids)]
 
         # Delay write/read signals based on their latency
