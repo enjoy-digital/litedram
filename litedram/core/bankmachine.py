@@ -99,6 +99,23 @@ class BankMachine(Module):
         # # #
 
         auto_precharge = Signal()
+        
+        # TMR Setup --------------------------------------------------------------------------------
+        
+        self.submodules += TMROutput(req.ready, TMRreq.ready)
+        self.submodules += TMROutput(req.lock, TMRreq.lock)
+        self.submodules += TMROutput(req.wdata_ready, TMRreq.wdata_ready)
+        self.submodules += TMROutput(req.rdata_valid, TMRreq.rdata_valid)
+        #self.submodules += TMRInput(TMRreq.we, req.we)
+        #self.submodules += TMRInput(TMRreq.addr, req.addr)
+        #self.submodules += TMRInput(TMRreq.valid, req.valid)
+        
+        weTMRIn = TMRInput(TMRreq.we)
+        self.submodules += weTMRIn
+        addrTMRIn = TMRInput(TMRreq.addr)
+        self.submodules += addrTMRIn
+        validTMRIn = TMRInput(TMRreq.valid)
+        self.submodules += validTMRIn
 
         # Command buffer ---------------------------------------------------------------------------
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
