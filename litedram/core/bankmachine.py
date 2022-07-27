@@ -88,6 +88,7 @@ class BankMachine(Module):
     """
     def __init__(self, n, address_width, address_align, nranks, settings):
         self.req = req = Record(cmd_layout(address_width))
+        self.req_copy = req_copy = Record(cmd_layout(address_width))
         self.TMRreq = TMRreq = TMRRecord(req)
         self.refresh_req = refresh_req = Signal()
         self.refresh_gnt = refresh_gnt = Signal()
@@ -106,16 +107,20 @@ class BankMachine(Module):
         self.submodules += TMROutput(req.lock, TMRreq.lock)
         self.submodules += TMROutput(req.wdata_ready, TMRreq.wdata_ready)
         self.submodules += TMROutput(req.rdata_valid, TMRreq.rdata_valid)
-        self.submodules += TMRInput(TMRreq.we, req.we)
-        self.submodules += TMRInput(TMRreq.addr, req.addr)
-        self.submodules += TMRInput(TMRreq.valid, req.valid)
+        #self.submodules += TMRInput(TMRreq.we, req.we)
+        #self.submodules += TMRInput(TMRreq.addr, req.addr)
+        #self.submodules += TMRInput(TMRreq.valid, req.valid)
         
         weTMRIn = TMRInput(TMRreq.we)
         self.submodules += weTMRIn
+        self.comb += [req_copy.we.eq(weTMRIn.control)]
         addrTMRIn = TMRInput(TMRreq.addr)
         self.submodules += addrTMRIn
+        self.comb += [req_copy.addr.eq(addrTMRIn.control)]
         validTMRIn = TMRInput(TMRreq.valid)
         self.submodules += validTMRIn
+        self.comb += [req_copy.valid.eq(validTMRIn.control)]
+        self.comb += [req_copy.ready.eq(req.ready)]
 
         # Command buffer ---------------------------------------------------------------------------
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
@@ -125,7 +130,7 @@ class BankMachine(Module):
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            req_copy.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
