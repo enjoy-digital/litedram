@@ -331,7 +331,7 @@ class TMRInput(Module):
         
 class TMROutput(Module):
     def __init__(self, control_signal, tmr_signal=None):
-        self.control = control_signal:
+        self.control = control_signal
         self.TMR = Cat(self.control, self.control, self.control)
         
         ###
