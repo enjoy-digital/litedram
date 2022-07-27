@@ -119,10 +119,10 @@ class BankMachine(Module):
         
         self.req_copy = req_copy = Record(cmd_layout(address_width))
         self.comb += [
-            self.TMRreq.we.eq(req.we),
-            self.TMRreq.addr.eq(req.addr),
-            self.TMRreq.valid.eq(req.valid),
-            self.TMRreq.ready.eq(req.ready)
+            self.req_copy.we.eq(req.we),
+            self.req_copy.addr.eq(req.addr),
+            self.req_copy.valid.eq(req.valid),
+            self.req_copy.ready.eq(req.ready)
         ]
 
         # Command buffer ---------------------------------------------------------------------------
