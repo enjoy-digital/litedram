@@ -317,9 +317,9 @@ class TMRInput(Module):
         self.TMR = tmr_signal
         
         ###
-
+        print("Making TMRInput...")
         sig_length = int(len(tmr_signal) / 3)
-        
+        print(sig_length)
         sig1 = tmr_signal[0:sig_length]
         sig2 = tmr_signal[sig_length:sig_length*2]
         sig3 = tmr_signal[sig_length*2:sig_length*3]
