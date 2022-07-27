@@ -326,7 +326,7 @@ class TMRInput(Module):
     
         self.comb += self.control.eq((sig1&sig2) | (sig2&sig3) | (sig1&sig3))
         
-        if control_signal != None:
+        if control_signal is not None:
             self.comb += [control_signal.eq(self.control)]
         
 class TMROutput(Module):
@@ -336,7 +336,7 @@ class TMROutput(Module):
         
         ###
         
-        if tmr_signal != None:
+        if tmr_signal is not None:
             self.comb += [tmr_signal.eq(self.TMR)]
        
 # Ports --------------------------------------------------------------------------------------------
