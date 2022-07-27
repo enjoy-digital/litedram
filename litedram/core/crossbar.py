@@ -149,7 +149,7 @@ class LiteDRAMCrossbar(Module):
             
             self.submodules += TMROutput(bank.valid, TMRbank.valid)
             self.submodules += TMROutput(bank.we, TMRbank.we)
-            self.submodules += TMROutput(Array(m_rca)[arbiter.grant], TMRbank.addr)
+            self.submodules += TMROutput(bank.addr, TMRbank.addr)
             #self.submodules += TMRInput(TMRbank.lock, bank.lock)
             #self.submodules += TMRInput(TMRbank.ready, bank.ready)
             #self.submodules += TMRInput(TMRbank.wdata_ready, bank.wdata_ready)

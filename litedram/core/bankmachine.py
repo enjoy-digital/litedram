@@ -116,6 +116,14 @@ class BankMachine(Module):
         self.submodules += addrTMRIn
         validTMRIn = TMRInput(TMRreq.valid)
         self.submodules += validTMRIn
+        
+        self.req_copy = req_copy = Record(cmd_layout(address_width))
+        self.comb += [
+            self.TMRreq.we.eq(req.we),
+            self.TMRreq.addr.eq(req.addr),
+            self.TMRreq.valid.eq(req.valid),
+            self.TMRreq.ready.eq(req.ready)
+        ]
 
         # Command buffer ---------------------------------------------------------------------------
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
@@ -125,11 +133,11 @@ class BankMachine(Module):
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            #req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
-            cmd_buffer_lookahead.sink.valid.eq(validTMRIn.control),
-            req.ready.eq(cmd_buffer_lookahead.sink.ready),
-            cmd_buffer_lookahead.sink.we.eq(weTMRIn.control),
-            cmd_buffer_lookahead.sink.addr.eq(addrTMRIn.control),
+            req_copy.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            #cmd_buffer_lookahead.sink.valid.eq(validTMRIn.control),
+            #req.ready.eq(cmd_buffer_lookahead.sink.ready),
+            #cmd_buffer_lookahead.sink.we.eq(weTMRIn.control),
+            #cmd_buffer_lookahead.sink.addr.eq(addrTMRIn),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
