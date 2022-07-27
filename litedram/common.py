@@ -311,6 +311,26 @@ class TMRRecord(Record):
         self.layout = make_TMR_layout(rec.layout)
         Record.__init__(self, self.layout)
         
+class TMRInput(Module):
+    def __init__(self, TMR):
+        self.control = Signal()
+        self.TMR = TMR
+        
+        ###
+
+        sig_length = int(len(TMR) / 3)
+        
+        sig1 = TMR[0:sig_length]
+        sig2 = TMR[sig_length:sig_length*2]
+        sig3 = TMR[sig_length*2:sig_length*3]
+    
+        self.comb += self.control.eq((sig1&sig2) | (sig2&sig3) | (sig1&sig3))
+        
+class TMROutput(Module):
+    def __init__(self, control_signal):
+        self.control = control_signal
+        self.TMR = Cat(control_signal, control_signal, control_signal)
+        
 
 # Ports --------------------------------------------------------------------------------------------
 
