@@ -129,7 +129,7 @@ class BankMachine(Module):
             cmd_buffer_lookahead.sink.valid.eq(req.valid),
             req.ready.eq(cmd_buffer_lookahead.sink.ready),
             cmd_buffer_lookahead.sink.we.eq(weTMRIn.control),
-            cmd_buffer_lookahead.sink.addr.eq(req.addr),
+            cmd_buffer_lookahead.sink.addr.eq(addrTMRIn.control),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
