@@ -171,7 +171,10 @@ class LiteDRAMCrossbar(Module):
                 for other_nb, other_arbiter in enumerate(arbiters):
                     if other_nb != nb:
                         other_bank = getattr(controller, "bank"+str(other_nb))
-                        locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
+                        other_TMRbank = getattr(TMRcontroller, "bank"+str(other_nb))
+                        otherlockTMR = TMRInput(other_TMRbank.lock)
+                        self.submodules += otherlockTMR
+                        locked = locked | (otherlockTMR.control & (other_arbiter.grant == nm))
                 master_locked.append(locked)
 
             # Arbitrate ----------------------------------------------------------------------------
