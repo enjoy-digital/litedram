@@ -106,9 +106,9 @@ class BankMachine(Module):
         self.submodules += TMROutput(req.lock, TMRreq.lock)
         self.submodules += TMROutput(req.wdata_ready, TMRreq.wdata_ready)
         self.submodules += TMROutput(req.rdata_valid, TMRreq.rdata_valid)
-        #self.submodules += TMRInput(TMRreq.we, req.we)
-        #self.submodules += TMRInput(TMRreq.addr, req.addr)
-        #self.submodules += TMRInput(TMRreq.valid, req.valid)
+        self.submodules += TMRInput(TMRreq.we, req.we)
+        self.submodules += TMRInput(TMRreq.addr, req.addr)
+        self.submodules += TMRInput(TMRreq.valid, req.valid)
         
         weTMRIn = TMRInput(TMRreq.we)
         self.submodules += weTMRIn
