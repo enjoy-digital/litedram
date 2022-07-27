@@ -125,6 +125,7 @@ class LiteDRAMCrossbar(Module):
 
     def do_finalize(self):
         controller = self.controller
+        TMRcontroller = self.TMRcontroller
         nmasters   = len(self.masters)
 
         # Address mapping --------------------------------------------------------------------------
