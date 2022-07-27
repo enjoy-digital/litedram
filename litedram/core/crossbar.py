@@ -152,7 +152,7 @@ class LiteDRAMCrossbar(Module):
             #self.submodules += TMROutput(bank.addr, TMRbank.addr)
             addrTMROut = TMROutput(bank.addr)
             self.submodules += addrTMROut
-            self.comb += [TMRbank.addr.eq(addrTMROut.tmr_signal)]
+            self.comb += [TMRbank.addr.eq(addrTMROut.TMR)]
             #self.submodules += TMRInput(TMRbank.lock, bank.lock)
             #self.submodules += TMRInput(TMRbank.ready, bank.ready)
             #self.submodules += TMRInput(TMRbank.wdata_ready, bank.wdata_ready)
