@@ -128,7 +128,7 @@ class BankMachine(Module):
             #req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
             cmd_buffer_lookahead.sink.valid.eq(req.valid),
             req.ready.eq(cmd_buffer_lookahead.sink.ready),
-            cmd_buffer_lookahead.sink.we.eq(req.we),
+            cmd_buffer_lookahead.sink.we.eq(weTMRIn.control),
             cmd_buffer_lookahead.sink.addr.eq(req.addr),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
