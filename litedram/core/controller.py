@@ -94,6 +94,7 @@ class LiteDRAMController(Module):
             bank_machines.append(bank_machine)
             self.submodules += bank_machine
             self.comb += getattr(interface, "bank"+str(n)).connect(bank_machine.req)
+            self.comb += getattr(TMRinterface, "bank"+str(n)).connect(bank_machine.TMRreq)
 
         # Multiplexer ------------------------------------------------------------------------------
         self.submodules.multiplexer = Multiplexer(

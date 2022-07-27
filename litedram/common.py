@@ -312,26 +312,33 @@ class TMRRecord(Record):
         Record.__init__(self, self.layout)
         
 class TMRInput(Module):
-    def __init__(self, TMR):
+    def __init__(self, tmr_signal, control_signal=None):
         self.control = Signal()
-        self.TMR = TMR
+        self.TMR = tmr_signal
         
         ###
 
-        sig_length = int(len(TMR) / 3)
+        sig_length = int(len(tmr_signal) / 3)
         
-        sig1 = TMR[0:sig_length]
-        sig2 = TMR[sig_length:sig_length*2]
-        sig3 = TMR[sig_length*2:sig_length*3]
+        sig1 = tmr_signal[0:sig_length]
+        sig2 = tmr_signal[sig_length:sig_length*2]
+        sig3 = tmr_signal[sig_length*2:sig_length*3]
     
         self.comb += self.control.eq((sig1&sig2) | (sig2&sig3) | (sig1&sig3))
         
-class TMROutput(Module):
-    def __init__(self, control_signal):
-        self.control = control_signal
-        self.TMR = Cat(control_signal, control_signal, control_signal)
+        if control_signal:
+            self.comb += [control_signal.eq(self.control)]
         
-
+class TMROutput(Module):
+    def __init__(self, control_signal, tmr_signal=None):
+        self.control = control_signal:
+        self.TMR = Cat(self.control, self.control, self.control)
+        
+        ###
+        
+        if tmr_signal:
+            self.comb += [tmr_signal.eq(self.TMR)]
+       
 # Ports --------------------------------------------------------------------------------------------
 
 def cmd_description(address_width):
