@@ -322,8 +322,8 @@ class TMRInput(Module):
         sig2 = tmr_signal[sig_length:sig_length*2]
         sig3 = tmr_signal[sig_length*2:sig_length*3]
     
-        #self.comb += self.control.eq((sig1&sig2) | (sig2&sig3) | (sig1&sig3))
-        self.comb += self.control.eq(sig1)
+        self.comb += self.control.eq((sig1&sig2) | (sig2&sig3) | (sig1&sig3))
+        #self.comb += self.control.eq(sig1)
         
         if control_signal is not None:
             self.comb += [control_signal.eq(self.control)]
