@@ -291,7 +291,8 @@ class LiteDRAMInterface(Record):
        
 # TMR ----------------------------------------------------------------------------------------------
        
-def make_TMR_layout(layout):        
+def make_TMR_layout(layout):     
+    TMRlayout = []
     for f in layout:
         if isinstance(f[1], (int, tuple)):
             if len(f) == 3:
@@ -303,6 +304,7 @@ def make_TMR_layout(layout):
         elif isinstance(f[1], list):
             name, sublayout = f
             TMRlayout.append((name, make_TMR_layout(sublayout)))
+    return TMRlayout
     
 class TMRRecord(Record):
     def __init__(self, rec):
