@@ -193,7 +193,7 @@ class LiteDRAMCrossbar(Module):
             ]
             master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & readyTMRIn.control)
                 for nm, master_ready in enumerate(master_readys)]
-            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & bank.wdata_ready)
+            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & wdata_readyTMRIn.control)
                 for nm, master_wdata_ready in enumerate(master_wdata_readys)]
             master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & bank.rdata_valid)
                 for nm, master_rdata_valid in enumerate(master_rdata_valids)]
