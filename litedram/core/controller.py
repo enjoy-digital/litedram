@@ -65,6 +65,7 @@ class LiteDRAMController(Module):
 
         # LiteDRAM Interface (User) ----------------------------------------------------------------
         self.interface = interface = LiteDRAMInterface(address_align, self.settings)
+        self.TMRinterface = TMRRecord(interface)
 
         # DFI Interface (Memory) -------------------------------------------------------------------
         self.dfi = dfi.Interface(
