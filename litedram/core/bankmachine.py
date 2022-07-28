@@ -86,7 +86,7 @@ class BankMachine(Module):
     cmd : Endpoint(cmd_request_rw_layout)
         Stream of commands to the Multiplexer
     """
-    def __init__(self, n, address_width, address_align, nranks, settings):
+    def __init__(self, n, address_width, address_align, nranks, settings, TMRreq):
         self.req = req = Record(cmd_layout(address_width))
         self.TMRreq = TMRreq = TMRRecord(req)
         self.refresh_req = refresh_req = Signal()
@@ -95,6 +95,19 @@ class BankMachine(Module):
         a  = settings.geom.addressbits
         ba = settings.geom.bankbits + log2_int(nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
+        
+        # TMRInterface to replace req
+        self.TMRreq = TMRreq = TMRRecordSlave(TMRreq)
+        
+        self.comb += [
+            TMRreq.ready.eq(req.ready),
+            TMRreq.lock.eq(req.lock),
+            TMRreq.wdata_ready.eq(req.wdata_ready),
+            TMRreq.rdata_valid.eq(req.rdata_valid),
+            #req.valid.eq(TMRreq.valid),
+            #req.we.eq(TMRreq.we),
+            #req.addr.eq(TMRreq.addr)
+        ]
 
         # # #
 
@@ -113,6 +126,7 @@ class BankMachine(Module):
         connect_TMR(self, TMRreq, req, master=False)
 
         # Command buffer ---------------------------------------------------------------------------
+        
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
         cmd_buffer_lookahead = stream.SyncFIFO(
             cmd_buffer_layout, settings.cmd_buffer_depth,
@@ -123,7 +137,7 @@ class BankMachine(Module):
             req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
-            req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
+            req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
         ]
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)

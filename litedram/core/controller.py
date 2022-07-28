@@ -65,6 +65,7 @@ class LiteDRAMController(Module):
 
         # LiteDRAM Interface (User) ----------------------------------------------------------------
         self.interface = interface = LiteDRAMInterface(address_align, self.settings)
+
         self.TMRinterface = TMRinterface = TMRRecord(interface)
 
         # DFI Interface (Memory) -------------------------------------------------------------------
@@ -90,7 +91,8 @@ class LiteDRAMController(Module):
                 address_width = interface.address_width,
                 address_align = address_align,
                 nranks        = nranks,
-                settings      = self.settings)
+                settings      = self.settings,
+                TMRreq        = getattr(TMRInterface, "bank"+str(n)))
             bank_machines.append(bank_machine)
             self.submodules += bank_machine
             #self.comb += getattr(interface, "bank"+str(n)).connect(bank_machine.req)

@@ -358,7 +358,7 @@ def connect_TMR(module, TMRrec, rec, master=True):
                 raise TypeError
         else:
             raise TypeError
-       
+
 # Ports --------------------------------------------------------------------------------------------
 
 def cmd_description(address_width):
