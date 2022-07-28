@@ -121,7 +121,7 @@ class BankMachine(Module):
         self.comb += [
             self.req_copy.we.eq(weTMRIn.control),
             self.req_copy.addr.eq(req.addr),
-            self.req_copy.valid.eq(req.valid),
+            self.req_copy.valid.eq(validTMRIn.control),
             #self.req_copy.ready.eq(req.ready)
             self.req.ready.eq(req_copy.ready)
         ]
