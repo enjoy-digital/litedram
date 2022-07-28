@@ -147,22 +147,15 @@ class LiteDRAMCrossbar(Module):
             
             # TMR Setup ----------------------------------------------------------------------------
             
-            self.submodules += TMROutput(bank.valid, TMRbank.valid)
-            self.submodules += TMROutput(bank.we, TMRbank.we)
-            self.submodules += TMROutput(bank.addr, TMRbank.addr)
-            self.submodules += TMRInput(TMRbank.lock, bank.lock)
-            self.submodules += TMRInput(TMRbank.ready, bank.ready)
-            self.submodules += TMRInput(TMRbank.wdata_ready, bank.wdata_ready)
-            self.submodules += TMRInput(TMRbank.rdata_valid, bank.rdata_valid)
+            #self.submodules += TMROutput(bank.valid, TMRbank.valid)
+            #self.submodules += TMROutput(bank.we, TMRbank.we)
+            #self.submodules += TMROutput(bank.addr, TMRbank.addr)
+            #self.submodules += TMRInput(TMRbank.lock, bank.lock)
+            #self.submodules += TMRInput(TMRbank.ready, bank.ready)
+            #self.submodules += TMRInput(TMRbank.wdata_ready, bank.wdata_ready)
+            #self.submodules += TMRInput(TMRbank.rdata_valid, bank.rdata_valid)
             
-            #lockTMRIn = TMRInput(TMRbank.lock)
-            #self.submodules += lockTMRIn
-            #readyTMRIn = TMRInput(TMRbank.ready)
-            #self.submodules += readyTMRIn
-            #wdata_readyTMRIn = TMRInput(TMRbank.wdata_ready)
-            #self.submodules += wdata_readyTMRIn
-            #rdata_validTMRIn = TMRInput(TMRbank.rdata_valid)
-            #self.submodules += rdata_validTMRIn
+            connect_TMR(self, TMRbank, bank)
 
             # For each master, determine if another bank locks it ----------------------------------
             master_locked = []

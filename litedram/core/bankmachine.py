@@ -102,30 +102,15 @@ class BankMachine(Module):
         
         # TMR Setup --------------------------------------------------------------------------------
         
-        self.submodules += TMROutput(req.ready, TMRreq.ready)
-        self.submodules += TMROutput(req.lock, TMRreq.lock)
-        self.submodules += TMROutput(req.wdata_ready, TMRreq.wdata_ready)
-        self.submodules += TMROutput(req.rdata_valid, TMRreq.rdata_valid)
-        self.submodules += TMRInput(TMRreq.we, req.we)
-        self.submodules += TMRInput(TMRreq.addr, req.addr)
-        self.submodules += TMRInput(TMRreq.valid, req.valid)
+        #self.submodules += TMROutput(req.ready, TMRreq.ready)
+        #self.submodules += TMROutput(req.lock, TMRreq.lock)
+        #self.submodules += TMROutput(req.wdata_ready, TMRreq.wdata_ready)
+        #self.submodules += TMROutput(req.rdata_valid, TMRreq.rdata_valid)
+        #self.submodules += TMRInput(TMRreq.we, req.we)
+        #self.submodules += TMRInput(TMRreq.addr, req.addr)
+        #self.submodules += TMRInput(TMRreq.valid, req.valid)
         
-        #weTMRIn = TMRInput(TMRreq.we)
-        #self.submodules += weTMRIn
-        #addrTMRIn = TMRInput(TMRreq.addr)
-        #self.submodules += addrTMRIn
-        #validTMRIn = TMRInput(TMRreq.valid)
-        #self.submodules += validTMRIn
-        
-        #self.comb += [req.addr.eq(addrTMRIn.control)]
-        
-        #self.req_copy = req_copy = Record(cmd_layout(address_width))
-        #self.comb += [
-        #    self.req_copy.we.eq(weTMRIn.control),
-        #    self.req_copy.addr.eq(addrTMRIn.control),
-        #    self.req_copy.valid.eq(validTMRIn.control),
-        #    self.req.ready.eq(req_copy.ready)
-        #]
+        connect_TMR(self, TMRreq, req, master=False)
 
         # Command buffer ---------------------------------------------------------------------------
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]

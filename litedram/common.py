@@ -337,6 +337,27 @@ class TMROutput(Module):
         
         if tmr_signal is not None:
             self.comb += [tmr_signal.eq(self.TMR)]
+            
+def connect_TMR(module, TMRrec, rec, master=True):
+    layout = rec.layout
+    for f in layout:
+        if isinstance(f[1], (int, tuple)):
+            if len(f[1]) == 3:
+                name, size, direction = f
+                if master:
+                    if direction == DIR_M_TO_S:
+                        module.submodules += TMROutput(getattr(rec, name), getattr(TMRrec, name))
+                    else:
+                        module.submodules += TMRInput(getattr(TMRrec, name), getattr(rec, name))
+                else:
+                    if direction == DIR_S_TO_M:
+                        module.submodules += TMROutput(getattr(rec, name), getattr(TMRrec, name))
+                    else:
+                        module.submodules += TMRInput(getattr(TMRrec, name), getattr(rec, name))
+            else:
+                raise TypeError
+        else:
+            raise TypeError
        
 # Ports --------------------------------------------------------------------------------------------
 
