@@ -315,7 +315,7 @@ class TMRInput(Module):
     def __init__(self, tmr_signal, control_signal=None):
         sig_length = int(len(tmr_signal) / 3)
     
-        self.control = Signal()
+        self.control = Signal(sig_length)
         self.TMR = tmr_signal
         
         ###
