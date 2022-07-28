@@ -188,6 +188,7 @@ class LiteDRAMCrossbar(Module):
             # Route requests -----------------------------------------------------------------------
             self.comb += [
                 bank.addr.eq(Array(m_rca)[arbiter.grant]),
+                TMRbank.addr.eq(Array(m_rca)[arbiter.grant]),
                 bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
                 bank.valid.eq(Array(bank_requested)[arbiter.grant])
             ]
