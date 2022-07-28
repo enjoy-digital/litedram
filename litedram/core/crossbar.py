@@ -150,19 +150,19 @@ class LiteDRAMCrossbar(Module):
             self.submodules += TMROutput(bank.valid, TMRbank.valid)
             self.submodules += TMROutput(bank.we, TMRbank.we)
             self.submodules += TMROutput(bank.addr, TMRbank.addr)
-            #self.submodules += TMRInput(TMRbank.lock, bank.lock)
-            #self.submodules += TMRInput(TMRbank.ready, bank.ready)
-            #self.submodules += TMRInput(TMRbank.wdata_ready, bank.wdata_ready)
-            #self.submodules += TMRInput(TMRbank.rdata_valid, bank.rdata_valid)
+            self.submodules += TMRInput(TMRbank.lock, bank.lock)
+            self.submodules += TMRInput(TMRbank.ready, bank.ready)
+            self.submodules += TMRInput(TMRbank.wdata_ready, bank.wdata_ready)
+            self.submodules += TMRInput(TMRbank.rdata_valid, bank.rdata_valid)
             
-            lockTMRIn = TMRInput(TMRbank.lock)
-            self.submodules += lockTMRIn
-            readyTMRIn = TMRInput(TMRbank.ready)
-            self.submodules += readyTMRIn
-            wdata_readyTMRIn = TMRInput(TMRbank.wdata_ready)
-            self.submodules += wdata_readyTMRIn
-            rdata_validTMRIn = TMRInput(TMRbank.rdata_valid)
-            self.submodules += rdata_validTMRIn
+            #lockTMRIn = TMRInput(TMRbank.lock)
+            #self.submodules += lockTMRIn
+            #readyTMRIn = TMRInput(TMRbank.ready)
+            #self.submodules += readyTMRIn
+            #wdata_readyTMRIn = TMRInput(TMRbank.wdata_ready)
+            #self.submodules += wdata_readyTMRIn
+            #rdata_validTMRIn = TMRInput(TMRbank.rdata_valid)
+            #self.submodules += rdata_validTMRIn
 
             # For each master, determine if another bank locks it ----------------------------------
             master_locked = []
@@ -171,10 +171,7 @@ class LiteDRAMCrossbar(Module):
                 for other_nb, other_arbiter in enumerate(arbiters):
                     if other_nb != nb:
                         other_bank = getattr(controller, "bank"+str(other_nb))
-                        other_TMRbank = getattr(TMRcontroller, "bank"+str(other_nb))
-                        otherlockTMR = TMRInput(other_TMRbank.lock)
-                        self.submodules += otherlockTMR
-                        locked = locked | (otherlockTMR.control & (other_arbiter.grant == nm))
+                        locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
                 master_locked.append(locked)
 
             # Arbitrate ----------------------------------------------------------------------------
@@ -182,7 +179,7 @@ class LiteDRAMCrossbar(Module):
             bank_requested = [bs & master.cmd.valid for bs, master in zip(bank_selected, self.masters)]
             self.comb += [
                 arbiter.request.eq(Cat(*bank_requested)),
-                arbiter.ce.eq(~bank.valid & ~lockTMRIn.control)
+                arbiter.ce.eq(~bank.valid & ~bank.lock)
             ]
 
             # Route requests -----------------------------------------------------------------------
@@ -191,11 +188,11 @@ class LiteDRAMCrossbar(Module):
                 bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
                 bank.valid.eq(Array(bank_requested)[arbiter.grant])
             ]
-            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & readyTMRIn.control)
+            master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & bank.ready)
                 for nm, master_ready in enumerate(master_readys)]
-            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & wdata_readyTMRIn.control)
+            master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & bank.wdata_ready)
                 for nm, master_wdata_ready in enumerate(master_wdata_readys)]
-            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & rdata_validTMRIn.control)
+            master_rdata_valids = [master_rdata_valid | ((arbiter.grant == nm) & bank.rdata_valid)
                 for nm, master_rdata_valid in enumerate(master_rdata_valids)]
 
         # Delay write/read signals based on their latency
