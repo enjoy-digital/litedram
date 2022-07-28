@@ -149,7 +149,9 @@ class LiteDRAMCrossbar(Module):
             
             self.submodules += TMROutput(bank.valid, TMRbank.valid)
             self.submodules += TMROutput(bank.we, TMRbank.we)
-            self.submodules += TMROutput(bank.addr, TMRbank.addr)
+            addrTMROut = TMROutput(Array(m_rca)[arbiter.grant])
+            self.submodules += addrTMROut
+            self.comb += [TMRbank.addr.eq(addrTMROut.TMR)]
             #self.submodules += TMRInput(TMRbank.lock, bank.lock)
             #self.submodules += TMRInput(TMRbank.ready, bank.ready)
             #self.submodules += TMRInput(TMRbank.wdata_ready, bank.wdata_ready)
@@ -188,7 +190,6 @@ class LiteDRAMCrossbar(Module):
             # Route requests -----------------------------------------------------------------------
             self.comb += [
                 bank.addr.eq(Array(m_rca)[arbiter.grant]),
-                TMRbank.addr.eq(Array(m_rca)[arbiter.grant]),
                 bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
                 bank.valid.eq(Array(bank_requested)[arbiter.grant])
             ]
