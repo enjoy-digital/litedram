@@ -106,29 +106,26 @@ class BankMachine(Module):
         self.submodules += TMROutput(req.lock, TMRreq.lock)
         self.submodules += TMROutput(req.wdata_ready, TMRreq.wdata_ready)
         self.submodules += TMROutput(req.rdata_valid, TMRreq.rdata_valid)
-        #self.submodules += TMRInput(TMRreq.we, req.we)
-        #self.submodules += TMRInput(TMRreq.addr, req.addr)
-        #self.submodules += TMRInput(TMRreq.valid, req.valid)
+        self.submodules += TMRInput(TMRreq.we, req.we)
+        self.submodules += TMRInput(TMRreq.addr, req.addr)
+        self.submodules += TMRInput(TMRreq.valid, req.valid)
         
-        weTMRIn = TMRInput(TMRreq.we)
-        self.submodules += weTMRIn
-        print("Making addr in TMR")
-        addrTMRIn = TMRInput(TMRreq.addr)
-        self.submodules += addrTMRIn
-        print("addr TMR length: " + str(len(addrTMRIn.control)))
-        validTMRIn = TMRInput(TMRreq.valid)
-        self.submodules += validTMRIn
+        #weTMRIn = TMRInput(TMRreq.we)
+        #self.submodules += weTMRIn
+        #addrTMRIn = TMRInput(TMRreq.addr)
+        #self.submodules += addrTMRIn
+        #validTMRIn = TMRInput(TMRreq.valid)
+        #self.submodules += validTMRIn
         
-        self.comb += [req.addr.eq(addrTMRIn.control)]
+        #self.comb += [req.addr.eq(addrTMRIn.control)]
         
-        self.req_copy = req_copy = Record(cmd_layout(address_width))
-        self.comb += [
-            self.req_copy.we.eq(weTMRIn.control),
-            self.req_copy.addr.eq(addrTMRIn.control),
-            self.req_copy.valid.eq(validTMRIn.control),
-            #self.req_copy.ready.eq(req.ready)
-            self.req.ready.eq(req_copy.ready)
-        ]
+        #self.req_copy = req_copy = Record(cmd_layout(address_width))
+        #self.comb += [
+        #    self.req_copy.we.eq(weTMRIn.control),
+        #    self.req_copy.addr.eq(addrTMRIn.control),
+        #    self.req_copy.valid.eq(validTMRIn.control),
+        #    self.req.ready.eq(req_copy.ready)
+        #]
 
         # Command buffer ---------------------------------------------------------------------------
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
@@ -138,7 +135,7 @@ class BankMachine(Module):
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            req_copy.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
