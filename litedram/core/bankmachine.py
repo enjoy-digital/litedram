@@ -95,19 +95,6 @@ class BankMachine(Module):
         a  = settings.geom.addressbits
         ba = settings.geom.bankbits + log2_int(nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
-        
-        # TMRInterface to replace req
-        self.TMRreq = TMRreq = TMRRecordSlave(TMRreq)
-        
-        self.comb += [
-            TMRreq.ready.eq(req.ready),
-            TMRreq.lock.eq(req.lock),
-            TMRreq.wdata_ready.eq(req.wdata_ready),
-            TMRreq.rdata_valid.eq(req.rdata_valid),
-            #req.valid.eq(TMRreq.valid),
-            #req.we.eq(TMRreq.we),
-            #req.addr.eq(TMRreq.addr)
-        ]
 
         # # #
 
