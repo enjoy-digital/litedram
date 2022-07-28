@@ -88,6 +88,7 @@ class BankMachine(Module):
     """
     def __init__(self, n, address_width, address_align, nranks, settings, TMRreq):
         self.req = req = Record(cmd_layout(address_width))
+        self.TMRreq = TMRreq = TMRRecord(req)
         self.refresh_req = refresh_req = Signal()
         self.refresh_gnt = refresh_gnt = Signal()
 
@@ -111,6 +112,18 @@ class BankMachine(Module):
         # # #
 
         auto_precharge = Signal()
+        
+        # TMR Setup --------------------------------------------------------------------------------
+        
+        #self.submodules += TMROutput(req.ready, TMRreq.ready)
+        #self.submodules += TMROutput(req.lock, TMRreq.lock)
+        #self.submodules += TMROutput(req.wdata_ready, TMRreq.wdata_ready)
+        #self.submodules += TMROutput(req.rdata_valid, TMRreq.rdata_valid)
+        #self.submodules += TMRInput(TMRreq.we, req.we)
+        #self.submodules += TMRInput(TMRreq.addr, req.addr)
+        #self.submodules += TMRInput(TMRreq.valid, req.valid)
+        
+        connect_TMR(self, TMRreq, req, master=False)
 
         # Command buffer ---------------------------------------------------------------------------
         
