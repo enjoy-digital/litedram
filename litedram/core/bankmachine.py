@@ -112,8 +112,10 @@ class BankMachine(Module):
         
         weTMRIn = TMRInput(TMRreq.we)
         self.submodules += weTMRIn
+        print("Making addr in TMR")
         addrTMRIn = TMRInput(TMRreq.addr)
         self.submodules += addrTMRIn
+        print("addr TMR length: " + str(len(addrTMRIn.control)))
         validTMRIn = TMRInput(TMRreq.valid)
         self.submodules += validTMRIn
         

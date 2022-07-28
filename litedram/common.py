@@ -313,17 +313,17 @@ class TMRRecord(Record):
         
 class TMRInput(Module):
     def __init__(self, tmr_signal, control_signal=None):
+        sig_length = int(len(tmr_signal) / 3)
+    
         self.control = Signal()
         self.TMR = tmr_signal
         
         ###
-        sig_length = int(len(tmr_signal) / 3)
         sig1 = tmr_signal[0:sig_length]
         sig2 = tmr_signal[sig_length:sig_length*2]
         sig3 = tmr_signal[sig_length*2:sig_length*3]
     
         self.comb += self.control.eq((sig1&sig2) | (sig2&sig3) | (sig1&sig3))
-        #self.comb += self.control.eq(sig1)
         
         if control_signal is not None:
             self.comb += [control_signal.eq(self.control)]
@@ -331,7 +331,7 @@ class TMRInput(Module):
 class TMROutput(Module):
     def __init__(self, control_signal, tmr_signal=None):
         self.control = control_signal
-        self.TMR = Cat(self.control, self.control, self.control)
+        self.TMR = Replicate(control_signal, 3)
         
         ###
         
