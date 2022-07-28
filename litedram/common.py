@@ -342,7 +342,7 @@ def connect_TMR(module, TMRrec, rec, master=True):
     layout = rec.layout
     for f in layout:
         if isinstance(f[1], (int, tuple)):
-            if len(f[1]) == 3:
+            if len(f) == 3:
                 name, size, direction = f
                 if master:
                     if direction == DIR_M_TO_S:
