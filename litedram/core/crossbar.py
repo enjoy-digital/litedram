@@ -209,15 +209,11 @@ class LiteDRAMCrossbar(Module):
         for nm, master in enumerate(self.masters):
             wdata_cases[2**nm] = [
                 controller.wdata.eq(master.wdata.data),
-                TMRcontroller.wdata.eq(master.wdata.data),
-                controller.wdata_we.eq(master.wdata.we),
-                TMRcontroller.wdata_we.eq(master.wdata.we)
+                controller.wdata_we.eq(master.wdata.we)
             ]
         wdata_cases["default"] = [
             controller.wdata.eq(0),
-            TMRcontroller.wdata.eq(0),
-            controller.wdata_we.eq(0),
-            TMRcontroller.wdata_we.eq(0)
+            controller.wdata_we.eq(0)
         ]
         self.comb += Case(Cat(*master_wdata_readys), wdata_cases)
 
