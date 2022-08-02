@@ -301,6 +301,7 @@ def make_TMR_layout(layout):
                 TMRlayout.append((name, size*3, direction))
             else:
                 name, size = f
+                print("Adding signal to TMR layout: " + name + " " + str(size))
                 TMRlayout.append((name, size*3))
         elif isinstance(f[1], list):
             name, sublayout = f
@@ -381,6 +382,7 @@ class LiteDRAMNativePort(Settings):
     def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0):
         self.set_attributes(locals())
 
+        print("Creating native port")
         self.flush = Signal()
         self.TMRflushMod = TMROutput(self.flush)
         self.TMRflush = self.TMRflushMod.TMR
