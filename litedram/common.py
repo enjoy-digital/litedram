@@ -297,6 +297,7 @@ def make_TMR_layout(layout):
         if isinstance(f[1], (int, tuple)):
             if len(f) == 3:
                 name, size, direction = f
+                print("Adding signal to TMR layout: " + name + " " + str(size))
                 TMRlayout.append((name, size*3, direction))
             else:
                 name, size = f
