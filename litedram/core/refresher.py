@@ -232,7 +232,16 @@ class Refresher(Module):
         
         self.submodules += TMROutput(cmd.valid, TMRcmd.valid)
         self.submodules += TMROutput(cmd.last, TMRcmd.last)
+        self.submodules += TMROutput(cmd.first, TMRcmd.first)
         self.submodules += TMRInput(TMRcmd.ready, cmd.ready)
+        self.submodules += TMROutput(cmd.a, TMRcmd.a)
+        self.submodules += TMROutput(cmd.ba, TMRcmd.ba)
+        self.submodules += TMROutput(cmd.cas, TMRcmd.cas)
+        self.submodules += TMROutput(cmd.ras, TMRcmd.ras)
+        self.submodules += TMROutput(cmd.we, TMRcmd.we)
+        self.submodules += TMROutput(cmd.is_cmd, TMRcmd.is_cmd)
+        self.submodules += TMROutput(cmd.is_read, TMRcmd.is_read)
+        self.submodules += TMROutput(cmd.is_write, TMRcmd.is_write)
 
         wants_refresh = Signal()
         wants_zqcs    = Signal()
