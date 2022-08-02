@@ -199,24 +199,32 @@ class LiteDRAMCrossbar(Module):
 
         for master, master_ready in zip(self.masters, master_readys):
             self.comb += master.cmd.ready.eq(master_ready)
+            self.comb += master.TMRcmd.ready.eq(master_ready)
         for master, master_wdata_ready in zip(self.masters, master_wdata_readys):
             self.comb += master.wdata.ready.eq(master_wdata_ready)
+            self.comb += master.TMRwdata.ready.eq(master_wdata_ready)
         for master, master_rdata_valid in zip(self.masters, master_rdata_valids):
             self.comb += master.rdata.valid.eq(master_rdata_valid)
+            self.comb += master.TMRrdata.valid.eq(master_rdata_valid)
 
         # Route data writes ------------------------------------------------------------------------
         wdata_cases = {}
         for nm, master in enumerate(self.masters):
             wdata_cases[2**nm] = [
                 controller.wdata.eq(master.wdata.data),
-                controller.wdata_we.eq(master.wdata.we)
+                TMRcontroller.wdata.eq(master.TMRwdata.data),
+                controller.wdata_we.eq(master.wdata.we),
+                TMRcontroller.wdata_we.eq(master.TMRwdata.we)
             ]
         wdata_cases["default"] = [
             controller.wdata.eq(0),
-            controller.wdata_we.eq(0)
+            TMRcontroller.wdata.eq(0),
+            controller.wdata_we.eq(0),
+            TMRcontroller.wdata_we.eq(0)
         ]
         self.comb += Case(Cat(*master_wdata_readys), wdata_cases)
 
         # Route data reads -------------------------------------------------------------------------
         for master in self.masters:
             self.comb += master.rdata.data.eq(controller.rdata)
+            self.comb += master.TMRrdata.data.eq(TMRcontroller.rdata)
