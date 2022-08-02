@@ -61,10 +61,12 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
         self._rdly_dq_inc = CSR()
 
         delay = lambda sig, cycles: delayed(self, sig, cycles=cycles)
-        sdr    = dict(clkdiv="sys", clk="sys4x")
-        sdr_90 = dict(clkdiv="sys", clk="sys4x_90")
-        ddr    = dict(clkdiv="sys", clk="sys4x_ddr")
-        ddr_90 = dict(clkdiv="sys", clk="sys4x_90_ddr")
+
+        sdr     = dict(clkdiv="sys", clk="sys4x")
+        sdr_90  = dict(clkdiv="sys", clk="sys4x_90")
+        sdr_180 = dict(clkdiv="sys", clk="sys4x_180")
+        ddr     = dict(clkdiv="sys", clk="sys4x_ddr")
+        ddr_90  = dict(clkdiv="sys", clk="sys4x_90_ddr")
 
         if aligned_reset_zero:
             sdr["reset_cnt"] = 0
@@ -79,21 +81,21 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
 
         # Command/address
         for rank in range(nranks):
-            self.ser(i=self.out.cs_n[rank], o=self.pads.cs_n[rank], name='cs_n', **sdr)
+            self.ser(i=self.out.cs_n[rank], o=self.pads.cs_n[rank], name='cs_n', **sdr_180)
         for i in range(14):
-            self.ser(i=self.out.ca[i], o=self.pads.ca[i], name=f'ca{i}', **sdr)
+            self.ser(i=self.out.ca[i], o=self.pads.ca[i], name=f'ca{i}', **sdr_180)
 
         # Tristate I/O (separate for simulation)
         for i in range(self.databits//dq_dqs_ratio):
             self.ser(i=self.out.dm_n_o[i], o=self.pads.dm_n_o[i], name=f'dm_n_o{i}', **ddr)
             self.des(o=self.out.dm_n_i[i], i=self.pads.dm_n[i],   name=f'dm_n_i{i}', **ddr)
-            self.ser(i=self.out.dqs_t_o[i], o=self.pads.dqs_t_o[i], name=f'dqs_t_o{i}', **ddr_90)
-            self.des(o=self.out.dqs_t_i[i], i=self.pads.dqs_t[i],   name=f'dqs_t_i{i}', **ddr_90)
-            self.ser(i=self.out.dqs_c_o[i], o=self.pads.dqs_c_o[i], name=f'dqs_c_o{i}', **ddr_90)
-            self.des(o=self.out.dqs_c_i[i], i=self.pads.dqs_c[i],   name=f'dqs_c_i{i}', **ddr_90)
+            self.ser(i=self.out.dqs_t_o[i], o=self.pads.dqs_t_o[i], name=f'dqs_t_o{i}', **ddr)
+            self.des(o=self.out.dqs_t_i[i], i=self.pads.dqs_t[i],   name=f'dqs_t_i{i}', **ddr)
+            self.ser(i=self.out.dqs_c_o[i], o=self.pads.dqs_c_o[i], name=f'dqs_c_o{i}', **ddr)
+            self.des(o=self.out.dqs_c_i[i], i=self.pads.dqs_c[i],   name=f'dqs_c_i{i}', **ddr)
         for i in range(self.databits):
-            self.ser(i=self.out.dq_o[i], o=self.pads.dq_o[i], name=f'dq_o{i}', **ddr)
-            self.des(o=self.out.dq_i[i], i=self.pads.dq[i],   name=f'dq_i{i}', **ddr)
+            self.ser(i=self.out.dq_o[i], o=self.pads.dq_o[i], name=f'dq_o{i}', **ddr_90)
+            self.des(o=self.out.dq_i[i], i=self.pads.dq[i],   name=f'dq_i{i}', **ddr_90)
 
         # Output enable signals
         self.comb += [

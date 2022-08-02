@@ -83,8 +83,8 @@ def get_clocks(sys_clk_freq):
         "sys4x":         dict(freq_hz=4*sys_clk_freq),
         "sys4x_ddr":     dict(freq_hz=2*4*sys_clk_freq),
         "sys4x_90":      dict(freq_hz=4*sys_clk_freq, phase_deg=90),
+        "sys4x_180":     dict(freq_hz=4*sys_clk_freq, phase_deg=180),
         "sys4x_90_ddr":  dict(freq_hz=2*4*sys_clk_freq, phase_deg=2*90),
-        "sys_10ns":       dict(freq_hz=int(1e8)),
     })
 
 # SoC ----------------------------------------------------------------------------------------------

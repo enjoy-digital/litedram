@@ -53,7 +53,7 @@ class DDR5DQSPattern(Module):
     def __init__(self, preamble=None, postamble=None, wlevel_en=0, wlevel_strobe=0, register=False):
         self.preamble  = Signal() if preamble  is None else preamble
         self.postamble = Signal() if postamble is None else postamble
-        self.o = Signal(16)
+        self.o = Signal(8)
 
         # # #
 
@@ -156,15 +156,8 @@ class DDR5PHY(Module, AutoCSR):
                     return cl
             raise ValueError
 
-        # Bitslip introduces latency from 1 up to `cycles + 1`
-        # FIXME: (check if True) from tests on hardware it seems we need 1 more cycle
-        #   of read_latency, probably to have space for manipulating bitslip values
-        bitslip_cycles  = 1
-        bitslip_range   = 1
         # Commands are sent over 2 DRAM clocks (sys4x) and we count cl/cwl from last bit
         cmd_latency     = 2
-        # Commands read from adapters are delayed on ConstBitSlips
-        ca_latency      = 1
 
         cl              = get_cl_cw(memtype, tck)
         cwl = cl - 2
@@ -186,8 +179,8 @@ class DDR5PHY(Module, AutoCSR):
         rdphase, cl_sys_latency = updated_latency(rdphase, cl_sys_latency)
 
         # Read latency
-        read_data_delay = ca_latency + ser_latency.sys4x//4 + cl_sys_latency  # DFI cmd -> read data on DQ
-        read_des_delay  = des_latency.sys4x//4 + bitslip_cycles+bitslip_range  # data on DQ -> data on DFI rddata
+        read_data_delay = ser_latency.sys4x//4 + cl_sys_latency  # DFI cmd -> read data on DQ
+        read_des_delay  = des_latency.sys4x//4  # data on DQ -> data on DFI rddata
         read_latency    = read_data_delay + read_des_delay
 
         # Write latency
@@ -226,7 +219,7 @@ class DDR5PHY(Module, AutoCSR):
             write_latency = write_latency,
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
-            bitslips      = 2,
+            bitslips      = 1,
             strobes       = strobes,
         )
 
@@ -244,7 +237,7 @@ class DDR5PHY(Module, AutoCSR):
         self.comb += self.out.ck_c.eq(bitpattern("_-_-_-_-"))
 
         # Simple commands --------------------------------------------------------------------------
-        self.comb += self.out.reset_n.eq(Cat(delayed(self, phase.reset_n) for phase in self.dfi.phases))
+        self.comb += self.out.reset_n.eq(Cat(phase.reset_n for phase in self.dfi.phases))
 
         self.comb += self.out.mir.eq(0)
         self.comb += self.out.cai.eq(0)
@@ -267,25 +260,10 @@ class DDR5PHY(Module, AutoCSR):
                 self.dfi.phases[i//2].wrdata[i%2 * self.databits + bit]
                 for i in range(2*nphases)
             ]
-            self.submodules += BitSlip(
-                dw     = 2*nphases,
-                cycles = bitslip_cycles,
-                rst    = self.get_rst(bit//8, self._wdly_dq_bitslip_rst.re),
-                slp    = self.get_inc(bit//8, self._wdly_dq_bitslip.re),
-                i      = Cat(*wrdata),
-                o      = self.out.dq_o[bit],
-            )
-
+            self.comb += self.out.dq_o[bit].eq(Cat(*wrdata))
             # input
             dq_i_bs = Signal(2*nphases)
-            self.submodules += BitSlip(
-                dw     = 2*nphases,
-                cycles = bitslip_cycles,
-                rst    = self.get_rst(bit//8, self._rdly_dq_bitslip_rst.re),
-                slp    = self.get_inc(bit//8, self._rdly_dq_bitslip.re),
-                i      = self.out.dq_i[bit],
-                o      = dq_i_bs,
-            )
+            self.comb += dq_i_bs.eq(self.out.dq_i[bit])
             for i in range(2*nphases):
                 self.comb += self.dfi.phases[i//2].rddata[i%2 * self.databits + bit].eq(dq_i_bs[i])
 
@@ -300,28 +278,16 @@ class DDR5PHY(Module, AutoCSR):
             wlevel_strobe = self._wlevel_strobe.re)
         self.submodules += dqs_pattern
         self.comb += [
-            self.out.dqs_t_oe.eq(delayed(self, dqs_oe)),
-            self.out.dqs_c_oe.eq(delayed(self, dqs_oe)),
+            self.out.dqs_t_oe.eq(dqs_oe),
+            self.out.dqs_c_oe.eq(dqs_oe),
         ]
 
         for byte in range(strobes):
             # output
-            self.submodules += BitSlip(
-                dw     = 2*nphases,
-                cycles = bitslip_cycles,
-                rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
-                slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
-                i      = dqs_pattern.o,
-                o      = self.out.dqs_t_o[byte],
-            )
-            self.submodules += BitSlip(
-                dw     = 2*nphases,
-                cycles = bitslip_cycles,
-                rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
-                slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
-                i      = ~dqs_pattern.o,
-                o      = self.out.dqs_c_o[byte],
-            )
+            self.comb += [
+                self.out.dqs_t_o[byte].eq(dqs_pattern.o),
+                self.out.dqs_c_o[byte].eq(~dqs_pattern.o),
+            ]
 
         # DMI --------------------------------------------------------------------------------------
         # DMI signal is used for Data Mask or Data Bus Invertion depending on Mode Registers values.
@@ -335,14 +301,7 @@ class DDR5PHY(Module, AutoCSR):
                     self.dfi.phases[i//2].wrdata_mask[i%2 * strobes + byte]
                     for i in range(2*nphases)
                 ]
-                self.submodules += BitSlip(
-                    dw     = 2*nphases,
-                    cycles = bitslip_cycles,
-                    rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
-                    slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
-                    i      = Cat(*wrdata_mask),
-                    o      = self.out.dm_n_o[byte],
-                )
+                self.comb += self.out.dm_n_o[byte].eq(Cat(*wrdata_mask))
             else:
                 self.comb += self.out.dm_n_o[byte].eq(0)
                 self.comb += self.out.dm_n_oe.eq(0)
@@ -376,7 +335,7 @@ class DDR5PHY(Module, AutoCSR):
         )
         self.submodules += wrdata_en
 
-        self.comb += dq_oe.eq(wrdata_en.taps[wrtap-1])
+        self.comb += dq_oe.eq(wrdata_en.taps[wrtap])
         # Always enabled in write leveling mode, else during transfers
         self.comb += dqs_oe.eq(self._wlevel_en.storage | (dqs_preamble | dq_oe | dqs_postamble))
 
@@ -386,8 +345,8 @@ class DDR5PHY(Module, AutoCSR):
         # 1 for Preamble, 1 for the Write and 1 for the Postamble.
         def wrdata_en_tap(i):  # allows to have wrtap == 0
             return wrdata_en.input if i == -1 else wrdata_en.taps[i]
-        self.comb += dqs_preamble.eq( wrdata_en_tap(wrtap - 2)  & ~wrdata_en_tap(wrtap - 1))
-        self.comb += dqs_postamble.eq(wrdata_en_tap(wrtap + 0)  & ~wrdata_en_tap(wrtap - 1))
+        self.comb += dqs_preamble.eq( wrdata_en_tap(wrtap - 1)  & ~wrdata_en_tap(wrtap - 0))
+        self.comb += dqs_postamble.eq(wrdata_en_tap(wrtap + 1)  & ~wrdata_en_tap(wrtap - 0))
 
     def get_rst(self, byte, rst):
         return (self._dly_sel.storage[byte] & rst) | self._rst.storage
