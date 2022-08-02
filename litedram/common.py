@@ -383,12 +383,10 @@ class LiteDRAMNativePort(Settings):
         self.flush = Signal()
         self.TMRflushMod = TMROutput(self.flush)
         self.TMRflush = self.TMRflushMod.TMR
-        self.submodules += TMRflushMod
         
         self.lock  = Signal()
         self.TMRlockMod = TMROutput(self.lock)
         self.TMRlock = self.TMRlockMod.TMR
-        self.submodules += TMRlockMod
 
         self.cmd   = stream.Endpoint(cmd_description(address_width))
         self.TMRcmd = TMRRecord(self.cmd)
