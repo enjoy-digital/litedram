@@ -261,6 +261,15 @@ class Multiplexer(Module, AutoCSR):
         self.submodules += TMRInput(refresher.TMRcmd.valid, refreshCmd.valid)
         self.submodules += TMRInput(refresher.TMRcmd.last, refreshCmd.last)
         self.submodules += TMROutput(refreshCmd.ready, refresher.TMRcmd.ready)
+        self.submodules += TMRInput(refresher.TMRcmd.first, refreshCmd.first)
+        self.submodules += TMRInput(refresher.TMRcmd.a, refreshCmd.a)
+        self.submodules += TMRInput(refresher.TMRcmd.ba, refreshCmd.ba)
+        self.submodules += TMRInput(refresher.TMRcmd.cas, refreshCmd.cas)
+        self.submodules += TMRInput(refresher.TMRcmd.ras, refreshCmd.ras)
+        self.submodules += TMRInput(refresher.TMRcmd.we, refreshCmd.we)
+        self.submodules += TMRInput(refresher.TMRcmd.is_cmd, refreshCmd.is_cmd)
+        self.submodules += TMRInput(refresher.TMRcmd.is_read, refreshCmd.is_read)
+        self.submodules += TMRInput(refresher.TMRcmd.is_write, refreshCmd.is_write)
 
         # Command steering -------------------------------------------------------------------------
         nop = Record(cmd_request_layout(settings.geom.addressbits,
