@@ -298,11 +298,9 @@ def make_TMR_layout(layout):
         if isinstance(f[1], (int, tuple)):
             if len(f) == 3:
                 name, size, direction = f
-                print("Adding signal to TMR layout: " + name + " " + str(size))
                 TMRlayout.append((name, size*3, direction))
             else:
                 name, size = f
-                print("Adding signal to TMR layout: " + name + " " + str(size))
                 TMRlayout.append((name, size*3))
         elif isinstance(f[1], list):
             name, sublayout = f
@@ -314,6 +312,7 @@ class TMRRecord(Record):
         self.layout = make_TMR_layout(rec.layout)
         Record.__init__(self, self.layout)
         
+    #Redirect getattr to payload if made from an Endpoint
     def __getattr__(self, name):
         try:
             return getattr(self, name)
@@ -389,7 +388,6 @@ class LiteDRAMNativePort(Settings):
     def __init__(self, mode, address_width, data_width, clock_domain="sys", id=0):
         self.set_attributes(locals())
 
-        print("Creating native port")
         self.flush = Signal()
         self.TMRflushMod = TMROutput(self.flush)
         self.TMRflush = self.TMRflushMod.TMR
@@ -398,13 +396,10 @@ class LiteDRAMNativePort(Settings):
         self.TMRlockMod = TMROutput(self.lock)
         self.TMRlock = self.TMRlockMod.TMR
 
-        print("cmd")
         self.cmd   = stream.Endpoint(cmd_description(address_width))
         self.TMRcmd = TMRRecord(self.cmd)
-        print("wdata")
         self.wdata = stream.Endpoint(wdata_description(data_width))
         self.TMRwdata = TMRRecord(self.wdata)
-        print("rdata")
         self.rdata = stream.Endpoint(rdata_description(data_width))
         self.TMRrdata = TMRRecord(self.rdata)
 

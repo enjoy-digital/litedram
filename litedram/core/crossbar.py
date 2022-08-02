@@ -198,18 +198,21 @@ class LiteDRAMCrossbar(Module):
             master_rdata_valids[nm] = master_rdata_valid
 
         for master, master_ready in zip(self.masters, master_readys):
-            self.comb += master.cmd.ready.eq(master_ready)
-            self.comb += master.TMRcmd.ready.eq(master_ready)
+            self.submodules += TMROutput(master_ready, master.TMRcmd.ready)
+            self.submodules += TMRInput(master.TMRcmd.ready, master.cmd.ready)
         for master, master_wdata_ready in zip(self.masters, master_wdata_readys):
-            self.comb += master.wdata.ready.eq(master_wdata_ready)
-            self.comb += master.TMRwdata.ready.eq(master_wdata_ready)
+            self.submodules += TMROutput(master_wdata_ready, master.TMRwdata.ready)
+            self.submodules += TMRInput(master.TMRwdata.ready, master.wdata.ready)
         for master, master_rdata_valid in zip(self.masters, master_rdata_valids):
-            self.comb += master.rdata.valid.eq(master_rdata_valid)
-            self.comb += master.TMRrdata.valid.eq(master_rdata_valid)
+            self.submodules += TMROutput(master_rdata_valid, master.TMRrdata.valid)
+            self.submodules += TMRInput(master.TMRrdata.valid, master.rdata.valid)
 
         # Route data writes ------------------------------------------------------------------------
+        
         wdata_cases = {}
         for nm, master in enumerate(self.masters):
+            self.submodules += TMROutput(master.wdata.data, master.TMRwdata.data)
+            self.submodules += TMROutput(master.wdata.we, master.TMRwdata.we)
             wdata_cases[2**nm] = [
                 controller.wdata.eq(master.wdata.data),
                 TMRcontroller.wdata.eq(master.TMRwdata.data),
@@ -228,3 +231,4 @@ class LiteDRAMCrossbar(Module):
         for master in self.masters:
             self.comb += master.rdata.data.eq(controller.rdata)
             self.comb += master.TMRrdata.data.eq(TMRcontroller.rdata)
+            #self.submodules += TMRInput(master.TMRrdata.data, master.rdata.data)
