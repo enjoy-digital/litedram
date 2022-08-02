@@ -291,7 +291,8 @@ class LiteDRAMInterface(Record):
        
 # TMR ----------------------------------------------------------------------------------------------
        
-def make_TMR_layout(layout):     
+def make_TMR_layout(layout):  
+    print("Making TMR layout")
     TMRlayout = []
     for f in layout:
         if isinstance(f[1], (int, tuple)):
