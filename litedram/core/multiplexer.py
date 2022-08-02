@@ -246,8 +246,24 @@ class Multiplexer(Module, AutoCSR):
         #Create cmd's from TMRcmd's
         requests = [bm.cmd for bm in bank_machines]
         
-        self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
-        self.submodules.choose_req = choose_req = _CommandChooser(requests)
+        TMRrequests = [stream.Endpoint(cmd_request_rw_layout(settings.geom.addressbits, settings.geom.bankbits + log2_int(settings.phy.nranks))) for bm in bank_machines]
+        
+        for TMRrequest, bm in zip(TMRrequests, bank_machines):
+            self.submodules += TMRInput(bm.TMRcmd.valid, TMRrequest.valid)
+            self.submodules += TMRInput(bm.TMRcmd.last, TMRrequest.last)
+            self.submodules += TMROutput(TMRrequest.ready, bm.TMRcmd.ready)
+            self.submodules += TMRInput(bm.TMRcmd.first, TMRrequest.first)
+            self.submodules += TMRInput(bm.TMRcmd.a, TMRrequest.a)
+            self.submodules += TMRInput(bm.TMRcmd.ba, TMRrequest.ba)
+            self.submodules += TMRInput(bm.TMRcmd.cas, TMRrequest.cas)
+            self.submodules += TMRInput(bm.TMRcmd.ras, TMRrequest.ras)
+            self.submodules += TMRInput(bm.TMRcmd.we, TMRrequest.we)
+            self.submodules += TMRInput(bm.TMRcmd.is_cmd, TMRrequest.is_cmd)
+            self.submodules += TMRInput(bm.TMRcmd.is_read, TMRrequest.is_read)
+            self.submodules += TMRInput(bm.TMRcmd.is_write, TMRrequest.is_write)
+        
+        self.submodules.choose_cmd = choose_cmd = _CommandChooser(TMRrequests)
+        self.submodules.choose_req = choose_req = _CommandChooser(TMRrequests)
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
             choose_cmd = choose_req

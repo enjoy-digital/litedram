@@ -95,20 +95,26 @@ class BankMachine(Module):
         a  = settings.geom.addressbits
         ba = settings.geom.bankbits + log2_int(nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
+        self.TMRcmd = TMRcmd = TMRRecord(cmd)
+        
+        self.submodules += TMROutput(cmd.valid, TMRcmd.valid)
+        self.submodules += TMROutput(cmd.last, TMRcmd.last)
+        self.submodules += TMROutput(cmd.first, TMRcmd.first)
+        self.submodules += TMRInput(TMRcmd.ready, cmd.ready)
+        self.submodules += TMROutput(cmd.a, TMRcmd.a)
+        self.submodules += TMROutput(cmd.ba, TMRcmd.ba)
+        self.submodules += TMROutput(cmd.cas, TMRcmd.cas)
+        self.submodules += TMROutput(cmd.ras, TMRcmd.ras)
+        self.submodules += TMROutput(cmd.we, TMRcmd.we)
+        self.submodules += TMROutput(cmd.is_cmd, TMRcmd.is_cmd)
+        self.submodules += TMROutput(cmd.is_read, TMRcmd.is_read)
+        self.submodules += TMROutput(cmd.is_write, TMRcmd.is_write)
 
         # # #
 
         auto_precharge = Signal()
         
         # TMR Setup --------------------------------------------------------------------------------
-        
-        #self.submodules += TMROutput(req.ready, TMRreq.ready)
-        #self.submodules += TMROutput(req.lock, TMRreq.lock)
-        #self.submodules += TMROutput(req.wdata_ready, TMRreq.wdata_ready)
-        #self.submodules += TMROutput(req.rdata_valid, TMRreq.rdata_valid)
-        #self.submodules += TMRInput(TMRreq.we, req.we)
-        #self.submodules += TMRInput(TMRreq.addr, req.addr)
-        #self.submodules += TMRInput(TMRreq.valid, req.valid)
         
         connect_TMR(self, TMRreq, req, master=False)
 
