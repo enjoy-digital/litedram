@@ -12,6 +12,7 @@ from migen.genlib.misc import timeline
 
 from litex.soc.interconnect import stream
 
+from litedram.common import *
 from litedram.core.multiplexer import *
 
 # RefreshExecuter ----------------------------------------------------------------------------------
@@ -223,8 +224,15 @@ class Refresher(Module):
         abits  = settings.geom.addressbits
         babits = settings.geom.bankbits + log2_int(settings.phy.nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a=abits, ba=babits))
+        self.TMRcmd = TMRcmd = TMRRecord(cmd)
 
         # # #
+        
+        # TMR Setup
+        
+        self.submodules += TMROutput(cmd.valid, TMRcmd.valid)
+        self.submodules += TMROutput(cmd.last, TMRcmd.last)
+        self.submodules += TMRInput(TMRcmd.ready, cmd.ready)
 
         wants_refresh = Signal()
         wants_zqcs    = Signal()

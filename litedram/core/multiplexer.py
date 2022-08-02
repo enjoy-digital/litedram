@@ -242,7 +242,10 @@ class Multiplexer(Module, AutoCSR):
             wrcmdphase = (wrphase - 1)%nphases
 
         # Command choosing -------------------------------------------------------------------------
+        
+        #Create cmd's from TMRcmd's
         requests = [bm.cmd for bm in bank_machines]
+        
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
         self.submodules.choose_req = choose_req = _CommandChooser(requests)
         if settings.phy.nphases == 1:
@@ -250,6 +253,14 @@ class Multiplexer(Module, AutoCSR):
             choose_cmd = choose_req
             self.comb += choose_req.want_cmds.eq(1)
             self.comb += choose_req.want_activates.eq(ras_allowed)
+            
+        # Refresher cmd
+        
+        refreshCmd = stream.Endpoint(cmd_request_rw_layout(settings.geom.addressbits, settings.geom.bankbits + log2_int(settings.phy.nranks)))
+        
+        self.submodules += TMRInput(refresher.TMRcmd.valid, refreshCmd.valid)
+        self.submodules += TMRInput(refresher.TMRcmd.last, refreshCmd.last)
+        self.submodules += TMROutput(refreshCmd.ready, refresher.TMRcmd.ready)
 
         # Command steering -------------------------------------------------------------------------
         nop = Record(cmd_request_layout(settings.geom.addressbits,
@@ -317,7 +328,7 @@ class Multiplexer(Module, AutoCSR):
         write_time_en, max_write_time = anti_starvation(settings.write_time)
 
         # Refresh ----------------------------------------------------------------------------------
-        self.comb += [bm.refresh_req.eq(refresher.cmd.valid) for bm in bank_machines]
+        self.comb += [bm.refresh_req.eq(refreshCmd.valid) for bm in bank_machines]
         go_to_refresh = Signal()
         bm_refresh_gnts = [bm.refresh_gnt for bm in bank_machines]
         self.comb += go_to_refresh.eq(reduce(and_, bm_refresh_gnts))
@@ -390,8 +401,8 @@ class Multiplexer(Module, AutoCSR):
         )
         fsm.act("REFRESH",
             steerer.sel[0].eq(STEER_REFRESH),
-            refresher.cmd.ready.eq(1),
-            If(refresher.cmd.last,
+            refreshCmd.ready.eq(1),
+            If(refreshCmd.last,
                 NextState("READ")
             )
         )
