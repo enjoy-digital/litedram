@@ -275,7 +275,7 @@ class Multiplexer(Module, AutoCSR):
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
-        commands = [nop, choose_cmd.cmd, choose_req.cmd, refresher.cmd]
+        commands = [nop, choose_cmd.cmd, choose_req.cmd, refreshCmd]
         steerer = _Steerer(commands, dfi)
         self.submodules += steerer
 
