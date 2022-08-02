@@ -314,6 +314,12 @@ class TMRRecord(Record):
         self.layout = make_TMR_layout(rec.layout)
         Record.__init__(self, self.layout)
         
+    def __getattr__(self, name):
+        try:
+            return getattr(self, name)
+        except:
+            return getattr(object.__getattribute__(self, "payload"), name)
+        
 class TMRInput(Module):
     def __init__(self, tmr_signal, control_signal=None):
         sig_length = int(len(tmr_signal) / 3)
