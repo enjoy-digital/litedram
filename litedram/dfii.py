@@ -69,7 +69,7 @@ class DFIInjector(Module, AutoCSR):
 
         # # #
         
-        connect_TMR(self, self.TMRslave, slave)
+        connect_TMR(self, self.TMRslave, self.slave)
 
         self.comb += If(self._control.fields.sel,
                 self.slave.connect(self.master)
