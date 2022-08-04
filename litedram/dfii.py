@@ -9,6 +9,7 @@ from migen import *
 
 from litedram.phy import dfi
 from litex.soc.interconnect.csr import *
+from litedram.common import *
 
 # PhaseInjector ------------------------------------------------------------------------------------
 
@@ -50,6 +51,7 @@ class DFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
         inti        = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.slave  = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        self.TMRslave = TMRRecord(self.slave)
         self.master = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
 
         self._control = CSRStorage(fields=[

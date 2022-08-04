@@ -75,6 +75,8 @@ class LiteDRAMController(Module):
             nranks      = phy_settings.nranks,
             databits    = phy_settings.dfi_databits,
             nphases     = phy_settings.nphases)
+            
+        self.TMRdfi = TMRRecord(self.dfi)
 
         # # #
 

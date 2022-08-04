@@ -31,5 +31,6 @@ class LiteDRAMCore(Module, AutoCSR):
             clk_freq        = clk_freq,
             **kwargs)
         self.comb += controller.dfi.connect(self.dfii.slave)
+        self.comb += controller.TMRdfi.connect(self.dfii.TMRslave)
 
         self.submodules.crossbar = LiteDRAMCrossbar(controller.interface, controller.TMRinterface)
