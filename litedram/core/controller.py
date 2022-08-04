@@ -106,7 +106,8 @@ class LiteDRAMController(Module):
             bank_machines = bank_machines,
             refresher     = self.refresher,
             dfi           = self.dfi,
-            interface     = interface)
+            interface     = interface,
+            TMRinterface  = TMRinterface)
 
     def get_csrs(self):
         return self.multiplexer.get_csrs()

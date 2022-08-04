@@ -220,7 +220,8 @@ class Multiplexer(Module, AutoCSR):
             bank_machines,
             refresher,
             dfi,
-            interface):
+            interface,
+            TMRinterface):
         assert(settings.phy.nphases == len(dfi.phases))
 
         ras_allowed = Signal(reset=1)
@@ -362,11 +363,15 @@ class Multiplexer(Module, AutoCSR):
         all_rddata = [p.rddata for p in dfi.phases]
         all_wrdata = [p.wrdata for p in dfi.phases]
         all_wrdata_mask = [p.wrdata_mask for p in dfi.phases]
-        self.comb += [
-            interface.rdata.eq(Cat(*all_rddata)),
-            Cat(*all_wrdata).eq(interface.wdata),
-            Cat(*all_wrdata_mask).eq(~interface.wdata_we)
-        ]
+        #self.comb += [
+        #    interface.rdata.eq(Cat(*all_rddata)),
+        #    Cat(*all_wrdata).eq(interface.wdata),
+        #    Cat(*all_wrdata_mask).eq(~interface.wdata_we)
+        #]
+        
+        self.submodules += TMROutput(Cat(*all_rddata), TMRinterface.rdata)
+        self.submodules += TMRInput(TMRinterface.wdata, Cat(*all_wrdata))
+        self.submodules += TMRInput(~TMRinterface.wdata_we, Cat(*all_wrdata_mask))
 
         def steerer_sel(steerer, access):
             assert access in ["read", "write"]
