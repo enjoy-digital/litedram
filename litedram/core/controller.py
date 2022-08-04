@@ -79,6 +79,8 @@ class LiteDRAMController(Module):
         self.TMRdfi = TMRRecord(self.dfi)
 
         # # #
+        
+        connect_TMR(self, self.TMRdfi, self.dfi)
 
         # Refresher --------------------------------------------------------------------------------
         self.submodules.refresher = self.settings.refresh_cls(self.settings,

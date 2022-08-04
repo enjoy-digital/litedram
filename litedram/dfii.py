@@ -68,6 +68,8 @@ class DFIInjector(Module, AutoCSR):
             setattr(self.submodules, "pi" + str(n), PhaseInjector(phase))
 
         # # #
+        
+        connect_TMR(self, self.TMRslave, slave)
 
         self.comb += If(self._control.fields.sel,
                 self.slave.connect(self.master)
