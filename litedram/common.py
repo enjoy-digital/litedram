@@ -363,6 +363,10 @@ def connect_TMR(module, TMRrec, rec, master=True):
                         module.submodules += TMRInput(getattr(TMRrec, name), getattr(rec, name))
             else:
                 raise TypeError
+        elif isinstance(f[1], list):
+            subRecord = getattr(rec, f[0])
+            subTMRRecord = getattr(TMRrec, f[0])
+            connect_TMR(module, subTMRRecord, subRecord, master)
         else:
             raise TypeError
 
