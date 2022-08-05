@@ -16,6 +16,7 @@ from migen import *
 from litedram.phy.lpddr4.simphy import LPDDR4SimPHY, DoubleRateLPDDR4SimPHY
 from litedram.phy.lpddr4 import simsoc
 from litedram.phy.sim_utils import SimLogger
+from litedram.phy.utils import Serializer, Deserializer
 
 import test.phy_common
 from test.phy_common import DFISequencer, PadChecker
@@ -355,15 +356,15 @@ class LPDDR4Tests(unittest.TestCase):
 
     def test_lpddr4_dq_in_rddata_valid(self):
         # Test that rddata_valid is set with correct delay
-        read_latency = 9  # settings.read_latency
+        phy = LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
         dfi_sequence = [
             {0: dict(rddata_en=1)},  # command is issued by MC (appears on next cycle)
-            *[{p: dict(rddata_valid=0) for p in range(8)} for _ in range(read_latency - 1)],  # nothing is sent during write latency
+            *[{p: dict(rddata_valid=0) for p in range(8)} for _ in range(phy.settings.read_latency - 1)],  # nothing is sent during write latency
             {p: dict(rddata_valid=1) for p in range(8)},
             {},
         ]
 
-        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
+        self.run_test(phy,
             dfi_sequence = dfi_sequence,
             pad_checkers = {},
             pad_generators = {},
@@ -384,6 +385,7 @@ class LPDDR4Tests(unittest.TestCase):
             7: dict(rddata=0xffff0000),
         }
 
+        phy = LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
         def sim_dq(pads):
             for _ in range(16 * 1):  # wait 1 sysclk cycle
                 yield
@@ -395,15 +397,15 @@ class LPDDR4Tests(unittest.TestCase):
                 yield pads.dq_i[bit].eq(0)
             yield
 
-        read_des_delay = 3  # phy.read_des_delay
         dfi_sequence = [
             {},  # wait 1 sysclk cycle
-            *[{} for _ in range(read_des_delay)],
+            {},  # internal PHY delay
+            *[{} for _ in range(Deserializer.LATENCY)],
             dfi_data,
             {},
         ]
 
-        self.run_test(LPDDR4SimPHY(sys_clk_freq=self.SYS_CLK_FREQ),
+        self.run_test(phy,
             dfi_sequence = dfi_sequence,
             pad_checkers = {},
             pad_generators = {
