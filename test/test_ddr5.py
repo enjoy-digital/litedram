@@ -29,24 +29,26 @@ from test.phy_common import DFISequencer, PadChecker
 #
 # NOTE: On hardware proper reset must be ensured!
 #
-# The simulation should start like this:
-#   sys          |_--------------
-#   sys_11_25    |___------------
-#   sys8x        |_----____----__
-#   sys8x_ddr    |_--__--__--__--
-#   sys8x_90     |___----____----
-#   sys8x_90_ddr |-__--__--__--__
+# The simulation should start like this (each char is 1 ns):
+#   sys          |_--------------------------------
+#   sys2x        |_----------------________________
+#   sys4x        |_--------________--------________
+#   sys4x_ddr    |_----____----____----____----____
+#   sys4x_90     |_____--------________--------____
+#   sys4x_90_ddr |-____----____----____----____----
+#   sys4x_180    |-________--------________--------
 #
-# sys8x_90_ddr does not trigger at the simulation start (not an edge),
+# sys4x_90_ddr does not trigger at the simulation start (not an edge),
 # BUT a generator starts before first edge, so a `yield` is needed to wait until the first
 # rising edge!
 run_simulation = partial(test.phy_common.run_simulation, clocks={
     "sys":          (64, 31),
     "sys2x":        (32, 15),
-    "sys4x":        ( 8,  3),
-    "sys4x_ddr":    ( 4,  1),
-    "sys4x_90":     ( 8,  1),
-    "sys4x_90_ddr": ( 4,  3),
+    "sys4x":        (16,  7),
+    "sys4x_ddr":    ( 8,  3),
+    "sys4x_90":     (16,  3),
+    "sys4x_90_ddr": ( 8,  7),
+    "sys4x_180":    (16, 15),
 })
 
 dfi_data_to_dq = partial(test.phy_common.dfi_data_to_dq, databits=8, nphases=4, burst=16)
