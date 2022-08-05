@@ -56,8 +56,8 @@ class DDR5Sim(Module, AutoCSR):
         log_level = log_level_getter(log_level)
 
         bl_max    = 16 # We only support BL8 and BL16, there is no support for BL32
-        cd_cmd    = "sys4x_90"
-        cd_dq_wr  = "sys4x_90_ddr"
+        cd_cmd    = "sys4x"
+        cd_dq_wr  = "sys4x_ddr"
         cd_dqs_wr = "sys4x_ddr"
         cd_dq_rd  = "sys4x_ddr"
         cd_dqs_rd = "sys4x_ddr"
@@ -459,6 +459,7 @@ class CommandsSim(Module, AutoCSR):
                 # pass the data to data simulator
                 self.data_en.input.eq(1),
                 self.data.sink.valid.eq(1),
+                self.data.sink.we.eq(0),
                 self.data.sink.bank.eq(bank),
                 self.data.sink.row.eq(row),
                 self.data.sink.col.eq(col),
@@ -558,6 +559,7 @@ class DataSim(Module, AutoCSR):
         bank = Signal(5)
         row = Signal(18)
         col = Signal(11)
+
         bl_width = Signal(bl_max.bit_length())
 
         dq_kwargs = dict(bank=bank, row=row, col=col, bl_max=bl_max, nrows=nrows, ncols=ncols,
@@ -583,6 +585,7 @@ class DataSim(Module, AutoCSR):
         read = Signal()
 
         self.submodules.read_dqs_delay = ClockDomainsRenamer(cd_dq_rd)(TappedDelayLine(read))
+        self.submodules.write_delay = ClockDomainsRenamer(cd_dq_wr)(TappedDelayLine(write, ntaps=1))
         self.submodules.read_delay = ClockDomainsRenamer(cd_dq_rd)(TappedDelayLine(read, ntaps=2))
 
         self.comb += [
@@ -607,9 +610,9 @@ class DataSim(Module, AutoCSR):
                 1: wr_postamble.eq(0b000),
             }),
             self.log.error("Write Preamble width=%d preamble=%d", wr_preamble_width, wr_preamble),
-            write.eq(cmds_sim.data_en.taps[cwl-1] & cmds_sim.data.source.valid & cmds_sim.data.source.we),
-            wr_preamble_trigger.eq(cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 1] &
-                                   ~cmds_sim.data_en.taps[cwl - wr_preamble_width] &
+            write.eq(cmds_sim.data_en.taps[cwl-2] & cmds_sim.data.source.valid & cmds_sim.data.source.we),
+            wr_preamble_trigger.eq(cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 2] &
+                                   ~cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 1] &
                                    cmds_sim.data.source.valid &
                                    cmds_sim.data.source.we),
 
@@ -617,7 +620,7 @@ class DataSim(Module, AutoCSR):
 
             cmds_sim.data.source.ready.eq(write | read),
             self.dq_wr.masked.eq(write & cmds_sim.data.source.masked),
-            self.dq_wr.trigger.eq(write),
+            self.dq_wr.trigger.eq(self.write_delay.output),
             self.dq_rd.trigger.eq(self.read_delay.output),
 
             self.dqs_wr.trigger.eq(write),
@@ -632,24 +635,23 @@ class DataSim(Module, AutoCSR):
             self.dqs_rd.trigger.eq(self.read_dqs_delay.output),
         ]
 
-        self.sync += [
-            If(cmds_sim.data.source.ready & cmds_sim.data.source.we,
-                bank.eq(cmds_sim.data.source.bank),
-                row.eq(cmds_sim.data.source.row),
-                col.eq(cmds_sim.data.source.col),
-                bl_width.eq(cmds_sim.data.source.bl_width),
-                self.log.info("Write Sync: bl_width=%d", bl_width),
-            )
+        self.comb += [
+            If(cmds_sim.data.source.ready,
+                If(cmds_sim.data.source.we,
+                    self.log.info("Write Sync: bl_width=%d", bl_width),
+                ).Else(
+                    self.log.info("Read Sync: bl_width=%d", bl_width),
+                ),
+            ),
         ]
 
-        self.sync.sys4x_ddr += [
-            If(cmds_sim.data.source.ready & ~cmds_sim.data.source.we,
+        self.sync += [
+            If(cmds_sim.data.source.ready,
                 bank.eq(cmds_sim.data.source.bank),
                 row.eq(cmds_sim.data.source.row),
                 col.eq(cmds_sim.data.source.col),
                 bl_width.eq(cmds_sim.data.source.bl_width),
-                self.log.info("Read Sync: bl_width=%d", bl_width),
-            )
+            ),
         ]
 
 class DataBurst(Module, AutoCSR):
@@ -702,6 +704,16 @@ class DQWrite(DQBurst):
         self.add_fsm(
             on_trigger = [
                 NextValue(masked, self.masked),
+                If(self.masked,
+                    ports[bank].we.eq(~dmi),  # DMI high masks the beat
+                ).Else(
+                    ports[bank].we.eq(2**len(ports[bank].we) - 1),
+                ),
+                ports[bank].adr.eq(self.addr),
+                ports[bank].dat_w.eq(dq),
+                NextValue(self.burst_counter, 1),
+                self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%02x, dm=0x%01b",
+                    self.burst_counter, bank, row, self.col_burst, dq, dmi, once=False),
             ],
             ops = [
                 self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%02x, dm=0x%01b",
