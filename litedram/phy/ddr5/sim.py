@@ -574,6 +574,7 @@ class DataSim(Module, AutoCSR):
         self.submodules.dqs_rd = ClockDomainsRenamer(cd_dqs_rd)(DQSRead(dqs_t=pads.dqs_t_i, dqs_c=pads.dqs_c_i, bl_width=bl_width, **dqs_kwargs))
 
         write        = Signal()
+        masked       = Signal()
         wr_postamble = Signal(3)
         wr_postamble_trigger = Signal()
         wr_postamble_width   = Signal(max=4)
@@ -585,8 +586,9 @@ class DataSim(Module, AutoCSR):
         read = Signal()
 
         self.submodules.read_dqs_delay = ClockDomainsRenamer(cd_dq_rd)(TappedDelayLine(read))
-        self.submodules.write_delay = ClockDomainsRenamer(cd_dq_wr)(TappedDelayLine(write, ntaps=1))
-        self.submodules.read_delay = ClockDomainsRenamer(cd_dq_rd)(TappedDelayLine(read, ntaps=2))
+        self.submodules.write_delay    = ClockDomainsRenamer(cd_dq_wr)(TappedDelayLine(write, ntaps=1))
+        self.submodules.masked_delay   = ClockDomainsRenamer(cd_dq_wr)(TappedDelayLine(masked, ntaps=1))
+        self.submodules.read_delay     = ClockDomainsRenamer(cd_dq_rd)(TappedDelayLine(read, ntaps=2))
 
         self.comb += [
             Case(cmds_sim.mode_regs[8][3:5] , {
@@ -619,7 +621,8 @@ class DataSim(Module, AutoCSR):
             read.eq(cmds_sim.data_en.taps[cl-2] & cmds_sim.data.source.valid & ~cmds_sim.data.source.we),
 
             cmds_sim.data.source.ready.eq(write | read),
-            self.dq_wr.masked.eq(write & cmds_sim.data.source.masked),
+            masked.eq(write & cmds_sim.data.source.masked),
+            self.dq_wr.masked.eq(self.masked_delay.output),
             self.dq_wr.trigger.eq(self.write_delay.output),
             self.dq_rd.trigger.eq(self.read_delay.output),
 
