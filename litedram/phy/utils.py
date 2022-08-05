@@ -301,21 +301,29 @@ class Deserializer(Module):
             reset_cnt = ratio + reset_cnt
 
         # Serial part
-        cnt = Signal(max=ratio, reset=reset_cnt, name='{}_cnt'.format(name) if name is not None else None)
-        sd_clk += If(reset, cnt.eq(0)).Else(cnt.eq(cnt + 1))
+        cnt = Signal(max=2 * ratio, reset=2*reset_cnt, name='{}_cnt'.format(name) if name is not None else None)
+        sd_clk += If(reset,
+            cnt.eq(2*reset_cnt),
+        ).Elif(cnt == 2*ratio - 1,
+            cnt.eq(0),
+        ).Elif(cnt == 2*ratio - 2,
+            cnt.eq(1),
+        ).Else(
+            cnt.eq(cnt + 2)
+        )
 
-        def as_array(out):
-            return Array([out[n*i_dw:(n+1)*i_dw] for n in range(ratio)])
+        def as_array(out, sig):
+            return Array([out[sig][n*i_dw:(n+1)*i_dw] for n in range(ratio)])
 
-        o_pre = Signal.like(self.o)
-        sd_clk += as_array(o_pre)[cnt].eq(self.i)
+        self.o_pre = o_pre = Array([Signal.like(self.o), Signal.like(self.o)])
+        sd_clk += as_array(o_pre, cnt[0])[cnt[1:]].eq(self.i)
 
         # Parallel part
         # we need to ensure that the last chunk will be correct if clocks are phase aligned
         o_pre_d = Signal.like(self.o)
-        sd_clkdiv += o_pre_d.eq(o_pre)
+        sd_clkdiv += o_pre_d.eq(o_pre[~cnt[0]])
         # would work as self.comb (at least in simulation)
-        sd_clkdiv += self.o.eq(Cat(as_array(o_pre_d)[:-1], as_array(o_pre)[-1]))
+        self.comb += self.o.eq(o_pre_d)
 
 
 class HoldValid(Module):

@@ -87,12 +87,12 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
 
         # Tristate I/O (separate for simulation)
         for i in range(self.databits//dq_dqs_ratio):
-            self.ser(i=self.out.dm_n_o[i], o=self.pads.dm_n_o[i], name=f'dm_n_o{i}', **ddr)
-            self.des(o=self.out.dm_n_i[i], i=self.pads.dm_n[i],   name=f'dm_n_i{i}', **ddr)
             self.ser(i=self.out.dqs_t_o[i], o=self.pads.dqs_t_o[i], name=f'dqs_t_o{i}', **ddr)
             self.des(o=self.out.dqs_t_i[i], i=self.pads.dqs_t[i],   name=f'dqs_t_i{i}', **ddr)
             self.ser(i=self.out.dqs_c_o[i], o=self.pads.dqs_c_o[i], name=f'dqs_c_o{i}', **ddr)
             self.des(o=self.out.dqs_c_i[i], i=self.pads.dqs_c[i],   name=f'dqs_c_i{i}', **ddr)
+            self.ser(i=self.out.dm_n_o[i], o=self.pads.dm_n_o[i], name=f'dm_n_o{i}', **ddr_90)
+            self.des(o=self.out.dm_n_i[i], i=self.pads.dm_n[i],   name=f'dm_n_i{i}', **ddr_90)
         for i in range(self.databits):
             self.ser(i=self.out.dq_o[i], o=self.pads.dq_o[i], name=f'dq_o{i}', **ddr_90)
             self.des(o=self.out.dq_i[i], i=self.pads.dq[i],   name=f'dq_i{i}', **ddr_90)
@@ -102,10 +102,10 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
             self.pads.ca_odt.eq(self.out.ca_odt),
             self.pads.mir.eq(self.out.mir),
             self.pads.cai.eq(self.out.cai),
-            self.pads.dm_n_oe.eq(delay(self.out.dm_n_oe, cycles=Serializer.LATENCY)),
+            self.pads.dm_n_oe.eq(self.out.dm_n_oe),
             self.pads.dqs_t_oe.eq(delay(self.out.dqs_t_oe, cycles=Serializer.LATENCY)),
             self.pads.dqs_c_oe.eq(delay(self.out.dqs_c_oe, cycles=Serializer.LATENCY)),
-            self.pads.dq_oe.eq(delay(self.out.dq_oe, cycles=Serializer.LATENCY)),
+            self.pads.dq_oe.eq(self.out.dq_oe),
         ]
 
 

@@ -83,7 +83,7 @@ class NOPInjector(Module, AutoCSR):
 # DFIInjector --------------------------------------------------------------------------------------
 
 class DFIInjector(Module, AutoCSR):
-    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1, memtype=None):
+    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1, memtype=None, strobes=None):
         self.slave   = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.master  = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         csr1_dfi     = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
@@ -97,7 +97,10 @@ class DFIInjector(Module, AutoCSR):
             csr3_dfi     = dfi.Interface(14, 1, nranks, databits, nphases)
             ddr5_dfi     = dfi.Interface(14, 1, nranks, databits, nphases)
 
-            adapters = [DFIPhaseAdapter(phase, False) for phase in self.intermediate.phases]
+            masked_writes  = False
+            if databits//2//strobes in [8, 16]:
+                masked_writes = True
+            adapters = [DFIPhaseAdapter(phase, masked_writes) for phase in self.intermediate.phases]
             self.submodules += adapters
 
         if memtype == "DDR5":

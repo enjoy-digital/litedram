@@ -22,7 +22,8 @@ class LiteDRAMCore(Module, AutoCSR):
             nranks      = phy.settings.nranks,
             databits    = phy.settings.dfi_databits,
             nphases     = phy.settings.nphases,
-            memtype     = phy.settings.memtype)
+            memtype     = phy.settings.memtype,
+            strobes     = phy.settings.strobes)
         self.comb += self.dfii.master.connect(phy.dfi)
 
         self.submodules.controller = controller = LiteDRAMController(
