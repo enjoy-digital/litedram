@@ -605,7 +605,7 @@ class DataSim(Module, AutoCSR):
                 0: self.log.error("Write Preamble 0b00 is reserved"),
                 1: wr_preamble.eq(0b0100),
                 2: wr_preamble.eq(0b010000),
-                3: wr_preamble.eq(0b01000000),
+                3: wr_preamble.eq(0b01010000),
             }),
             Case(cmds_sim.mode_regs[8][7] , {
                 0: wr_postamble_width.eq(1),
