@@ -351,6 +351,10 @@ def main():
         **soc_kwargs)
 
     # Build/Run ------------------------------------------------------------------------------------
+    def pre_run_callback(vns):
+        if args.trace:
+            generate_gtkw_savefile(builder, vns, args.trace_fst)
+
     builder_kwargs["csr_csv"] = "csr.csv"
     builder = Builder(soc, **builder_kwargs)
     build_kwargs = dict(
@@ -358,15 +362,10 @@ def main():
         trace       = args.trace,
         trace_fst   = args.trace_fst,
         trace_start = int(args.trace_start),
-        trace_end   = int(args.trace_end)
+        trace_end   = int(args.trace_end),
+        pre_run_callback = pre_run_callback,
     )
-    vns = builder.build(run=False, **build_kwargs)
-
-    if args.gtkw_savefile:
-        generate_gtkw_savefile(builder, vns, trace_fst=args.trace_fst)
-
-    if not args.no_run:
-        builder.build(build=False, **build_kwargs)
+    builder.build(run=not args.no_run, **build_kwargs)
 
 if __name__ == "__main__":
     main()
