@@ -305,8 +305,12 @@ class CommandsSim(Module, AutoCSR):
                 state: Case(fsm.state, {
                     next_state: self.log.info(f"FSM: {state_name} -> {next_state_name}")
                     for next_state, next_state_name in fsm.decoding.items()
+                } | {
+                    "default": self.log.error(f"FSM: {state_name=} undefined next state")
                 })
                 for state, state_name in fsm.decoding.items()
+            } | {
+                "default": self.log.error(f"FSM: Undefined previous state")
             })
         )
 
