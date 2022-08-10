@@ -260,7 +260,6 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             else:
                 ser_groups = [("out", soc.ddrphy.out)]
             for name, out in ser_groups:
-                print([out.dqs_t_o[0], out.dqs_t_oe, out.dm_n_o[0], out.dm_n_oe])
                 save.group([out.dqs_t_o[0], out.dqs_t_oe, out.dm_n_o[0], out.dm_n_oe],
                     group_name = name,
                     mappers = [

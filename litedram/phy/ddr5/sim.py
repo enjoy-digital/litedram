@@ -619,7 +619,6 @@ class DataSim(Module, AutoCSR):
                 0: wr_postamble.eq(0b0),
                 1: wr_postamble.eq(0b000),
             }),
-            self.log.error("Write Preamble width=%d preamble=%d", wr_preamble_width, wr_preamble),
             write.eq(cmds_sim.data_en.taps[cwl-2] & cmds_sim.data.source.valid & cmds_sim.data.source.we),
             wr_preamble_trigger.eq(cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 2] &
                                    ~cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 1] &
