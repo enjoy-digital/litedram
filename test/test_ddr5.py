@@ -144,15 +144,14 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_clk(self):
         # Test clock serialization
-        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
-
-        self.run_test(dut = phy,
+        self.run_test(
             dfi_sequence = [
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
             ],
             pad_checkers = {"sys4x_90_ddr": {
-                'clk': '01010101' * (phy.settings.cmd_latency + 1),
+                'ck_t': self.xs * 2 + '10101010' * (self.cmd_latency + 1),
             }},
+            vcd_name="ddr5_clk.vcd"
         )
 
     def test_ddr5_cs_n_multiple_phases(self):
