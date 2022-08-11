@@ -341,33 +341,28 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_dqs(self):
         # Test serialization of DQS pattern in relation to DQ data, with proper preamble and postamble
-        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
-        zero = '00000000' * 2
-        xs = 'xxxxxxxx' * 2
-        write_latency = phy.settings.write_latency
 
-        self.run_test(dut = phy,
+
+        self.run_test(
             dfi_sequence = [
-                {0: dict(wrdata_en=1)},
-                *[{} for _ in range(write_latency - 1)],
+                {self.wrphase: dict(wrdata_en=1)},
+                *[{} for _ in range(self.write_latency - 1)],
                 {  # to get 10101010... pattern on dq0 and only 1s on others
                     0: dict(wrdata=0xfeff),
                     1: dict(wrdata=0xfeff),
                     2: dict(wrdata=0xfeff),
                     3: dict(wrdata=0xfeff),
-                    4: dict(wrdata=0xfeff),
-                    5: dict(wrdata=0xfeff),
-                    6: dict(wrdata=0xfeff),
-                    7: dict(wrdata=0xfeff),
+                },
+                {
                 },
             ],
             pad_checkers = {
                 "sys4x_90_ddr": {
-                    'dq0':  (phy.settings.cmd_latency + write_latency) * zero + '10101010'+'10101010' + '00000000'+'00000000' + zero,
-                    'dq1':  (phy.settings.cmd_latency + write_latency) * zero + '11111111'+'11111111' + '00000000'+'00000000' + zero,
+                    "dqs_t0": self.dqs_t_wr_latency + 'xxxx0010' + '10101010'+ '0xxxxxxx',
                 },
                 "sys4x_ddr": {
-                    "dqs0": (phy.settings.cmd_latency + write_latency - 1) * xs + 'xxxxxxxx'+'xxxxx001' + '01010101'+'01010101' + '0xxxxxxxx' + xs,
+                    "dq0":  self.dq_wr_latency + '10101010' + self.zeros,
+                    "dq1":  self.dq_wr_latency + '11111111' + self.zeros,
                 }
             },
             vcd_name="ddr5_dqs.vcd"
