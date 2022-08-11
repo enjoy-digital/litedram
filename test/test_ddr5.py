@@ -132,16 +132,14 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_cs_n_phase_3(self):
         # Test that CS_n is serialized correctly when sending command on phase 3
-        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
-        latency_n = '11111111' * phy.settings.cmd_latency
-
-        self.run_test(dut = phy,
+        self.run_test(
             dfi_sequence = [
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=0)},  # p3: WRITE
             ],
-            pad_checkers = {"sys4x_90": {
-                'cs_n': latency_n + '11101111',
+            pad_checkers = {"sys4x": {
+                'cs_n': self.cs_n_latency + '11101111',
             }},
+            vcd_name="ddr5_cs_n_phase_3.vcd"
         )
 
     def test_ddr5_clk(self):
