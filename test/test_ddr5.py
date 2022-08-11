@@ -284,32 +284,36 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_dq_out(self):
         # Test serialization of dfi wrdata to DQ pads
-        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
-        zero = '00000000' * 2  # zero for 1 sysclk clock in sys8x_ddr clock domain
-        write_latency = phy.settings.write_latency
 
-        dfi_data = {
-            0: dict(wrdata=0x1122),
-            1: dict(wrdata=0x3344),
-            2: dict(wrdata=0x5566),
-            3: dict(wrdata=0x7788),
-            4: dict(wrdata=0x99aa),
-            5: dict(wrdata=0xbbcc),
-            6: dict(wrdata=0xddee),
-            7: dict(wrdata=0xff00),
-        }
-        dfi_wrdata_en = {0: dict(wrdata_en=1)}  # wrdata_en=1 required on any single phase
+        dfi_data = [
+            {
+                0: dict(wrdata=0x1122),
+                1: dict(wrdata=0x3344),
+                2: dict(wrdata=0x5566),
+                3: dict(wrdata=0x7788),
+            },
+            {
+                0: dict(wrdata=0x99aa),
+                1: dict(wrdata=0xbbcc),
+                2: dict(wrdata=0xddee),
+                3: dict(wrdata=0xff00),
+            },
+        ]
+        dfi_wrdata_en = {self.wrphase: dict(wrdata_en=1)}  # wrdata_en=1 required on any single phase
 
-        self.run_test(dut = phy,
+        self.run_test(
             dfi_sequence = [
                 dfi_wrdata_en,
-                *[{} for _ in range(write_latency - 1)],
-                dfi_data,
+                dfi_wrdata_en,
+                *[{} for _ in range(self.write_latency - 2)],
+                *dfi_data,
             ],
-            pad_checkers = {"sys4x_90_ddr": {
-                f'dq{i}': (phy.settings.cmd_latency + write_latency) * zero + dq_pattern(i, dfi_data, "wrdata") + zero for i in range(8)
+            pad_checkers = {"sys4x_ddr": {
+                f'dq{i}': self.dq_wr_latency +
+                    self.dq_pattern(i, dfi_data[0], "wrdata") + self.dq_pattern(i, dfi_data[1], "wrdata") +
+                    self.zeros for i in range(self.DATABITS)
             }},
-            vcd_name="ddr_dq_out.vcd"
+            vcd_name="ddr5_dq_out.vcd"
         )
 
     def test_ddr5_dq_only_1cycle(self):
