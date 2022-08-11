@@ -16,6 +16,7 @@ from migen import *
 from litedram.phy.ddr5.simphy import DDR5SimPHY, DoubleRateDDR5SimPHY
 from litedram.phy.ddr5 import simsoc
 from litedram.phy.sim_utils import SimLogger
+from litedram.phy.utils import Serializer, Deserializer
 
 import test.phy_common
 from test.phy_common import DFISequencer, PadChecker
@@ -459,44 +460,51 @@ class DDR5Tests(unittest.TestCase):
         # Test that data on DQ pads is deserialized correctly to DFI rddata.
         # We assume that when there are no commands, PHY will still deserialize the data,
         # which is generally true (tristate oe is 0 whenever we are not writing).
-        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
         dfi_data = {
             0: dict(rddata=0x1122),
             1: dict(rddata=0x3344),
             2: dict(rddata=0x5566),
             3: dict(rddata=0x7788),
-            4: dict(rddata=0x99aa),
-            5: dict(rddata=0xbbcc),
-            6: dict(rddata=0xddee),
-            7: dict(rddata=0xff00),
         }
 
+        expected_data = [
+            {
+                1: dict(rddata=0x1122),
+                2: dict(rddata=0x3344),
+                3: dict(rddata=0x5566),
+            },
+            {
+                0: dict(rddata=0x7788),
+            }
+        ]
+
         def sim_dq(pads):
-            for _ in range(16 * 1):  # wait 1 sysclk cycle
+            for _ in range(self.NPHASES * 4):  # wait reset
                 yield
-            for cyc in range(16):  # send a burst of data on pads
-                for bit in range(8):
-                    yield pads.dq_i[bit].eq(int(dq_pattern(bit, dfi_data, "rddata")[cyc]))
+            for _ in range(self.NPHASES * 2):  # wait 1 sysclk cycle
                 yield
-            for bit in range(8):
+            for cyc in range(self.BURST_LENGTH):  # send a burst of data on pads
+                for bit in range(self.DATABITS):
+                    yield pads.dq_i[bit].eq(int(self.dq_pattern(bit, dfi_data, "rddata")[cyc]))
+                yield
+            for bit in range(self.DATABITS):
                 yield pads.dq_i[bit].eq(0)
             yield
 
-        read_des_delay = 4  # phy.read_des_delay
         dfi_sequence = [
             {},  # wait 1 sysclk cycle
-            *[{} for _ in range(read_des_delay - 1)],
-            dfi_data,
+            *[{} for _ in range(Deserializer.LATENCY-1)],
+            *expected_data,
             {},
         ]
 
-        self.run_test(dut = phy,
+        self.run_test(
             dfi_sequence = dfi_sequence,
             pad_checkers = {},
             pad_generators = {
-                "sys4x_90_ddr": sim_dq,
+                "sys4x_ddr": sim_dq,
             },
-            vcd_name="ddr_dq_in_rddata.vcd"
+            vcd_name="ddr5_dq_in_rddata.vcd"
         )
 
     def test_ddr5_cmd_read(self):
