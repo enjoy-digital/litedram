@@ -76,6 +76,13 @@ class DDR5Tests(unittest.TestCase):
         self.dqs_t_wr_latency: str = self.xs * 2 + (self.cmd_latency + self.write_latency - 1) * self.xs + 'x' * (self.NPHASES - 1) * 2
         self.dq_wr_latency:    str = self.xs * 2 + (self.cmd_latency + self.write_latency) * self.zeros  + '0' * (self.NPHASES - 1) * 2
 
+    @staticmethod
+    def process_ca(ca: str) -> int:
+        """dfi_address is mapped 1:1 to CA"""
+        ca = ca.replace(' ', '') # remove readability spaces
+        ca = ca[::-1]            # reverse bit order (also readability)
+        return int(ca, 2)        # convert to int
+
     @classmethod
     def dq_pattern(cls, *args, **kwargs) -> str:
         return test.phy_common.dq_pattern(
@@ -227,47 +234,53 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_ca_addressing(self):
         # Test that bank/address for different commands are correctly serialized to CA pads
-        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
-        latency   = '00000000' * phy.settings.cmd_latency
-        latency_n = '11111111' * phy.settings.cmd_latency
+        read_0       = dict(cs_n=0, address=self.process_ca('10111 0 10100 000'))  # RD p0
+        read_1       = dict(cs_n=1, address=self.process_ca('001100110 01000'))    # RD p1
+        write_0      = dict(cs_n=0, address=self.process_ca('10110 0 11100 000'))  # WR p0
+        write_1      = dict(cs_n=1, address=self.process_ca('000000001 01100'))    # WR p1
+        activate_0   = dict(cs_n=0, address=self.process_ca('00 1000 01000 000'))  # ACT p0
+        activate_1   = dict(cs_n=1, address=self.process_ca('0111100001111 0'))    # ACT p1
+        refresh_ab   = dict(cs_n=0, address=self.process_ca('11001 0 00010 000'))  # REFab
+        precharge_ab = dict(cs_n=0, address=self.process_ca('11010 0 0000 0 000')) # PREab
+        mrw_0        = dict(cs_n=0, address=self.process_ca('10100 11001100 0'))   # MRW p0
+        mrw_1        = dict(cs_n=1, address=self.process_ca('01010101 00 0 000'))  # MRW p1
+        zqc_start    = dict(cs_n=0, address=self.process_ca('11110 10100000'))     # MPC + ZQCAL START op
+        zqc_latch    = dict(cs_n=0, address=self.process_ca('11110 00100000'))     # MPC + ZQCAL LATCH op
+        mrr_0        = dict(cs_n=0, address=self.process_ca('10101 10110100 0'))   # MRR p0
+        mrr_1        = dict(cs_n=1, address=self.process_ca('0000000000 0 000'))   # MRR p1
 
-        read          = dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, bank=0b101,    address=0b1100110000)
-        write_ap      = dict(cs_n=0, cas_n=0, ras_n=1, we_n=0, bank=0b111,    address=0b10000000000)
-        activate      = dict(cs_n=0, cas_n=1, ras_n=0, we_n=1, bank=0b010,    address=0b11110000111100001)
-        refresh_ab    = dict(cs_n=0, cas_n=0, ras_n=0, we_n=1, bank=0b100,    address=0)
-        precharge_ab  = dict(cs_n=0, cas_n=1, ras_n=0, we_n=0, bank=0b011,    address=0)
-        mrw           = dict(cs_n=0, cas_n=0, ras_n=0, we_n=0, bank=0b110011, address=0b10101010)  # bank=6-bit address, address=8-bit op code
-        zqc_start     = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,        address=0b0000101)  # MPC with ZQCAL START operand
-        zqc_latch     = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=0,        address=0b0000100)  # MPC with ZQCAL LATCH operand
-        mrr           = dict(cs_n=0, cas_n=1, ras_n=1, we_n=0, bank=1,        address=0b101101)  # 6-bit address (bank=1 selects MRR)
-
-        self.run_test(dut = phy,
-                      dfi_sequence = [
-                          {0: read, 4: write_ap},
-                          {0: activate, 4: refresh_ab},
-                          {0: precharge_ab, 4: mrw},
-                          {0: zqc_start, 4: zqc_latch},
-                          {0: mrr},
-                      ],
-                      pad_checkers = {"sys4x_90": {
-                          #                    rd     wr       act    ref      pre    mrw      zqcs   zqcl     mrr
-                          'cs_n': latency_n + '0111'+'0111' + '0111'+'0111' + '0111'+'0111' + '0111'+'0111' + '0111'+'1111',
-                          'ca0':  latency   + '1000'+'1x00' + '0000'+'1000' + '1000'+'1000' + '1000'+'1000' + '1000'+'0000',
-                          'ca1':  latency   + '0000'+'0000' + '0100'+'1000' + '1000'+'0100' + '1000'+'1000' + '0000'+'0000',
-                          'ca2':  latency   + '1100'+'1000' + '1100'+'0000' + '0000'+'1000' + '1000'+'1000' + '1x00'+'0000',
-                          'ca3':  latency   + '1100'+'1000' + '0100'+'0000' + '1000'+'0100' + '1000'+'1000' + '0x00'+'0000',
-                          'ca4':  latency   + '1000'+'0000' + '0100'+'1000' + '0000'+'0000' + '0000'+'0000' + '1x00'+'0000',
-                          'ca5':  latency   + '1000'+'1000' + '0000'+'x000' + 'x000'+'1100' + '1000'+'0000' + '1x00'+'0000',
-                          'ca6':  latency   + '1100'+'1000' + '0000'+'x000' + 'x000'+'1000' + '0000'+'0000' + '0x00'+'0000',
-                          'ca7':  latency   + '0100'+'1000' + '1000'+'x000' + 'x000'+'0100' + '1000'+'1000' + '1x00'+'0000',
-                          'ca8':  latency   + '1000'+'1100' + '0000'+'x000' + 'x000'+'0x00' + '0000'+'0000' + '1x00'+'0000',
-                          'ca9':  latency   + '0x00'+'0x00' + '0100'+'x000' + 'x000'+'1x00' + '0000'+'0000' + '0x00'+'0000',
-                          'ca10': latency   + '0100'+'0100' + '0100'+'0000' + '0000'+'1x00' + '0000'+'0000' + '1x00'+'0000',
-                          'ca11': latency   + 'xx00'+'x000' + 'x100'+'x000' + 'x000'+'0x00' + '0000'+'0000' + '0x00'+'0000',
-                          'ca12': latency   + 'xx00'+'xx00' + 'x100'+'x000' + 'x000'+'0x00' + '0000'+'0000' + '0x00'+'0000',
-                          'ca13': latency   + 'xx00'+'xx00' + 'x000'+'x000' + 'x000'+'xx00' + 'x000'+'x000' + 'xx00'+'0000',
-                      }},
-                      )
+        self.run_test(
+            dfi_sequence = [
+                {0: read_0, 1: read_1},
+                {0: write_0, 1: write_1},
+                {0: activate_0, 1: activate_1},
+                {0: refresh_ab},
+                {0: precharge_ab},
+                {0: mrw_0, 1: mrw_1},
+                {0: zqc_start},
+                {0: zqc_latch},
+                {0: mrr_0, 1: mrr_1},
+            ],
+            pad_checkers = {"sys4x": {
+                #                            rd     wr       act    ref      pre    mrw      zqcs   zqcl     mrr
+                'cs_n': self.cs_n_latency + '0111'+'0111' + '0111'+'0111' + '0111'+'0111' + '0111'+'0111' + '0111'+'1111',
+                'ca0':  self.ca_latency   + '1000'+'1x00' + '0000'+'1000' + '1000'+'1000' + '1000'+'1000' + '1000'+'0000',
+                'ca1':  self.ca_latency   + '0000'+'0000' + '0100'+'1000' + '1000'+'0100' + '1000'+'1000' + '0000'+'0000',
+                'ca2':  self.ca_latency   + '1100'+'1000' + '1100'+'0000' + '0000'+'1000' + '1000'+'1000' + '1x00'+'0000',
+                'ca3':  self.ca_latency   + '1100'+'1000' + '0100'+'0000' + '1000'+'0100' + '1000'+'1000' + '0x00'+'0000',
+                'ca4':  self.ca_latency   + '1000'+'0000' + '0100'+'1000' + '0000'+'0000' + '0000'+'0000' + '1x00'+'0000',
+                'ca5':  self.ca_latency   + '0000'+'0000' + '0000'+'x000' + 'x000'+'1100' + '1000'+'0000' + '1x00'+'0000',
+                'ca6':  self.ca_latency   + '1100'+'1000' + '0000'+'x000' + 'x000'+'1000' + '0000'+'0000' + '0x00'+'0000',
+                'ca7':  self.ca_latency   + '0100'+'1000' + '1000'+'x000' + 'x000'+'0100' + '1000'+'1000' + '1x00'+'0000',
+                'ca8':  self.ca_latency   + '1000'+'1100' + '0000'+'x000' + 'x000'+'0x00' + '0000'+'0000' + '1x00'+'0000',
+                'ca9':  self.ca_latency   + '0x00'+'0x00' + '0100'+'x000' + 'x000'+'1x00' + '0000'+'0000' + '0x00'+'0000',
+                'ca10': self.ca_latency   + '0100'+'0100' + '0100'+'0000' + '0000'+'1x00' + '0000'+'0000' + '1x00'+'0000',
+                'ca11': self.ca_latency   + 'xx00'+'x100' + 'x100'+'x000' + 'x000'+'0x00' + '0000'+'0000' + '0x00'+'0000',
+                'ca12': self.ca_latency   + 'xx00'+'xx00' + 'x100'+'x000' + 'x000'+'0x00' + '0000'+'0000' + '0x00'+'0000',
+                'ca13': self.ca_latency   + 'xx00'+'xx00' + 'x000'+'x000' + 'x000'+'xx00' + 'x000'+'x000' + 'xx00'+'0000',
+            }},
+            vcd_name="ddr5_ca_addressing.vcd"
+        )
 
     def test_ddr5_dq_out(self):
         # Test serialization of dfi wrdata to DQ pads
