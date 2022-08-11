@@ -51,9 +51,37 @@ dq_pattern = partial(test.phy_common.dq_pattern, databits=8, nphases=4, burst=8)
 
 class DDR5Tests(unittest.TestCase):
     SYS_CLK_FREQ = 50e6
+    DATABITS = 8
+    BURST_LENGTH = 8
+    NPHASES = 4
 
-    def run_test(self, dut, dfi_sequence, pad_checkers: Mapping[str, Mapping[str, str]], pad_generators=None, **kwargs):
+    def setUp(self):
+        self.phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ, aligned_reset_zero=True)
+
+        self.rdphase: int = self.phy.settings.rdphase.reset.value
+        self.wrphase: int = self.phy.settings.wrphase.reset.value
+
+        self.cmd_latency:   int = self.phy.settings.cmd_latency
+        self.read_latency:  int = self.phy.settings.read_latency
+        self.write_latency: int = self.phy.settings.write_latency
+
+        # 0s, 1s and Xs for 1 sys_clk in `*_ddr` clock domain
+        self.zeros: str = '0' * self.NPHASES * 2
+        self.ones:  str = '1' * self.NPHASES * 2
+        self.xs:    str = 'x' * self.NPHASES * 2
+
+        # latencies to use in pad checkers
+        self.ca_latency:       str = self.xs + '0' * self.NPHASES + '0' * self.NPHASES * self.cmd_latency
+        self.cs_n_latency:     str = self.xs + '0' * self.NPHASES + '1' * self.NPHASES * self.cmd_latency
+
+        self.dqs_t_rd_latency: str = self.xs * 2 + (self.read_latency - 2 - 1) * self.xs + 'x' * (self.NPHASES - 1) * 2
+        self.dq_rd_latency:    str = self.xs * 2 + (self.read_latency - 2) * self.zeros  + '0' * (self.NPHASES - 1) * 2
+        self.dqs_t_wr_latency: str = self.xs * 2 + (self.cmd_latency + self.write_latency - 1) * self.xs + 'x' * (self.NPHASES - 1) * 2
+        self.dq_wr_latency:    str = self.xs * 2 + (self.cmd_latency + self.write_latency) * self.zeros  + '0' * (self.NPHASES - 1) * 2
+
+    def run_test(self, dfi_sequence, pad_checkers: Mapping[str, Mapping[str, str]], pad_generators=None, **kwargs):
         # pad_checkers: {clock: {sig: values}}
+        dut = self.phy
         dfi = DFISequencer([{}, {}] + dfi_sequence)
         checkers = {clk: PadChecker(dut.pads, pad_signals) for clk, pad_signals in pad_checkers.items()}
         generators = defaultdict(list)
