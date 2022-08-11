@@ -154,38 +154,51 @@ class DDR5Tests(unittest.TestCase):
             vcd_name="ddr5_clk.vcd"
         )
 
-    def test_ddr5_cs_n_multiple_phases(self):
-        # Test that CS_n is serialized on different phases and that overlapping commands are handled
-        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
-        latency_n = '11111111' * phy.settings.cmd_latency
+    def test_ddr5_cs_n_overlapping_commands(self):
+        # Test that overlapping commands in same cycle aren't handled
+        self.run_test(
+            dfi_sequence = [
+                {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
+                {
+                    2: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1),
+                    3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1), # right now it shouldn't be ignored
+                },
+                {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
+            ],
+            pad_checkers = {"sys4x": {
+                'cs_n': self.cs_n_latency + ''.join([
+                    '0111',  # p0
+                    '1100',  # p2, p3 wasn't ignored
+                    '0111',  # p0
+                ])
+            }},
+            vcd_name="ddr5_cs_n_overlapping_commands.vcd"
+        )
 
-        self.run_test(dut = phy,
+    def test_ddr5_cs_n_multiple_phases(self):
+        # Test that CS_n is serialized on different phases
+        self.run_test(
             dfi_sequence = [
                 {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
-                {
-                    1: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1),
-                    2: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1),  # should be ignored
-                },
-                {
-                    1: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1),
-                    5: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1),  # should NOT be ignored
-                },
-                {7: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
+                {1: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
+                {},
+                {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
                 {0: dict(cs_n=0, cas_n=1, ras_n=0, we_n=0)},  # should be ignored due to command on previous cycle
                 {2: dict(cs_n=1, cas_n=0, ras_n=1, we_n=1)},  # ignored due to cs_n=1
             ],
-            pad_checkers = {"sys4x_90": {
-                'cs_n': latency_n + ''.join([
-                    '01111111',  # p0
-                    '11101111',  # p3
-                    '10111111',  # p1, p2 ignored
-                    '10111011',  # p1, p5
-                    '11111110',  # p7 (1st part)
-                    '11111111',  # (2nd part of the previous command), p0 ignored
-                    '11111111',  # p2 ignored
+            pad_checkers = {"sys4x": {
+                'cs_n': self.cs_n_latency + ''.join([
+                    '0111',  # p0
+                    '1110',  # p3
+                    '1011',  # p1
+                    '1111',  # empty cycle
+                    '1110',  # p3 (1st part)
+                    '0111',  # (2nd part of the previous command), p0 ignored
+                    '1111',  # p2 ignored
                 ])
             }},
+            vcd_name="ddr5_cs_n_multiple_phases.vcd"
         )
 
     def test_ddr5_empty_command_sequence(self):
