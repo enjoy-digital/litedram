@@ -509,29 +509,12 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_cmd_read(self):
         # Test whole READ command sequence simulating DRAM response and verifying read_latency from MC perspective
-        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
-        zeros = '00000000' * 2
-        ones = '11111111' * 2
-        xs = 'xxxxxxxx' * 2
-        cmd_latency = phy.settings.cmd_latency
-        read_latency = phy.settings.read_latency
-        rdphase = phy.settings.rdphase.reset.value
-        read_des_delay = 4  # phy.read_des_delay
-
-        # FIXME: The data will appear 1 cycle before rddata_valid. This is because we have one more cycle
-        # of read latency that is needed for bitslips to be usable, and here we're not doing read leveling
-        # so the bitslip is configured incorrectly. If we increased cl by 1 in Simulator and did a single
-        # bitslip increment before the test, it should work, but this would unnecessarily complicate the test.
 
         data_to_read = {
             0: dict(rddata=0x1122),
             1: dict(rddata=0x3344),
             2: dict(rddata=0x5566),
             3: dict(rddata=0x7788),
-            4: dict(rddata=0x99aa),
-            5: dict(rddata=0xbbcc),
-            6: dict(rddata=0xddee),
-            7: dict(rddata=0xff00),
         }
 
         dfi_data_valid = {
@@ -539,15 +522,16 @@ class DDR5Tests(unittest.TestCase):
             1: dict(rddata_valid=1),
             2: dict(rddata_valid=1),
             3: dict(rddata_valid=1),
-            4: dict(rddata_valid=1),
-            5: dict(rddata_valid=1),
-            6: dict(rddata_valid=1),
-            7: dict(rddata_valid=1),
         }
 
+        read_0 = dict(cs_n=0, address=self.process_ca('10111 0 00000 000'))  # RD p0
+        read_1 = dict(cs_n=1, address=self.process_ca('000000000 01000'))    # RD p1
         dfi_sequence = [
-            {rdphase: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, rddata_en=1)},
-            *[{} for _ in range(read_latency - 1 - 1)],
+            {
+                self.rdphase:     read_0 | dict(rddata_en=1),
+                self.rdphase + 1: read_1,
+            },
+            *[{} for _ in range(self.read_latency - 1)],
             data_to_read,
             dfi_data_valid,
             {},
@@ -566,13 +550,17 @@ class DDR5Tests(unittest.TestCase):
             def cmd_checker(self, pads):
                 # Monitors CA/CS_n for a READ command
                 read = [
-                    0b00000000111101,  # READ-1 (1) BL=1, BA=0, BG=0, CID=0
+                    0b00000000011101,  # READ-1 (1) BL=0, BA=0, BG=0, CID=0
                     0b00010000000000,  # READ-1 (2) BA=0, C=0, AP=0, CID3=0
                 ]
 
                 def check_ca(i):
                     err = "{}: CA = 0b{:06b}, expected = 0b{:06b}".format(i, (yield pads.ca), read[i])
                     self.test_case.assertEqual((yield pads.ca), read[i], msg=err)
+
+                # wait reset
+                for _ in range(self.test_case.NPHASES * 4):
+                    yield
 
                 while True:
                     while (yield pads.cs_n):
@@ -589,14 +577,14 @@ class DDR5Tests(unittest.TestCase):
                     while not self.read_cmd:
                         yield
                     data = self.data.pop(0)
-                    for _ in range(2*self.cl + 1):
+                    for _ in range(2*self.cl - 1):
                         yield
                     self.read_cmd = False
-                    for cyc in range(16):
-                        for bit in range(8):
-                            yield pads.dq_i[bit].eq(int(dq_pattern(bit, data, "rddata")[cyc]))
+                    for cyc in range(self.test_case.BURST_LENGTH):
+                        for bit in range(self.test_case.DATABITS):
+                            yield pads.dq_i[bit].eq(int(self.test_case.dq_pattern(bit, data, "rddata")[cyc]))
                         yield
-                    for bit in range(8):
+                    for bit in range(self.test_case.DATABITS):
                         yield pads.dq_i[bit].eq(0)
 
             @passive
@@ -605,44 +593,45 @@ class DDR5Tests(unittest.TestCase):
                 while True:
                     while not self.read_cmd:
                         yield
-                    for _ in range(2*self.cl - 1):  # DQS to transmit DQS preamble
+                    preamble = "0010"
+                    for _ in range(2*self.cl - len(preamble) - 1):  # wait CL without DQS preamble
                         yield
-                    for cyc in range(16 + 1):  # send a burst of data on pads
-                        yield pads.dqs_i.eq(int((cyc + 1) % 2))
+                    for bit in preamble: # send DQS preamble
+                        yield pads.dqs_t_i.eq(int(bit))
                         yield
-                    yield pads.dqs_i.eq(0)
-                    yield
-                    yield pads.dqs_i.eq(1)
-                    yield
-                    yield pads.dqs_i.eq(0)
+                    for cyc in range(1, self.test_case.BURST_LENGTH):  # send a burst of data on pads
+                        yield pads.dqs_t_i.eq(cyc % 2)
+                        yield
+                    for bit in "010": # send DQS postamble
+                        yield pads.dqs_t_i.eq(int(bit))
+                        yield
 
         sim = Simulator([data_to_read], self, cl=22)
-        self.run_test(phy,
+        self.run_test(
             dfi_sequence = dfi_sequence,
             pad_checkers = {
-                "sys4x_90": {
-                    "cs_n": ones  + rdphase * "1" + "0111" + ones,
-                    "ca0":  zeros + rdphase * "0" + "1000" + zeros,
-                    "ca1":  zeros + rdphase * "0" + "0000" + zeros,
-                    "ca2":  zeros + rdphase * "0" + "1000" + zeros,
-                    "ca3":  zeros + rdphase * "0" + "1000" + zeros,
-                    "ca4":  zeros + rdphase * "0" + "1000" + zeros,
-                    "ca5":  zeros + rdphase * "0" + "1000" + zeros,
-                    "ca6":  zeros + rdphase * "0" + "0000" + zeros,
-                    "ca7":  zeros + rdphase * "0" + "0000" + zeros,
-                    "ca8":  zeros + rdphase * "0" + "0000" + zeros,
-                    "ca9":  zeros + rdphase * "0" + "0000" + zeros,
-                    "ca10": zeros + rdphase * "0" + "0100" + zeros,
-                    "ca11": zeros + rdphase * "0" + "0000" + zeros,
-                    "ca12": zeros + rdphase * "0" + "0000" + zeros,
-                    "ca13": zeros + rdphase * "0" + "0000" + zeros,
+                "sys4x": {
+                    "cs_n": self.cs_n_latency + self.rdphase * "1" + "0111" + self.ones,
+                    "ca0":  self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
+                    "ca1":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca2":  self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
+                    "ca3":  self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
+                    "ca4":  self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
+                    "ca5":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca6":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca7":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca8":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca9":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca10": self.ca_latency   + self.rdphase * "0" + "0100" + self.zeros,
+                    "ca11": self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca12": self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca13": self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
                 },
-                "sys4x_90_ddr": {
-                    f'dq{i}': (cmd_latency + 3) * zeros + dq_pattern(i, data_to_read, "rddata") + zeros
-                    for i in range(8)
-                },
-                "sys4x_ddr": {
-                    "dqs0": (cmd_latency + 2) * xs + 'xxxxxxxx'+'xxxxx001' + '01010101'+'01010101' + '010xxxxx' + 'xxxxxxxx',
+                "sys4x_90_ddr": { #                    preamble                  postamble
+                    "dqs_t0": self.dqs_t_rd_latency + 'xxxx0010' + '10101010' + '10xxxxxx',
+                } | {
+                    f'dq{i}': self.dq_rd_latency + self.dq_pattern(i, data_to_read, "rddata") + self.zeros
+                    for i in range(self.DATABITS)
                 },
             },
             pad_generators = {
