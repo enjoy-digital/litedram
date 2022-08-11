@@ -50,7 +50,7 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
         self.submodules += pads
         super().__init__(pads,
             ser_latency  = Latency(sys=Serializer.LATENCY),
-            des_latency  = Latency(sys=Deserializer.LATENCY),
+            des_latency  = Latency(sys=(Deserializer.LATENCY-1 if aligned_reset_zero else Deserializer.LATENCY)),
             phytype      = "DDR5SimPHY",
             **kwargs)
 
@@ -70,7 +70,9 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
 
         if aligned_reset_zero:
             sdr["reset_cnt"] = 0
+            sdr_180["reset_cnt"] = 0
             ddr["reset_cnt"] = 0
+            ddr_90["reset_cnt"] = 0
 
         # Clock is shifted 180 degrees to get rising edge in the middle of SDR signals.
         # To achieve that we send negated clock on clk (clk_p).

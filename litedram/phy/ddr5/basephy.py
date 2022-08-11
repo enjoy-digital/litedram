@@ -166,7 +166,9 @@ class DDR5PHY(Module, AutoCSR):
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
         # For reads we need to account for ser+des+(1 full MC clock delay to accomodate latency from write) to make sure we get the data in-phase with sys clock
-        rdphase = get_sys_phase(nphases, cl_sys_latency, cl + cmd_latency + ser_latency.sys4x % 4 + des_latency.sys4x % 4 + 4)
+        rdphase = get_sys_phase(nphases, cl_sys_latency, cl + cmd_latency +
+                                ser_latency.sys4x + des_latency.sys4x
+                                )
         # No need to modify wrphase, because ser_latency applies the same to both CA and DQ
         wrphase = get_sys_phase(nphases, cwl_sys_latency, cwl + cmd_latency)
 
@@ -267,17 +269,23 @@ class DDR5PHY(Module, AutoCSR):
             # output
             self.wrdata = wrdata = [
                 dfi.phases[i//2].wrdata[i%2 * self.databits + bit]
-                for i in range(1, 2*nphases)
-            ] + [self.dfi.phases[0].wrdata[bit]]
+                for i in range(2, 2*nphases)
+            ] + [
+                self.dfi.phases[0].wrdata[bit],
+                self.dfi.phases[0].wrdata[self.databits + bit]
+            ]
             self.comb += self.out.dq_o[bit].eq(Cat(*wrdata))
             # input
             dq_i_bs = Signal(2*nphases)
             self.comb += dq_i_bs.eq(self.out.dq_i[bit])
-            for i in range(2*nphases):
+            for i in range(2*(nphases-1), 2*nphases):
                 self.sync += delayed_rddata[i//2][i%2 * self.databits + bit].eq(dq_i_bs[i])
 
-            for i in range(2*nphases):
-                self.comb += self.dfi.phases[i//2].rddata[i%2 * self.databits + bit].eq(dq_i_bs[i])
+            for i in range(2*(nphases-1)):
+                self.comb += self.dfi.phases[1+i//2].rddata[i%2 * self.databits + bit].eq(dq_i_bs[i])
+
+            for i in range(2*(nphases-1), 2*nphases):
+                self.comb += self.dfi.phases[0].rddata[i%2 * self.databits + bit].eq(delayed_rddata[i//2][i%2 * self.databits + bit])
         # DQS --------------------------------------------------------------------------------------
         dqs_oe        = Signal()
         dqs_preamble  = Signal()
@@ -288,16 +296,20 @@ class DDR5PHY(Module, AutoCSR):
             wlevel_en     = self._wlevel_en.storage,
             wlevel_strobe = self._wlevel_strobe.re)
         self.submodules += dqs_pattern
+
         self.comb += [
             self.out.dqs_t_oe.eq(dqs_oe),
             self.out.dqs_c_oe.eq(dqs_oe),
         ]
 
+        dqs_pattern_delayed = Signal.like(dqs_pattern.o)
+        self.sync += dqs_pattern_delayed.eq(dqs_pattern.o)
+
         for byte in range(strobes):
             # output
             self.comb += [
-                self.out.dqs_t_o[byte].eq(dqs_pattern.o),
-                self.out.dqs_c_o[byte].eq(~dqs_pattern.o),
+                self.out.dqs_t_o[byte].eq(Cat(dqs_pattern_delayed[2:8], dqs_pattern.o[0:2])),
+                self.out.dqs_c_o[byte].eq(~Cat(dqs_pattern_delayed[2:8], dqs_pattern.o[0:2])),
             ]
 
         # DMI --------------------------------------------------------------------------------------
@@ -310,8 +322,11 @@ class DDR5PHY(Module, AutoCSR):
                 self.comb += self.out.dm_n_oe.eq(self.out.dq_oe)
                 wrdata_mask = [
                     dfi.phases[i//2].wrdata_mask[i%2 * strobes + byte]
-                    for i in range(1, 2*nphases)
-                ] + [self.dfi.phases[0].wrdata_mask[byte]]
+                    for i in range(2, 2*nphases)
+                ] + [
+                    self.dfi.phases[0].wrdata_mask[byte],
+                    self.dfi.phases[0].wrdata_mask[strobes + byte]
+                ]
                 self.comb += self.out.dm_n_o[byte].eq(Cat(*wrdata_mask))
             else:
                 self.comb += self.out.dm_n_o[byte].eq(0)
@@ -347,20 +362,20 @@ class DDR5PHY(Module, AutoCSR):
         self.submodules += wrdata_en
 
         dq_oe_delay_serial = TappedDelayLine(
-            signal=wrdata_en.taps[wrtap - 1],
+            signal=wrdata_en.taps[wrtap],
             ntaps=Serializer.LATENCY,
         )
 
         dq_oe_delay = TappedDelayLine(
             signal=dq_oe_delay_serial.output,
-            ntaps=8,
+            ntaps=6,
         )
 
         self.submodules += dq_oe_delay_serial
         self.submodules += ClockDomainsRenamer("sys4x_90_ddr")(dq_oe_delay)
         self.comb += dq_oe.eq(dq_oe_delay.output)
         # Always enabled in write leveling mode, else during transfers
-        self.comb += dqs_oe.eq(self._wlevel_en.storage | (dqs_preamble | wrdata_en.taps[wrtap] | dqs_postamble))
+        self.sync += dqs_oe.eq(self._wlevel_en.storage | (dqs_preamble | wrdata_en.taps[wrtap] | dqs_postamble))
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
         # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
