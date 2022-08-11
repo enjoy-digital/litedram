@@ -203,30 +203,27 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_empty_command_sequence(self):
         # Test CS_n/CA values for empty dfi commands sequence
-        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
-        latency   = '00000000' * phy.settings.cmd_latency
-        latency_n = '11111111' * phy.settings.cmd_latency
-
-        self.run_test(dut = phy,
-                      dfi_sequence = [],
-                      pad_checkers = {"sys4x_90": {
-                          'cs_n': latency_n,
-                          'ca0':  latency,
-                          'ca1':  latency,
-                          'ca2':  latency,
-                          'ca3':  latency,
-                          'ca4':  latency,
-                          'ca5':  latency,
-                          'ca6':  latency,
-                          'ca7':  latency,
-                          'ca8':  latency,
-                          'ca9':  latency,
-                          'ca10': latency,
-                          'ca11': latency,
-                          'ca12': latency,
-                          'ca13': latency,
-                      }},
-                      )
+        self.run_test(
+            dfi_sequence = [],
+            pad_checkers = {"sys4x": {
+                'cs_n': self.cs_n_latency,
+                'ca0':  self.ca_latency,
+                'ca1':  self.ca_latency,
+                'ca2':  self.ca_latency,
+                'ca3':  self.ca_latency,
+                'ca4':  self.ca_latency,
+                'ca5':  self.ca_latency,
+                'ca6':  self.ca_latency,
+                'ca7':  self.ca_latency,
+                'ca8':  self.ca_latency,
+                'ca9':  self.ca_latency,
+                'ca10': self.ca_latency,
+                'ca11': self.ca_latency,
+                'ca12': self.ca_latency,
+                'ca13': self.ca_latency,
+            }},
+            vcd_name="ddr5_empty_command_sequence.vcd"
+        )
 
     def test_ddr5_ca_addressing(self):
         # Test that bank/address for different commands are correctly serialized to CA pads
