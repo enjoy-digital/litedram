@@ -21,14 +21,6 @@ import test.phy_common
 from test.phy_common import DFISequencer, PadChecker
 
 
-# Migen simulator supports reset signals so we could add CRG to start all the signals
-# in the same time, however the clock signals will still be visible in the VCD dump
-# and the generators we assign to them will still work before reset. For this reason we
-# use clocks set up in such a way that we have all the phase aligned clocks start in tick
-# 1 (not zero), so that we avoid any issues with clock alignment.
-#
-# NOTE: On hardware proper reset must be ensured!
-#
 # The simulation should start like this (each char is 1 ns):
 #   sys          |_--------------------------------
 #   sys2x        |_----------------________________
@@ -41,15 +33,17 @@ from test.phy_common import DFISequencer, PadChecker
 # sys4x_90_ddr does not trigger at the simulation start (not an edge),
 # BUT a generator starts before first edge, so a `yield` is needed to wait until the first
 # rising edge!
-run_simulation = partial(test.phy_common.run_simulation, clocks={
+sim_clocks={
     "sys":          (64, 31),
+    "sys_rst":      (64, 30),
     "sys2x":        (32, 15),
     "sys4x":        (16,  7),
     "sys4x_ddr":    ( 8,  3),
     "sys4x_90":     (16,  3),
     "sys4x_90_ddr": ( 8,  7),
     "sys4x_180":    (16, 15),
-})
+}
+run_simulation = partial(test.phy_common.run_simulation, clocks=sim_clocks)
 
 dfi_data_to_dq = partial(test.phy_common.dfi_data_to_dq, databits=8, nphases=4, burst=8)
 dq_pattern = partial(test.phy_common.dq_pattern, databits=8, nphases=4, burst=8)
@@ -60,7 +54,7 @@ class DDR5Tests(unittest.TestCase):
 
     def run_test(self, dut, dfi_sequence, pad_checkers: Mapping[str, Mapping[str, str]], pad_generators=None, **kwargs):
         # pad_checkers: {clock: {sig: values}}
-        dfi = DFISequencer(dfi_sequence)
+        dfi = DFISequencer([{}, {}] + dfi_sequence)
         checkers = {clk: PadChecker(dut.pads, pad_signals) for clk, pad_signals in pad_checkers.items()}
         generators = defaultdict(list)
         generators["sys"].append(dfi.generator(dut.dfi))
@@ -72,6 +66,19 @@ class DDR5Tests(unittest.TestCase):
             gens = gens if isinstance(gens, list) else [gens]
             for gen in gens:
                 generators[clock].append(gen(dut.pads))
+
+        class CRG(Module):
+            def __init__(self, dut):
+                r = Signal(2)
+                self.sync.sys_rst += [If(r<3, r.eq(r+1))]
+                self.submodules.dut = dut
+                for clk in sim_clocks:
+                    if clk == "sys_rst":
+                        continue
+                    setattr(self.clock_domains, "cd_{}".format(clk), ClockDomain(clk))
+                    cd = getattr(self, 'cd_{}'.format(clk))
+                    self.comb += cd.rst.eq(~r[1])
+        dut = CRG(dut)
         run_simulation(dut, generators, **kwargs)
         PadChecker.assert_ok(self, checkers)
         dfi.assert_ok(self)
