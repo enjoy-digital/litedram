@@ -45,9 +45,6 @@ sim_clocks={
 }
 run_simulation = partial(test.phy_common.run_simulation, clocks=sim_clocks)
 
-dfi_data_to_dq = partial(test.phy_common.dfi_data_to_dq, databits=8, nphases=4, burst=8)
-dq_pattern = partial(test.phy_common.dq_pattern, databits=8, nphases=4, burst=8)
-
 
 class DDR5Tests(unittest.TestCase):
     SYS_CLK_FREQ = 50e6
@@ -78,6 +75,16 @@ class DDR5Tests(unittest.TestCase):
         self.dq_rd_latency:    str = self.xs * 2 + (self.read_latency - 2) * self.zeros  + '0' * (self.NPHASES - 1) * 2
         self.dqs_t_wr_latency: str = self.xs * 2 + (self.cmd_latency + self.write_latency - 1) * self.xs + 'x' * (self.NPHASES - 1) * 2
         self.dq_wr_latency:    str = self.xs * 2 + (self.cmd_latency + self.write_latency) * self.zeros  + '0' * (self.NPHASES - 1) * 2
+
+    @classmethod
+    def dq_pattern(cls, *args, **kwargs) -> str:
+        return test.phy_common.dq_pattern(
+            *args,
+            databits=cls.DATABITS,
+            nphases=cls.NPHASES,
+            burst=cls.BURST_LENGTH,
+            **kwargs,
+        )
 
     def run_test(self, dfi_sequence, pad_checkers: Mapping[str, Mapping[str, str]], pad_generators=None, **kwargs):
         # pad_checkers: {clock: {sig: values}}
