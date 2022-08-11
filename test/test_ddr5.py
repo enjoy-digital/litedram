@@ -441,15 +441,14 @@ class DDR5Tests(unittest.TestCase):
 
     def test_ddr5_dq_in_rddata_valid(self):
         # Test that rddata_valid is set with correct delay
-        phy = DDR5SimPHY(sys_clk_freq=self.SYS_CLK_FREQ)
         dfi_sequence = [
             {0: dict(rddata_en=1)},  # command is issued by MC (appears on next cycle)
-            *[{p: dict(rddata_valid=0) for p in range(8)} for _ in range(phy.settings.read_latency - 1)],  # nothing is sent during write latency
-            {p: dict(rddata_valid=1) for p in range(8)},
+            *[{p: dict(rddata_valid=0) for p in range(self.NPHASES)} for _ in range(self.read_latency)],  # nothing is sent during read latency
+            {p: dict(rddata_valid=1) for p in range(self.NPHASES)},
             {},
         ]
 
-        self.run_test(dut = phy,
+        self.run_test(
             dfi_sequence = dfi_sequence,
             pad_checkers = {},
             pad_generators = {},
