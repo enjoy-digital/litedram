@@ -5,6 +5,14 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        pytest_args:
+          - 'test                -k "not Verilator"'
+          - 'test/test_lpddr4.py -k "Verilator"'
+          - 'test/test_lpddr5.py -k "Verilator"'
+          - 'test/test_ddr5.py   -k "Verilator"'
     steps:
       # Checkout Repository
       - name: Checkout
@@ -23,6 +31,7 @@ jobs:
           pip3 install requests
           pip3 install pexpect
           pip3 install meson
+          pip3 install pytest
 
       # Install (n)Migen / LiteX / Cores
       - name: Install LiteX
@@ -60,4 +69,4 @@ jobs:
       - name: Run Tests
         run: |
           export PATH=/usr/local/riscv/bin:$PATH
-          python3 setup.py test
+          pytest ${{ matrix.pytest_args }} --verbose
