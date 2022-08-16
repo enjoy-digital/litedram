@@ -115,9 +115,9 @@ class SimSoC(SoCCore):
 
         # DDR5 -----------------------------------------------------------------------------------
         if dq_dqs_ratio == 8:
-            sdram_module = litedram_modules.MT60B2G8HB48B(sys_clk_freq, "1:4")
+            sdram_module = litedram_modules.DDR5SimX8(sys_clk_freq, "1:4")
         elif dq_dqs_ratio == 4:
-            sdram_module = litedram_modules.M329R8GA0BB0(sys_clk_freq, "1:4")
+            sdram_module = litedram_modules.DDR5SimX4(sys_clk_freq, "1:4")
             if masked_write:
                 masked_write = False
                 print("Masked Write is unsupported for x4 device (JESD79-5A, section 4.8.1)")

@@ -1293,3 +1293,13 @@ class M329R8GA0BB0(DDR5RegisteredModule):
         "4800": _SpeedgradeTimings(tRP=16, tRCD=16, tWR=30, tRFC=trfc, tFAW=(32, 13.333), tRAS=32),  # TODO: tRAS_max
     }
     speedgrade_timings["default"] = speedgrade_timings["4800"]
+
+
+class DDR5SimX8(MT60B2G8HB48B):
+    # modified so simulation uses less memory in CI
+    nrows       = 2 ** 14
+
+
+class DDR5SimX4(M329R8GA0BB0):
+    # modified so simulation uses less memory in CI
+    nrows       = 2 ** 14
