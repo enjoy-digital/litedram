@@ -369,6 +369,7 @@ def main():
         trace_start = int(args.trace_start),
         trace_end   = int(args.trace_end),
         pre_run_callback = pre_run_callback,
+        jobs="$(nproc)", # so CI doesn't get killed by OOM
     )
     builder.build(run=not args.no_run, **build_kwargs)
 
