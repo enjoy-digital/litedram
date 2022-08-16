@@ -83,15 +83,16 @@ class DDR5Sim(Module, AutoCSR):
         self.submodules.cmd = ClockDomainsRenamer(cd_cmd)(cmd)
 
         data = DataSim(pads, self.cmd,
-            cd_dq_wr  = cd_dq_wr,
-            cd_dqs_wr = cd_dqs_wr,
-            cd_dq_rd  = cd_dq_rd,
-            cd_dqs_rd = cd_dqs_rd,
-            clk_freq  = 2*4*sys_clk_freq,
-            cl        = cl,
-            cwl       = cwl,
-            log_level = log_level("data"),
-            bl_max    = bl_max,
+            cd_dq_wr      = cd_dq_wr,
+            cd_dqs_wr     = cd_dqs_wr,
+            cd_dq_rd      = cd_dq_rd,
+            cd_dqs_rd     = cd_dqs_rd,
+            clk_freq      = 2*4*sys_clk_freq,
+            cl            = cl,
+            cwl           = cwl,
+            log_level     = log_level("data"),
+            geom_settings = geom_settings,
+            bl_max        = bl_max,
         )
         self.submodules.data = ClockDomainsRenamer(cd_dq_wr)(data)
 
@@ -546,20 +547,14 @@ class DataSim(Module, AutoCSR):
 
     This module runs with DDR clocks (simulation clocks with double the frequency of `pads.clk_p`).
     """
-    def __init__(self, pads, cmds_sim, *, cd_dq_wr, cd_dq_rd, cd_dqs_wr, cd_dqs_rd, cl, cwl, clk_freq, log_level, bl_max):
+    def __init__(self, pads, cmds_sim, *, cd_dq_wr, cd_dq_rd, cd_dqs_wr, cd_dqs_rd, cl, cwl, clk_freq, log_level, geom_settings, bl_max):
         self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
         self.log.add_csrs()
 
-        dq_dqs_ratio = len(pads.dq) // len(pads.dqs_t)
-        if dq_dqs_ratio == 8:
-            module = modules.MT60B2G8HB48B
-        elif dq_dqs_ratio == 4:
-            module = modules.M329R8GA0BB0
-
-        nbanks = module.nbanks
+        nbanks = 2 ** geom_settings.bankbits
         # Per-bank memory
-        nrows = module.nrows
-        ncols = module.ncols
+        nrows = 2 ** geom_settings.rowbits
+        ncols = 2 ** geom_settings.colbits
         mems = [Memory(len(pads.dq), depth=nrows * ncols) for _ in range(nbanks)]
         ports = [mem.get_port(write_capable=True, we_granularity=8, async_read=True) for mem in mems]
         self.specials += mems + ports
