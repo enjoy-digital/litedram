@@ -177,6 +177,12 @@ class SimSoC(SoCCore):
         for name in _speedgrade_timings + _technology_timings:
             timings[name] = sdram_module.get(name)
 
+            if name in ("tRFC", "tREFI"):
+                timings[name] = {
+                    refresh_mode: sdram_module.get(name, refresh_mode)
+                    for refresh_mode in ("1x", "2x")
+                }
+
         self.submodules.dfi_timings_checker = DFITimingsChecker(
             dfi          = self.ddrphy.dfi,
             nbanks       = 2**self.sdram.controller.settings.geom.bankbits,
