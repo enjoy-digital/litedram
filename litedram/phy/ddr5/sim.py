@@ -212,11 +212,16 @@ class CommandsSim(Module, AutoCSR):
         self.submodules.fsm = fsm = ResetInserter()(FSM())
         self.comb += [
             If(self.tpw_reset.ready_p,
-                self.tinit3.trigger.eq(pads.reset_n),
                 fsm.reset.eq(1),
                 self.log.info("FSM reset")
             )
         ]
+        fsm.act("Reset",
+            If(pads.reset_n,
+                self.tinit3.trigger.eq(pads.reset_n),
+                NextState("Initialization"),
+            )
+        )
         fsm.act("Initialization",
             If(~delayed(self, pads.cs_n) & pads.cs_n,
                 self.log.info("CS released"),
