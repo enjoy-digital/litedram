@@ -214,6 +214,9 @@ class DFIInjector(Module, AutoCSR):
                     # NOP Injector.
                     # -------------
                     2: csr3_dfi.connect(self.master),
+                    # Make Verilator happy :)
+                    # -----------------------
+                    3: (),
                 })
             ]
         else:
