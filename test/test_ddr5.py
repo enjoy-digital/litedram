@@ -676,6 +676,7 @@ class VerilatorDDR5Tests(unittest.TestCase):
         # refresh and no L2 cache (masked write must work)
         self.run_test([
             "--finish-after-memtest", "--log-level", "warn",
+            "--output-dir", "build/test_ddr5_sim_dq_dqs_ratio_4",
             "--l2-size", "0",
             "--dq-dqs-ratio", "4",
         ])
@@ -685,6 +686,7 @@ class VerilatorDDR5Tests(unittest.TestCase):
         # refresh and no L2 cache (masked write must work)
         self.run_test([
             "--finish-after-memtest", "--log-level", "warn",
+            "--output-dir", "build/test_ddr5_sim_dq_dqs_ratio_8",
             "--l2-size", "0",
             "--dq-dqs-ratio", "8",
         ])
