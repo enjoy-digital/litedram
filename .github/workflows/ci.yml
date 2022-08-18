@@ -29,6 +29,10 @@ jobs:
         run: |
           wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
           python3 litex_setup.py init install --user
+          # temporary hack until merged to master
+          git -C ../litex remote add antmicro https://github.com/antmicro/litex.git
+          git -C ../litex fetch antmicro
+          git -C ../litex checkout antmicro/4_bit_dqs
 
       # Install RISC-V GCC
       - name: Install RISC-V GCC
