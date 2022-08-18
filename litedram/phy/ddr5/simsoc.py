@@ -29,21 +29,49 @@ from litedram.phy.sim_utils import Clocks, CRG, Platform
 
 # Platform -----------------------------------------------------------------------------------------
 
-_io = [
-    # clocks added in main()
-    ("ddr5", 0,
-        Subsignal("clk",     Pins(1)),
-        Subsignal("ca_odt",  Pins(1)),
-        Subsignal("mir",     Pins(1)),
-        Subsignal("cai",     Pins(1)),
-        Subsignal("reset_n", Pins(1)),
-        Subsignal("cs_n",      Pins(1)),
-        Subsignal("ca",      Pins(14)),
-        Subsignal("dqs",     Pins(1)),
-        Subsignal("dmi",     Pins(1)),
-        Subsignal("dq",      Pins(8)),
-    ),
-]
+# clocks added in main()
+_io = {
+    4: [
+        ("ddr5", 0,
+         Subsignal("ck_t",     Pins(1)),
+         Subsignal("ck_c",     Pins(1)),
+         Subsignal("cs_n",      Pins(1)),
+         # dmi is not supported on x4 device, I decided to keep it to make model simpler
+         Subsignal("dm_n",      Pins(1)),
+
+         Subsignal("ca",        Pins(14)),
+         Subsignal("reset_n",   Pins(1)),
+         # DQ and DQS are taken from DDR5 Tester board
+         Subsignal("dq",        Pins(4)),
+         Subsignal("dqs_t",     Pins(1)),
+         Subsignal("dqs_c",     Pins(1)),
+
+         Subsignal("mir",       Pins(1)),
+         Subsignal("cai",       Pins(1)),
+         Subsignal("ca_odt",    Pins(1)),
+        ),
+    ],
+    8: [
+        ("ddr5", 0,
+         Subsignal("ck_t",     Pins(1)),
+         Subsignal("ck_c",     Pins(1)),
+         Subsignal("cs_n",      Pins(1)),
+
+         Subsignal("dm_n",      Pins(1)),
+
+         Subsignal("ca",        Pins(14)),
+         Subsignal("reset_n",   Pins(1)),
+
+         Subsignal("dq",        Pins(8)),
+         Subsignal("dqs_t",     Pins(1)),
+         Subsignal("dqs_c",     Pins(1)),
+
+         Subsignal("mir",       Pins(1)),
+         Subsignal("cai",       Pins(1)),
+         Subsignal("ca_odt",    Pins(1)),
+        ),
+    ]
+}
 
 # Clocks -------------------------------------------------------------------------------------------
 
@@ -52,10 +80,11 @@ def get_clocks(sys_clk_freq):
         "sys":           dict(freq_hz=sys_clk_freq),
         "sys_11_25":     dict(freq_hz=sys_clk_freq, phase_deg=11.25),
         "sys2x":         dict(freq_hz=2*sys_clk_freq),
-        "sys8x":         dict(freq_hz=8*sys_clk_freq),
-        "sys8x_ddr":     dict(freq_hz=2*8*sys_clk_freq),
-        "sys8x_90":      dict(freq_hz=8*sys_clk_freq, phase_deg=90),
-        "sys8x_90_ddr":  dict(freq_hz=2*8*sys_clk_freq, phase_deg=2*90),
+        "sys4x":         dict(freq_hz=4*sys_clk_freq),
+        "sys4x_ddr":     dict(freq_hz=2*4*sys_clk_freq),
+        "sys4x_90":      dict(freq_hz=4*sys_clk_freq, phase_deg=90),
+        "sys4x_180":     dict(freq_hz=4*sys_clk_freq, phase_deg=180),
+        "sys4x_90_ddr":  dict(freq_hz=2*4*sys_clk_freq, phase_deg=2*90),
     })
 
 # SoC ----------------------------------------------------------------------------------------------
@@ -66,9 +95,9 @@ class SimSoC(SoCCore):
     This is a SoC used to run Verilator-based simulations of LiteDRAM with a simulated DDR5 chip.
     """
     def __init__(self, clocks, log_level,
-            auto_precharge=False, with_refresh=True, trace_reset=0, disable_delay=False,
-            masked_write=True, double_rate_phy=False, finish_after_memtest=False, **kwargs):
-        platform     = Platform(_io, clocks)
+            auto_precharge=False, with_refresh=True, trace_reset=0,
+            masked_write=False, double_rate_phy=False, finish_after_memtest=False, dq_dqs_ratio=8, **kwargs):
+        platform     = Platform(_io[dq_dqs_ratio], clocks)
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -85,17 +114,27 @@ class SimSoC(SoCCore):
         platform.add_debug(self, reset=trace_reset)
 
         # DDR5 -----------------------------------------------------------------------------------
-        sdram_module = litedram_modules.MT60B2G8HB48B(sys_clk_freq, "1:8")
+        if dq_dqs_ratio == 8:
+            sdram_module = litedram_modules.MT60B2G8HB48B(sys_clk_freq, "1:4")
+        elif dq_dqs_ratio == 4:
+            sdram_module = litedram_modules.M329R8GA0BB0(sys_clk_freq, "1:4")
+            if masked_write:
+                masked_write = False
+                print("Masked Write is unsupported for x4 device (JESD79-5A, section 4.8.1)")
+        else:
+            raise NotImplementedError(f"Unspupported DQ:DQS ratio: {dq_dqs_ratio}")
+
         pads = platform.request("ddr5")
         sim_phy_cls = DoubleRateDDR5SimPHY if double_rate_phy else DDR5SimPHY
         self.submodules.ddrphy = sim_phy_cls(
             sys_clk_freq       = sys_clk_freq,
             aligned_reset_zero = True,
             masked_write       = masked_write,
+            dq_dqs_ratio       = dq_dqs_ratio,
         )
 
-        for p in ["clk", "mir", "cai", "ca_odt", "reset_n", "cs_n", "ca", "dq", "dqs", "dmi"]:
-            self.comb += getattr(pads, p).eq(getattr(self.ddrphy.pads, p))
+        for p in _io[dq_dqs_ratio][0][2:]:
+            self.comb += getattr(pads, p.name).eq(getattr(self.ddrphy.pads, p.name))
 
         controller_settings = ControllerSettings()
         controller_settings.auto_precharge = auto_precharge
@@ -122,14 +161,11 @@ class SimSoC(SoCCore):
             cwl           = self.sdram.controller.settings.phy.cwl,
             sys_clk_freq  = sys_clk_freq,
             log_level     = log_level,
-            disable_delay = disable_delay,
             geom_settings = sdram_module.geom_settings
         )
         self.add_csr("ddr5sim")
 
         self.add_constant("CONFIG_SIM_DISABLE_BIOS_PROMPT")
-        if disable_delay:
-            self.add_constant("CONFIG_DISABLE_DELAYS")
         if finish_after_memtest:
             self.submodules.ddrctrl = LiteDRAMCoreControl()
             self.add_csr("ddrctrl")
@@ -224,7 +260,7 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             else:
                 ser_groups = [("out", soc.ddrphy.out)]
             for name, out in ser_groups:
-                save.group([out.cs_n, out.dqs_o[0], out.dqs_oe, out.dmi_o[0], out.dmi_oe],
+                save.group([out.dqs_t_o[0], out.dqs_t_oe, out.dm_n_o[0], out.dm_n_oe],
                     group_name = name,
                     mappers = [
                         gtkw.regex_colorer({
@@ -240,7 +276,7 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
             else:
                 ser_groups = [("in", soc.ddrphy.out)]
             for name, out in ser_groups:
-                save.group([out.dq_i[0], out.dq_oe, out.dqs_i[0], out.dqs_oe],
+                save.group([out.dq_i[0], out.dq_oe, out.dqs_t_i[0], out.dqs_t_oe],
                     group_name = name,
                     mappers = [gtkw.regex_colorer({
                         "yellow": ["dqs"],
@@ -282,8 +318,8 @@ def main():
     group.add_argument("--no-run",               action="store_true",     help="Don't run the simulation, just generate files")
     group.add_argument("--double-rate-phy",      action="store_true",     help="Use sim PHY with 2-stage serialization")
     group.add_argument("--finish-after-memtest", action="store_true",     help="Stop simulation after DRAM memory test")
+    group.add_argument("--dq-dqs-ratio",         default=8,               help="Set DQ:DQS ratio", type=int, choices={4, 8})
     args = parser.parse_args()
-
     soc_kwargs     = soc_core_argdict(args)
     builder_kwargs = builder_argdict(args)
 
@@ -307,13 +343,17 @@ def main():
         with_refresh    = not args.no_refresh,
         trace_reset     = int(args.trace_reset),
         log_level       = args.log_level,
-        disable_delay   = args.disable_delay,
         masked_write    = not args.no_masked_write,
         double_rate_phy = args.double_rate_phy,
         finish_after_memtest = args.finish_after_memtest,
+        dq_dqs_ratio    = args.dq_dqs_ratio,
         **soc_kwargs)
 
     # Build/Run ------------------------------------------------------------------------------------
+    def pre_run_callback(vns):
+        if args.trace:
+            generate_gtkw_savefile(builder, vns, args.trace_fst)
+
     builder_kwargs["csr_csv"] = "csr.csv"
     builder = Builder(soc, **builder_kwargs)
     build_kwargs = dict(
@@ -321,15 +361,10 @@ def main():
         trace       = args.trace,
         trace_fst   = args.trace_fst,
         trace_start = int(args.trace_start),
-        trace_end   = int(args.trace_end)
+        trace_end   = int(args.trace_end),
+        pre_run_callback = pre_run_callback,
     )
-    vns = builder.build(run=False, **build_kwargs)
-
-    if args.gtkw_savefile:
-        generate_gtkw_savefile(builder, vns, trace_fst=args.trace_fst)
-
-    if not args.no_run:
-        builder.build(build=False, **build_kwargs)
+    builder.build(run=not args.no_run, **build_kwargs)
 
 if __name__ == "__main__":
     main()

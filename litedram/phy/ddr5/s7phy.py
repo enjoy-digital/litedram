@@ -190,30 +190,31 @@ class S7DDR5PHY(DoubleRateDDR5PHY, S7Common):
             )
 
         # DMI
-        for byte in range(self.databits//8):
-            dmi_t   = Signal()
-            dmi_ser = Signal()
-            dmi_dly = Signal()
-            self.oserdese2_ddr(
-                din     = self.out.dmi_o[byte],
-                **(dict(dout_fb=dmi_ser) if with_odelay else dict(dout=dmi_dly)),
-                tin     = ~oe_delay_data(self.out.dmi_oe),
-                tout    = dmi_t,
-                clk     = "sys8x",
-            )
-            if with_odelay:
-                self.odelaye2(
-                    din  = dmi_ser,
-                    dout = dmi_dly,
-                    rst  = self.get_rst(byte, wdly_dq_rst),
-                    inc  = self.get_inc(byte, wdly_dq_inc),
+        if hasattr(pads, "dm"):
+            for byte in range(self.databits//8):
+                dmi_t   = Signal()
+                dmi_ser = Signal()
+                dmi_dly = Signal()
+                self.oserdese2_ddr(
+                    din     = self.out.dmi_o[byte],
+                    **(dict(dout_fb=dmi_ser) if with_odelay else dict(dout=dmi_dly)),
+                    tin     = ~oe_delay_data(self.out.dmi_oe),
+                    tout    = dmi_t,
+                    clk     = "sys8x",
                 )
-            self.iobuf(
-                din    = dmi_dly,
-                dout   = Signal(),
-                tin    = dmi_t,
-                dinout = self.pads.dmi[byte],
-            )
+                if with_odelay:
+                    self.odelaye2(
+                        din  = dmi_ser,
+                        dout = dmi_dly,
+                        rst  = self.get_rst(byte, wdly_dq_rst),
+                        inc  = self.get_inc(byte, wdly_dq_inc),
+                    )
+                self.iobuf(
+                    din    = dmi_dly,
+                    dout   = Signal(),
+                    tin    = dmi_t,
+                    dinout = self.pads.dmi[byte],
+                )
 
         # DQ
         for bit in range(self.databits):

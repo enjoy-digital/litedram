@@ -21,7 +21,9 @@ class LiteDRAMCore(Module, AutoCSR):
             bankbits    = max(geom_settings.bankbits, getattr(phy, "bankbits", 0)),
             nranks      = phy.settings.nranks,
             databits    = phy.settings.dfi_databits,
-            nphases     = phy.settings.nphases)
+            nphases     = phy.settings.nphases,
+            memtype     = phy.settings.memtype,
+            strobes     = phy.settings.strobes)
         self.comb += self.dfii.master.connect(phy.dfi)
 
         self.submodules.controller = controller = LiteDRAMController(
