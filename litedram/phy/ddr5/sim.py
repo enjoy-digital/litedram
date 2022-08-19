@@ -455,27 +455,26 @@ class CommandsSim(Module, AutoCSR):
                 auto_precharge.eq(~self.cs_n_high[10]),
                 self.log.info("READ: bank=%d row=%d, col=%d", bank, row, col),
 
-                # sanity checks
-                If(~self.active_banks[bank],
+                If(self.active_banks[bank],
+                    [
+                        # pass the data to data simulator
+                        self.data_en.input.eq(1),
+                        self.data.sink.valid.eq(1),
+                        self.data.sink.we.eq(0),
+                        self.data.sink.bank.eq(bank),
+                        self.data.sink.row.eq(row),
+                        self.data.sink.col.eq(col),
+                        self.data.sink.bl_width.eq(bl_width),
+                        If(~self.data.sink.ready,
+                           self.log.error("Simulator data FIFO overflow")
+                        ),
+                    ],
+                ).Else(
                     self.log.error("READ command on inactive bank: bank=%d row=%d col=%d", bank, row, col),
-                    Finish(),
                 ),
                 If(auto_precharge,
                     self.log.info("AUTO-PRECHARGE: bank=%d row=%d", bank, row),
                     NextValue(self.active_banks[bank], 0),
-                ),
-
-                # pass the data to data simulator
-                self.data_en.input.eq(1),
-                self.data.sink.valid.eq(1),
-                self.data.sink.we.eq(0),
-                self.data.sink.bank.eq(bank),
-                self.data.sink.row.eq(row),
-                self.data.sink.col.eq(col),
-                self.data.sink.bl_width.eq(bl_width),
-                If(~self.data.sink.ready,
-                    self.log.error("Simulator data FIFO overflow"),
-                    Finish(),
                 ),
             ],
             handle_cmd = self.handle_2_tick_cmd,
@@ -509,28 +508,27 @@ class CommandsSim(Module, AutoCSR):
                 auto_precharge.eq(~self.cs_n_high[10]),
                 self.log.info("WRITE: bank=%d row=%d, col=%d", bank, row, col),
 
-                # sanity checks
-                If(~self.active_banks[bank],
-                    self.log.error("WRITE command on inactive bank: bank=%d row=%d col=%d", bank, row, col),
-                    Finish(),
+                If(self.active_banks[bank],
+                    [
+                        # pass the data to data simulator
+                        self.data_en.input.eq(1),
+                        self.data.sink.valid.eq(1),
+                        self.data.sink.we.eq(1),
+                        self.data.sink.masked.eq(~self.cs_n_high[11]),
+                        self.data.sink.bank.eq(bank),
+                        self.data.sink.row.eq(row),
+                        self.data.sink.col.eq(col),
+                        self.data.sink.bl_width.eq(bl_width),
+                        If(~self.data.sink.ready,
+                           self.log.error("Simulator data FIFO overflow")
+                         ),
+                    ],
+                ).Else(
+                    self.log.error("WRITE command on inactive bank: bank=%d row=%d col=%d", bank, row, col)
                 ),
                 If(auto_precharge,
                     self.log.info("AUTO-PRECHARGE: bank=%d row=%d", bank, row),
                     NextValue(self.active_banks[bank], 0),
-                ),
-
-                # pass the data to data simulator
-                self.data_en.input.eq(1),
-                self.data.sink.valid.eq(1),
-                self.data.sink.we.eq(1),
-                self.data.sink.masked.eq(~self.cs_n_high[11]),
-                self.data.sink.bank.eq(bank),
-                self.data.sink.row.eq(row),
-                self.data.sink.col.eq(col),
-                self.data.sink.bl_width.eq(bl_width),
-                If(~self.data.sink.ready,
-                    self.log.error("Simulator data FIFO overflow"),
-                    Finish(),
                 ),
             ],
             handle_cmd = self.handle_2_tick_cmd,
