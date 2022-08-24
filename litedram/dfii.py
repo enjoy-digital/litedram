@@ -105,8 +105,17 @@ class PhaseInjectorModule(Module):
             for csr in pi.get_csrs():
                 print("Connecting " + csr.name)
                 child_csr = [c for c in child_pi.get_csrs() if c.name == csr.name][0]
-                print("Found child CSR" + child_csr.name)
-                #print(csr.name)
+                print("Found child CSR " + child_csr.name)
+                
+                if isinstance(csr, CSR):
+                    print("Connecting CSR")
+                    self.comb += [child_csr.r.eq(csr.r), child_csr.re.eq(csr.re)]
+                elif isinstance(csr, CSRStorage):
+                    print("Connecting CSRStorage")
+                    self.comb += [child.csr.re.eq(csr.re), child.csr.dat_w.eq(csr.storage)]
+                elif isinstance(csr, CSRStatus):
+                    print("Connecting CSRStatus")
+                    self.comb += [child_csr.status.eq(csr.status), child_csr.re.eq(csr.re)]
    
 class TMRDFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
