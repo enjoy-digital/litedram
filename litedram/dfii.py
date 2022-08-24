@@ -101,6 +101,10 @@ class PhaseInjectorModule(Module):
         for n, phase in enumerate(self.inti.phases):
             pi = getattr(self, "pi"+str(n))
             child_pi = getattr(child, "pi"+str(n))
+            
+            for csr in pi.get_csrs():
+                print("Connecting " + csr.name)
+                #print(csr.name)
    
 class TMRDFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
