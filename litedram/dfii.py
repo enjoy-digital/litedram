@@ -113,11 +113,11 @@ class TMRDFIInjector(Module, AutoCSR):
             CSRField("reset_n", size=1),
         ])
         
-        self.pis = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
+        self.__pis = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
         self.submodules += self.pis
         
-        #for n in range(nphases):
-        #    setattr(self.submodules, "pi" + str(n), getattr(self.pis, "pi"+str(n)))
+        for n in range(nphases):
+            setattr(self.submodules, "pi" + str(n), getattr(self.__pis, "pi"+str(n)))
 
         # # #
         
