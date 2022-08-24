@@ -113,11 +113,17 @@ class TMRDFIInjector(Module, AutoCSR):
             CSRField("reset_n", size=1),
         ])
         
-        self.pis = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
-        self.submodules += self.pis
+        self.pi1 = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
+        self.submodules += self.pi1
+        
+        self.pi2 = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
+        self.submodules += self.pi2
+        
+        self.pi3 = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
+        self.submodules += self.pi3
         
         for n in range(nphases):
-            setattr(self.submodules, "pi" + str(n), getattr(self.pis, "pi"+str(n)))
+            setattr(self.submodules, "pi" + str(n), getattr(self.pi1, "pi"+str(n)))
 
         # # #
         
@@ -126,5 +132,5 @@ class TMRDFIInjector(Module, AutoCSR):
         self.comb += If(self._control.fields.sel,
                 self.slave.connect(self.master)
             ).Else(
-                self.pis.inti.connect(self.master)
+                self.pi1.inti.connect(self.master)
             )
