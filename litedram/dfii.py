@@ -115,7 +115,8 @@ class PhaseInjectorModule(Module):
                     self.comb += [child_csr.re.eq(csr.re), child_csr.dat_w.eq(csr.storage)]
                 elif isinstance(csr, CSRStatus):
                     print("Connecting CSRStatus")
-                    self.comb += [child_csr.status.eq(csr.status), child_csr.re.eq(csr.re)]
+                    #self.comb += [child_csr.status.eq(csr.status), child_csr.re.eq(csr.re)]
+                    self.sync += If(phase.rddata_valid, child_csr.status.eq(phase.rddata))
    
 class TMRDFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
