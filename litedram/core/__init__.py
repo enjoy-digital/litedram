@@ -8,7 +8,7 @@ from migen import *
 
 from litex.soc.interconnect.csr import AutoCSR
 
-from litedram.dfii import DFIInjector
+from litedram.dfii import DFIInjector, TMRDFIInjector
 from litedram.core.controller import ControllerSettings, LiteDRAMController
 from litedram.core.crossbar import LiteDRAMCrossbar
 
@@ -16,7 +16,7 @@ from litedram.core.crossbar import LiteDRAMCrossbar
 
 class LiteDRAMCore(Module, AutoCSR):
     def __init__(self, phy, geom_settings, timing_settings, clk_freq, **kwargs):
-        self.submodules.dfii = DFIInjector(
+        self.submodules.dfii = TMRDFIInjector(
             addressbits = max(geom_settings.addressbits, getattr(phy, "addressbits", 0)),
             bankbits    = max(geom_settings.bankbits, getattr(phy, "bankbits", 0)),
             nranks      = phy.settings.nranks,
