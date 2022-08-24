@@ -104,7 +104,8 @@ class PhaseInjectorModule(Module):
             
             for csr in pi.get_csrs():
                 print("Connecting " + csr.name)
-                child_csr = getattr(child_pi, csr.name)
+                child_csr = [c for c in child_pi.get_csrs() if c.name == csr.name][0]
+                print("Found child CSR" + child_csr.name)
                 #print(csr.name)
    
 class TMRDFIInjector(Module, AutoCSR):
