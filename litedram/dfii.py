@@ -116,8 +116,8 @@ class TMRDFIInjector(Module, AutoCSR):
         self.pis = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
         self.submodules += self.pis
         
-        for n in range(nphases):
-            setattr(self.submodules, "pi" + str(n), getattr(self.pis, "pi"+str(n)))
+        #for n in range(nphases):
+        #    setattr(self.submodules, "pi" + str(n), getattr(self.pis, "pi"+str(n)))
 
         # # #
         
