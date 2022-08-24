@@ -102,6 +102,8 @@ class PhaseInjectorModule(Module):
             pi = getattr(self, "pi"+str(n))
             child_pi = getattr(child, "pi"+str(n))
             
+            self.comb += [child.inti.phases[n].rddata_valid.eq(phase.rddata_valid), child.inti.phases[n].rddata.eq(phase.rddata)]
+            
             for csr in pi.get_csrs():
                 print("Connecting " + csr.name)
                 child_csr = [c for c in child_pi.get_csrs() if c.name == csr.name][0]
@@ -109,14 +111,16 @@ class PhaseInjectorModule(Module):
                 
                 if isinstance(csr, CSR):
                     print("Connecting CSR")
-                    self.comb += [child_csr.w.eq(csr.w), child_csr.we.eq(csr.we)]
+                    self.comb += [child_csr.w.eq(csr.w), child_csr.we.eq(csr.we), child_csr.re.eq(csr.re)]
                 elif isinstance(csr, CSRStorage):
                     print("Connecting CSRStorage")
-                    self.comb += [child_csr.we.eq(csr.we), child_csr.dat_w.eq(csr.storage)]
-                elif isinstance(csr, CSRStatus):
-                    print("Connecting CSRStatus")
-                    #self.comb += [child_csr.status.eq(csr.status), child_csr.re.eq(csr.re)]
-                    self.sync += If(phase.rddata_valid, child_csr.status.eq(phase.rddata))
+                    #self.comb += [child_csr.we.eq(csr.we), child_csr.dat_w.eq(csr.storage)]
+                    self.sync += [child_csr.storage.eq(csr.storage)]
+                #elif isinstance(csr, CSRStatus):
+                #    print("Connecting CSRStatus")
+                #    #self.comb += [child_csr.status.eq(csr.status), child_csr.re.eq(csr.re)]
+                #    
+                #    self.sync += If(phase.rddata_valid, child_csr.status.eq(phase.rddata))
    
 class TMRDFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
