@@ -84,7 +84,7 @@ class DFIInjector(Module, AutoCSR):
 # TMRDFIInjector -----------------------------------------------------------------------------------
 
 class PhaseInjectorModule(Module, AutoCSR):
-    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1, control):
+    def __init__(self, addressbits, bankbits, nranks, databits, nphases, control):
         self.inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         
         ###
