@@ -112,7 +112,7 @@ class PhaseInjectorModule(Module):
                     self.comb += [child_csr.r.eq(csr.r), child_csr.re.eq(csr.re)]
                 elif isinstance(csr, CSRStorage):
                     print("Connecting CSRStorage")
-                    self.comb += [child.csr.re.eq(csr.re), child.csr.dat_w.eq(csr.storage)]
+                    self.comb += [child_csr.re.eq(csr.re), child_csr.dat_w.eq(csr.storage)]
                 elif isinstance(csr, CSRStatus):
                     print("Connecting CSRStatus")
                     self.comb += [child_csr.status.eq(csr.status), child_csr.re.eq(csr.re)]
