@@ -96,6 +96,11 @@ class PhaseInjectorModule(Module):
             self.comb += [phase.cke[i].eq(control.fields.cke) for phase in inti.phases]
             self.comb += [phase.odt[i].eq(control.fields.odt) for phase in inti.phases if hasattr(phase, "odt")]
         self.comb += [phase.reset_n.eq(control.fields.reset_n) for phase in inti.phases if hasattr(phase, "reset_n")]
+        
+    def connect(self, child):
+        for n, phase in enumerate(self.inti.phases):
+            pi = getattr(self, "pi"+str(n))
+            child_pi = getattr(child, "pi"+str(n))
    
 class TMRDFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
@@ -121,6 +126,9 @@ class TMRDFIInjector(Module, AutoCSR):
         
         self.pi_mod3 = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
         self.submodules += self.pi_mod3
+        
+        self.pi_mod1.connect(self.pi_mod2)
+        self.pi_mod1.connect(self.pi_mod3)
         
         for n in range(nphases):
             setattr(self.submodules, "pi" + str(n), getattr(self.pi_mod1, "pi"+str(n)))
