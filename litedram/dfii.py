@@ -126,5 +126,5 @@ class TMRDFIInjector(Module, AutoCSR):
         self.comb += If(self._control.fields.sel,
                 self.slave.connect(self.master)
             ).Else(
-                self.pis.inti.connect(self.master)
+                self.__pis.inti.connect(self.master)
             )
