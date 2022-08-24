@@ -83,7 +83,7 @@ class DFIInjector(Module, AutoCSR):
    
 # TMRDFIInjector -----------------------------------------------------------------------------------
 
-class PhaseInjectorModule(Module, AutoCSR):
+class PhaseInjectorModule(Module):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases, control):
         inti = self.inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         
@@ -113,10 +113,11 @@ class TMRDFIInjector(Module, AutoCSR):
             CSRField("reset_n", size=1),
         ])
         
-        pis = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
+        self.pis = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
+        self.submodules += self.pis
         
         for n in range(nphases):
-            setattr(self.submodules, "pi" + str(n), getattr(pis, "pi"+str(n)))
+            setattr(self.submodules, "pi" + str(n), getattr(self.pis, "pi"+str(n)))
 
         # # #
         
@@ -125,5 +126,5 @@ class TMRDFIInjector(Module, AutoCSR):
         self.comb += If(self._control.fields.sel,
                 self.slave.connect(self.master)
             ).Else(
-                pis.inti.connect(self.master)
+                self.pis.inti.connect(self.master)
             )
