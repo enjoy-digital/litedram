@@ -82,10 +82,23 @@ class DFIInjector(Module, AutoCSR):
         self.comb += [phase.reset_n.eq(self._control.fields.reset_n) for phase in inti.phases if hasattr(phase, "reset_n")]
    
 # TMRDFIInjector -----------------------------------------------------------------------------------
+
+class PhaseInjectorModule(Module):
+    def __init__(self, addressbits, bankbits, nranks, databits, nphases, control):
+        inti = self.inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        
+        ###
+        
+        for n, phase in enumerate(inti.phases):
+            setattr(self.submodules, "pi" + str(n), PhaseInjector(phase))
+            
+        for i in range(nranks):
+            self.comb += [phase.cke[i].eq(control.fields.cke) for phase in inti.phases]
+            self.comb += [phase.odt[i].eq(control.fields.odt) for phase in inti.phases if hasattr(phase, "odt")]
+        self.comb += [phase.reset_n.eq(control.fields.reset_n) for phase in inti.phases if hasattr(phase, "reset_n")]
    
 class TMRDFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
-        inti        = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.slave  = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.TMRslave = TMRRecord(self.slave)
         self.master = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
@@ -99,9 +112,18 @@ class TMRDFIInjector(Module, AutoCSR):
             CSRField("odt",     size=1),
             CSRField("reset_n", size=1),
         ])
-
-        for n, phase in enumerate(inti.phases):
-            setattr(self.submodules, "pi" + str(n), PhaseInjector(phase))
+        
+        self.pi_mod1 = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
+        self.submodules += self.pi_mod1
+        
+        self.pi_mod2 = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
+        self.submodules += self.pi_mod2
+        
+        self.pi_mod3 = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
+        self.submodules += self.pi_mod3
+        
+        for n in range(nphases):
+            setattr(self.submodules, "pi" + str(n), getattr(self.pi_mod1, "pi"+str(n)))
 
         # # #
         
@@ -110,9 +132,5 @@ class TMRDFIInjector(Module, AutoCSR):
         self.comb += If(self._control.fields.sel,
                 self.slave.connect(self.master)
             ).Else(
-                inti.connect(self.master)
+                self.pi_mod1.inti.connect(self.master)
             )
-        for i in range(nranks):
-            self.comb += [phase.cke[i].eq(self._control.fields.cke) for phase in inti.phases]
-            self.comb += [phase.odt[i].eq(self._control.fields.odt) for phase in inti.phases if hasattr(phase, "odt")]
-        self.comb += [phase.reset_n.eq(self._control.fields.reset_n) for phase in inti.phases if hasattr(phase, "reset_n")]
