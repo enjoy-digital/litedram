@@ -93,9 +93,9 @@ class PhaseInjectorModule(Module, AutoCSR):
             setattr(self.submodules, "pi" + str(n), PhaseInjector(phase))
             
         for i in range(nranks):
-            self.comb += [phase.cke[i].eq(self._control.fields.cke) for phase in inti.phases]
-            self.comb += [phase.odt[i].eq(self._control.fields.odt) for phase in inti.phases if hasattr(phase, "odt")]
-        self.comb += [phase.reset_n.eq(self._control.fields.reset_n) for phase in inti.phases if hasattr(phase, "reset_n")]
+            self.comb += [phase.cke[i].eq(control.fields.cke) for phase in inti.phases]
+            self.comb += [phase.odt[i].eq(control.fields.odt) for phase in inti.phases if hasattr(phase, "odt")]
+        self.comb += [phase.reset_n.eq(control.fields.reset_n) for phase in inti.phases if hasattr(phase, "reset_n")]
    
 class TMRDFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
