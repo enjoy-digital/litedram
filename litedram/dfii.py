@@ -84,7 +84,7 @@ class DFIInjector(Module, AutoCSR):
 # TMRDFIInjector -----------------------------------------------------------------------------------
 
 class PhaseInjectorModule(Module, AutoCSR):
-    def __init__(self, control, nranks):
+    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1, control):
         self.inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         
         ###
@@ -113,7 +113,7 @@ class TMRDFIInjector(Module, AutoCSR):
             CSRField("reset_n", size=1),
         ])
         
-        self.pis = PhaseInjectorModule(self._control, nranks)
+        self.pis = PhaseInjectorModule(self, addressbits, bankbits, nranks, databits, nphases, self._control)
         self.submodules += self.pis
 
         # # #
