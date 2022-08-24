@@ -85,7 +85,7 @@ class DFIInjector(Module, AutoCSR):
 
 class PhaseInjectorModule(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases, control):
-        self.inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        inti = self.inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         
         ###
         
