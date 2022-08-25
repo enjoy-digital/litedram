@@ -152,6 +152,15 @@ class TMRDFIInjector(Module, AutoCSR):
         self.pi_mod1.connect(self.pi_mod3)
         
         for n in range(nphases):
+            # Drive reads
+            phase_1 = self.pi_mod1.inti.phases[n]
+            phase_2 = self.pi_mod2.inti.phases[n]
+            phase_3 = self.pi_mod3.inti.phases[n]
+            
+            self.comb += [phase_1.rddata_valid.eq(phase_2.rddata_valid), phase_1.rddata.eq(phase_2.rddata)]
+            #self.comb += [phase_3.rddata_valid.eq(phase_2.rddata_valid), phase_3.rddata.eq(phase_2.rddata)]
+            
+            #Expose main PIs
             setattr(self.submodules, "pi" + str(n), getattr(self.pi_mod1, "pi"+str(n)))
 
         # # #
