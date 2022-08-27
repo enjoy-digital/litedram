@@ -321,7 +321,6 @@ class TMRRecord(Record):
 class TMRInput(Module):
     def __init__(self, tmr_signal, control_signal=None):
         sig_length = int(len(tmr_signal) / 3)
-        print(sig_length)
     
         self.control = Signal(sig_length)
         self.TMR = tmr_signal
@@ -380,12 +379,10 @@ def vote_TMR(module, result, rec1, rec2, rec3, master=True):
                 if master:
                     if direction == DIR_M_TO_S:
                         # Vote out
-                        print("Vote out: " + name)
                         votesig = Cat(getattr(rec1,name),getattr(rec2,name),getattr(rec3,name))
                         module.submodules += TMRInput(votesig, getattr(result,name))
                     else:
                         # Split in
-                        print("Split in: " + name)
                         module.comb += [getattr(rec1, name).eq(getattr(result,name)), getattr(rec2, name).eq(getattr(result,name)), getattr(rec3, name).eq(getattr(result,name))]
                 else:
                     if direction == DIR_S_TO_M:
@@ -394,7 +391,6 @@ def vote_TMR(module, result, rec1, rec2, rec3, master=True):
                         module.submodules += TMRInput(votesig, getattr(result,name))
                     else:
                         # Split in
-                        print("Split in: " + name)
                         module.comb += [getattr(rec1, name).eq(getattr(result,name)), getattr(rec2, name).eq(getattr(result,name)), getattr(rec3, name).eq(getattr(result,name))]
             else:
                 raise TypeError
