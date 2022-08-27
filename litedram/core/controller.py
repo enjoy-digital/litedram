@@ -32,7 +32,7 @@ class ControllerSettings(Settings):
 
         # Refresh
         with_refresh        = True,
-        refresh_cls         = Refresher,
+        refresh_cls         = TMRRefresher,
         refresh_zqcs_freq   = 1e0,
         refresh_postponing  = 1,
 

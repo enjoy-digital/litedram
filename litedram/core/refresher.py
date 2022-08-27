@@ -319,3 +319,31 @@ class Refresher(Module):
                     NextState("IDLE")
                 )
             )
+
+class TMRRefresher(Module):
+    def __init__(self, settings, clk_freq, zqcs_freq=1e0, postponing=1):
+        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a=abits, ba=babits))
+        self.TMRcmd = TMRcmd = TMRRecord(cmd)
+        
+        ###
+        ref1 = Refresher(settings, clk_freq, zqcs_freq, postponing)
+        self.submodules += ref1
+        ref2 = Refresher(settings, clk_freq, zqcs_freq, postponing)
+        self.submodules += ref2
+        ref3 = Refresher(settings, clk_freq, zqcs_freq, postponing)
+        self.submodules += ref3
+        
+        self.submodules += TMROutput(cmd.valid, TMRcmd.valid)
+        self.submodules += TMROutput(cmd.last, TMRcmd.last)
+        self.submodules += TMROutput(cmd.first, TMRcmd.first)
+        self.submodules += TMRInput(TMRcmd.ready, cmd.ready)
+        self.submodules += TMROutput(cmd.a, TMRcmd.a)
+        self.submodules += TMROutput(cmd.ba, TMRcmd.ba)
+        self.submodules += TMROutput(cmd.cas, TMRcmd.cas)
+        self.submodules += TMROutput(cmd.ras, TMRcmd.ras)
+        self.submodules += TMROutput(cmd.we, TMRcmd.we)
+        self.submodules += TMROutput(cmd.is_cmd, TMRcmd.is_cmd)
+        self.submodules += TMROutput(cmd.is_read, TMRcmd.is_read)
+        self.submodules += TMROutput(cmd.is_write, TMRcmd.is_write)
+        
+        vote_TMR(self, self.cmd, self.ref1.cmd, self.ref2.cmd, self.ref3.cmd)
