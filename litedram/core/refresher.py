@@ -397,11 +397,10 @@ class TMRRefresher(Module):
         self.submodules.sequencer3 = sequencer3
         
         #vote_TMR(self, cmd, cmd1, cmd2, cmd3)
-        basig = Cat(cmd1.ba, cmd2.ba, cmd3.ba)
-        self.submodules += TMRInput(basig, cmd.ba)
+        self.comb += cmd.ba.eq(cmd1.ba)
         
-        seqeuenceSigs = Cat(sequencer.done, sequencer2.done, sequencer3.done)
-        sequenceVote = TMRInput(seqeuenceSigs)
+        sequenceSigs = Cat(sequencer.done, sequencer2.done, sequencer3.done)
+        sequenceVote = TMRInput(sequenceSigs)
         self.submodules += sequenceVote
 
         if settings.timing.tZQCS is not None:
