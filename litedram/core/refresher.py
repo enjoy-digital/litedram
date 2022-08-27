@@ -248,11 +248,12 @@ class Refresher(Module):
 
         # Refresh Timer ----------------------------------------------------------------------------
         if timer is None:
-            self.timer = timer
             timer = RefreshTimer(settings.timing.tREFI)
             self.submodules.timer = timer
             self.comb += timer.wait.eq(~timer.done)
-
+        else:
+            self.timer = timer
+            
         # Refresh Postponer ------------------------------------------------------------------------
         postponer = RefreshPostponer(postponing)
         self.submodules.postponer = postponer
