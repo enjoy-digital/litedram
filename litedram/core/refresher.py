@@ -322,6 +322,8 @@ class Refresher(Module):
 
 class TMRRefresher(Module):
     def __init__(self, settings, clk_freq, zqcs_freq=1e0, postponing=1):
+        abits  = settings.geom.addressbits
+        babits = settings.geom.bankbits + log2_int(settings.phy.nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a=abits, ba=babits))
         self.TMRcmd = TMRcmd = TMRRecord(cmd)
         
