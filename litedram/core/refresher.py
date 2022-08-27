@@ -340,7 +340,7 @@ class TMRRefresher(Module):
         
         postponer = RefreshPostponer(postponing)
         self.submodules.postponer = postponer
-        self.comb += postponer.req_i.eq(self.timer.done)
+        self.comb += postponer.req_i.eq(timer.done)
         
         ref1 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer, postponer)
         self.submodules += ref1
