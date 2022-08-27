@@ -386,6 +386,16 @@ class TMRRefresher(Module):
         # Refresh Sequencer ------------------------------------------------------------------------
         sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
         self.submodules.sequencer = sequencer
+        
+        sequencer2 = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
+        self.submodules.sequencer2 = sequencer2
+        
+        sequencer3 = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
+        self.submodules.sequencer3 = sequencer3
+        
+        seqeuenceSigs = Cat(sequencer.done, sequencer2.done, sequencer3.done)
+        sequenceVote = TMRInput(seqeuenceSigs)
+        self.submodules += sequenceVote
 
         if settings.timing.tZQCS is not None:
             # ZQCS Timer ---------------------------------------------------------------------------
@@ -411,13 +421,15 @@ class TMRRefresher(Module):
             cmd.valid.eq(1),
             If(cmd.ready,
                 sequencer.start.eq(1),
+                sequencer2.start.eq(1),
+                sequencer3.start.eq(1),
                 NextState("DO-REFRESH")
             )
         )
         if settings.timing.tZQCS is None:
             fsm.act("DO-REFRESH",
                 cmd.valid.eq(1),
-                If(sequencer.done,
+                If(sequenceVote.control,
                     cmd.valid.eq(0),
                     cmd.last.eq(1),
                     NextState("IDLE")
@@ -426,7 +438,7 @@ class TMRRefresher(Module):
         else:
             fsm.act("DO-REFRESH",
                 cmd.valid.eq(1),
-                If(sequencer.done,
+                If(sequenceVote.control,
                     If(wants_zqcs,
                         zqcs_executer.start.eq(1),
                         NextState("DO-ZQCS")
