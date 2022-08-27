@@ -396,7 +396,9 @@ class TMRRefresher(Module):
         sequencer3 = RefreshSequencer(cmd3, settings.timing.tRP, settings.timing.tRFC, postponing)
         self.submodules.sequencer3 = sequencer3
         
-        vote_TMR(self, cmd, cmd1, cmd2, cmd3)
+        #vote_TMR(self, cmd, cmd1, cmd2, cmd3)
+        basig = Cat(cmd1.ba, cmd2.ba, cmd3.ba)
+        self.submodules += TMRInput(basig, cmd.ba)
         
         seqeuenceSigs = Cat(sequencer.done, sequencer2.done, sequencer3.done)
         sequenceVote = TMRInput(seqeuenceSigs)
