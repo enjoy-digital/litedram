@@ -154,25 +154,18 @@ class TMRDFIInjector(Module, AutoCSR):
         self.pi_mod1.connect(self.pi_mod2)
         self.pi_mod1.connect(self.pi_mod3)
         
-        for n in range(nphases):
-            # Drive reads
-            phase_1 = self.pi_mod1.inti.phases[n]
-            phase_2 = self.pi_mod2.inti.phases[n]
-            phase_3 = self.pi_mod3.inti.phases[n]
-            
-            self.comb += [phase_1.rddata_valid.eq(phase_2.rddata_valid), phase_1.rddata.eq(phase_2.rddata)]
-            #self.comb += [phase_3.rddata_valid.eq(phase_2.rddata_valid), phase_3.rddata.eq(phase_2.rddata)]
-            
+        for n in range(nphases): 
             #Expose main PIs
             setattr(self.submodules, "pi" + str(n), getattr(self.pi_mod1, "pi"+str(n)))
 
         # # #
         
         connect_TMR(self, self.TMRslave, self.slave, master=False)
+        
+        vote_TMR(self, self.inti, self.pi_mod1.inti, self.pi_mod2.inti, self.pi_mod3.inti)
 
         self.comb += If(self._control.fields.sel,
                 self.slave.connect(self.master)
             ).Else(
-                self.inti.connect(self.pi_mod2.inti),
                 self.inti.connect(self.master)
             )

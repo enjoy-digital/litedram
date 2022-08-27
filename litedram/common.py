@@ -369,6 +369,41 @@ def connect_TMR(module, TMRrec, rec, master=True):
             connect_TMR(module, subTMRRecord, subRecord, master)
         else:
             raise TypeError
+            
+def vote_TMR(module, result, rec1, rec2, rec3, master=True):
+    layout = result.layout
+    for f in layout:
+        if isinstance(f[1], (int, tuple)):
+            if len(f) == 3:
+                name, size, direction = f
+                if master:
+                    if direction == DIR_M_TO_S:
+                        # Vote out
+                        print("Vote out: " + name)
+                        module.submodules += TMRInput(getattr(rec1,name)&getattr(rec2,name)&getattr(rec3,name), getattr(result,name))
+                    else:
+                        # Split in
+                        print("Split in: " + name)
+                        module.comb += [getattr(rec1, name).eq(getattr(result,name)), getattr(rec2, name).eq(getattr(result,name)), getattr(rec3, name).eq(getattr(result,name))]
+                else:
+                    if direction == DIR_S_TO_M:
+                        # Vote out
+                        print("Vote out: " + name)
+                        module.submodules += TMRInput(getattr(rec1,name)&getattr(rec2,name)&getattr(rec3,name), getattr(result,name))
+                    else:
+                        # Split in
+                        print("Split in: " + name)
+                        module.comb += [getattr(rec1, name).eq(getattr(result,name)), getattr(rec2, name).eq(getattr(result,name)), getattr(rec3, name).eq(getattr(result,name))]
+            else:
+                raise TypeError
+        elif isinstance(f[1], list):
+            subRec1 = getattr(rec1, f[0])
+            subRec2 = getattr(rec1, f[0])
+            subRec3 = getattr(rec1, f[0])
+            subResult = getattr(result, f[0])
+            vote_TMR(module, subResult, subRec1, subRec2, subRec3, master)
+        else:
+            raise TypeError
 
 # Ports --------------------------------------------------------------------------------------------
 
