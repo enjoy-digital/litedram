@@ -381,7 +381,7 @@ def vote_TMR(module, result, rec1, rec2, rec3, master=True):
                     if direction == DIR_M_TO_S:
                         # Vote out
                         print("Vote out: " + name)
-                        votesig = getattr(rec1,name)&getattr(rec2,name)&getattr(rec3,name)
+                        votesig = Cat(getattr(rec1,name),getattr(rec2,name),getattr(rec3,name))
                         module.submodules += TMRInput(votesig, getattr(result,name))
                     else:
                         # Split in
@@ -390,8 +390,8 @@ def vote_TMR(module, result, rec1, rec2, rec3, master=True):
                 else:
                     if direction == DIR_S_TO_M:
                         # Vote out
-                        print("Vote out: " + name)
-                        module.submodules += TMRInput(getattr(rec1,name)&getattr(rec2,name)&getattr(rec3,name), getattr(result,name))
+                        votesig = Cat(getattr(rec1,name),getattr(rec2,name),getattr(rec3,name))
+                        module.submodules += TMRInput(votesig, getattr(result,name))
                     else:
                         # Split in
                         print("Split in: " + name)
