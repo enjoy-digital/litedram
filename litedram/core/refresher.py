@@ -363,12 +363,25 @@ class TMRRefresher(Module):
         
         timerSigs = Cat(timer.done, timer2.done, timer3.done)
         timerVote = TMRInput(timerSigs)
+        self.submodules += timerVote
             
         # Refresh Postponer ------------------------------------------------------------------------
         postponer = RefreshPostponer(postponing)
         self.submodules.postponer = postponer
         self.comb += postponer.req_i.eq(timerVote.control)
-        self.comb += wants_refresh.eq(postponer.req_o)
+        
+        postponer2 = RefreshPostponer(postponing)
+        self.submodules.postponer2 = postponer2
+        self.comb += postponer2.req_i.eq(timerVote.control)
+        
+        postponer3 = RefreshPostponer(postponing)
+        self.submodules.postponer3 = postponer3
+        self.comb += postponer3.req_i.eq(timerVote.control)
+        
+        postponeSigs = Cat(postponer.req_o, postponer2.req_o, postponer3.req_o)
+        postponeVote = TMRInput(postponeSigs)
+        self.submodules += postponeVote
+        self.comb += wants_refresh.eq(postponeVote.control)
 
         # Refresh Sequencer ------------------------------------------------------------------------
         sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
