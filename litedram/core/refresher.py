@@ -384,14 +384,19 @@ class TMRRefresher(Module):
         self.comb += wants_refresh.eq(postponeVote.control)
 
         # Refresh Sequencer ------------------------------------------------------------------------
-        sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
+        self.cmd1 = cmd1 = stream.Endpoint(cmd_request_rw_layout(a=abits, ba=babits))
+        sequencer = RefreshSequencer(cmd1, settings.timing.tRP, settings.timing.tRFC, postponing)
         self.submodules.sequencer = sequencer
         
-        sequencer2 = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
+        self.cmd2 = cmd2 = stream.Endpoint(cmd_request_rw_layout(a=abits, ba=babits))
+        sequencer2 = RefreshSequencer(cmd2, settings.timing.tRP, settings.timing.tRFC, postponing)
         self.submodules.sequencer2 = sequencer2
         
-        sequencer3 = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
+        self.cmd3 = cmd3 = stream.Endpoint(cmd_request_rw_layout(a=abits, ba=babits))
+        sequencer3 = RefreshSequencer(cmd3, settings.timing.tRP, settings.timing.tRFC, postponing)
         self.submodules.sequencer3 = sequencer3
+        
+        split_TMR(self, cmd, cmd1, cmd2, cmd3)
         
         seqeuenceSigs = Cat(sequencer.done, sequencer2.done, sequencer3.done)
         sequenceVote = TMRInput(seqeuenceSigs)
