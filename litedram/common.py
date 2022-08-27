@@ -321,6 +321,7 @@ class TMRRecord(Record):
 class TMRInput(Module):
     def __init__(self, tmr_signal, control_signal=None):
         sig_length = int(len(tmr_signal) / 3)
+        print(sig_length)
     
         self.control = Signal(sig_length)
         self.TMR = tmr_signal
@@ -380,7 +381,8 @@ def vote_TMR(module, result, rec1, rec2, rec3, master=True):
                     if direction == DIR_M_TO_S:
                         # Vote out
                         print("Vote out: " + name)
-                        module.submodules += TMRInput(getattr(rec1,name)&getattr(rec2,name)&getattr(rec3,name), getattr(result,name))
+                        votesig = getattr(rec1,name)&getattr(rec2,name)&getattr(rec3,name)
+                        module.submodules += TMRInput(votesig, getattr(result,name))
                     else:
                         # Split in
                         print("Split in: " + name)
