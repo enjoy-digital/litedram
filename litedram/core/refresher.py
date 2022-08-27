@@ -219,7 +219,7 @@ class Refresher(Module):
     transactions are done, the Refresher can execute the refresh Sequence and release the Controller.
 
     """
-    def __init__(self, settings, clk_freq, zqcs_freq=1e0, postponing=1, timer=None):
+    def __init__(self, settings, clk_freq, zqcs_freq=1e0, postponing=1, timer=None, postponer=None):
         assert postponing <= 8
         abits  = settings.geom.addressbits
         babits = settings.geom.bankbits + log2_int(settings.phy.nranks)
@@ -255,9 +255,12 @@ class Refresher(Module):
             self.timer = timer
             
         # Refresh Postponer ------------------------------------------------------------------------
-        postponer = RefreshPostponer(postponing)
-        self.submodules.postponer = postponer
-        self.comb += postponer.req_i.eq(self.timer.done)
+        if postponer is None:
+            postponer = RefreshPostponer(postponing)
+            self.submodules.postponer = postponer
+            self.comb += postponer.req_i.eq(self.timer.done)
+        else:
+            self.postponer = postponer
         self.comb += wants_refresh.eq(postponer.req_o)
 
         # Refresh Sequencer ------------------------------------------------------------------------
@@ -335,11 +338,15 @@ class TMRRefresher(Module):
         self.submodules += timer
         self.comb += timer.wait.eq(~timer.done)
         
-        ref1 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer)
+        postponer = RefreshPostponer(postponing)
+        self.submodules.postponer = postponer
+        self.comb += postponer.req_i.eq(self.timer.done)
+        
+        ref1 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer, postponer)
         self.submodules += ref1
-        ref2 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer)
+        ref2 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer, postponer)
         self.submodules += ref2
-        ref3 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer)
+        ref3 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer, postponer)
         self.submodules += ref3
         
         self.submodules += TMROutput(cmd.valid, TMRcmd.valid)
