@@ -219,7 +219,7 @@ class Refresher(Module):
     transactions are done, the Refresher can execute the refresh Sequence and release the Controller.
 
     """
-    def __init__(self, settings, clk_freq, zqcs_freq=1e0, postponing=1):
+    def __init__(self, settings, clk_freq, zqcs_freq=1e0, postponing=1, timer=None):
         assert postponing <= 8
         abits  = settings.geom.addressbits
         babits = settings.geom.bankbits + log2_int(settings.phy.nranks)
@@ -247,9 +247,10 @@ class Refresher(Module):
         wants_zqcs    = Signal()
 
         # Refresh Timer ----------------------------------------------------------------------------
-        timer = RefreshTimer(settings.timing.tREFI)
-        self.submodules.timer = timer
-        self.comb += timer.wait.eq(~timer.done)
+        if timer is None:
+            timer = RefreshTimer(settings.timing.tREFI)
+            self.submodules.timer = timer
+            self.comb += timer.wait.eq(~timer.done)
 
         # Refresh Postponer ------------------------------------------------------------------------
         postponer = RefreshPostponer(postponing)
@@ -328,11 +329,15 @@ class TMRRefresher(Module):
         self.TMRcmd = TMRcmd = TMRRecord(cmd)
         
         ###
-        ref1 = Refresher(settings, clk_freq, zqcs_freq, postponing)
+        timer = RefreshTimer(settings.timing.tREFI)
+        self.submodules += timer
+        self.comb += timer.wait.eq(~timer.done)
+        
+        ref1 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer)
         self.submodules += ref1
-        ref2 = Refresher(settings, clk_freq, zqcs_freq, postponing)
+        ref2 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer)
         self.submodules += ref2
-        ref3 = Refresher(settings, clk_freq, zqcs_freq, postponing)
+        ref3 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer)
         self.submodules += ref3
         
         self.submodules += TMROutput(cmd.valid, TMRcmd.valid)
@@ -348,5 +353,4 @@ class TMRRefresher(Module):
         self.submodules += TMROutput(cmd.is_read, TMRcmd.is_read)
         self.submodules += TMROutput(cmd.is_write, TMRcmd.is_write)
         
-        #vote_TMR(self, self.cmd, ref1.cmd, ref2.cmd, ref3.cmd)
-        self.cmd = ref1.cmd
+        vote_TMR(self, self.cmd, ref1.cmd, ref2.cmd, ref3.cmd)
