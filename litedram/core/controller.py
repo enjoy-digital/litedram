@@ -11,7 +11,7 @@ from migen import *
 
 from litedram.common import *
 from litedram.phy import dfi
-from litedram.core.refresher import Refresher
+from litedram.core.refresher import Refresher, TMRRefresher
 from litedram.core.bankmachine import BankMachine
 from litedram.core.multiplexer import Multiplexer
 
