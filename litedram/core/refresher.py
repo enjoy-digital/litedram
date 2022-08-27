@@ -348,4 +348,5 @@ class TMRRefresher(Module):
         self.submodules += TMROutput(cmd.is_read, TMRcmd.is_read)
         self.submodules += TMROutput(cmd.is_write, TMRcmd.is_write)
         
-        vote_TMR(self, self.cmd, ref1.cmd, ref2.cmd, ref3.cmd)
+        #vote_TMR(self, self.cmd, ref1.cmd, ref2.cmd, ref3.cmd)
+        self.cmd = ref1.cmd
