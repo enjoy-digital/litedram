@@ -15,11 +15,11 @@ from litedram.common import *
 
 class PhaseInjector(Module, AutoCSR):
     def __init__(self, phase):
-        self._command       = CSRStorage(6)  # cs, we, cas, ras, wren, rden
+        self._command       = CSRStorage(6, write_from_dev=True)  # cs, we, cas, ras, wren, rden
         self._command_issue = CSR()
-        self._address       = CSRStorage(len(phase.address), reset_less=True)
-        self._baddress      = CSRStorage(len(phase.bank),    reset_less=True)
-        self._wrdata        = CSRStorage(len(phase.wrdata),  reset_less=True)
+        self._address       = CSRStorage(len(phase.address), reset_less=True, write_from_dev=True)
+        self._baddress      = CSRStorage(len(phase.bank),    reset_less=True, write_from_dev=True)
+        self._wrdata        = CSRStorage(len(phase.wrdata),  reset_less=True, write_from_dev=True)
         self._rddata        = CSRStatus(len(phase.rddata))
 
         # # #
@@ -96,12 +96,29 @@ class PhaseInjectorModule(Module):
             self.comb += [phase.cke[i].eq(control.fields.cke) for phase in inti.phases]
             self.comb += [phase.odt[i].eq(control.fields.odt) for phase in inti.phases if hasattr(phase, "odt")]
         self.comb += [phase.reset_n.eq(control.fields.reset_n) for phase in inti.phases if hasattr(phase, "reset_n")]
+        
+    def connect(self, child):
+        for n, phase in enumerate(self.inti.phases):
+            pi = getattr(self, "pi"+str(n))
+            child_pi = getattr(child, "pi"+str(n))
+            
+            for csr in pi.get_csrs():
+                child_csr = [c for c in child_pi.get_csrs() if c.name == csr.name][0]
+                if isinstance(csr, CSR):
+                    self.comb += [child_csr.w.eq(csr.w), child_csr.we.eq(csr.we), child_csr.re.eq(csr.re)]
+                elif isinstance(csr, CSRStorage):
+                    self.comb += [child_csr.we.eq(1), child_csr.dat_w.eq(csr.storage)]
+                    self.comb += [csr.we.eq(0)]
+                    self.comb += [child_csr.storage.eq(csr.storage)]
    
+   
+# TODO make voter inti
 class TMRDFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
         self.slave  = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.TMRslave = TMRRecord(self.slave)
         self.master = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        self.inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
 
         self._control = CSRStorage(fields=[
             CSRField("sel",     size=1, values=[
@@ -122,15 +139,21 @@ class TMRDFIInjector(Module, AutoCSR):
         self.pi_mod3 = PhaseInjectorModule(addressbits, bankbits, nranks, databits, nphases, self._control)
         self.submodules += self.pi_mod3
         
-        for n in range(nphases):
+        self.pi_mod1.connect(self.pi_mod2)
+        self.pi_mod1.connect(self.pi_mod3)
+        
+        for n in range(nphases): 
+            #Expose main PIs
             setattr(self.submodules, "pi" + str(n), getattr(self.pi_mod1, "pi"+str(n)))
 
         # # #
         
         connect_TMR(self, self.TMRslave, self.slave, master=False)
+        
+        vote_TMR(self, self.inti, self.pi_mod1.inti, self.pi_mod2.inti, self.pi_mod3.inti)
 
         self.comb += If(self._control.fields.sel,
                 self.slave.connect(self.master)
             ).Else(
-                self.pi_mod1.inti.connect(self.master)
+                self.inti.connect(self.master)
             )
