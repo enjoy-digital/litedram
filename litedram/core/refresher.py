@@ -352,11 +352,22 @@ class TMRRefresher(Module):
         timer = RefreshTimer(settings.timing.tREFI)
         self.submodules.timer = timer
         self.comb += timer.wait.eq(~timer.done)
+        
+        timer2 = RefreshTimer(settings.timing.tREFI)
+        self.submodules.timer2 = timer2
+        self.comb += timer2.wait.eq(~timer2.done)
+        
+        timer3 = RefreshTimer(settings.timing.tREFI)
+        self.submodules.timer3 = timer3
+        self.comb += timer3.wait.eq(~timer3.done)
+        
+        timerSigs = Cat(timer.done, timer2.done, timer3.done)
+        timerVote = TMRInput(timerSigs)
             
         # Refresh Postponer ------------------------------------------------------------------------
         postponer = RefreshPostponer(postponing)
         self.submodules.postponer = postponer
-        self.comb += postponer.req_i.eq(self.timer.done)
+        self.comb += postponer.req_i.eq(timerVote.control)
         self.comb += wants_refresh.eq(postponer.req_o)
 
         # Refresh Sequencer ------------------------------------------------------------------------
