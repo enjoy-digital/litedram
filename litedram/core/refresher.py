@@ -219,7 +219,7 @@ class Refresher(Module):
     transactions are done, the Refresher can execute the refresh Sequence and release the Controller.
 
     """
-    def __init__(self, settings, clk_freq, zqcs_freq=1e0, postponing=1, timer=None, postponer=None, sequencer=None):
+    def __init__(self, settings, clk_freq, zqcs_freq=1e0, postponing=1):
         assert postponing <= 8
         abits  = settings.geom.addressbits
         babits = settings.geom.bankbits + log2_int(settings.phy.nranks)
@@ -247,28 +247,19 @@ class Refresher(Module):
         wants_zqcs    = Signal()
 
         # Refresh Timer ----------------------------------------------------------------------------
-        if timer is None:
-            timer = RefreshTimer(settings.timing.tREFI)
-            self.submodules.timer = timer
-            self.comb += timer.wait.eq(~timer.done)
-        else:
-            self.timer = timer
+        timer = RefreshTimer(settings.timing.tREFI)
+        self.submodules.timer = timer
+        self.comb += timer.wait.eq(~timer.done)
             
         # Refresh Postponer ------------------------------------------------------------------------
-        if postponer is None:
-            postponer = RefreshPostponer(postponing)
-            self.submodules.postponer = postponer
-            self.comb += postponer.req_i.eq(self.timer.done)
-        else:
-            self.postponer = postponer
+        postponer = RefreshPostponer(postponing)
+        self.submodules.postponer = postponer
+        self.comb += postponer.req_i.eq(self.timer.done)
         self.comb += wants_refresh.eq(postponer.req_o)
 
         # Refresh Sequencer ------------------------------------------------------------------------
-        if sequencer is None:
-            sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
-            self.submodules.sequencer = sequencer
-        else:
-            self.sequencer = sequencer
+        sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
+        self.submodules.sequencer = sequencer
 
         if settings.timing.tZQCS is not None:
             # ZQCS Timer ---------------------------------------------------------------------------
@@ -331,29 +322,15 @@ class Refresher(Module):
 
 class TMRRefresher(Module):
     def __init__(self, settings, clk_freq, zqcs_freq=1e0, postponing=1):
+        assert postponing <= 8
         abits  = settings.geom.addressbits
         babits = settings.geom.bankbits + log2_int(settings.phy.nranks)
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a=abits, ba=babits))
         self.TMRcmd = TMRcmd = TMRRecord(cmd)
+
+        # # #
         
-        ###
-        timer = RefreshTimer(settings.timing.tREFI)
-        self.submodules += timer
-        self.comb += timer.wait.eq(~timer.done)
-        
-        postponer = RefreshPostponer(postponing)
-        self.submodules.postponer = postponer
-        self.comb += postponer.req_i.eq(timer.done)
-        
-        sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
-        self.submodules.sequencer = sequencer
-        
-        ref1 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer, postponer, sequencer)
-        self.submodules += ref1
-        ref2 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer, postponer, sequencer)
-        self.submodules += ref2
-        ref3 = Refresher(settings, clk_freq, zqcs_freq, postponing, timer, postponer, sequencer)
-        self.submodules += ref3
+        # TMR Setup
         
         self.submodules += TMROutput(cmd.valid, TMRcmd.valid)
         self.submodules += TMROutput(cmd.last, TMRcmd.last)
@@ -367,5 +344,80 @@ class TMRRefresher(Module):
         self.submodules += TMROutput(cmd.is_cmd, TMRcmd.is_cmd)
         self.submodules += TMROutput(cmd.is_read, TMRcmd.is_read)
         self.submodules += TMROutput(cmd.is_write, TMRcmd.is_write)
-        
-        vote_TMR(self, self.cmd, ref1.cmd, ref2.cmd, ref3.cmd)
+
+        wants_refresh = Signal()
+        wants_zqcs    = Signal()
+
+        # Refresh Timer ----------------------------------------------------------------------------
+        timer = RefreshTimer(settings.timing.tREFI)
+        self.submodules.timer = timer
+        self.comb += timer.wait.eq(~timer.done)
+            
+        # Refresh Postponer ------------------------------------------------------------------------
+        postponer = RefreshPostponer(postponing)
+        self.submodules.postponer = postponer
+        self.comb += postponer.req_i.eq(self.timer.done)
+        self.comb += wants_refresh.eq(postponer.req_o)
+
+        # Refresh Sequencer ------------------------------------------------------------------------
+        sequencer = RefreshSequencer(cmd, settings.timing.tRP, settings.timing.tRFC, postponing)
+        self.submodules.sequencer = sequencer
+
+        if settings.timing.tZQCS is not None:
+            # ZQCS Timer ---------------------------------------------------------------------------
+            zqcs_timer = RefreshTimer(int(clk_freq/zqcs_freq))
+            self.submodules.zqcs_timer = zqcs_timer
+            self.comb += wants_zqcs.eq(zqcs_timer.done)
+
+            # ZQCS Executer ------------------------------------------------------------------------
+            zqcs_executer = ZQCSExecuter(cmd, settings.timing.tRP, settings.timing.tZQCS)
+            self.submodules.zqs_executer = zqcs_executer
+            self.comb += zqcs_timer.wait.eq(~zqcs_executer.done)
+
+        # Refresh FSM ------------------------------------------------------------------------------
+        self.submodules.fsm = fsm = FSM()
+        fsm.act("IDLE",
+            If(settings.with_refresh,
+                If(wants_refresh,
+                    NextState("WAIT-BANK-MACHINES")
+                )
+            )
+        )
+        fsm.act("WAIT-BANK-MACHINES",
+            cmd.valid.eq(1),
+            If(cmd.ready,
+                sequencer.start.eq(1),
+                NextState("DO-REFRESH")
+            )
+        )
+        if settings.timing.tZQCS is None:
+            fsm.act("DO-REFRESH",
+                cmd.valid.eq(1),
+                If(sequencer.done,
+                    cmd.valid.eq(0),
+                    cmd.last.eq(1),
+                    NextState("IDLE")
+                )
+            )
+        else:
+            fsm.act("DO-REFRESH",
+                cmd.valid.eq(1),
+                If(sequencer.done,
+                    If(wants_zqcs,
+                        zqcs_executer.start.eq(1),
+                        NextState("DO-ZQCS")
+                    ).Else(
+                        cmd.valid.eq(0),
+                        cmd.last.eq(1),
+                        NextState("IDLE")
+                    )
+                )
+            )
+            fsm.act("DO-ZQCS",
+                cmd.valid.eq(1),
+                If(zqcs_executer.done,
+                    cmd.valid.eq(0),
+                    cmd.last.eq(1),
+                    NextState("IDLE")
+                )
+            )
