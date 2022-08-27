@@ -123,11 +123,14 @@ class PhaseInjectorModule(Module):
                     
                     #self.sync += If(phase.rddata_valid, child_csr.status.eq(phase.rddata))
    
+   
+# TODO make voter inti
 class TMRDFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
         self.slave  = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.TMRslave = TMRRecord(self.slave)
         self.master = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        self.inti = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
 
         self._control = CSRStorage(fields=[
             CSRField("sel",     size=1, values=[
@@ -170,5 +173,6 @@ class TMRDFIInjector(Module, AutoCSR):
         self.comb += If(self._control.fields.sel,
                 self.slave.connect(self.master)
             ).Else(
-                self.pi_mod2.inti.connect(self.master)
+                self.inti.connect(self.pi_mod2.inti)
+                self.inti.connect(self.master)
             )
