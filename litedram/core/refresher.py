@@ -396,12 +396,24 @@ class TMRRefresher(Module):
         sequencer3 = RefreshSequencer(cmd3, settings.timing.tRP, settings.timing.tRFC, postponing)
         self.submodules.sequencer3 = sequencer3
         
-        #vote_TMR(self, cmd, cmd1, cmd2, cmd3)
-        #self.sync += cmd.ba.eq(cmd1.ba)
+        def vote_sync(signame):
+            sig = Cat(getattr(cmd1,signame), getattr(cmd2,signame), getattr(cmd3,signame))
+            vote = TMRInput(sig)
+            self.sync += getattr(cmd,signame).eq(vote.result)
         
-        self.test = Signal()
-        self.comb += self.test.eq(1)
-        self.sync += self.test.eq(0)
+        vote_sync('valid')
+        vote_sync('last')
+        vote_sync('first')
+        vote_sync('a')
+        vote_sync('ba')
+        vote_sync('cas')
+        vote_sync('ras')
+        vote_sync('we')
+        vote_sync('is_cmd')
+        vote_sync('is_read')
+        vote_sync('is_write')
+        
+        self.sync += [self.cmd1.ready.eq(cmd.ready), self.cmd2.ready.eq(cmd.ready), self.cmd3.ready.eq(cmd.ready)]
         
         sequenceSigs = Cat(sequencer.done, sequencer2.done, sequencer3.done)
         sequenceVote = TMRInput(sequenceSigs)
