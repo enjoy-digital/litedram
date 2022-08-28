@@ -399,7 +399,7 @@ class TMRRefresher(Module):
         def vote_sync(signame):
             sig = Cat(getattr(cmd1,signame), getattr(cmd2,signame), getattr(cmd3,signame))
             vote = TMRInput(sig)
-            self.sync += getattr(cmd,signame).eq(vote.result)
+            self.sync += getattr(cmd,signame).eq(vote.control)
         
         vote_sync('valid')
         vote_sync('last')
