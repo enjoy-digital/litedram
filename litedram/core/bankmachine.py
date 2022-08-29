@@ -311,7 +311,7 @@ class TMRBankMachine(Module):
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         
         self.comb += [
-            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
@@ -323,13 +323,7 @@ class TMRBankMachine(Module):
             buffered=settings.cmd_buffer_buffered)
             
         cmd_buffer2 = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
-        self.submodules += cmd_buffer_lookahead, cmd_buffer
-            
-        #self.comb += [
-        #    req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
-        #    cmd_buffer_lookahead2.source.connect(cmd_buffer.sink),
-        #    cmd_buffer2.source.ready.eq(req.wdata_ready | req.rdata_valid)
-        #]
+        self.submodules += cmd_buffer_lookahead2, cmd_buffer2
         
         self.comb += [
             req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
@@ -345,11 +339,6 @@ class TMRBankMachine(Module):
         cmd_buffer3 = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         
         self.submodules += cmd_buffer_lookahead3, cmd_buffer3
-        #self.comb += [
-        #    req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
-        #    cmd_buffer_lookahead3.source.connect(cmd_buffer.sink),
-        #    cmd_buffer3.source.ready.eq(req.wdata_ready | req.rdata_valid)
-        #]
         
         self.comb += [
             req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
@@ -364,10 +353,39 @@ class TMRBankMachine(Module):
         #    req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
         #]
         
-        #lockSig = Cat(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid, 
-        #                cmd_buffer_lookahead2.source.valid | cmd_buffer2.source.valid, 
-        #                cmd_buffer_lookahead3.source.valid | cmd_buffer3.source.valid)
-        #self.submodules += TMRInput(lockSig, req.lock)
+        lockSig = Cat(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid, 
+                        cmd_buffer_lookahead2.source.valid | cmd_buffer2.source.valid, 
+                        cmd_buffer_lookahead3.source.valid | cmd_buffer3.source.valid)
+        self.submodules += TMRInput(lockSig, req.lock)
+        
+        #Vote req ready
+        readySig = cmd_buffer_lookahead.sink.ready & cmd_buffer_lookahead2.sink.ready & cmd_buffer_lookahead3.sink.ready
+        self.comb += req.ready.eq(readySig)
+        
+        #Vote lookahead addr
+        lookAddrSig = Cat(cmd_buffer_lookahead.source.addr, cmd_buffer_lookahead2.source.addr, cmd_buffer_lookahead3.source.addr)
+        lookAddrVote = TMRInput(lookAddrSig)
+        self.submodules += lookAddrVote
+        
+        #Vote buffer addr
+        bufAddrSig = Cat(cmd_buffer.source.addr, cmd_buffer2.source.addr, cmd_buffer3.source.addr)
+        bufAddrVote = TMRInput(bufAddrSig)
+        self.submodules += bufAddrVote
+        
+        #Vote lookahead valid
+        lookValidSig = Cat(cmd_buffer_lookahead.source.valid, cmd_buffer_lookahead2.source.valid, cmd_buffer_lookahead3.source.valid)
+        lookValidVote = TMRInput(lookValidSig)
+        self.submodules += lookValidVote
+        
+        #Vote buffer valid
+        bufValidSig = Cat(cmd_buffer.source.valid, cmd_buffer2.source.valid, cmd_buffer3.source.valid)
+        bufValidVote = TMRInput(bufValidSig)
+        self.submodules += bufValidVote
+        
+        #Vote buffer we
+        bufWeSig = Cat(cmd_buffer.source.we, cmd_buffer2.source.we, cmd_buffer3.source.we)
+        bufWeVote = TMRInput(bufWeSig)
+        self.submodules += bufWeVote
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
@@ -377,13 +395,13 @@ class TMRBankMachine(Module):
         row_hit    = Signal()
         row_open   = Signal()
         row_close  = Signal()
-        self.comb += row_hit.eq(row == slicer.row(cmd_buffer.source.addr))
+        self.comb += row_hit.eq(row == slicer.row(bufAddrVote.control))
         self.sync += \
             If(row_close,
                 row_opened.eq(0)
             ).Elif(row_open,
                 row_opened.eq(1),
-                row.eq(slicer.row(cmd_buffer.source.addr))
+                row.eq(slicer.row(bufAddrVote.control))
             )
 
         # Address generation -----------------------------------------------------------------------
@@ -391,9 +409,9 @@ class TMRBankMachine(Module):
         self.comb += [
             cmd.ba.eq(n),
             If(row_col_n_addr_sel,
-                cmd.a.eq(slicer.row(cmd_buffer.source.addr))
+                cmd.a.eq(slicer.row(bufAddrVote.control))
             ).Else(
-                cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.source.addr))
+                cmd.a.eq((auto_precharge << 10) | slicer.col(bufAddrVote.control)) # Vote addr
             )
         ]
 
@@ -445,9 +463,9 @@ class TMRBankMachine(Module):
         # generate auto precharge when current and next cmds are to different rows
         if settings.with_auto_precharge:
             self.comb += \
-                If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
-                    If(slicer.row(cmd_buffer_lookahead.source.addr) !=
-                       slicer.row(cmd_buffer.source.addr),
+                If(lookValidVote.control & bufValidVote.control, # Vote valid
+                    If(slicer.row(lookAddrVote.control) !=
+                       slicer.row(bufAddrVote.control),
                         auto_precharge.eq(row_close == 0)
                     )
                 )
@@ -458,11 +476,11 @@ class TMRBankMachine(Module):
         fsm.act("REGULAR",
             If(refresh_req,
                 NextState("REFRESH")
-            ).Elif(cmd_buffer.source.valid,
+            ).Elif(bufValidVote.control, #Vote valid
                 If(row_opened,
                     If(row_hit,
                         cmd.valid.eq(1),
-                        If(cmd_buffer.source.we,
+                        If(bufWeVote.control, #Vote we
                             req.wdata_ready.eq(cmd.ready),
                             cmd.is_write.eq(1),
                             cmd.we.eq(1),
