@@ -12,7 +12,7 @@ from migen import *
 from litedram.common import *
 from litedram.phy import dfi
 from litedram.core.refresher import Refresher, TMRRefresher
-from litedram.core.bankmachine import BankMachine
+from litedram.core.bankmachine import BankMachine, TMRBankMachine
 from litedram.core.multiplexer import Multiplexer
 
 # Settings -----------------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ class LiteDRAMController(Module):
         # Bank Machines ----------------------------------------------------------------------------
         bank_machines = []
         for n in range(nranks*nbanks):
-            bank_machine = BankMachine(n,
+            bank_machine = TMRBankMachine(n,
                 address_width = interface.address_width,
                 address_align = address_align,
                 nranks        = nranks,
