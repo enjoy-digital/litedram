@@ -404,10 +404,30 @@ class TMRBankMachine(Module):
         # tRC (activate-activate) controller -------------------------------------------------------
         self.submodules.trccon = trccon = tXXDController(settings.timing.tRC)
         self.comb += trccon.valid.eq(cmd.valid & cmd.ready & row_open)
+        
+        self.submodules.trccon2 = trccon2 = tXXDController(settings.timing.tRC)
+        self.comb += trccon2.valid.eq(cmd.valid & cmd.ready & row_open)
+        
+        self.submodules.trccon3 = trccon3 = tXXDController(settings.timing.tRC)
+        self.comb += trccon3.valid.eq(cmd.valid & cmd.ready & row_open)
+        
+        trcSig = Cat(trccon.ready, trccon2.ready, trccon3.ready)
+        trcVote = TMRInput(trcSig)
+        self.submodules += trcVote
 
         # tRAS (activate-precharge) controller -----------------------------------------------------
         self.submodules.trascon = trascon = tXXDController(settings.timing.tRAS)
         self.comb += trascon.valid.eq(cmd.valid & cmd.ready & row_open)
+        
+        self.submodules.trascon2 = trascon2 = tXXDController(settings.timing.tRAS)
+        self.comb += trascon2.valid.eq(cmd.valid & cmd.ready & row_open)
+        
+        self.submodules.trascon3 = trascon3 = tXXDController(settings.timing.tRAS)
+        self.comb += trascon3.valid.eq(cmd.valid & cmd.ready & row_open)
+        
+        trasSig = Cat(trascon.ready, trascon2.ready, trascon3.ready)
+        trasVote = TMRInput(trasSig)
+        self.submodules += trasVote
 
         # Auto Precharge generation ----------------------------------------------------------------
         # generate auto precharge when current and next cmds are to different rows
@@ -452,7 +472,7 @@ class TMRBankMachine(Module):
         )
         fsm.act("PRECHARGE",
             # Note: we are presenting the column address, A10 is always low
-            If(twtpcon.ready & trascon.ready,
+            If(twtpVote.control & trasVote.control,
                 cmd.valid.eq(1),
                 If(cmd.ready,
                     NextState("TRP")
@@ -464,13 +484,13 @@ class TMRBankMachine(Module):
             row_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
-            If(twtpcon.ready & trascon.ready,
+            If(twtpVote.control & trasVote.control,
                 NextState("TRP")
             ),
             row_close.eq(1)
         )
         fsm.act("ACTIVATE",
-            If(trccon.ready,
+            If(trcVote.control,
                 row_col_n_addr_sel.eq(1),
                 row_open.eq(1),
                 cmd.valid.eq(1),
@@ -482,7 +502,7 @@ class TMRBankMachine(Module):
             )
         )
         fsm.act("REFRESH",
-            If(twtpcon.ready,
+            If(twtpVote.control,
                 refresh_gnt.eq(1),
             ),
             row_close.eq(1),
