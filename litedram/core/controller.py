@@ -11,7 +11,7 @@ from migen import *
 
 from litedram.common import *
 from litedram.phy import dfi
-from litedram.core.refresher import Refresher
+from litedram.core.refresher import Refresher, TMRRefresher
 from litedram.core.bankmachine import BankMachine
 from litedram.core.multiplexer import Multiplexer
 
@@ -32,7 +32,7 @@ class ControllerSettings(Settings):
 
         # Refresh
         with_refresh        = True,
-        refresh_cls         = Refresher,
+        refresh_cls         = TMRRefresher,
         refresh_zqcs_freq   = 1e0,
         refresh_postponing  = 1,
 
