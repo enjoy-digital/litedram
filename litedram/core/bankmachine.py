@@ -322,7 +322,7 @@ class TMRBankMachine(Module):
             cmd_buffer_layout, settings.cmd_buffer_depth,
             buffered=settings.cmd_buffer_buffered)
             
-        cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
+        cmd_buffer2 = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
             
         self.comb += [
