@@ -330,6 +330,12 @@ class TMRBankMachine(Module):
         #    cmd_buffer_lookahead2.source.connect(cmd_buffer.sink),
         #    cmd_buffer2.source.ready.eq(req.wdata_ready | req.rdata_valid)
         #]
+        
+        self.comb += [
+            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
+            cmd_buffer_lookahead2.source.connect(cmd_buffer2.sink),
+            cmd_buffer2.source.ready.eq(req.wdata_ready | req.rdata_valid)
+        ]
             
         # Buffer 3
         cmd_buffer_lookahead3 = stream.SyncFIFO(
@@ -344,6 +350,12 @@ class TMRBankMachine(Module):
         #    cmd_buffer_lookahead3.source.connect(cmd_buffer.sink),
         #    cmd_buffer3.source.ready.eq(req.wdata_ready | req.rdata_valid)
         #]
+        
+        self.comb += [
+            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
+            cmd_buffer_lookahead3.source.connect(cmd_buffer3.sink),
+            cmd_buffer3.source.ready.eq(req.wdata_ready | req.rdata_valid)
+        ]
         
         #self.comb += [
         #    req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
