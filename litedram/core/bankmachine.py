@@ -295,20 +295,67 @@ class TMRBankMachine(Module):
         
         connect_TMR(self, TMRreq, req, master=False)
 
-        # Command buffer ---------------------------------------------------------------------------
+        # Command buffer TMR------------------------------------------------------------------------
+        
+        buf_vote = Record(cmd_layout(address_width))
         
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
+        
+        # Buffer 1
         cmd_buffer_lookahead = stream.SyncFIFO(
             cmd_buffer_layout, settings.cmd_buffer_depth,
             buffered=settings.cmd_buffer_buffered)
+            
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
+        
         self.submodules += cmd_buffer_lookahead, cmd_buffer
+        
         self.comb += [
             req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
         ]
+        
+        # Buffer 2
+        cmd_buffer_lookahead2 = stream.SyncFIFO(
+            cmd_buffer_layout, settings.cmd_buffer_depth,
+            buffered=settings.cmd_buffer_buffered)
+            
+        cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
+        self.submodules += cmd_buffer_lookahead, cmd_buffer
+            
+        self.comb += [
+            #req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            cmd_buffer_lookahead2.source.connect(cmd_buffer.sink),
+            cmd_buffer2.source.ready.eq(req.wdata_ready | req.rdata_valid),
+        ]
+            
+        # Buffer 3
+        cmd_buffer_lookahead3 = stream.SyncFIFO(
+            cmd_buffer_layout, settings.cmd_buffer_depth,
+            buffered=settings.cmd_buffer_buffered)
+            
+        cmd_buffer3 = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
+        
+        self.submodules += cmd_buffer_lookahead3, cmd_buffer3
+        self.comb += [
+            #req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            cmd_buffer_lookahead3.source.connect(cmd_buffer.sink),
+            cmd_buffer3.source.ready.eq(req.wdata_ready | req.rdata_valid),
+        ]
+        
+        #self.comb += [
+        #    req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+        #    cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
+        #    cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
+        #    req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
+        #]
+        
+        #lockSig = Cat(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid, 
+        #                cmd_buffer_lookahead2.source.valid | cmd_buffer2.source.valid, 
+        #                cmd_buffer_lookahead3.source.valid | cmd_buffer3.source.valid)
+        #self.submodules += TMRInput(lockSig, req.lock)
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
