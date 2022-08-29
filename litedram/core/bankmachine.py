@@ -325,11 +325,11 @@ class TMRBankMachine(Module):
         cmd_buffer2 = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
             
-        self.comb += [
-            #req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
-            cmd_buffer_lookahead2.source.connect(cmd_buffer.sink),
-            cmd_buffer2.source.ready.eq(req.wdata_ready | req.rdata_valid),
-        ]
+        #self.comb += [
+        #    req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
+        #    cmd_buffer_lookahead2.source.connect(cmd_buffer.sink),
+        #    cmd_buffer2.source.ready.eq(req.wdata_ready | req.rdata_valid)
+        #]
             
         # Buffer 3
         cmd_buffer_lookahead3 = stream.SyncFIFO(
@@ -339,11 +339,11 @@ class TMRBankMachine(Module):
         cmd_buffer3 = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         
         self.submodules += cmd_buffer_lookahead3, cmd_buffer3
-        self.comb += [
-            #req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
-            cmd_buffer_lookahead3.source.connect(cmd_buffer.sink),
-            cmd_buffer3.source.ready.eq(req.wdata_ready | req.rdata_valid),
-        ]
+        #self.comb += [
+        #    req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
+        #    cmd_buffer_lookahead3.source.connect(cmd_buffer.sink),
+        #    cmd_buffer3.source.ready.eq(req.wdata_ready | req.rdata_valid)
+        #]
         
         #self.comb += [
         #    req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
@@ -390,6 +390,16 @@ class TMRBankMachine(Module):
         precharge_time = write_latency + settings.timing.tWR + settings.timing.tCCD # AL=0
         self.submodules.twtpcon = twtpcon = tXXDController(precharge_time)
         self.comb += twtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
+        
+        self.submodules.twtpcon2 = twtpcon2 = tXXDController(precharge_time)
+        self.comb += twtpcon2.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
+        
+        self.submodules.twtpcon3 = twtpcon3 = tXXDController(precharge_time)
+        self.comb += twtpcon3.valid.eq(cmd.valid & cmd.ready & cmd.is_write)
+        
+        twtpSig = Cat(twtpcon.ready, twtpcon2.ready, twtpcon3.ready)
+        twtpVote = TMRInput(twtpSig)
+        self.submodules += twtpVote
 
         # tRC (activate-activate) controller -------------------------------------------------------
         self.submodules.trccon = trccon = tXXDController(settings.timing.tRC)
