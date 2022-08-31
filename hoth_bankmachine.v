@@ -1,12 +1,12 @@
 /* Machine-generated using Migen */
 module top(
-	output req_valid,
-	output req_ready,
-	output req_we,
-	output [20:0] req_addr,
-	output req_lock,
-	output reg req_wdata_ready,
-	output reg req_rdata_valid,
+	input [2:0] TMRreq_valid,
+	output [2:0] TMRreq_ready,
+	input [2:0] TMRreq_we,
+	input [62:0] TMRreq_addr,
+	output [2:0] TMRreq_lock,
+	output [2:0] TMRreq_wdata_ready,
+	output [2:0] TMRreq_rdata_valid,
 	output reg cmd_valid,
 	output cmd_ready,
 	input cmd_first,
@@ -23,13 +23,13 @@ module top(
 	input sys_rst
 );
 
-reg [2:0] TMRreq_valid = 3'd0;
-wire [2:0] TMRreq_ready;
-reg [2:0] TMRreq_we = 3'd0;
-reg [62:0] TMRreq_addr = 63'd0;
-wire [2:0] TMRreq_lock;
-wire [2:0] TMRreq_wdata_ready;
-wire [2:0] TMRreq_rdata_valid;
+wire req_valid;
+wire req_ready;
+wire req_we;
+wire [20:0] req_addr;
+wire req_lock;
+reg req_wdata_ready;
+reg req_rdata_valid;
 reg refresh_req = 1'd0;
 reg refresh_gnt;
 wire [2:0] TMRcmd_valid;
