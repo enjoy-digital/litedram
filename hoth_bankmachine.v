@@ -1,16 +1,28 @@
 /* Machine-generated using Migen */
 module top(
+	output req_valid,
+	output req_ready,
+	output req_we,
+	output [20:0] req_addr,
+	output req_lock,
+	output reg req_wdata_ready,
+	output reg req_rdata_valid,
+	output reg cmd_valid,
+	output cmd_ready,
+	input cmd_first,
+	input cmd_last,
+	output reg [13:0] cmd_payload_a,
+	output [2:0] cmd_payload_ba,
+	output reg cmd_payload_cas,
+	output reg cmd_payload_ras,
+	output reg cmd_payload_we,
+	output reg cmd_payload_is_cmd,
+	output reg cmd_payload_is_read,
+	output reg cmd_payload_is_write,
 	input sys_clk,
 	input sys_rst
 );
 
-wire req_valid;
-wire req_ready;
-wire req_we;
-wire [20:0] req_addr;
-wire req_lock;
-reg req_wdata_ready;
-reg req_rdata_valid;
 reg [2:0] TMRreq_valid = 3'd0;
 wire [2:0] TMRreq_ready;
 reg [2:0] TMRreq_we = 3'd0;
@@ -20,18 +32,6 @@ wire [2:0] TMRreq_wdata_ready;
 wire [2:0] TMRreq_rdata_valid;
 reg refresh_req = 1'd0;
 reg refresh_gnt;
-reg cmd_valid;
-wire cmd_ready;
-reg cmd_first = 1'd0;
-reg cmd_last = 1'd0;
-reg [13:0] cmd_payload_a;
-wire [2:0] cmd_payload_ba;
-reg cmd_payload_cas;
-reg cmd_payload_ras;
-reg cmd_payload_we;
-reg cmd_payload_is_cmd;
-reg cmd_payload_is_read;
-reg cmd_payload_is_write;
 wire [2:0] TMRcmd_valid;
 reg [2:0] TMRcmd_ready = 3'd0;
 wire [2:0] TMRcmd_first;
