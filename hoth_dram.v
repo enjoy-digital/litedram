@@ -1,5 +1,6 @@
 /* Machine-generated using Migen */
 module top(
+	input [255:0] interface_wdata,
 	input [23:0] cmd_payload_addr,
 	input sys_clk,
 	input sys_rst
