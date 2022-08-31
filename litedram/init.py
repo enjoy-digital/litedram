@@ -1024,7 +1024,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     r.define("DFII_CONTROL_CKE",     "0x02")
     r.define("DFII_CONTROL_ODT",     "0x04")
     r.define("DFII_CONTROL_RESET_N", "0x08")
-    if phy_settings.memtype is "DDR5":
+    if phy_settings.memtype == "DDR5":
         r.define("DFII_CONTROL_DDR5", "0x10")
         if not phy_settings.with_sub_channels:
             r.define("DFII_CONTROL_CONSTINJECTOR", "0x20")
@@ -1175,6 +1175,9 @@ def get_sdram_phy_py_header(phy_settings, timing_settings):
     r += "dfii_control_cke     = 0x02\n"
     r += "dfii_control_odt     = 0x04\n"
     r += "dfii_control_reset_n = 0x08\n"
+    if phy_settings.memtype == "DDR5":
+        r += "dfii_control_constinjector = 0x10\n"
+        r += "dfii_control_nopinjector   = 0x20\n"
     r += "\n"
     r += "dfii_command_cs     = 0x01\n"
     r += "dfii_command_we     = 0x02\n"
@@ -1192,6 +1195,9 @@ def get_sdram_phy_py_header(phy_settings, timing_settings):
 
     r += "init_sequence = [\n"
     for comment, a, ba, cmd, delay in init_sequence:
+        # required so comment injection in DDR5 init sequence works
+        comment = comment.encode("unicode_escape").decode()
+
         invert_masks = [(0, 0), ]
         if phy_settings.is_rdimm:
             assert phy_settings.memtype == "DDR4"

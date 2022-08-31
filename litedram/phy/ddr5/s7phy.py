@@ -27,7 +27,6 @@ class S7DDR5PHY(DDR5PHY, S7Common):
             ser_latency = Latency(sys2x=1),  # OSERDESE2 8:1 DDR (4 full-rate clocks)
             des_latency = Latency(sys2x=2),  # ISERDESE2 NETWORKING
             phytype     = self.__class__.__name__,
-            serdes_reset_cnt=-1,
             **kwargs
         )
 
@@ -107,7 +106,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
         clk_ser = Signal()
         # Invert clk to have it phase shifted in relation to CS_n/CA, because we serialize it with DDR,
         # rising edge will then be in the middle of a data bit.
-        self.oserdese2_ddr(din=~self.out.clk, dout=clk_ser if with_odelay else clk_dly, clk="sys8x")
+        self.oserdese2_ddr(din=~self.out.ck_t, dout=clk_ser if with_odelay else clk_dly, clk="sys4x")
         if with_odelay:
             self.odelaye2(din=clk_ser, dout=clk_dly, rst=cdly_rst, inc=cdly_inc)
         self.obufds(din=clk_dly, dout=self.pads.clk_p, dout_b=self.pads.clk_n)
@@ -122,24 +121,24 @@ class S7DDR5PHY(DDR5PHY, S7Common):
             cmd_i = getattr(self.out, cmd)
             cmd_o = getattr(self.pads, cmd)
             cmd_ser = Signal()
-            self.oserdese2_sdr(din=cmd_i, dout=cmd_ser if with_odelay else cmd_o, clk="sys8x")
+            self.oserdese2_sdr(din=cmd_i, dout=cmd_ser if with_odelay else cmd_o, clk="sys4x")
             if with_odelay:
                 self.odelaye2(din=cmd_ser, dout=cmd_o, rst=cdly_rst, inc=cdly_inc)
 
         # Commands
         cs_n_ser = Signal()
         if with_odelay:
-            self.oserdese2_sdr(din=self.out.cs_n, dout=cs_n_ser, clk="sys8x")
+            self.oserdese2_sdr(din=self.out.cs_n, dout=cs_n_ser, clk="sys4x")
             self.odelaye2(din=cs_n_ser, dout=self.pads.cs_n, rst=cdly_rst, inc=cdly_inc)
         else:
-            self.oserdese2_sdr(din=self.out.cs_n, dout=self.pads.cs_n, clk="sys8x")
+            self.oserdese2_sdr(din=self.out.cs_n, dout=self.pads.cs_n, clk="sys4x")
         for bit in range(14):
             ca_ser = Signal()
             if with_odelay:
-                self.oserdese2_sdr(din=self.out.ca[bit], dout=ca_ser, clk="sys8x")
+                self.oserdese2_sdr(din=self.out.ca[bit], dout=ca_ser, clk="sys4x")
                 self.odelaye2(din=ca_ser, dout=self.pads.ca[bit], rst=cdly_rst, inc=cdly_inc)
             else:
-                self.oserdese2_sdr(din=self.out.ca[bit], dout=self.pads.ca[bit], clk="sys8x")
+                self.oserdese2_sdr(din=self.out.ca[bit], dout=self.pads.ca[bit], clk="sys4x")
 
         # DQS
         for byte in range(self.databits//8):
@@ -150,7 +149,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
             dqs_i     = Signal()
             dqs_i_dly = Signal()
             # need to delay DQS if clocks are not phase aligned
-            dqs_din = self.out.dqs_o[byte]
+            dqs_din = self.out.dqs_t_o[byte]
             if not with_odelay:
                 dqs_din_d = Signal.like(dqs_din)
                 self.sync.sys2x += dqs_din_d.eq(dqs_din)
@@ -158,9 +157,9 @@ class S7DDR5PHY(DDR5PHY, S7Common):
             self.oserdese2_ddr(
                 din     = dqs_din,
                 **(dict(dout_fb=dqs_ser) if with_odelay else dict(dout=dqs_dly)),
-                tin     = ~oe_delay_dqs(self.out.dqs_oe),
+                tin     = ~oe_delay_dqs(self.out.dqs_t_oe),
                 tout    = dqs_t,
-                clk     = "sys8x" if with_odelay else "sys8x_90",
+                clk     = "sys4x" if with_odelay else "sys4x_90",
             )
             if with_odelay:
                 self.odelaye2(
@@ -185,8 +184,8 @@ class S7DDR5PHY(DDR5PHY, S7Common):
             )
             self.iserdese2_ddr(
                 din  = dqs_i_dly,
-                dout = self.out.dqs_i[byte],
-                clk  = "sys8x",
+                dout = self.out.dqs_t_i[byte],
+                clk  = "sys4x",
             )
 
         # DMI
@@ -200,7 +199,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                     **(dict(dout_fb=dmi_ser) if with_odelay else dict(dout=dmi_dly)),
                     tin     = ~oe_delay_data(self.out.dmi_oe),
                     tout    = dmi_t,
-                    clk     = "sys8x",
+                    clk     = "sys4x",
                 )
                 if with_odelay:
                     self.odelaye2(
@@ -228,7 +227,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 **(dict(dout_fb=dq_ser) if with_odelay else dict(dout=dq_dly)),
                 tin     = ~oe_delay_data(self.out.dq_oe),
                 tout    = dq_t,
-                clk     = "sys8x",
+                clk     = "sys4x",
             )
             if with_odelay:
                 self.odelaye2(
@@ -252,7 +251,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
             self.iserdese2_ddr(
                 din  = dq_i_dly,
                 dout = self.out.dq_i[bit],
-                clk  = "sys8x"
+                clk  = "sys4x"
             )
 
 # PHY variants -------------------------------------------------------------------------------------
@@ -270,7 +269,7 @@ class K7DDR5PHY(S7DDR5PHY):
 class A7DDR5PHY(S7DDR5PHY):
     """Xilinx Artix7 DDR5 PHY (without odelay)
 
-    This variant requires generating sys8x_90 clock in CRG with a 90° phase shift vs sys8x.
+    This variant requires generating sys4x_90 clock in CRG with a 90° phase shift vs sys4x.
     """
     def __init__(self, pads, **kwargs):
         S7DDR5PHY.__init__(self, pads, with_odelay=False, **kwargs)
