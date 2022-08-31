@@ -1269,7 +1269,7 @@ class MT60B2G8HB48B(DDR5Module):
     # the controller during this time, after ZQCAL LATCH we have to wait tZQLAT=max(8ck, 30ns)
     technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(16, 10), tCCD=(32, 20), tRRD=(8, 5), tZQCS=None)
     speedgrade_timings = {
-        "4800": _SpeedgradeTimings(tRP=16, tRCD=16, tWR=30, tRFC=trfc, tFAW=(32, 13.333), tRAS=32),  # TODO: tRAS_max
+        "4800": _SpeedgradeTimings(tRP=16.666, tRCD=16.666, tWR=30, tRFC=trfc, tFAW=(32, 13.333), tRAS=32),  # TODO: tRAS_max
     }
     speedgrade_timings["default"] = speedgrade_timings["4800"]
 
