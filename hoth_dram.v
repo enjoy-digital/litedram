@@ -1,6 +1,6 @@
 /* Machine-generated using Migen */
 module top(
-	input [255:0] interface_wdata,
+	output interface_bank0_valid,
 	input [23:0] cmd_payload_addr,
 	input sys_clk,
 	input sys_rst
@@ -804,7 +804,6 @@ wire [63:0] sdram_control108;
 wire sdram_control109;
 wire [7:0] sdram_control110;
 wire sdram_control111;
-wire sdram_interface_bank0_valid;
 wire sdram_interface_bank0_ready;
 wire sdram_interface_bank0_we;
 wire [20:0] sdram_interface_bank0_addr;
@@ -9482,10 +9481,10 @@ always @(*) begin
 // synthesis translate_on
 end
 assign roundrobin0_request = {(((cmd_payload_addr[9:7] == 1'd0) & (~(((((((locked0 | (sdram_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (sdram_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (sdram_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (sdram_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (sdram_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (sdram_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (sdram_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & port_cmd_valid)};
-assign roundrobin0_ce = ((~sdram_interface_bank0_valid) & (~sdram_interface_bank0_lock));
+assign roundrobin0_ce = ((~interface_bank0_valid) & (~sdram_interface_bank0_lock));
 assign sdram_interface_bank0_addr = rhs_array_muxed12;
 assign sdram_interface_bank0_we = rhs_array_muxed13;
-assign sdram_interface_bank0_valid = rhs_array_muxed14;
+assign interface_bank0_valid = rhs_array_muxed14;
 assign roundrobin1_request = {(((cmd_payload_addr[9:7] == 1'd1) & (~(((((((locked1 | (sdram_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (sdram_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (sdram_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (sdram_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (sdram_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (sdram_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (sdram_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & port_cmd_valid)};
 assign roundrobin1_ce = ((~sdram_interface_bank1_valid) & (~sdram_interface_bank1_lock));
 assign sdram_interface_bank1_addr = rhs_array_muxed15;
@@ -9551,7 +9550,7 @@ assign roundrobin4_grant = 1'd0;
 assign roundrobin5_grant = 1'd0;
 assign roundrobin6_grant = 1'd0;
 assign roundrobin7_grant = 1'd0;
-assign sdram_TMRinterface_bank0_valid = {3{sdram_interface_bank0_valid}};
+assign sdram_TMRinterface_bank0_valid = {3{interface_bank0_valid}};
 assign control0 = (((sdram_TMRinterface_bank0_ready[0] & sdram_TMRinterface_bank0_ready[1]) | (sdram_TMRinterface_bank0_ready[1] & sdram_TMRinterface_bank0_ready[2])) | (sdram_TMRinterface_bank0_ready[0] & sdram_TMRinterface_bank0_ready[2]));
 assign sdram_interface_bank0_ready = control0;
 assign sdram_TMRinterface_bank0_we = {3{sdram_interface_bank0_we}};
