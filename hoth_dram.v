@@ -15430,4 +15430,8 @@ end
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead3_wrport_dat_r = memdat_23;
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead3_rdport_dat_r = storage_23[sdram_tmrbankmachine7_cmd_buffer_lookahead3_rdport_adr];
 
+addr addr(
+	.addr(port_cmd_payload_addr)
+);
+
 endmodule
