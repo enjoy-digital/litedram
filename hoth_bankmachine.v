@@ -1,5 +1,5 @@
 /* Machine-generated using Migen */
-module top(
+module BankMachine(
 	input [2:0] TMRreq_valid,
 	output [2:0] TMRreq_ready,
 	input [2:0] TMRreq_we,
