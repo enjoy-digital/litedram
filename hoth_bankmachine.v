@@ -7,18 +7,18 @@ module top(
 	output [2:0] TMRreq_lock,
 	output [2:0] TMRreq_wdata_ready,
 	output [2:0] TMRreq_rdata_valid,
-	output reg cmd_valid,
-	output cmd_ready,
-	input cmd_first,
-	input cmd_last,
-	output reg [13:0] cmd_payload_a,
-	output [2:0] cmd_payload_ba,
-	output reg cmd_payload_cas,
-	output reg cmd_payload_ras,
-	output reg cmd_payload_we,
-	output reg cmd_payload_is_cmd,
-	output reg cmd_payload_is_read,
-	output reg cmd_payload_is_write,
+	output [2:0] TMRcmd_valid,
+	input [2:0] TMRcmd_ready,
+	output [2:0] TMRcmd_first,
+	output [2:0] TMRcmd_last,
+	output [41:0] TMRcmd_payload_a,
+	output [8:0] TMRcmd_payload_ba,
+	output [2:0] TMRcmd_payload_cas,
+	output [2:0] TMRcmd_payload_ras,
+	output [2:0] TMRcmd_payload_we,
+	output [2:0] TMRcmd_payload_is_cmd,
+	output [2:0] TMRcmd_payload_is_read,
+	output [2:0] TMRcmd_payload_is_write,
 	input sys_clk,
 	input sys_rst
 );
@@ -32,18 +32,18 @@ reg req_wdata_ready;
 reg req_rdata_valid;
 reg refresh_req = 1'd0;
 reg refresh_gnt;
-wire [2:0] TMRcmd_valid;
-reg [2:0] TMRcmd_ready = 3'd0;
-wire [2:0] TMRcmd_first;
-wire [2:0] TMRcmd_last;
-wire [41:0] TMRcmd_payload_a;
-wire [8:0] TMRcmd_payload_ba;
-wire [2:0] TMRcmd_payload_cas;
-wire [2:0] TMRcmd_payload_ras;
-wire [2:0] TMRcmd_payload_we;
-wire [2:0] TMRcmd_payload_is_cmd;
-wire [2:0] TMRcmd_payload_is_read;
-wire [2:0] TMRcmd_payload_is_write;
+reg cmd_valid;
+wire cmd_ready;
+reg cmd_first = 1'd0;
+reg cmd_last = 1'd0;
+reg [13:0] cmd_payload_a;
+wire [2:0] cmd_payload_ba;
+reg cmd_payload_cas;
+reg cmd_payload_ras;
+reg cmd_payload_we;
+reg cmd_payload_is_cmd;
+reg cmd_payload_is_read;
+reg cmd_payload_is_write;
 wire control0;
 reg auto_precharge;
 wire control1;
