@@ -27,7 +27,7 @@ wire req_valid;
 wire req_ready;
 wire req_we;
 wire [20:0] req_addr;
-reg req_lock;
+wire req_lock;
 reg req_wdata_ready;
 reg req_rdata_valid;
 reg refresh_req = 1'd0;
@@ -331,7 +331,7 @@ assign cmd_buffer3_sink_payload_we = cmd_buffer_lookahead3_source_payload_we;
 assign cmd_buffer3_sink_payload_addr = cmd_buffer_lookahead3_source_payload_addr;
 assign cmd_buffer3_source_ready = (req_wdata_ready | req_rdata_valid);
 assign req_ready = ((cmd_buffer_lookahead_sink_ready & cmd_buffer_lookahead2_sink_ready) & cmd_buffer_lookahead3_sink_ready);
-assign row_hit = (row == cmd_buffer_source_payload_addr[20:7]);
+assign row_hit = (row == bufAddrVote_control[20:7]);
 assign cmd_payload_ba = 1'd0;
 
 // synthesis translate_off
@@ -507,18 +507,7 @@ assign cmd_buffer_lookahead3_syncfifo_writable = (cmd_buffer_lookahead3_level !=
 assign cmd_buffer_lookahead3_syncfifo_readable = (cmd_buffer_lookahead3_level != 1'd0);
 assign cmd_buffer3_sink_ready = ((~cmd_buffer3_source_valid) | cmd_buffer3_source_ready);
 assign tmrinput_control4 = (((slice_proxy0[0] & slice_proxy1[1]) | (slice_proxy2[1] & slice_proxy3[2])) | (slice_proxy4[0] & slice_proxy5[2]));
-
-// synthesis translate_off
-reg dummy_d_5;
-// synthesis translate_on
-always @(*) begin
-	req_lock <= 1'd0;
-	req_lock <= (cmd_buffer_lookahead_source_valid | cmd_buffer_source_valid);
-	req_lock <= tmrinput_control4;
-// synthesis translate_off
-	dummy_d_5 <= dummy_s;
-// synthesis translate_on
-end
+assign req_lock = tmrinput_control4;
 assign lookAddrVote_control = (((slice_proxy6[20:0] & slice_proxy7[41:21]) | (slice_proxy8[41:21] & slice_proxy9[62:42])) | (slice_proxy10[20:0] & slice_proxy11[62:42]));
 assign bufAddrVote_control = (((slice_proxy12[20:0] & slice_proxy13[41:21]) | (slice_proxy14[41:21] & slice_proxy15[62:42])) | (slice_proxy16[20:0] & slice_proxy17[62:42]));
 assign lookValidVote_control = (((slice_proxy18[0] & slice_proxy19[1]) | (slice_proxy20[1] & slice_proxy21[2])) | (slice_proxy22[0] & slice_proxy23[2]));
@@ -529,7 +518,7 @@ assign trcVote_control = (((slice_proxy42[0] & slice_proxy43[1]) | (slice_proxy4
 assign trasVote_control = (((slice_proxy48[0] & slice_proxy49[1]) | (slice_proxy50[1] & slice_proxy51[2])) | (slice_proxy52[0] & slice_proxy53[2]));
 
 // synthesis translate_off
-reg dummy_d_6;
+reg dummy_d_5;
 // synthesis translate_on
 always @(*) begin
 	req_wdata_ready <= 1'd0;
@@ -631,7 +620,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_6 <= dummy_s;
+	dummy_d_5 <= dummy_s;
 // synthesis translate_on
 end
 assign slice_proxy0 = {(cmd_buffer_lookahead3_source_valid | cmd_buffer3_source_valid), (cmd_buffer_lookahead2_source_valid | cmd_buffer2_source_valid), (cmd_buffer_lookahead_source_valid | cmd_buffer_source_valid)};
@@ -695,7 +684,7 @@ always @(posedge sys_clk) begin
 	end else begin
 		if (row_open) begin
 			row_opened <= 1'd1;
-			row <= cmd_buffer_source_payload_addr[20:7];
+			row <= bufAddrVote_control[20:7];
 		end
 	end
 	if (((cmd_buffer_lookahead_syncfifo_we & cmd_buffer_lookahead_syncfifo_writable) & (~cmd_buffer_lookahead_replace))) begin

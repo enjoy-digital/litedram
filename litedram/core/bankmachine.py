@@ -314,7 +314,6 @@ class TMRBankMachine(Module):
             req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
-            req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid)
         ]
         
         # Buffer 2
@@ -395,13 +394,13 @@ class TMRBankMachine(Module):
         row_hit    = Signal()
         row_open   = Signal()
         row_close  = Signal()
-        self.comb += row_hit.eq(row == slicer.row(cmd_buffer.source.addr))
+        self.comb += row_hit.eq(row == slicer.row(bufAddrVote.control))
         self.sync += \
             If(row_close,
                 row_opened.eq(0)
             ).Elif(row_open,
                 row_opened.eq(1),
-                row.eq(slicer.row(cmd_buffer.source.addr))
+                row.eq(slicer.row(bufAddrVote.control))
             )
 
         # Address generation -----------------------------------------------------------------------
