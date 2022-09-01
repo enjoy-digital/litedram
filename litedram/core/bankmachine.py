@@ -408,9 +408,9 @@ class TMRBankMachine(Module):
         self.comb += [
             cmd.ba.eq(n),
             If(row_col_n_addr_sel,
-                cmd.a.eq(slicer.row(cmd_buffer.source.addr))
+                cmd.a.eq(slicer.row(bufAddrVote.control))
             ).Else(
-                cmd.a.eq((auto_precharge << 10) | slicer.col(cmd_buffer.source.addr)) # Vote addr
+                cmd.a.eq((auto_precharge << 10) | slicer.col(bufAddrVote.control)) # Vote addr
             )
         ]
 
@@ -462,9 +462,9 @@ class TMRBankMachine(Module):
         # generate auto precharge when current and next cmds are to different rows
         if settings.with_auto_precharge:
             self.comb += \
-                If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid, # Vote valid
-                    If(slicer.row(cmd_buffer_lookahead.source.addr) !=
-                       slicer.row(cmd_buffer.source.addr),
+                If(lookValidVote.control & bufValidVote.control, # Vote valid
+                    If(slicer.row(lookAddrVote.control) !=
+                       slicer.row(bufAddrVote.control),
                         auto_precharge.eq(row_close == 0)
                     )
                 )
@@ -475,11 +475,11 @@ class TMRBankMachine(Module):
         fsm.act("REGULAR",
             If(refresh_req,
                 NextState("REFRESH")
-            ).Elif(cmd_buffer.source.valid, #Vote valid
+            ).Elif(bufValidVote.control, #Vote valid
                 If(row_opened,
                     If(row_hit,
                         cmd.valid.eq(1),
-                        If(cmd_buffer.source.we, #Vote we
+                        If(bufWeVote, #Vote we
                             req.wdata_ready.eq(cmd.ready),
                             cmd.is_write.eq(1),
                             cmd.we.eq(1),
