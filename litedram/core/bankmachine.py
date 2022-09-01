@@ -326,7 +326,7 @@ class TMRBankMachine(Module):
         self.submodules += cmd_buffer_lookahead2, cmd_buffer2
         
         self.comb += [
-            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
+            req.connect(cmd_buffer_lookahead2.sink, keep={"valid", "we", "addr"}),
             cmd_buffer_lookahead2.source.connect(cmd_buffer2.sink),
             cmd_buffer2.source.ready.eq(req.wdata_ready | req.rdata_valid)
         ]
@@ -341,7 +341,7 @@ class TMRBankMachine(Module):
         self.submodules += cmd_buffer_lookahead3, cmd_buffer3
         
         self.comb += [
-            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "we", "addr"}),
+            req.connect(cmd_buffer_lookahead3.sink, keep={"valid", "we", "addr"}),
             cmd_buffer_lookahead3.source.connect(cmd_buffer3.sink),
             cmd_buffer3.source.ready.eq(req.wdata_ready | req.rdata_valid)
         ]

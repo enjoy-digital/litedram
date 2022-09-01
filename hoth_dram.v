@@ -1208,12 +1208,12 @@ reg sdram_tmrbankmachine0_auto_precharge;
 wire sdram_tmrbankmachine0_tmrinput_control1;
 wire sdram_tmrbankmachine0_tmrinput_control2;
 wire [20:0] sdram_tmrbankmachine0_tmrinput_control3;
-reg sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_valid;
+wire sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_valid;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_ready;
 reg sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_first = 1'd0;
 reg sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_last = 1'd0;
-reg sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_we;
-reg [20:0] sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_addr;
+wire sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_addr;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead_source_valid;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead_source_ready;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead_source_first;
@@ -1257,12 +1257,12 @@ reg sdram_tmrbankmachine0_cmd_buffer_source_first = 1'd0;
 reg sdram_tmrbankmachine0_cmd_buffer_source_last = 1'd0;
 reg sdram_tmrbankmachine0_cmd_buffer_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine0_cmd_buffer_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_valid = 1'd0;
+wire sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_valid;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_ready;
 reg sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_first = 1'd0;
 reg sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_last = 1'd0;
-reg sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_payload_addr;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead2_source_valid;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead2_source_ready;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead2_source_first;
@@ -1306,12 +1306,12 @@ reg sdram_tmrbankmachine0_cmd_buffer2_source_first = 1'd0;
 reg sdram_tmrbankmachine0_cmd_buffer2_source_last = 1'd0;
 reg sdram_tmrbankmachine0_cmd_buffer2_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine0_cmd_buffer2_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_valid = 1'd0;
+wire sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_valid;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_ready;
 reg sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_first = 1'd0;
 reg sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_last = 1'd0;
-reg sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_payload_addr;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead3_source_valid;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead3_source_ready;
 wire sdram_tmrbankmachine0_cmd_buffer_lookahead3_source_first;
@@ -1442,12 +1442,12 @@ reg sdram_tmrbankmachine1_auto_precharge;
 wire sdram_tmrbankmachine1_tmrinput_control1;
 wire sdram_tmrbankmachine1_tmrinput_control2;
 wire [20:0] sdram_tmrbankmachine1_tmrinput_control3;
-reg sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_valid;
+wire sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_valid;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_ready;
 reg sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_first = 1'd0;
 reg sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_last = 1'd0;
-reg sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_we;
-reg [20:0] sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_addr;
+wire sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_addr;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead_source_valid;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead_source_ready;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead_source_first;
@@ -1491,12 +1491,12 @@ reg sdram_tmrbankmachine1_cmd_buffer_source_first = 1'd0;
 reg sdram_tmrbankmachine1_cmd_buffer_source_last = 1'd0;
 reg sdram_tmrbankmachine1_cmd_buffer_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine1_cmd_buffer_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_valid = 1'd0;
+wire sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_valid;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_ready;
 reg sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_first = 1'd0;
 reg sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_last = 1'd0;
-reg sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_payload_addr;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead2_source_valid;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead2_source_ready;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead2_source_first;
@@ -1540,12 +1540,12 @@ reg sdram_tmrbankmachine1_cmd_buffer2_source_first = 1'd0;
 reg sdram_tmrbankmachine1_cmd_buffer2_source_last = 1'd0;
 reg sdram_tmrbankmachine1_cmd_buffer2_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine1_cmd_buffer2_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_valid = 1'd0;
+wire sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_valid;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_ready;
 reg sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_first = 1'd0;
 reg sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_last = 1'd0;
-reg sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_payload_addr;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead3_source_valid;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead3_source_ready;
 wire sdram_tmrbankmachine1_cmd_buffer_lookahead3_source_first;
@@ -1676,12 +1676,12 @@ reg sdram_tmrbankmachine2_auto_precharge;
 wire sdram_tmrbankmachine2_tmrinput_control1;
 wire sdram_tmrbankmachine2_tmrinput_control2;
 wire [20:0] sdram_tmrbankmachine2_tmrinput_control3;
-reg sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_valid;
+wire sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_valid;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_ready;
 reg sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_first = 1'd0;
 reg sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_last = 1'd0;
-reg sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_we;
-reg [20:0] sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_addr;
+wire sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_addr;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead_source_valid;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead_source_ready;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead_source_first;
@@ -1725,12 +1725,12 @@ reg sdram_tmrbankmachine2_cmd_buffer_source_first = 1'd0;
 reg sdram_tmrbankmachine2_cmd_buffer_source_last = 1'd0;
 reg sdram_tmrbankmachine2_cmd_buffer_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine2_cmd_buffer_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_valid = 1'd0;
+wire sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_valid;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_ready;
 reg sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_first = 1'd0;
 reg sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_last = 1'd0;
-reg sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_payload_addr;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead2_source_valid;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead2_source_ready;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead2_source_first;
@@ -1774,12 +1774,12 @@ reg sdram_tmrbankmachine2_cmd_buffer2_source_first = 1'd0;
 reg sdram_tmrbankmachine2_cmd_buffer2_source_last = 1'd0;
 reg sdram_tmrbankmachine2_cmd_buffer2_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine2_cmd_buffer2_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_valid = 1'd0;
+wire sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_valid;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_ready;
 reg sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_first = 1'd0;
 reg sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_last = 1'd0;
-reg sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_payload_addr;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead3_source_valid;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead3_source_ready;
 wire sdram_tmrbankmachine2_cmd_buffer_lookahead3_source_first;
@@ -1910,12 +1910,12 @@ reg sdram_tmrbankmachine3_auto_precharge;
 wire sdram_tmrbankmachine3_tmrinput_control1;
 wire sdram_tmrbankmachine3_tmrinput_control2;
 wire [20:0] sdram_tmrbankmachine3_tmrinput_control3;
-reg sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_valid;
+wire sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_valid;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_ready;
 reg sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_first = 1'd0;
 reg sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_last = 1'd0;
-reg sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_we;
-reg [20:0] sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_addr;
+wire sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_addr;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead_source_valid;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead_source_ready;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead_source_first;
@@ -1959,12 +1959,12 @@ reg sdram_tmrbankmachine3_cmd_buffer_source_first = 1'd0;
 reg sdram_tmrbankmachine3_cmd_buffer_source_last = 1'd0;
 reg sdram_tmrbankmachine3_cmd_buffer_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine3_cmd_buffer_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_valid = 1'd0;
+wire sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_valid;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_ready;
 reg sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_first = 1'd0;
 reg sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_last = 1'd0;
-reg sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_payload_addr;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead2_source_valid;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead2_source_ready;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead2_source_first;
@@ -2008,12 +2008,12 @@ reg sdram_tmrbankmachine3_cmd_buffer2_source_first = 1'd0;
 reg sdram_tmrbankmachine3_cmd_buffer2_source_last = 1'd0;
 reg sdram_tmrbankmachine3_cmd_buffer2_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine3_cmd_buffer2_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_valid = 1'd0;
+wire sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_valid;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_ready;
 reg sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_first = 1'd0;
 reg sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_last = 1'd0;
-reg sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_payload_addr;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead3_source_valid;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead3_source_ready;
 wire sdram_tmrbankmachine3_cmd_buffer_lookahead3_source_first;
@@ -2144,12 +2144,12 @@ reg sdram_tmrbankmachine4_auto_precharge;
 wire sdram_tmrbankmachine4_tmrinput_control1;
 wire sdram_tmrbankmachine4_tmrinput_control2;
 wire [20:0] sdram_tmrbankmachine4_tmrinput_control3;
-reg sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_valid;
+wire sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_valid;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_ready;
 reg sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_first = 1'd0;
 reg sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_last = 1'd0;
-reg sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_we;
-reg [20:0] sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_addr;
+wire sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_addr;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead_source_valid;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead_source_ready;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead_source_first;
@@ -2193,12 +2193,12 @@ reg sdram_tmrbankmachine4_cmd_buffer_source_first = 1'd0;
 reg sdram_tmrbankmachine4_cmd_buffer_source_last = 1'd0;
 reg sdram_tmrbankmachine4_cmd_buffer_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine4_cmd_buffer_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_valid = 1'd0;
+wire sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_valid;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_ready;
 reg sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_first = 1'd0;
 reg sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_last = 1'd0;
-reg sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_payload_addr;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead2_source_valid;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead2_source_ready;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead2_source_first;
@@ -2242,12 +2242,12 @@ reg sdram_tmrbankmachine4_cmd_buffer2_source_first = 1'd0;
 reg sdram_tmrbankmachine4_cmd_buffer2_source_last = 1'd0;
 reg sdram_tmrbankmachine4_cmd_buffer2_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine4_cmd_buffer2_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_valid = 1'd0;
+wire sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_valid;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_ready;
 reg sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_first = 1'd0;
 reg sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_last = 1'd0;
-reg sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_payload_addr;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead3_source_valid;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead3_source_ready;
 wire sdram_tmrbankmachine4_cmd_buffer_lookahead3_source_first;
@@ -2378,12 +2378,12 @@ reg sdram_tmrbankmachine5_auto_precharge;
 wire sdram_tmrbankmachine5_tmrinput_control1;
 wire sdram_tmrbankmachine5_tmrinput_control2;
 wire [20:0] sdram_tmrbankmachine5_tmrinput_control3;
-reg sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_valid;
+wire sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_valid;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_ready;
 reg sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_first = 1'd0;
 reg sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_last = 1'd0;
-reg sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_we;
-reg [20:0] sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_addr;
+wire sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_addr;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead_source_valid;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead_source_ready;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead_source_first;
@@ -2427,12 +2427,12 @@ reg sdram_tmrbankmachine5_cmd_buffer_source_first = 1'd0;
 reg sdram_tmrbankmachine5_cmd_buffer_source_last = 1'd0;
 reg sdram_tmrbankmachine5_cmd_buffer_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine5_cmd_buffer_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_valid = 1'd0;
+wire sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_valid;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_ready;
 reg sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_first = 1'd0;
 reg sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_last = 1'd0;
-reg sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_payload_addr;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead2_source_valid;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead2_source_ready;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead2_source_first;
@@ -2476,12 +2476,12 @@ reg sdram_tmrbankmachine5_cmd_buffer2_source_first = 1'd0;
 reg sdram_tmrbankmachine5_cmd_buffer2_source_last = 1'd0;
 reg sdram_tmrbankmachine5_cmd_buffer2_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine5_cmd_buffer2_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_valid = 1'd0;
+wire sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_valid;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_ready;
 reg sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_first = 1'd0;
 reg sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_last = 1'd0;
-reg sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_payload_addr;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead3_source_valid;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead3_source_ready;
 wire sdram_tmrbankmachine5_cmd_buffer_lookahead3_source_first;
@@ -2612,12 +2612,12 @@ reg sdram_tmrbankmachine6_auto_precharge;
 wire sdram_tmrbankmachine6_tmrinput_control1;
 wire sdram_tmrbankmachine6_tmrinput_control2;
 wire [20:0] sdram_tmrbankmachine6_tmrinput_control3;
-reg sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_valid;
+wire sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_valid;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_ready;
 reg sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_first = 1'd0;
 reg sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_last = 1'd0;
-reg sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_we;
-reg [20:0] sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_addr;
+wire sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_addr;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead_source_valid;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead_source_ready;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead_source_first;
@@ -2661,12 +2661,12 @@ reg sdram_tmrbankmachine6_cmd_buffer_source_first = 1'd0;
 reg sdram_tmrbankmachine6_cmd_buffer_source_last = 1'd0;
 reg sdram_tmrbankmachine6_cmd_buffer_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine6_cmd_buffer_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_valid = 1'd0;
+wire sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_valid;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_ready;
 reg sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_first = 1'd0;
 reg sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_last = 1'd0;
-reg sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_payload_addr;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead2_source_valid;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead2_source_ready;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead2_source_first;
@@ -2710,12 +2710,12 @@ reg sdram_tmrbankmachine6_cmd_buffer2_source_first = 1'd0;
 reg sdram_tmrbankmachine6_cmd_buffer2_source_last = 1'd0;
 reg sdram_tmrbankmachine6_cmd_buffer2_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine6_cmd_buffer2_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_valid = 1'd0;
+wire sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_valid;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_ready;
 reg sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_first = 1'd0;
 reg sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_last = 1'd0;
-reg sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_payload_addr;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead3_source_valid;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead3_source_ready;
 wire sdram_tmrbankmachine6_cmd_buffer_lookahead3_source_first;
@@ -2846,12 +2846,12 @@ reg sdram_tmrbankmachine7_auto_precharge;
 wire sdram_tmrbankmachine7_tmrinput_control1;
 wire sdram_tmrbankmachine7_tmrinput_control2;
 wire [20:0] sdram_tmrbankmachine7_tmrinput_control3;
-reg sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_valid;
+wire sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_valid;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_ready;
 reg sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_first = 1'd0;
 reg sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_last = 1'd0;
-reg sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_we;
-reg [20:0] sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_addr;
+wire sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_addr;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead_source_valid;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead_source_ready;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead_source_first;
@@ -2895,12 +2895,12 @@ reg sdram_tmrbankmachine7_cmd_buffer_source_first = 1'd0;
 reg sdram_tmrbankmachine7_cmd_buffer_source_last = 1'd0;
 reg sdram_tmrbankmachine7_cmd_buffer_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine7_cmd_buffer_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_valid = 1'd0;
+wire sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_valid;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_ready;
 reg sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_first = 1'd0;
 reg sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_last = 1'd0;
-reg sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_payload_addr;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead2_source_valid;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead2_source_ready;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead2_source_first;
@@ -2944,12 +2944,12 @@ reg sdram_tmrbankmachine7_cmd_buffer2_source_first = 1'd0;
 reg sdram_tmrbankmachine7_cmd_buffer2_source_last = 1'd0;
 reg sdram_tmrbankmachine7_cmd_buffer2_source_payload_we = 1'd0;
 reg [20:0] sdram_tmrbankmachine7_cmd_buffer2_source_payload_addr = 21'd0;
-reg sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_valid = 1'd0;
+wire sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_valid;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_ready;
 reg sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_first = 1'd0;
 reg sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_last = 1'd0;
-reg sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_payload_we = 1'd0;
-reg [20:0] sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_payload_addr = 21'd0;
+wire sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_payload_we;
+wire [20:0] sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_payload_addr;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead3_source_valid;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead3_source_ready;
 wire sdram_tmrbankmachine7_cmd_buffer_lookahead3_source_first;
@@ -5912,6 +5912,9 @@ always @(*) begin
 	dummy_d_37 <= dummy_s;
 // synthesis translate_on
 end
+assign sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_valid = sdram_tmrbankmachine0_req_valid;
+assign sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_we = sdram_tmrbankmachine0_req_we;
+assign sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_addr = sdram_tmrbankmachine0_req_addr;
 assign sdram_tmrbankmachine0_cmd_buffer_sink_valid = sdram_tmrbankmachine0_cmd_buffer_lookahead_source_valid;
 assign sdram_tmrbankmachine0_cmd_buffer_lookahead_source_ready = sdram_tmrbankmachine0_cmd_buffer_sink_ready;
 assign sdram_tmrbankmachine0_cmd_buffer_sink_first = sdram_tmrbankmachine0_cmd_buffer_lookahead_source_first;
@@ -5919,6 +5922,9 @@ assign sdram_tmrbankmachine0_cmd_buffer_sink_last = sdram_tmrbankmachine0_cmd_bu
 assign sdram_tmrbankmachine0_cmd_buffer_sink_payload_we = sdram_tmrbankmachine0_cmd_buffer_lookahead_source_payload_we;
 assign sdram_tmrbankmachine0_cmd_buffer_sink_payload_addr = sdram_tmrbankmachine0_cmd_buffer_lookahead_source_payload_addr;
 assign sdram_tmrbankmachine0_cmd_buffer_source_ready = (sdram_tmrbankmachine0_req_wdata_ready | sdram_tmrbankmachine0_req_rdata_valid);
+assign sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_valid = sdram_tmrbankmachine0_req_valid;
+assign sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_payload_we = sdram_tmrbankmachine0_req_we;
+assign sdram_tmrbankmachine0_cmd_buffer_lookahead2_sink_payload_addr = sdram_tmrbankmachine0_req_addr;
 assign sdram_tmrbankmachine0_cmd_buffer2_sink_valid = sdram_tmrbankmachine0_cmd_buffer_lookahead2_source_valid;
 assign sdram_tmrbankmachine0_cmd_buffer_lookahead2_source_ready = sdram_tmrbankmachine0_cmd_buffer2_sink_ready;
 assign sdram_tmrbankmachine0_cmd_buffer2_sink_first = sdram_tmrbankmachine0_cmd_buffer_lookahead2_source_first;
@@ -5926,45 +5932,9 @@ assign sdram_tmrbankmachine0_cmd_buffer2_sink_last = sdram_tmrbankmachine0_cmd_b
 assign sdram_tmrbankmachine0_cmd_buffer2_sink_payload_we = sdram_tmrbankmachine0_cmd_buffer_lookahead2_source_payload_we;
 assign sdram_tmrbankmachine0_cmd_buffer2_sink_payload_addr = sdram_tmrbankmachine0_cmd_buffer_lookahead2_source_payload_addr;
 assign sdram_tmrbankmachine0_cmd_buffer2_source_ready = (sdram_tmrbankmachine0_req_wdata_ready | sdram_tmrbankmachine0_req_rdata_valid);
-
-// synthesis translate_off
-reg dummy_d_38;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_valid <= 1'd0;
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine0_req_valid;
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine0_req_valid;
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine0_req_valid;
-// synthesis translate_off
-	dummy_d_38 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_39;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_we <= 1'd0;
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine0_req_we;
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine0_req_we;
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine0_req_we;
-// synthesis translate_off
-	dummy_d_39 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_40;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_addr <= 21'd0;
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine0_req_addr;
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine0_req_addr;
-	sdram_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine0_req_addr;
-// synthesis translate_off
-	dummy_d_40 <= dummy_s;
-// synthesis translate_on
-end
+assign sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_valid = sdram_tmrbankmachine0_req_valid;
+assign sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_payload_we = sdram_tmrbankmachine0_req_we;
+assign sdram_tmrbankmachine0_cmd_buffer_lookahead3_sink_payload_addr = sdram_tmrbankmachine0_req_addr;
 assign sdram_tmrbankmachine0_cmd_buffer3_sink_valid = sdram_tmrbankmachine0_cmd_buffer_lookahead3_source_valid;
 assign sdram_tmrbankmachine0_cmd_buffer_lookahead3_source_ready = sdram_tmrbankmachine0_cmd_buffer3_sink_ready;
 assign sdram_tmrbankmachine0_cmd_buffer3_sink_first = sdram_tmrbankmachine0_cmd_buffer_lookahead3_source_first;
@@ -5977,7 +5947,7 @@ assign sdram_tmrbankmachine0_row_hit = (sdram_tmrbankmachine0_row == sdram_tmrba
 assign sdram_tmrbankmachine0_cmd_payload_ba = 1'd0;
 
 // synthesis translate_off
-reg dummy_d_41;
+reg dummy_d_38;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine0_cmd_payload_a <= 14'd0;
@@ -5987,7 +5957,7 @@ always @(*) begin
 		sdram_tmrbankmachine0_cmd_payload_a <= ((sdram_tmrbankmachine0_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine0_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
-	dummy_d_41 <= dummy_s;
+	dummy_d_38 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine0_twtpcon_valid = ((sdram_tmrbankmachine0_cmd_valid & sdram_tmrbankmachine0_cmd_ready) & sdram_tmrbankmachine0_cmd_payload_is_write);
@@ -6001,7 +5971,7 @@ assign sdram_tmrbankmachine0_trascon2_valid = ((sdram_tmrbankmachine0_cmd_valid 
 assign sdram_tmrbankmachine0_trascon3_valid = ((sdram_tmrbankmachine0_cmd_valid & sdram_tmrbankmachine0_cmd_ready) & sdram_tmrbankmachine0_row_open);
 
 // synthesis translate_off
-reg dummy_d_42;
+reg dummy_d_39;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine0_auto_precharge <= 1'd0;
@@ -6011,7 +5981,7 @@ always @(*) begin
 		end
 	end
 // synthesis translate_off
-	dummy_d_42 <= dummy_s;
+	dummy_d_39 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine0_TMRcmd_valid = {3{sdram_tmrbankmachine0_cmd_valid}};
@@ -6053,7 +6023,7 @@ assign sdram_tmrbankmachine0_cmd_buffer_lookahead_source_payload_addr = sdram_tm
 assign sdram_tmrbankmachine0_cmd_buffer_lookahead_syncfifo0_re = sdram_tmrbankmachine0_cmd_buffer_lookahead_source_ready;
 
 // synthesis translate_off
-reg dummy_d_43;
+reg dummy_d_40;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine0_cmd_buffer_lookahead_wrport_adr <= 3'd0;
@@ -6063,7 +6033,7 @@ always @(*) begin
 		sdram_tmrbankmachine0_cmd_buffer_lookahead_wrport_adr <= sdram_tmrbankmachine0_cmd_buffer_lookahead_produce;
 	end
 // synthesis translate_off
-	dummy_d_43 <= dummy_s;
+	dummy_d_40 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine0_cmd_buffer_lookahead_wrport_dat_w = sdram_tmrbankmachine0_cmd_buffer_lookahead_syncfifo0_din;
@@ -6090,7 +6060,7 @@ assign sdram_tmrbankmachine0_cmd_buffer_lookahead2_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine0_cmd_buffer_lookahead2_syncfifo0_re = sdram_tmrbankmachine0_cmd_buffer_lookahead2_source_ready;
 
 // synthesis translate_off
-reg dummy_d_44;
+reg dummy_d_41;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine0_cmd_buffer_lookahead2_wrport_adr <= 3'd0;
@@ -6100,7 +6070,7 @@ always @(*) begin
 		sdram_tmrbankmachine0_cmd_buffer_lookahead2_wrport_adr <= sdram_tmrbankmachine0_cmd_buffer_lookahead2_produce;
 	end
 // synthesis translate_off
-	dummy_d_44 <= dummy_s;
+	dummy_d_41 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine0_cmd_buffer_lookahead2_wrport_dat_w = sdram_tmrbankmachine0_cmd_buffer_lookahead2_syncfifo0_din;
@@ -6127,7 +6097,7 @@ assign sdram_tmrbankmachine0_cmd_buffer_lookahead3_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine0_cmd_buffer_lookahead3_syncfifo0_re = sdram_tmrbankmachine0_cmd_buffer_lookahead3_source_ready;
 
 // synthesis translate_off
-reg dummy_d_45;
+reg dummy_d_42;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine0_cmd_buffer_lookahead3_wrport_adr <= 3'd0;
@@ -6137,7 +6107,7 @@ always @(*) begin
 		sdram_tmrbankmachine0_cmd_buffer_lookahead3_wrport_adr <= sdram_tmrbankmachine0_cmd_buffer_lookahead3_produce;
 	end
 // synthesis translate_off
-	dummy_d_45 <= dummy_s;
+	dummy_d_42 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine0_cmd_buffer_lookahead3_wrport_dat_w = sdram_tmrbankmachine0_cmd_buffer_lookahead3_syncfifo0_din;
@@ -6151,14 +6121,14 @@ assign sdram_tmrbankmachine0_cmd_buffer3_sink_ready = ((~sdram_tmrbankmachine0_c
 assign sdram_tmrbankmachine0_tmrinput_control4 = (((slice_proxy354[0] & slice_proxy355[1]) | (slice_proxy356[1] & slice_proxy357[2])) | (slice_proxy358[0] & slice_proxy359[2]));
 
 // synthesis translate_off
-reg dummy_d_46;
+reg dummy_d_43;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine0_req_lock <= 1'd0;
 	sdram_tmrbankmachine0_req_lock <= (sdram_tmrbankmachine0_cmd_buffer_lookahead_source_valid | sdram_tmrbankmachine0_cmd_buffer_source_valid);
 	sdram_tmrbankmachine0_req_lock <= sdram_tmrbankmachine0_tmrinput_control4;
 // synthesis translate_off
-	dummy_d_46 <= dummy_s;
+	dummy_d_43 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine0_lookAddrVote_control = (((slice_proxy360[20:0] & slice_proxy361[41:21]) | (slice_proxy362[41:21] & slice_proxy363[62:42])) | (slice_proxy364[20:0] & slice_proxy365[62:42]));
@@ -6171,7 +6141,7 @@ assign sdram_tmrbankmachine0_trcVote_control = (((slice_proxy396[0] & slice_prox
 assign sdram_tmrbankmachine0_trasVote_control = (((slice_proxy402[0] & slice_proxy403[1]) | (slice_proxy404[1] & slice_proxy405[2])) | (slice_proxy406[0] & slice_proxy407[2]));
 
 // synthesis translate_off
-reg dummy_d_47;
+reg dummy_d_44;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine0_req_wdata_ready <= 1'd0;
@@ -6273,9 +6243,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_47 <= dummy_s;
+	dummy_d_44 <= dummy_s;
 // synthesis translate_on
 end
+assign sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_valid = sdram_tmrbankmachine1_req_valid;
+assign sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_we = sdram_tmrbankmachine1_req_we;
+assign sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_addr = sdram_tmrbankmachine1_req_addr;
 assign sdram_tmrbankmachine1_cmd_buffer_sink_valid = sdram_tmrbankmachine1_cmd_buffer_lookahead_source_valid;
 assign sdram_tmrbankmachine1_cmd_buffer_lookahead_source_ready = sdram_tmrbankmachine1_cmd_buffer_sink_ready;
 assign sdram_tmrbankmachine1_cmd_buffer_sink_first = sdram_tmrbankmachine1_cmd_buffer_lookahead_source_first;
@@ -6283,6 +6256,9 @@ assign sdram_tmrbankmachine1_cmd_buffer_sink_last = sdram_tmrbankmachine1_cmd_bu
 assign sdram_tmrbankmachine1_cmd_buffer_sink_payload_we = sdram_tmrbankmachine1_cmd_buffer_lookahead_source_payload_we;
 assign sdram_tmrbankmachine1_cmd_buffer_sink_payload_addr = sdram_tmrbankmachine1_cmd_buffer_lookahead_source_payload_addr;
 assign sdram_tmrbankmachine1_cmd_buffer_source_ready = (sdram_tmrbankmachine1_req_wdata_ready | sdram_tmrbankmachine1_req_rdata_valid);
+assign sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_valid = sdram_tmrbankmachine1_req_valid;
+assign sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_payload_we = sdram_tmrbankmachine1_req_we;
+assign sdram_tmrbankmachine1_cmd_buffer_lookahead2_sink_payload_addr = sdram_tmrbankmachine1_req_addr;
 assign sdram_tmrbankmachine1_cmd_buffer2_sink_valid = sdram_tmrbankmachine1_cmd_buffer_lookahead2_source_valid;
 assign sdram_tmrbankmachine1_cmd_buffer_lookahead2_source_ready = sdram_tmrbankmachine1_cmd_buffer2_sink_ready;
 assign sdram_tmrbankmachine1_cmd_buffer2_sink_first = sdram_tmrbankmachine1_cmd_buffer_lookahead2_source_first;
@@ -6290,45 +6266,9 @@ assign sdram_tmrbankmachine1_cmd_buffer2_sink_last = sdram_tmrbankmachine1_cmd_b
 assign sdram_tmrbankmachine1_cmd_buffer2_sink_payload_we = sdram_tmrbankmachine1_cmd_buffer_lookahead2_source_payload_we;
 assign sdram_tmrbankmachine1_cmd_buffer2_sink_payload_addr = sdram_tmrbankmachine1_cmd_buffer_lookahead2_source_payload_addr;
 assign sdram_tmrbankmachine1_cmd_buffer2_source_ready = (sdram_tmrbankmachine1_req_wdata_ready | sdram_tmrbankmachine1_req_rdata_valid);
-
-// synthesis translate_off
-reg dummy_d_48;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_valid <= 1'd0;
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine1_req_valid;
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine1_req_valid;
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine1_req_valid;
-// synthesis translate_off
-	dummy_d_48 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_49;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_we <= 1'd0;
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine1_req_we;
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine1_req_we;
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine1_req_we;
-// synthesis translate_off
-	dummy_d_49 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_50;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_addr <= 21'd0;
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine1_req_addr;
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine1_req_addr;
-	sdram_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine1_req_addr;
-// synthesis translate_off
-	dummy_d_50 <= dummy_s;
-// synthesis translate_on
-end
+assign sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_valid = sdram_tmrbankmachine1_req_valid;
+assign sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_payload_we = sdram_tmrbankmachine1_req_we;
+assign sdram_tmrbankmachine1_cmd_buffer_lookahead3_sink_payload_addr = sdram_tmrbankmachine1_req_addr;
 assign sdram_tmrbankmachine1_cmd_buffer3_sink_valid = sdram_tmrbankmachine1_cmd_buffer_lookahead3_source_valid;
 assign sdram_tmrbankmachine1_cmd_buffer_lookahead3_source_ready = sdram_tmrbankmachine1_cmd_buffer3_sink_ready;
 assign sdram_tmrbankmachine1_cmd_buffer3_sink_first = sdram_tmrbankmachine1_cmd_buffer_lookahead3_source_first;
@@ -6341,7 +6281,7 @@ assign sdram_tmrbankmachine1_row_hit = (sdram_tmrbankmachine1_row == sdram_tmrba
 assign sdram_tmrbankmachine1_cmd_payload_ba = 1'd1;
 
 // synthesis translate_off
-reg dummy_d_51;
+reg dummy_d_45;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine1_cmd_payload_a <= 14'd0;
@@ -6351,7 +6291,7 @@ always @(*) begin
 		sdram_tmrbankmachine1_cmd_payload_a <= ((sdram_tmrbankmachine1_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine1_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
-	dummy_d_51 <= dummy_s;
+	dummy_d_45 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine1_twtpcon_valid = ((sdram_tmrbankmachine1_cmd_valid & sdram_tmrbankmachine1_cmd_ready) & sdram_tmrbankmachine1_cmd_payload_is_write);
@@ -6365,7 +6305,7 @@ assign sdram_tmrbankmachine1_trascon2_valid = ((sdram_tmrbankmachine1_cmd_valid 
 assign sdram_tmrbankmachine1_trascon3_valid = ((sdram_tmrbankmachine1_cmd_valid & sdram_tmrbankmachine1_cmd_ready) & sdram_tmrbankmachine1_row_open);
 
 // synthesis translate_off
-reg dummy_d_52;
+reg dummy_d_46;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine1_auto_precharge <= 1'd0;
@@ -6375,7 +6315,7 @@ always @(*) begin
 		end
 	end
 // synthesis translate_off
-	dummy_d_52 <= dummy_s;
+	dummy_d_46 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine1_TMRcmd_valid = {3{sdram_tmrbankmachine1_cmd_valid}};
@@ -6417,7 +6357,7 @@ assign sdram_tmrbankmachine1_cmd_buffer_lookahead_source_payload_addr = sdram_tm
 assign sdram_tmrbankmachine1_cmd_buffer_lookahead_syncfifo1_re = sdram_tmrbankmachine1_cmd_buffer_lookahead_source_ready;
 
 // synthesis translate_off
-reg dummy_d_53;
+reg dummy_d_47;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine1_cmd_buffer_lookahead_wrport_adr <= 3'd0;
@@ -6427,7 +6367,7 @@ always @(*) begin
 		sdram_tmrbankmachine1_cmd_buffer_lookahead_wrport_adr <= sdram_tmrbankmachine1_cmd_buffer_lookahead_produce;
 	end
 // synthesis translate_off
-	dummy_d_53 <= dummy_s;
+	dummy_d_47 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine1_cmd_buffer_lookahead_wrport_dat_w = sdram_tmrbankmachine1_cmd_buffer_lookahead_syncfifo1_din;
@@ -6454,7 +6394,7 @@ assign sdram_tmrbankmachine1_cmd_buffer_lookahead2_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine1_cmd_buffer_lookahead2_syncfifo1_re = sdram_tmrbankmachine1_cmd_buffer_lookahead2_source_ready;
 
 // synthesis translate_off
-reg dummy_d_54;
+reg dummy_d_48;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine1_cmd_buffer_lookahead2_wrport_adr <= 3'd0;
@@ -6464,7 +6404,7 @@ always @(*) begin
 		sdram_tmrbankmachine1_cmd_buffer_lookahead2_wrport_adr <= sdram_tmrbankmachine1_cmd_buffer_lookahead2_produce;
 	end
 // synthesis translate_off
-	dummy_d_54 <= dummy_s;
+	dummy_d_48 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine1_cmd_buffer_lookahead2_wrport_dat_w = sdram_tmrbankmachine1_cmd_buffer_lookahead2_syncfifo1_din;
@@ -6491,7 +6431,7 @@ assign sdram_tmrbankmachine1_cmd_buffer_lookahead3_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine1_cmd_buffer_lookahead3_syncfifo1_re = sdram_tmrbankmachine1_cmd_buffer_lookahead3_source_ready;
 
 // synthesis translate_off
-reg dummy_d_55;
+reg dummy_d_49;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine1_cmd_buffer_lookahead3_wrport_adr <= 3'd0;
@@ -6501,7 +6441,7 @@ always @(*) begin
 		sdram_tmrbankmachine1_cmd_buffer_lookahead3_wrport_adr <= sdram_tmrbankmachine1_cmd_buffer_lookahead3_produce;
 	end
 // synthesis translate_off
-	dummy_d_55 <= dummy_s;
+	dummy_d_49 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine1_cmd_buffer_lookahead3_wrport_dat_w = sdram_tmrbankmachine1_cmd_buffer_lookahead3_syncfifo1_din;
@@ -6515,14 +6455,14 @@ assign sdram_tmrbankmachine1_cmd_buffer3_sink_ready = ((~sdram_tmrbankmachine1_c
 assign sdram_tmrbankmachine1_tmrinput_control4 = (((slice_proxy408[0] & slice_proxy409[1]) | (slice_proxy410[1] & slice_proxy411[2])) | (slice_proxy412[0] & slice_proxy413[2]));
 
 // synthesis translate_off
-reg dummy_d_56;
+reg dummy_d_50;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine1_req_lock <= 1'd0;
 	sdram_tmrbankmachine1_req_lock <= (sdram_tmrbankmachine1_cmd_buffer_lookahead_source_valid | sdram_tmrbankmachine1_cmd_buffer_source_valid);
 	sdram_tmrbankmachine1_req_lock <= sdram_tmrbankmachine1_tmrinput_control4;
 // synthesis translate_off
-	dummy_d_56 <= dummy_s;
+	dummy_d_50 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine1_lookAddrVote_control = (((slice_proxy414[20:0] & slice_proxy415[41:21]) | (slice_proxy416[41:21] & slice_proxy417[62:42])) | (slice_proxy418[20:0] & slice_proxy419[62:42]));
@@ -6535,7 +6475,7 @@ assign sdram_tmrbankmachine1_trcVote_control = (((slice_proxy450[0] & slice_prox
 assign sdram_tmrbankmachine1_trasVote_control = (((slice_proxy456[0] & slice_proxy457[1]) | (slice_proxy458[1] & slice_proxy459[2])) | (slice_proxy460[0] & slice_proxy461[2]));
 
 // synthesis translate_off
-reg dummy_d_57;
+reg dummy_d_51;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine1_req_wdata_ready <= 1'd0;
@@ -6637,9 +6577,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_57 <= dummy_s;
+	dummy_d_51 <= dummy_s;
 // synthesis translate_on
 end
+assign sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_valid = sdram_tmrbankmachine2_req_valid;
+assign sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_we = sdram_tmrbankmachine2_req_we;
+assign sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_addr = sdram_tmrbankmachine2_req_addr;
 assign sdram_tmrbankmachine2_cmd_buffer_sink_valid = sdram_tmrbankmachine2_cmd_buffer_lookahead_source_valid;
 assign sdram_tmrbankmachine2_cmd_buffer_lookahead_source_ready = sdram_tmrbankmachine2_cmd_buffer_sink_ready;
 assign sdram_tmrbankmachine2_cmd_buffer_sink_first = sdram_tmrbankmachine2_cmd_buffer_lookahead_source_first;
@@ -6647,6 +6590,9 @@ assign sdram_tmrbankmachine2_cmd_buffer_sink_last = sdram_tmrbankmachine2_cmd_bu
 assign sdram_tmrbankmachine2_cmd_buffer_sink_payload_we = sdram_tmrbankmachine2_cmd_buffer_lookahead_source_payload_we;
 assign sdram_tmrbankmachine2_cmd_buffer_sink_payload_addr = sdram_tmrbankmachine2_cmd_buffer_lookahead_source_payload_addr;
 assign sdram_tmrbankmachine2_cmd_buffer_source_ready = (sdram_tmrbankmachine2_req_wdata_ready | sdram_tmrbankmachine2_req_rdata_valid);
+assign sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_valid = sdram_tmrbankmachine2_req_valid;
+assign sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_payload_we = sdram_tmrbankmachine2_req_we;
+assign sdram_tmrbankmachine2_cmd_buffer_lookahead2_sink_payload_addr = sdram_tmrbankmachine2_req_addr;
 assign sdram_tmrbankmachine2_cmd_buffer2_sink_valid = sdram_tmrbankmachine2_cmd_buffer_lookahead2_source_valid;
 assign sdram_tmrbankmachine2_cmd_buffer_lookahead2_source_ready = sdram_tmrbankmachine2_cmd_buffer2_sink_ready;
 assign sdram_tmrbankmachine2_cmd_buffer2_sink_first = sdram_tmrbankmachine2_cmd_buffer_lookahead2_source_first;
@@ -6654,45 +6600,9 @@ assign sdram_tmrbankmachine2_cmd_buffer2_sink_last = sdram_tmrbankmachine2_cmd_b
 assign sdram_tmrbankmachine2_cmd_buffer2_sink_payload_we = sdram_tmrbankmachine2_cmd_buffer_lookahead2_source_payload_we;
 assign sdram_tmrbankmachine2_cmd_buffer2_sink_payload_addr = sdram_tmrbankmachine2_cmd_buffer_lookahead2_source_payload_addr;
 assign sdram_tmrbankmachine2_cmd_buffer2_source_ready = (sdram_tmrbankmachine2_req_wdata_ready | sdram_tmrbankmachine2_req_rdata_valid);
-
-// synthesis translate_off
-reg dummy_d_58;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_valid <= 1'd0;
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine2_req_valid;
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine2_req_valid;
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine2_req_valid;
-// synthesis translate_off
-	dummy_d_58 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_59;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_we <= 1'd0;
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine2_req_we;
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine2_req_we;
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine2_req_we;
-// synthesis translate_off
-	dummy_d_59 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_60;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_addr <= 21'd0;
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine2_req_addr;
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine2_req_addr;
-	sdram_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine2_req_addr;
-// synthesis translate_off
-	dummy_d_60 <= dummy_s;
-// synthesis translate_on
-end
+assign sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_valid = sdram_tmrbankmachine2_req_valid;
+assign sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_payload_we = sdram_tmrbankmachine2_req_we;
+assign sdram_tmrbankmachine2_cmd_buffer_lookahead3_sink_payload_addr = sdram_tmrbankmachine2_req_addr;
 assign sdram_tmrbankmachine2_cmd_buffer3_sink_valid = sdram_tmrbankmachine2_cmd_buffer_lookahead3_source_valid;
 assign sdram_tmrbankmachine2_cmd_buffer_lookahead3_source_ready = sdram_tmrbankmachine2_cmd_buffer3_sink_ready;
 assign sdram_tmrbankmachine2_cmd_buffer3_sink_first = sdram_tmrbankmachine2_cmd_buffer_lookahead3_source_first;
@@ -6705,7 +6615,7 @@ assign sdram_tmrbankmachine2_row_hit = (sdram_tmrbankmachine2_row == sdram_tmrba
 assign sdram_tmrbankmachine2_cmd_payload_ba = 2'd2;
 
 // synthesis translate_off
-reg dummy_d_61;
+reg dummy_d_52;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine2_cmd_payload_a <= 14'd0;
@@ -6715,7 +6625,7 @@ always @(*) begin
 		sdram_tmrbankmachine2_cmd_payload_a <= ((sdram_tmrbankmachine2_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine2_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
-	dummy_d_61 <= dummy_s;
+	dummy_d_52 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine2_twtpcon_valid = ((sdram_tmrbankmachine2_cmd_valid & sdram_tmrbankmachine2_cmd_ready) & sdram_tmrbankmachine2_cmd_payload_is_write);
@@ -6729,7 +6639,7 @@ assign sdram_tmrbankmachine2_trascon2_valid = ((sdram_tmrbankmachine2_cmd_valid 
 assign sdram_tmrbankmachine2_trascon3_valid = ((sdram_tmrbankmachine2_cmd_valid & sdram_tmrbankmachine2_cmd_ready) & sdram_tmrbankmachine2_row_open);
 
 // synthesis translate_off
-reg dummy_d_62;
+reg dummy_d_53;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine2_auto_precharge <= 1'd0;
@@ -6739,7 +6649,7 @@ always @(*) begin
 		end
 	end
 // synthesis translate_off
-	dummy_d_62 <= dummy_s;
+	dummy_d_53 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine2_TMRcmd_valid = {3{sdram_tmrbankmachine2_cmd_valid}};
@@ -6781,7 +6691,7 @@ assign sdram_tmrbankmachine2_cmd_buffer_lookahead_source_payload_addr = sdram_tm
 assign sdram_tmrbankmachine2_cmd_buffer_lookahead_syncfifo2_re = sdram_tmrbankmachine2_cmd_buffer_lookahead_source_ready;
 
 // synthesis translate_off
-reg dummy_d_63;
+reg dummy_d_54;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine2_cmd_buffer_lookahead_wrport_adr <= 3'd0;
@@ -6791,7 +6701,7 @@ always @(*) begin
 		sdram_tmrbankmachine2_cmd_buffer_lookahead_wrport_adr <= sdram_tmrbankmachine2_cmd_buffer_lookahead_produce;
 	end
 // synthesis translate_off
-	dummy_d_63 <= dummy_s;
+	dummy_d_54 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine2_cmd_buffer_lookahead_wrport_dat_w = sdram_tmrbankmachine2_cmd_buffer_lookahead_syncfifo2_din;
@@ -6818,7 +6728,7 @@ assign sdram_tmrbankmachine2_cmd_buffer_lookahead2_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine2_cmd_buffer_lookahead2_syncfifo2_re = sdram_tmrbankmachine2_cmd_buffer_lookahead2_source_ready;
 
 // synthesis translate_off
-reg dummy_d_64;
+reg dummy_d_55;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine2_cmd_buffer_lookahead2_wrport_adr <= 3'd0;
@@ -6828,7 +6738,7 @@ always @(*) begin
 		sdram_tmrbankmachine2_cmd_buffer_lookahead2_wrport_adr <= sdram_tmrbankmachine2_cmd_buffer_lookahead2_produce;
 	end
 // synthesis translate_off
-	dummy_d_64 <= dummy_s;
+	dummy_d_55 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine2_cmd_buffer_lookahead2_wrport_dat_w = sdram_tmrbankmachine2_cmd_buffer_lookahead2_syncfifo2_din;
@@ -6855,7 +6765,7 @@ assign sdram_tmrbankmachine2_cmd_buffer_lookahead3_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine2_cmd_buffer_lookahead3_syncfifo2_re = sdram_tmrbankmachine2_cmd_buffer_lookahead3_source_ready;
 
 // synthesis translate_off
-reg dummy_d_65;
+reg dummy_d_56;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine2_cmd_buffer_lookahead3_wrport_adr <= 3'd0;
@@ -6865,7 +6775,7 @@ always @(*) begin
 		sdram_tmrbankmachine2_cmd_buffer_lookahead3_wrport_adr <= sdram_tmrbankmachine2_cmd_buffer_lookahead3_produce;
 	end
 // synthesis translate_off
-	dummy_d_65 <= dummy_s;
+	dummy_d_56 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine2_cmd_buffer_lookahead3_wrport_dat_w = sdram_tmrbankmachine2_cmd_buffer_lookahead3_syncfifo2_din;
@@ -6879,14 +6789,14 @@ assign sdram_tmrbankmachine2_cmd_buffer3_sink_ready = ((~sdram_tmrbankmachine2_c
 assign sdram_tmrbankmachine2_tmrinput_control4 = (((slice_proxy462[0] & slice_proxy463[1]) | (slice_proxy464[1] & slice_proxy465[2])) | (slice_proxy466[0] & slice_proxy467[2]));
 
 // synthesis translate_off
-reg dummy_d_66;
+reg dummy_d_57;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine2_req_lock <= 1'd0;
 	sdram_tmrbankmachine2_req_lock <= (sdram_tmrbankmachine2_cmd_buffer_lookahead_source_valid | sdram_tmrbankmachine2_cmd_buffer_source_valid);
 	sdram_tmrbankmachine2_req_lock <= sdram_tmrbankmachine2_tmrinput_control4;
 // synthesis translate_off
-	dummy_d_66 <= dummy_s;
+	dummy_d_57 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine2_lookAddrVote_control = (((slice_proxy468[20:0] & slice_proxy469[41:21]) | (slice_proxy470[41:21] & slice_proxy471[62:42])) | (slice_proxy472[20:0] & slice_proxy473[62:42]));
@@ -6899,7 +6809,7 @@ assign sdram_tmrbankmachine2_trcVote_control = (((slice_proxy504[0] & slice_prox
 assign sdram_tmrbankmachine2_trasVote_control = (((slice_proxy510[0] & slice_proxy511[1]) | (slice_proxy512[1] & slice_proxy513[2])) | (slice_proxy514[0] & slice_proxy515[2]));
 
 // synthesis translate_off
-reg dummy_d_67;
+reg dummy_d_58;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine2_req_wdata_ready <= 1'd0;
@@ -7001,9 +6911,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_67 <= dummy_s;
+	dummy_d_58 <= dummy_s;
 // synthesis translate_on
 end
+assign sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_valid = sdram_tmrbankmachine3_req_valid;
+assign sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_we = sdram_tmrbankmachine3_req_we;
+assign sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_addr = sdram_tmrbankmachine3_req_addr;
 assign sdram_tmrbankmachine3_cmd_buffer_sink_valid = sdram_tmrbankmachine3_cmd_buffer_lookahead_source_valid;
 assign sdram_tmrbankmachine3_cmd_buffer_lookahead_source_ready = sdram_tmrbankmachine3_cmd_buffer_sink_ready;
 assign sdram_tmrbankmachine3_cmd_buffer_sink_first = sdram_tmrbankmachine3_cmd_buffer_lookahead_source_first;
@@ -7011,6 +6924,9 @@ assign sdram_tmrbankmachine3_cmd_buffer_sink_last = sdram_tmrbankmachine3_cmd_bu
 assign sdram_tmrbankmachine3_cmd_buffer_sink_payload_we = sdram_tmrbankmachine3_cmd_buffer_lookahead_source_payload_we;
 assign sdram_tmrbankmachine3_cmd_buffer_sink_payload_addr = sdram_tmrbankmachine3_cmd_buffer_lookahead_source_payload_addr;
 assign sdram_tmrbankmachine3_cmd_buffer_source_ready = (sdram_tmrbankmachine3_req_wdata_ready | sdram_tmrbankmachine3_req_rdata_valid);
+assign sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_valid = sdram_tmrbankmachine3_req_valid;
+assign sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_payload_we = sdram_tmrbankmachine3_req_we;
+assign sdram_tmrbankmachine3_cmd_buffer_lookahead2_sink_payload_addr = sdram_tmrbankmachine3_req_addr;
 assign sdram_tmrbankmachine3_cmd_buffer2_sink_valid = sdram_tmrbankmachine3_cmd_buffer_lookahead2_source_valid;
 assign sdram_tmrbankmachine3_cmd_buffer_lookahead2_source_ready = sdram_tmrbankmachine3_cmd_buffer2_sink_ready;
 assign sdram_tmrbankmachine3_cmd_buffer2_sink_first = sdram_tmrbankmachine3_cmd_buffer_lookahead2_source_first;
@@ -7018,45 +6934,9 @@ assign sdram_tmrbankmachine3_cmd_buffer2_sink_last = sdram_tmrbankmachine3_cmd_b
 assign sdram_tmrbankmachine3_cmd_buffer2_sink_payload_we = sdram_tmrbankmachine3_cmd_buffer_lookahead2_source_payload_we;
 assign sdram_tmrbankmachine3_cmd_buffer2_sink_payload_addr = sdram_tmrbankmachine3_cmd_buffer_lookahead2_source_payload_addr;
 assign sdram_tmrbankmachine3_cmd_buffer2_source_ready = (sdram_tmrbankmachine3_req_wdata_ready | sdram_tmrbankmachine3_req_rdata_valid);
-
-// synthesis translate_off
-reg dummy_d_68;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_valid <= 1'd0;
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine3_req_valid;
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine3_req_valid;
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine3_req_valid;
-// synthesis translate_off
-	dummy_d_68 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_69;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_we <= 1'd0;
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine3_req_we;
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine3_req_we;
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine3_req_we;
-// synthesis translate_off
-	dummy_d_69 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_70;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_addr <= 21'd0;
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine3_req_addr;
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine3_req_addr;
-	sdram_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine3_req_addr;
-// synthesis translate_off
-	dummy_d_70 <= dummy_s;
-// synthesis translate_on
-end
+assign sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_valid = sdram_tmrbankmachine3_req_valid;
+assign sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_payload_we = sdram_tmrbankmachine3_req_we;
+assign sdram_tmrbankmachine3_cmd_buffer_lookahead3_sink_payload_addr = sdram_tmrbankmachine3_req_addr;
 assign sdram_tmrbankmachine3_cmd_buffer3_sink_valid = sdram_tmrbankmachine3_cmd_buffer_lookahead3_source_valid;
 assign sdram_tmrbankmachine3_cmd_buffer_lookahead3_source_ready = sdram_tmrbankmachine3_cmd_buffer3_sink_ready;
 assign sdram_tmrbankmachine3_cmd_buffer3_sink_first = sdram_tmrbankmachine3_cmd_buffer_lookahead3_source_first;
@@ -7069,7 +6949,7 @@ assign sdram_tmrbankmachine3_row_hit = (sdram_tmrbankmachine3_row == sdram_tmrba
 assign sdram_tmrbankmachine3_cmd_payload_ba = 2'd3;
 
 // synthesis translate_off
-reg dummy_d_71;
+reg dummy_d_59;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine3_cmd_payload_a <= 14'd0;
@@ -7079,7 +6959,7 @@ always @(*) begin
 		sdram_tmrbankmachine3_cmd_payload_a <= ((sdram_tmrbankmachine3_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine3_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
-	dummy_d_71 <= dummy_s;
+	dummy_d_59 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine3_twtpcon_valid = ((sdram_tmrbankmachine3_cmd_valid & sdram_tmrbankmachine3_cmd_ready) & sdram_tmrbankmachine3_cmd_payload_is_write);
@@ -7093,7 +6973,7 @@ assign sdram_tmrbankmachine3_trascon2_valid = ((sdram_tmrbankmachine3_cmd_valid 
 assign sdram_tmrbankmachine3_trascon3_valid = ((sdram_tmrbankmachine3_cmd_valid & sdram_tmrbankmachine3_cmd_ready) & sdram_tmrbankmachine3_row_open);
 
 // synthesis translate_off
-reg dummy_d_72;
+reg dummy_d_60;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine3_auto_precharge <= 1'd0;
@@ -7103,7 +6983,7 @@ always @(*) begin
 		end
 	end
 // synthesis translate_off
-	dummy_d_72 <= dummy_s;
+	dummy_d_60 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine3_TMRcmd_valid = {3{sdram_tmrbankmachine3_cmd_valid}};
@@ -7145,7 +7025,7 @@ assign sdram_tmrbankmachine3_cmd_buffer_lookahead_source_payload_addr = sdram_tm
 assign sdram_tmrbankmachine3_cmd_buffer_lookahead_syncfifo3_re = sdram_tmrbankmachine3_cmd_buffer_lookahead_source_ready;
 
 // synthesis translate_off
-reg dummy_d_73;
+reg dummy_d_61;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine3_cmd_buffer_lookahead_wrport_adr <= 3'd0;
@@ -7155,7 +7035,7 @@ always @(*) begin
 		sdram_tmrbankmachine3_cmd_buffer_lookahead_wrport_adr <= sdram_tmrbankmachine3_cmd_buffer_lookahead_produce;
 	end
 // synthesis translate_off
-	dummy_d_73 <= dummy_s;
+	dummy_d_61 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine3_cmd_buffer_lookahead_wrport_dat_w = sdram_tmrbankmachine3_cmd_buffer_lookahead_syncfifo3_din;
@@ -7182,7 +7062,7 @@ assign sdram_tmrbankmachine3_cmd_buffer_lookahead2_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine3_cmd_buffer_lookahead2_syncfifo3_re = sdram_tmrbankmachine3_cmd_buffer_lookahead2_source_ready;
 
 // synthesis translate_off
-reg dummy_d_74;
+reg dummy_d_62;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine3_cmd_buffer_lookahead2_wrport_adr <= 3'd0;
@@ -7192,7 +7072,7 @@ always @(*) begin
 		sdram_tmrbankmachine3_cmd_buffer_lookahead2_wrport_adr <= sdram_tmrbankmachine3_cmd_buffer_lookahead2_produce;
 	end
 // synthesis translate_off
-	dummy_d_74 <= dummy_s;
+	dummy_d_62 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine3_cmd_buffer_lookahead2_wrport_dat_w = sdram_tmrbankmachine3_cmd_buffer_lookahead2_syncfifo3_din;
@@ -7219,7 +7099,7 @@ assign sdram_tmrbankmachine3_cmd_buffer_lookahead3_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine3_cmd_buffer_lookahead3_syncfifo3_re = sdram_tmrbankmachine3_cmd_buffer_lookahead3_source_ready;
 
 // synthesis translate_off
-reg dummy_d_75;
+reg dummy_d_63;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine3_cmd_buffer_lookahead3_wrport_adr <= 3'd0;
@@ -7229,7 +7109,7 @@ always @(*) begin
 		sdram_tmrbankmachine3_cmd_buffer_lookahead3_wrport_adr <= sdram_tmrbankmachine3_cmd_buffer_lookahead3_produce;
 	end
 // synthesis translate_off
-	dummy_d_75 <= dummy_s;
+	dummy_d_63 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine3_cmd_buffer_lookahead3_wrport_dat_w = sdram_tmrbankmachine3_cmd_buffer_lookahead3_syncfifo3_din;
@@ -7243,14 +7123,14 @@ assign sdram_tmrbankmachine3_cmd_buffer3_sink_ready = ((~sdram_tmrbankmachine3_c
 assign sdram_tmrbankmachine3_tmrinput_control4 = (((slice_proxy516[0] & slice_proxy517[1]) | (slice_proxy518[1] & slice_proxy519[2])) | (slice_proxy520[0] & slice_proxy521[2]));
 
 // synthesis translate_off
-reg dummy_d_76;
+reg dummy_d_64;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine3_req_lock <= 1'd0;
 	sdram_tmrbankmachine3_req_lock <= (sdram_tmrbankmachine3_cmd_buffer_lookahead_source_valid | sdram_tmrbankmachine3_cmd_buffer_source_valid);
 	sdram_tmrbankmachine3_req_lock <= sdram_tmrbankmachine3_tmrinput_control4;
 // synthesis translate_off
-	dummy_d_76 <= dummy_s;
+	dummy_d_64 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine3_lookAddrVote_control = (((slice_proxy522[20:0] & slice_proxy523[41:21]) | (slice_proxy524[41:21] & slice_proxy525[62:42])) | (slice_proxy526[20:0] & slice_proxy527[62:42]));
@@ -7263,7 +7143,7 @@ assign sdram_tmrbankmachine3_trcVote_control = (((slice_proxy558[0] & slice_prox
 assign sdram_tmrbankmachine3_trasVote_control = (((slice_proxy564[0] & slice_proxy565[1]) | (slice_proxy566[1] & slice_proxy567[2])) | (slice_proxy568[0] & slice_proxy569[2]));
 
 // synthesis translate_off
-reg dummy_d_77;
+reg dummy_d_65;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine3_req_wdata_ready <= 1'd0;
@@ -7365,9 +7245,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_77 <= dummy_s;
+	dummy_d_65 <= dummy_s;
 // synthesis translate_on
 end
+assign sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_valid = sdram_tmrbankmachine4_req_valid;
+assign sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_we = sdram_tmrbankmachine4_req_we;
+assign sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_addr = sdram_tmrbankmachine4_req_addr;
 assign sdram_tmrbankmachine4_cmd_buffer_sink_valid = sdram_tmrbankmachine4_cmd_buffer_lookahead_source_valid;
 assign sdram_tmrbankmachine4_cmd_buffer_lookahead_source_ready = sdram_tmrbankmachine4_cmd_buffer_sink_ready;
 assign sdram_tmrbankmachine4_cmd_buffer_sink_first = sdram_tmrbankmachine4_cmd_buffer_lookahead_source_first;
@@ -7375,6 +7258,9 @@ assign sdram_tmrbankmachine4_cmd_buffer_sink_last = sdram_tmrbankmachine4_cmd_bu
 assign sdram_tmrbankmachine4_cmd_buffer_sink_payload_we = sdram_tmrbankmachine4_cmd_buffer_lookahead_source_payload_we;
 assign sdram_tmrbankmachine4_cmd_buffer_sink_payload_addr = sdram_tmrbankmachine4_cmd_buffer_lookahead_source_payload_addr;
 assign sdram_tmrbankmachine4_cmd_buffer_source_ready = (sdram_tmrbankmachine4_req_wdata_ready | sdram_tmrbankmachine4_req_rdata_valid);
+assign sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_valid = sdram_tmrbankmachine4_req_valid;
+assign sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_payload_we = sdram_tmrbankmachine4_req_we;
+assign sdram_tmrbankmachine4_cmd_buffer_lookahead2_sink_payload_addr = sdram_tmrbankmachine4_req_addr;
 assign sdram_tmrbankmachine4_cmd_buffer2_sink_valid = sdram_tmrbankmachine4_cmd_buffer_lookahead2_source_valid;
 assign sdram_tmrbankmachine4_cmd_buffer_lookahead2_source_ready = sdram_tmrbankmachine4_cmd_buffer2_sink_ready;
 assign sdram_tmrbankmachine4_cmd_buffer2_sink_first = sdram_tmrbankmachine4_cmd_buffer_lookahead2_source_first;
@@ -7382,45 +7268,9 @@ assign sdram_tmrbankmachine4_cmd_buffer2_sink_last = sdram_tmrbankmachine4_cmd_b
 assign sdram_tmrbankmachine4_cmd_buffer2_sink_payload_we = sdram_tmrbankmachine4_cmd_buffer_lookahead2_source_payload_we;
 assign sdram_tmrbankmachine4_cmd_buffer2_sink_payload_addr = sdram_tmrbankmachine4_cmd_buffer_lookahead2_source_payload_addr;
 assign sdram_tmrbankmachine4_cmd_buffer2_source_ready = (sdram_tmrbankmachine4_req_wdata_ready | sdram_tmrbankmachine4_req_rdata_valid);
-
-// synthesis translate_off
-reg dummy_d_78;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_valid <= 1'd0;
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine4_req_valid;
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine4_req_valid;
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine4_req_valid;
-// synthesis translate_off
-	dummy_d_78 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_79;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_we <= 1'd0;
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine4_req_we;
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine4_req_we;
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine4_req_we;
-// synthesis translate_off
-	dummy_d_79 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_80;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_addr <= 21'd0;
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine4_req_addr;
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine4_req_addr;
-	sdram_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine4_req_addr;
-// synthesis translate_off
-	dummy_d_80 <= dummy_s;
-// synthesis translate_on
-end
+assign sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_valid = sdram_tmrbankmachine4_req_valid;
+assign sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_payload_we = sdram_tmrbankmachine4_req_we;
+assign sdram_tmrbankmachine4_cmd_buffer_lookahead3_sink_payload_addr = sdram_tmrbankmachine4_req_addr;
 assign sdram_tmrbankmachine4_cmd_buffer3_sink_valid = sdram_tmrbankmachine4_cmd_buffer_lookahead3_source_valid;
 assign sdram_tmrbankmachine4_cmd_buffer_lookahead3_source_ready = sdram_tmrbankmachine4_cmd_buffer3_sink_ready;
 assign sdram_tmrbankmachine4_cmd_buffer3_sink_first = sdram_tmrbankmachine4_cmd_buffer_lookahead3_source_first;
@@ -7433,7 +7283,7 @@ assign sdram_tmrbankmachine4_row_hit = (sdram_tmrbankmachine4_row == sdram_tmrba
 assign sdram_tmrbankmachine4_cmd_payload_ba = 3'd4;
 
 // synthesis translate_off
-reg dummy_d_81;
+reg dummy_d_66;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine4_cmd_payload_a <= 14'd0;
@@ -7443,7 +7293,7 @@ always @(*) begin
 		sdram_tmrbankmachine4_cmd_payload_a <= ((sdram_tmrbankmachine4_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine4_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
-	dummy_d_81 <= dummy_s;
+	dummy_d_66 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine4_twtpcon_valid = ((sdram_tmrbankmachine4_cmd_valid & sdram_tmrbankmachine4_cmd_ready) & sdram_tmrbankmachine4_cmd_payload_is_write);
@@ -7457,7 +7307,7 @@ assign sdram_tmrbankmachine4_trascon2_valid = ((sdram_tmrbankmachine4_cmd_valid 
 assign sdram_tmrbankmachine4_trascon3_valid = ((sdram_tmrbankmachine4_cmd_valid & sdram_tmrbankmachine4_cmd_ready) & sdram_tmrbankmachine4_row_open);
 
 // synthesis translate_off
-reg dummy_d_82;
+reg dummy_d_67;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine4_auto_precharge <= 1'd0;
@@ -7467,7 +7317,7 @@ always @(*) begin
 		end
 	end
 // synthesis translate_off
-	dummy_d_82 <= dummy_s;
+	dummy_d_67 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine4_TMRcmd_valid = {3{sdram_tmrbankmachine4_cmd_valid}};
@@ -7509,7 +7359,7 @@ assign sdram_tmrbankmachine4_cmd_buffer_lookahead_source_payload_addr = sdram_tm
 assign sdram_tmrbankmachine4_cmd_buffer_lookahead_syncfifo4_re = sdram_tmrbankmachine4_cmd_buffer_lookahead_source_ready;
 
 // synthesis translate_off
-reg dummy_d_83;
+reg dummy_d_68;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine4_cmd_buffer_lookahead_wrport_adr <= 3'd0;
@@ -7519,7 +7369,7 @@ always @(*) begin
 		sdram_tmrbankmachine4_cmd_buffer_lookahead_wrport_adr <= sdram_tmrbankmachine4_cmd_buffer_lookahead_produce;
 	end
 // synthesis translate_off
-	dummy_d_83 <= dummy_s;
+	dummy_d_68 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine4_cmd_buffer_lookahead_wrport_dat_w = sdram_tmrbankmachine4_cmd_buffer_lookahead_syncfifo4_din;
@@ -7546,7 +7396,7 @@ assign sdram_tmrbankmachine4_cmd_buffer_lookahead2_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine4_cmd_buffer_lookahead2_syncfifo4_re = sdram_tmrbankmachine4_cmd_buffer_lookahead2_source_ready;
 
 // synthesis translate_off
-reg dummy_d_84;
+reg dummy_d_69;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine4_cmd_buffer_lookahead2_wrport_adr <= 3'd0;
@@ -7556,7 +7406,7 @@ always @(*) begin
 		sdram_tmrbankmachine4_cmd_buffer_lookahead2_wrport_adr <= sdram_tmrbankmachine4_cmd_buffer_lookahead2_produce;
 	end
 // synthesis translate_off
-	dummy_d_84 <= dummy_s;
+	dummy_d_69 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine4_cmd_buffer_lookahead2_wrport_dat_w = sdram_tmrbankmachine4_cmd_buffer_lookahead2_syncfifo4_din;
@@ -7583,7 +7433,7 @@ assign sdram_tmrbankmachine4_cmd_buffer_lookahead3_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine4_cmd_buffer_lookahead3_syncfifo4_re = sdram_tmrbankmachine4_cmd_buffer_lookahead3_source_ready;
 
 // synthesis translate_off
-reg dummy_d_85;
+reg dummy_d_70;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine4_cmd_buffer_lookahead3_wrport_adr <= 3'd0;
@@ -7593,7 +7443,7 @@ always @(*) begin
 		sdram_tmrbankmachine4_cmd_buffer_lookahead3_wrport_adr <= sdram_tmrbankmachine4_cmd_buffer_lookahead3_produce;
 	end
 // synthesis translate_off
-	dummy_d_85 <= dummy_s;
+	dummy_d_70 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine4_cmd_buffer_lookahead3_wrport_dat_w = sdram_tmrbankmachine4_cmd_buffer_lookahead3_syncfifo4_din;
@@ -7607,14 +7457,14 @@ assign sdram_tmrbankmachine4_cmd_buffer3_sink_ready = ((~sdram_tmrbankmachine4_c
 assign sdram_tmrbankmachine4_tmrinput_control4 = (((slice_proxy570[0] & slice_proxy571[1]) | (slice_proxy572[1] & slice_proxy573[2])) | (slice_proxy574[0] & slice_proxy575[2]));
 
 // synthesis translate_off
-reg dummy_d_86;
+reg dummy_d_71;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine4_req_lock <= 1'd0;
 	sdram_tmrbankmachine4_req_lock <= (sdram_tmrbankmachine4_cmd_buffer_lookahead_source_valid | sdram_tmrbankmachine4_cmd_buffer_source_valid);
 	sdram_tmrbankmachine4_req_lock <= sdram_tmrbankmachine4_tmrinput_control4;
 // synthesis translate_off
-	dummy_d_86 <= dummy_s;
+	dummy_d_71 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine4_lookAddrVote_control = (((slice_proxy576[20:0] & slice_proxy577[41:21]) | (slice_proxy578[41:21] & slice_proxy579[62:42])) | (slice_proxy580[20:0] & slice_proxy581[62:42]));
@@ -7627,7 +7477,7 @@ assign sdram_tmrbankmachine4_trcVote_control = (((slice_proxy612[0] & slice_prox
 assign sdram_tmrbankmachine4_trasVote_control = (((slice_proxy618[0] & slice_proxy619[1]) | (slice_proxy620[1] & slice_proxy621[2])) | (slice_proxy622[0] & slice_proxy623[2]));
 
 // synthesis translate_off
-reg dummy_d_87;
+reg dummy_d_72;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine4_req_wdata_ready <= 1'd0;
@@ -7729,9 +7579,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_87 <= dummy_s;
+	dummy_d_72 <= dummy_s;
 // synthesis translate_on
 end
+assign sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_valid = sdram_tmrbankmachine5_req_valid;
+assign sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_we = sdram_tmrbankmachine5_req_we;
+assign sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_addr = sdram_tmrbankmachine5_req_addr;
 assign sdram_tmrbankmachine5_cmd_buffer_sink_valid = sdram_tmrbankmachine5_cmd_buffer_lookahead_source_valid;
 assign sdram_tmrbankmachine5_cmd_buffer_lookahead_source_ready = sdram_tmrbankmachine5_cmd_buffer_sink_ready;
 assign sdram_tmrbankmachine5_cmd_buffer_sink_first = sdram_tmrbankmachine5_cmd_buffer_lookahead_source_first;
@@ -7739,6 +7592,9 @@ assign sdram_tmrbankmachine5_cmd_buffer_sink_last = sdram_tmrbankmachine5_cmd_bu
 assign sdram_tmrbankmachine5_cmd_buffer_sink_payload_we = sdram_tmrbankmachine5_cmd_buffer_lookahead_source_payload_we;
 assign sdram_tmrbankmachine5_cmd_buffer_sink_payload_addr = sdram_tmrbankmachine5_cmd_buffer_lookahead_source_payload_addr;
 assign sdram_tmrbankmachine5_cmd_buffer_source_ready = (sdram_tmrbankmachine5_req_wdata_ready | sdram_tmrbankmachine5_req_rdata_valid);
+assign sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_valid = sdram_tmrbankmachine5_req_valid;
+assign sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_payload_we = sdram_tmrbankmachine5_req_we;
+assign sdram_tmrbankmachine5_cmd_buffer_lookahead2_sink_payload_addr = sdram_tmrbankmachine5_req_addr;
 assign sdram_tmrbankmachine5_cmd_buffer2_sink_valid = sdram_tmrbankmachine5_cmd_buffer_lookahead2_source_valid;
 assign sdram_tmrbankmachine5_cmd_buffer_lookahead2_source_ready = sdram_tmrbankmachine5_cmd_buffer2_sink_ready;
 assign sdram_tmrbankmachine5_cmd_buffer2_sink_first = sdram_tmrbankmachine5_cmd_buffer_lookahead2_source_first;
@@ -7746,45 +7602,9 @@ assign sdram_tmrbankmachine5_cmd_buffer2_sink_last = sdram_tmrbankmachine5_cmd_b
 assign sdram_tmrbankmachine5_cmd_buffer2_sink_payload_we = sdram_tmrbankmachine5_cmd_buffer_lookahead2_source_payload_we;
 assign sdram_tmrbankmachine5_cmd_buffer2_sink_payload_addr = sdram_tmrbankmachine5_cmd_buffer_lookahead2_source_payload_addr;
 assign sdram_tmrbankmachine5_cmd_buffer2_source_ready = (sdram_tmrbankmachine5_req_wdata_ready | sdram_tmrbankmachine5_req_rdata_valid);
-
-// synthesis translate_off
-reg dummy_d_88;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_valid <= 1'd0;
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine5_req_valid;
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine5_req_valid;
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine5_req_valid;
-// synthesis translate_off
-	dummy_d_88 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_89;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_we <= 1'd0;
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine5_req_we;
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine5_req_we;
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine5_req_we;
-// synthesis translate_off
-	dummy_d_89 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_90;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_addr <= 21'd0;
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine5_req_addr;
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine5_req_addr;
-	sdram_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine5_req_addr;
-// synthesis translate_off
-	dummy_d_90 <= dummy_s;
-// synthesis translate_on
-end
+assign sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_valid = sdram_tmrbankmachine5_req_valid;
+assign sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_payload_we = sdram_tmrbankmachine5_req_we;
+assign sdram_tmrbankmachine5_cmd_buffer_lookahead3_sink_payload_addr = sdram_tmrbankmachine5_req_addr;
 assign sdram_tmrbankmachine5_cmd_buffer3_sink_valid = sdram_tmrbankmachine5_cmd_buffer_lookahead3_source_valid;
 assign sdram_tmrbankmachine5_cmd_buffer_lookahead3_source_ready = sdram_tmrbankmachine5_cmd_buffer3_sink_ready;
 assign sdram_tmrbankmachine5_cmd_buffer3_sink_first = sdram_tmrbankmachine5_cmd_buffer_lookahead3_source_first;
@@ -7797,7 +7617,7 @@ assign sdram_tmrbankmachine5_row_hit = (sdram_tmrbankmachine5_row == sdram_tmrba
 assign sdram_tmrbankmachine5_cmd_payload_ba = 3'd5;
 
 // synthesis translate_off
-reg dummy_d_91;
+reg dummy_d_73;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine5_cmd_payload_a <= 14'd0;
@@ -7807,7 +7627,7 @@ always @(*) begin
 		sdram_tmrbankmachine5_cmd_payload_a <= ((sdram_tmrbankmachine5_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine5_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
-	dummy_d_91 <= dummy_s;
+	dummy_d_73 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine5_twtpcon_valid = ((sdram_tmrbankmachine5_cmd_valid & sdram_tmrbankmachine5_cmd_ready) & sdram_tmrbankmachine5_cmd_payload_is_write);
@@ -7821,7 +7641,7 @@ assign sdram_tmrbankmachine5_trascon2_valid = ((sdram_tmrbankmachine5_cmd_valid 
 assign sdram_tmrbankmachine5_trascon3_valid = ((sdram_tmrbankmachine5_cmd_valid & sdram_tmrbankmachine5_cmd_ready) & sdram_tmrbankmachine5_row_open);
 
 // synthesis translate_off
-reg dummy_d_92;
+reg dummy_d_74;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine5_auto_precharge <= 1'd0;
@@ -7831,7 +7651,7 @@ always @(*) begin
 		end
 	end
 // synthesis translate_off
-	dummy_d_92 <= dummy_s;
+	dummy_d_74 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine5_TMRcmd_valid = {3{sdram_tmrbankmachine5_cmd_valid}};
@@ -7873,7 +7693,7 @@ assign sdram_tmrbankmachine5_cmd_buffer_lookahead_source_payload_addr = sdram_tm
 assign sdram_tmrbankmachine5_cmd_buffer_lookahead_syncfifo5_re = sdram_tmrbankmachine5_cmd_buffer_lookahead_source_ready;
 
 // synthesis translate_off
-reg dummy_d_93;
+reg dummy_d_75;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine5_cmd_buffer_lookahead_wrport_adr <= 3'd0;
@@ -7883,7 +7703,7 @@ always @(*) begin
 		sdram_tmrbankmachine5_cmd_buffer_lookahead_wrport_adr <= sdram_tmrbankmachine5_cmd_buffer_lookahead_produce;
 	end
 // synthesis translate_off
-	dummy_d_93 <= dummy_s;
+	dummy_d_75 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine5_cmd_buffer_lookahead_wrport_dat_w = sdram_tmrbankmachine5_cmd_buffer_lookahead_syncfifo5_din;
@@ -7910,7 +7730,7 @@ assign sdram_tmrbankmachine5_cmd_buffer_lookahead2_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine5_cmd_buffer_lookahead2_syncfifo5_re = sdram_tmrbankmachine5_cmd_buffer_lookahead2_source_ready;
 
 // synthesis translate_off
-reg dummy_d_94;
+reg dummy_d_76;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine5_cmd_buffer_lookahead2_wrport_adr <= 3'd0;
@@ -7920,7 +7740,7 @@ always @(*) begin
 		sdram_tmrbankmachine5_cmd_buffer_lookahead2_wrport_adr <= sdram_tmrbankmachine5_cmd_buffer_lookahead2_produce;
 	end
 // synthesis translate_off
-	dummy_d_94 <= dummy_s;
+	dummy_d_76 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine5_cmd_buffer_lookahead2_wrport_dat_w = sdram_tmrbankmachine5_cmd_buffer_lookahead2_syncfifo5_din;
@@ -7947,7 +7767,7 @@ assign sdram_tmrbankmachine5_cmd_buffer_lookahead3_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine5_cmd_buffer_lookahead3_syncfifo5_re = sdram_tmrbankmachine5_cmd_buffer_lookahead3_source_ready;
 
 // synthesis translate_off
-reg dummy_d_95;
+reg dummy_d_77;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine5_cmd_buffer_lookahead3_wrport_adr <= 3'd0;
@@ -7957,7 +7777,7 @@ always @(*) begin
 		sdram_tmrbankmachine5_cmd_buffer_lookahead3_wrport_adr <= sdram_tmrbankmachine5_cmd_buffer_lookahead3_produce;
 	end
 // synthesis translate_off
-	dummy_d_95 <= dummy_s;
+	dummy_d_77 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine5_cmd_buffer_lookahead3_wrport_dat_w = sdram_tmrbankmachine5_cmd_buffer_lookahead3_syncfifo5_din;
@@ -7971,14 +7791,14 @@ assign sdram_tmrbankmachine5_cmd_buffer3_sink_ready = ((~sdram_tmrbankmachine5_c
 assign sdram_tmrbankmachine5_tmrinput_control4 = (((slice_proxy624[0] & slice_proxy625[1]) | (slice_proxy626[1] & slice_proxy627[2])) | (slice_proxy628[0] & slice_proxy629[2]));
 
 // synthesis translate_off
-reg dummy_d_96;
+reg dummy_d_78;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine5_req_lock <= 1'd0;
 	sdram_tmrbankmachine5_req_lock <= (sdram_tmrbankmachine5_cmd_buffer_lookahead_source_valid | sdram_tmrbankmachine5_cmd_buffer_source_valid);
 	sdram_tmrbankmachine5_req_lock <= sdram_tmrbankmachine5_tmrinput_control4;
 // synthesis translate_off
-	dummy_d_96 <= dummy_s;
+	dummy_d_78 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine5_lookAddrVote_control = (((slice_proxy630[20:0] & slice_proxy631[41:21]) | (slice_proxy632[41:21] & slice_proxy633[62:42])) | (slice_proxy634[20:0] & slice_proxy635[62:42]));
@@ -7991,7 +7811,7 @@ assign sdram_tmrbankmachine5_trcVote_control = (((slice_proxy666[0] & slice_prox
 assign sdram_tmrbankmachine5_trasVote_control = (((slice_proxy672[0] & slice_proxy673[1]) | (slice_proxy674[1] & slice_proxy675[2])) | (slice_proxy676[0] & slice_proxy677[2]));
 
 // synthesis translate_off
-reg dummy_d_97;
+reg dummy_d_79;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine5_req_wdata_ready <= 1'd0;
@@ -8093,9 +7913,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_97 <= dummy_s;
+	dummy_d_79 <= dummy_s;
 // synthesis translate_on
 end
+assign sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_valid = sdram_tmrbankmachine6_req_valid;
+assign sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_we = sdram_tmrbankmachine6_req_we;
+assign sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_addr = sdram_tmrbankmachine6_req_addr;
 assign sdram_tmrbankmachine6_cmd_buffer_sink_valid = sdram_tmrbankmachine6_cmd_buffer_lookahead_source_valid;
 assign sdram_tmrbankmachine6_cmd_buffer_lookahead_source_ready = sdram_tmrbankmachine6_cmd_buffer_sink_ready;
 assign sdram_tmrbankmachine6_cmd_buffer_sink_first = sdram_tmrbankmachine6_cmd_buffer_lookahead_source_first;
@@ -8103,6 +7926,9 @@ assign sdram_tmrbankmachine6_cmd_buffer_sink_last = sdram_tmrbankmachine6_cmd_bu
 assign sdram_tmrbankmachine6_cmd_buffer_sink_payload_we = sdram_tmrbankmachine6_cmd_buffer_lookahead_source_payload_we;
 assign sdram_tmrbankmachine6_cmd_buffer_sink_payload_addr = sdram_tmrbankmachine6_cmd_buffer_lookahead_source_payload_addr;
 assign sdram_tmrbankmachine6_cmd_buffer_source_ready = (sdram_tmrbankmachine6_req_wdata_ready | sdram_tmrbankmachine6_req_rdata_valid);
+assign sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_valid = sdram_tmrbankmachine6_req_valid;
+assign sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_payload_we = sdram_tmrbankmachine6_req_we;
+assign sdram_tmrbankmachine6_cmd_buffer_lookahead2_sink_payload_addr = sdram_tmrbankmachine6_req_addr;
 assign sdram_tmrbankmachine6_cmd_buffer2_sink_valid = sdram_tmrbankmachine6_cmd_buffer_lookahead2_source_valid;
 assign sdram_tmrbankmachine6_cmd_buffer_lookahead2_source_ready = sdram_tmrbankmachine6_cmd_buffer2_sink_ready;
 assign sdram_tmrbankmachine6_cmd_buffer2_sink_first = sdram_tmrbankmachine6_cmd_buffer_lookahead2_source_first;
@@ -8110,45 +7936,9 @@ assign sdram_tmrbankmachine6_cmd_buffer2_sink_last = sdram_tmrbankmachine6_cmd_b
 assign sdram_tmrbankmachine6_cmd_buffer2_sink_payload_we = sdram_tmrbankmachine6_cmd_buffer_lookahead2_source_payload_we;
 assign sdram_tmrbankmachine6_cmd_buffer2_sink_payload_addr = sdram_tmrbankmachine6_cmd_buffer_lookahead2_source_payload_addr;
 assign sdram_tmrbankmachine6_cmd_buffer2_source_ready = (sdram_tmrbankmachine6_req_wdata_ready | sdram_tmrbankmachine6_req_rdata_valid);
-
-// synthesis translate_off
-reg dummy_d_98;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_valid <= 1'd0;
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine6_req_valid;
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine6_req_valid;
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine6_req_valid;
-// synthesis translate_off
-	dummy_d_98 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_99;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_we <= 1'd0;
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine6_req_we;
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine6_req_we;
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine6_req_we;
-// synthesis translate_off
-	dummy_d_99 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_100;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_addr <= 21'd0;
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine6_req_addr;
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine6_req_addr;
-	sdram_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine6_req_addr;
-// synthesis translate_off
-	dummy_d_100 <= dummy_s;
-// synthesis translate_on
-end
+assign sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_valid = sdram_tmrbankmachine6_req_valid;
+assign sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_payload_we = sdram_tmrbankmachine6_req_we;
+assign sdram_tmrbankmachine6_cmd_buffer_lookahead3_sink_payload_addr = sdram_tmrbankmachine6_req_addr;
 assign sdram_tmrbankmachine6_cmd_buffer3_sink_valid = sdram_tmrbankmachine6_cmd_buffer_lookahead3_source_valid;
 assign sdram_tmrbankmachine6_cmd_buffer_lookahead3_source_ready = sdram_tmrbankmachine6_cmd_buffer3_sink_ready;
 assign sdram_tmrbankmachine6_cmd_buffer3_sink_first = sdram_tmrbankmachine6_cmd_buffer_lookahead3_source_first;
@@ -8161,7 +7951,7 @@ assign sdram_tmrbankmachine6_row_hit = (sdram_tmrbankmachine6_row == sdram_tmrba
 assign sdram_tmrbankmachine6_cmd_payload_ba = 3'd6;
 
 // synthesis translate_off
-reg dummy_d_101;
+reg dummy_d_80;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine6_cmd_payload_a <= 14'd0;
@@ -8171,7 +7961,7 @@ always @(*) begin
 		sdram_tmrbankmachine6_cmd_payload_a <= ((sdram_tmrbankmachine6_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine6_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
-	dummy_d_101 <= dummy_s;
+	dummy_d_80 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine6_twtpcon_valid = ((sdram_tmrbankmachine6_cmd_valid & sdram_tmrbankmachine6_cmd_ready) & sdram_tmrbankmachine6_cmd_payload_is_write);
@@ -8185,7 +7975,7 @@ assign sdram_tmrbankmachine6_trascon2_valid = ((sdram_tmrbankmachine6_cmd_valid 
 assign sdram_tmrbankmachine6_trascon3_valid = ((sdram_tmrbankmachine6_cmd_valid & sdram_tmrbankmachine6_cmd_ready) & sdram_tmrbankmachine6_row_open);
 
 // synthesis translate_off
-reg dummy_d_102;
+reg dummy_d_81;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine6_auto_precharge <= 1'd0;
@@ -8195,7 +7985,7 @@ always @(*) begin
 		end
 	end
 // synthesis translate_off
-	dummy_d_102 <= dummy_s;
+	dummy_d_81 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine6_TMRcmd_valid = {3{sdram_tmrbankmachine6_cmd_valid}};
@@ -8237,7 +8027,7 @@ assign sdram_tmrbankmachine6_cmd_buffer_lookahead_source_payload_addr = sdram_tm
 assign sdram_tmrbankmachine6_cmd_buffer_lookahead_syncfifo6_re = sdram_tmrbankmachine6_cmd_buffer_lookahead_source_ready;
 
 // synthesis translate_off
-reg dummy_d_103;
+reg dummy_d_82;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine6_cmd_buffer_lookahead_wrport_adr <= 3'd0;
@@ -8247,7 +8037,7 @@ always @(*) begin
 		sdram_tmrbankmachine6_cmd_buffer_lookahead_wrport_adr <= sdram_tmrbankmachine6_cmd_buffer_lookahead_produce;
 	end
 // synthesis translate_off
-	dummy_d_103 <= dummy_s;
+	dummy_d_82 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine6_cmd_buffer_lookahead_wrport_dat_w = sdram_tmrbankmachine6_cmd_buffer_lookahead_syncfifo6_din;
@@ -8274,7 +8064,7 @@ assign sdram_tmrbankmachine6_cmd_buffer_lookahead2_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine6_cmd_buffer_lookahead2_syncfifo6_re = sdram_tmrbankmachine6_cmd_buffer_lookahead2_source_ready;
 
 // synthesis translate_off
-reg dummy_d_104;
+reg dummy_d_83;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine6_cmd_buffer_lookahead2_wrport_adr <= 3'd0;
@@ -8284,7 +8074,7 @@ always @(*) begin
 		sdram_tmrbankmachine6_cmd_buffer_lookahead2_wrport_adr <= sdram_tmrbankmachine6_cmd_buffer_lookahead2_produce;
 	end
 // synthesis translate_off
-	dummy_d_104 <= dummy_s;
+	dummy_d_83 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine6_cmd_buffer_lookahead2_wrport_dat_w = sdram_tmrbankmachine6_cmd_buffer_lookahead2_syncfifo6_din;
@@ -8311,7 +8101,7 @@ assign sdram_tmrbankmachine6_cmd_buffer_lookahead3_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine6_cmd_buffer_lookahead3_syncfifo6_re = sdram_tmrbankmachine6_cmd_buffer_lookahead3_source_ready;
 
 // synthesis translate_off
-reg dummy_d_105;
+reg dummy_d_84;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine6_cmd_buffer_lookahead3_wrport_adr <= 3'd0;
@@ -8321,7 +8111,7 @@ always @(*) begin
 		sdram_tmrbankmachine6_cmd_buffer_lookahead3_wrport_adr <= sdram_tmrbankmachine6_cmd_buffer_lookahead3_produce;
 	end
 // synthesis translate_off
-	dummy_d_105 <= dummy_s;
+	dummy_d_84 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine6_cmd_buffer_lookahead3_wrport_dat_w = sdram_tmrbankmachine6_cmd_buffer_lookahead3_syncfifo6_din;
@@ -8335,14 +8125,14 @@ assign sdram_tmrbankmachine6_cmd_buffer3_sink_ready = ((~sdram_tmrbankmachine6_c
 assign sdram_tmrbankmachine6_tmrinput_control4 = (((slice_proxy678[0] & slice_proxy679[1]) | (slice_proxy680[1] & slice_proxy681[2])) | (slice_proxy682[0] & slice_proxy683[2]));
 
 // synthesis translate_off
-reg dummy_d_106;
+reg dummy_d_85;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine6_req_lock <= 1'd0;
 	sdram_tmrbankmachine6_req_lock <= (sdram_tmrbankmachine6_cmd_buffer_lookahead_source_valid | sdram_tmrbankmachine6_cmd_buffer_source_valid);
 	sdram_tmrbankmachine6_req_lock <= sdram_tmrbankmachine6_tmrinput_control4;
 // synthesis translate_off
-	dummy_d_106 <= dummy_s;
+	dummy_d_85 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine6_lookAddrVote_control = (((slice_proxy684[20:0] & slice_proxy685[41:21]) | (slice_proxy686[41:21] & slice_proxy687[62:42])) | (slice_proxy688[20:0] & slice_proxy689[62:42]));
@@ -8355,7 +8145,7 @@ assign sdram_tmrbankmachine6_trcVote_control = (((slice_proxy720[0] & slice_prox
 assign sdram_tmrbankmachine6_trasVote_control = (((slice_proxy726[0] & slice_proxy727[1]) | (slice_proxy728[1] & slice_proxy729[2])) | (slice_proxy730[0] & slice_proxy731[2]));
 
 // synthesis translate_off
-reg dummy_d_107;
+reg dummy_d_86;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine6_req_wdata_ready <= 1'd0;
@@ -8457,9 +8247,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_107 <= dummy_s;
+	dummy_d_86 <= dummy_s;
 // synthesis translate_on
 end
+assign sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_valid = sdram_tmrbankmachine7_req_valid;
+assign sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_we = sdram_tmrbankmachine7_req_we;
+assign sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_addr = sdram_tmrbankmachine7_req_addr;
 assign sdram_tmrbankmachine7_cmd_buffer_sink_valid = sdram_tmrbankmachine7_cmd_buffer_lookahead_source_valid;
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead_source_ready = sdram_tmrbankmachine7_cmd_buffer_sink_ready;
 assign sdram_tmrbankmachine7_cmd_buffer_sink_first = sdram_tmrbankmachine7_cmd_buffer_lookahead_source_first;
@@ -8467,6 +8260,9 @@ assign sdram_tmrbankmachine7_cmd_buffer_sink_last = sdram_tmrbankmachine7_cmd_bu
 assign sdram_tmrbankmachine7_cmd_buffer_sink_payload_we = sdram_tmrbankmachine7_cmd_buffer_lookahead_source_payload_we;
 assign sdram_tmrbankmachine7_cmd_buffer_sink_payload_addr = sdram_tmrbankmachine7_cmd_buffer_lookahead_source_payload_addr;
 assign sdram_tmrbankmachine7_cmd_buffer_source_ready = (sdram_tmrbankmachine7_req_wdata_ready | sdram_tmrbankmachine7_req_rdata_valid);
+assign sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_valid = sdram_tmrbankmachine7_req_valid;
+assign sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_payload_we = sdram_tmrbankmachine7_req_we;
+assign sdram_tmrbankmachine7_cmd_buffer_lookahead2_sink_payload_addr = sdram_tmrbankmachine7_req_addr;
 assign sdram_tmrbankmachine7_cmd_buffer2_sink_valid = sdram_tmrbankmachine7_cmd_buffer_lookahead2_source_valid;
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead2_source_ready = sdram_tmrbankmachine7_cmd_buffer2_sink_ready;
 assign sdram_tmrbankmachine7_cmd_buffer2_sink_first = sdram_tmrbankmachine7_cmd_buffer_lookahead2_source_first;
@@ -8474,45 +8270,9 @@ assign sdram_tmrbankmachine7_cmd_buffer2_sink_last = sdram_tmrbankmachine7_cmd_b
 assign sdram_tmrbankmachine7_cmd_buffer2_sink_payload_we = sdram_tmrbankmachine7_cmd_buffer_lookahead2_source_payload_we;
 assign sdram_tmrbankmachine7_cmd_buffer2_sink_payload_addr = sdram_tmrbankmachine7_cmd_buffer_lookahead2_source_payload_addr;
 assign sdram_tmrbankmachine7_cmd_buffer2_source_ready = (sdram_tmrbankmachine7_req_wdata_ready | sdram_tmrbankmachine7_req_rdata_valid);
-
-// synthesis translate_off
-reg dummy_d_108;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_valid <= 1'd0;
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine7_req_valid;
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine7_req_valid;
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_valid <= sdram_tmrbankmachine7_req_valid;
-// synthesis translate_off
-	dummy_d_108 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_109;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_we <= 1'd0;
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine7_req_we;
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine7_req_we;
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_we <= sdram_tmrbankmachine7_req_we;
-// synthesis translate_off
-	dummy_d_109 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_110;
-// synthesis translate_on
-always @(*) begin
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_addr <= 21'd0;
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine7_req_addr;
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine7_req_addr;
-	sdram_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_addr <= sdram_tmrbankmachine7_req_addr;
-// synthesis translate_off
-	dummy_d_110 <= dummy_s;
-// synthesis translate_on
-end
+assign sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_valid = sdram_tmrbankmachine7_req_valid;
+assign sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_payload_we = sdram_tmrbankmachine7_req_we;
+assign sdram_tmrbankmachine7_cmd_buffer_lookahead3_sink_payload_addr = sdram_tmrbankmachine7_req_addr;
 assign sdram_tmrbankmachine7_cmd_buffer3_sink_valid = sdram_tmrbankmachine7_cmd_buffer_lookahead3_source_valid;
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead3_source_ready = sdram_tmrbankmachine7_cmd_buffer3_sink_ready;
 assign sdram_tmrbankmachine7_cmd_buffer3_sink_first = sdram_tmrbankmachine7_cmd_buffer_lookahead3_source_first;
@@ -8525,7 +8285,7 @@ assign sdram_tmrbankmachine7_row_hit = (sdram_tmrbankmachine7_row == sdram_tmrba
 assign sdram_tmrbankmachine7_cmd_payload_ba = 3'd7;
 
 // synthesis translate_off
-reg dummy_d_111;
+reg dummy_d_87;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine7_cmd_payload_a <= 14'd0;
@@ -8535,7 +8295,7 @@ always @(*) begin
 		sdram_tmrbankmachine7_cmd_payload_a <= ((sdram_tmrbankmachine7_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine7_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
-	dummy_d_111 <= dummy_s;
+	dummy_d_87 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine7_twtpcon_valid = ((sdram_tmrbankmachine7_cmd_valid & sdram_tmrbankmachine7_cmd_ready) & sdram_tmrbankmachine7_cmd_payload_is_write);
@@ -8549,7 +8309,7 @@ assign sdram_tmrbankmachine7_trascon2_valid = ((sdram_tmrbankmachine7_cmd_valid 
 assign sdram_tmrbankmachine7_trascon3_valid = ((sdram_tmrbankmachine7_cmd_valid & sdram_tmrbankmachine7_cmd_ready) & sdram_tmrbankmachine7_row_open);
 
 // synthesis translate_off
-reg dummy_d_112;
+reg dummy_d_88;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine7_auto_precharge <= 1'd0;
@@ -8559,7 +8319,7 @@ always @(*) begin
 		end
 	end
 // synthesis translate_off
-	dummy_d_112 <= dummy_s;
+	dummy_d_88 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine7_TMRcmd_valid = {3{sdram_tmrbankmachine7_cmd_valid}};
@@ -8601,7 +8361,7 @@ assign sdram_tmrbankmachine7_cmd_buffer_lookahead_source_payload_addr = sdram_tm
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead_syncfifo7_re = sdram_tmrbankmachine7_cmd_buffer_lookahead_source_ready;
 
 // synthesis translate_off
-reg dummy_d_113;
+reg dummy_d_89;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine7_cmd_buffer_lookahead_wrport_adr <= 3'd0;
@@ -8611,7 +8371,7 @@ always @(*) begin
 		sdram_tmrbankmachine7_cmd_buffer_lookahead_wrport_adr <= sdram_tmrbankmachine7_cmd_buffer_lookahead_produce;
 	end
 // synthesis translate_off
-	dummy_d_113 <= dummy_s;
+	dummy_d_89 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead_wrport_dat_w = sdram_tmrbankmachine7_cmd_buffer_lookahead_syncfifo7_din;
@@ -8638,7 +8398,7 @@ assign sdram_tmrbankmachine7_cmd_buffer_lookahead2_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead2_syncfifo7_re = sdram_tmrbankmachine7_cmd_buffer_lookahead2_source_ready;
 
 // synthesis translate_off
-reg dummy_d_114;
+reg dummy_d_90;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine7_cmd_buffer_lookahead2_wrport_adr <= 3'd0;
@@ -8648,7 +8408,7 @@ always @(*) begin
 		sdram_tmrbankmachine7_cmd_buffer_lookahead2_wrport_adr <= sdram_tmrbankmachine7_cmd_buffer_lookahead2_produce;
 	end
 // synthesis translate_off
-	dummy_d_114 <= dummy_s;
+	dummy_d_90 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead2_wrport_dat_w = sdram_tmrbankmachine7_cmd_buffer_lookahead2_syncfifo7_din;
@@ -8675,7 +8435,7 @@ assign sdram_tmrbankmachine7_cmd_buffer_lookahead3_source_payload_addr = sdram_t
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead3_syncfifo7_re = sdram_tmrbankmachine7_cmd_buffer_lookahead3_source_ready;
 
 // synthesis translate_off
-reg dummy_d_115;
+reg dummy_d_91;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine7_cmd_buffer_lookahead3_wrport_adr <= 3'd0;
@@ -8685,7 +8445,7 @@ always @(*) begin
 		sdram_tmrbankmachine7_cmd_buffer_lookahead3_wrport_adr <= sdram_tmrbankmachine7_cmd_buffer_lookahead3_produce;
 	end
 // synthesis translate_off
-	dummy_d_115 <= dummy_s;
+	dummy_d_91 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine7_cmd_buffer_lookahead3_wrport_dat_w = sdram_tmrbankmachine7_cmd_buffer_lookahead3_syncfifo7_din;
@@ -8699,14 +8459,14 @@ assign sdram_tmrbankmachine7_cmd_buffer3_sink_ready = ((~sdram_tmrbankmachine7_c
 assign sdram_tmrbankmachine7_tmrinput_control4 = (((slice_proxy732[0] & slice_proxy733[1]) | (slice_proxy734[1] & slice_proxy735[2])) | (slice_proxy736[0] & slice_proxy737[2]));
 
 // synthesis translate_off
-reg dummy_d_116;
+reg dummy_d_92;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine7_req_lock <= 1'd0;
 	sdram_tmrbankmachine7_req_lock <= (sdram_tmrbankmachine7_cmd_buffer_lookahead_source_valid | sdram_tmrbankmachine7_cmd_buffer_source_valid);
 	sdram_tmrbankmachine7_req_lock <= sdram_tmrbankmachine7_tmrinput_control4;
 // synthesis translate_off
-	dummy_d_116 <= dummy_s;
+	dummy_d_92 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_tmrbankmachine7_lookAddrVote_control = (((slice_proxy738[20:0] & slice_proxy739[41:21]) | (slice_proxy740[41:21] & slice_proxy741[62:42])) | (slice_proxy742[20:0] & slice_proxy743[62:42]));
@@ -8719,7 +8479,7 @@ assign sdram_tmrbankmachine7_trcVote_control = (((slice_proxy774[0] & slice_prox
 assign sdram_tmrbankmachine7_trasVote_control = (((slice_proxy780[0] & slice_proxy781[1]) | (slice_proxy782[1] & slice_proxy783[2])) | (slice_proxy784[0] & slice_proxy785[2]));
 
 // synthesis translate_off
-reg dummy_d_117;
+reg dummy_d_93;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine7_req_wdata_ready <= 1'd0;
@@ -8821,7 +8581,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_117 <= dummy_s;
+	dummy_d_93 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_multiplexer_rdcmdphase = (ddrphy_rdphase_storage - 1'd1);
@@ -9031,7 +8791,7 @@ assign sdram_multiplexer_control87 = (((sdram_tmrbankmachine7_TMRcmd_payload_is_
 assign sdram_multiplexer_endpoint7_payload_is_write = sdram_multiplexer_control87;
 
 // synthesis translate_off
-reg dummy_d_118;
+reg dummy_d_94;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_choose_cmd_valids <= 8'd0;
@@ -9044,7 +8804,7 @@ always @(*) begin
 	sdram_multiplexer_choose_cmd_valids[6] <= (sdram_multiplexer_endpoint6_valid & (((sdram_multiplexer_endpoint6_payload_is_cmd & sdram_multiplexer_choose_cmd_want_cmds) & ((~((sdram_multiplexer_endpoint6_payload_ras & (~sdram_multiplexer_endpoint6_payload_cas)) & (~sdram_multiplexer_endpoint6_payload_we))) | sdram_multiplexer_choose_cmd_want_activates)) | ((sdram_multiplexer_endpoint6_payload_is_read == sdram_multiplexer_choose_cmd_want_reads) & (sdram_multiplexer_endpoint6_payload_is_write == sdram_multiplexer_choose_cmd_want_writes))));
 	sdram_multiplexer_choose_cmd_valids[7] <= (sdram_multiplexer_endpoint7_valid & (((sdram_multiplexer_endpoint7_payload_is_cmd & sdram_multiplexer_choose_cmd_want_cmds) & ((~((sdram_multiplexer_endpoint7_payload_ras & (~sdram_multiplexer_endpoint7_payload_cas)) & (~sdram_multiplexer_endpoint7_payload_we))) | sdram_multiplexer_choose_cmd_want_activates)) | ((sdram_multiplexer_endpoint7_payload_is_read == sdram_multiplexer_choose_cmd_want_reads) & (sdram_multiplexer_endpoint7_payload_is_write == sdram_multiplexer_choose_cmd_want_writes))));
 // synthesis translate_off
-	dummy_d_118 <= dummy_s;
+	dummy_d_94 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_multiplexer_choose_cmd_request = sdram_multiplexer_choose_cmd_valids;
@@ -9056,7 +8816,7 @@ assign sdram_multiplexer_choose_cmd_cmd_payload_is_write = rhs_array_muxed4;
 assign sdram_multiplexer_choose_cmd_cmd_payload_is_cmd = rhs_array_muxed5;
 
 // synthesis translate_off
-reg dummy_d_119;
+reg dummy_d_95;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_choose_cmd_cmd_payload_cas <= 1'd0;
@@ -9064,12 +8824,12 @@ always @(*) begin
 		sdram_multiplexer_choose_cmd_cmd_payload_cas <= t_array_muxed0;
 	end
 // synthesis translate_off
-	dummy_d_119 <= dummy_s;
+	dummy_d_95 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_120;
+reg dummy_d_96;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_choose_cmd_cmd_payload_ras <= 1'd0;
@@ -9077,12 +8837,12 @@ always @(*) begin
 		sdram_multiplexer_choose_cmd_cmd_payload_ras <= t_array_muxed1;
 	end
 // synthesis translate_off
-	dummy_d_120 <= dummy_s;
+	dummy_d_96 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_121;
+reg dummy_d_97;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_choose_cmd_cmd_payload_we <= 1'd0;
@@ -9090,13 +8850,13 @@ always @(*) begin
 		sdram_multiplexer_choose_cmd_cmd_payload_we <= t_array_muxed2;
 	end
 // synthesis translate_off
-	dummy_d_121 <= dummy_s;
+	dummy_d_97 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_multiplexer_choose_cmd_ce = (sdram_multiplexer_choose_cmd_cmd_ready | (~sdram_multiplexer_choose_cmd_cmd_valid));
 
 // synthesis translate_off
-reg dummy_d_122;
+reg dummy_d_98;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_choose_req_valids <= 8'd0;
@@ -9109,7 +8869,7 @@ always @(*) begin
 	sdram_multiplexer_choose_req_valids[6] <= (sdram_multiplexer_endpoint6_valid & (((sdram_multiplexer_endpoint6_payload_is_cmd & sdram_multiplexer_choose_req_want_cmds) & ((~((sdram_multiplexer_endpoint6_payload_ras & (~sdram_multiplexer_endpoint6_payload_cas)) & (~sdram_multiplexer_endpoint6_payload_we))) | sdram_multiplexer_choose_req_want_activates)) | ((sdram_multiplexer_endpoint6_payload_is_read == sdram_multiplexer_choose_req_want_reads) & (sdram_multiplexer_endpoint6_payload_is_write == sdram_multiplexer_choose_req_want_writes))));
 	sdram_multiplexer_choose_req_valids[7] <= (sdram_multiplexer_endpoint7_valid & (((sdram_multiplexer_endpoint7_payload_is_cmd & sdram_multiplexer_choose_req_want_cmds) & ((~((sdram_multiplexer_endpoint7_payload_ras & (~sdram_multiplexer_endpoint7_payload_cas)) & (~sdram_multiplexer_endpoint7_payload_we))) | sdram_multiplexer_choose_req_want_activates)) | ((sdram_multiplexer_endpoint7_payload_is_read == sdram_multiplexer_choose_req_want_reads) & (sdram_multiplexer_endpoint7_payload_is_write == sdram_multiplexer_choose_req_want_writes))));
 // synthesis translate_off
-	dummy_d_122 <= dummy_s;
+	dummy_d_98 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_multiplexer_choose_req_request = sdram_multiplexer_choose_req_valids;
@@ -9121,7 +8881,7 @@ assign sdram_multiplexer_choose_req_cmd_payload_is_write = rhs_array_muxed10;
 assign sdram_multiplexer_choose_req_cmd_payload_is_cmd = rhs_array_muxed11;
 
 // synthesis translate_off
-reg dummy_d_123;
+reg dummy_d_99;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_choose_req_cmd_payload_cas <= 1'd0;
@@ -9129,12 +8889,12 @@ always @(*) begin
 		sdram_multiplexer_choose_req_cmd_payload_cas <= t_array_muxed3;
 	end
 // synthesis translate_off
-	dummy_d_123 <= dummy_s;
+	dummy_d_99 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_124;
+reg dummy_d_100;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_choose_req_cmd_payload_ras <= 1'd0;
@@ -9142,12 +8902,12 @@ always @(*) begin
 		sdram_multiplexer_choose_req_cmd_payload_ras <= t_array_muxed4;
 	end
 // synthesis translate_off
-	dummy_d_124 <= dummy_s;
+	dummy_d_100 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_125;
+reg dummy_d_101;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_choose_req_cmd_payload_we <= 1'd0;
@@ -9155,12 +8915,12 @@ always @(*) begin
 		sdram_multiplexer_choose_req_cmd_payload_we <= t_array_muxed5;
 	end
 // synthesis translate_off
-	dummy_d_125 <= dummy_s;
+	dummy_d_101 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_126;
+reg dummy_d_102;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_endpoint0_ready <= 1'd0;
@@ -9171,12 +8931,12 @@ always @(*) begin
 		sdram_multiplexer_endpoint0_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_126 <= dummy_s;
+	dummy_d_102 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_127;
+reg dummy_d_103;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_endpoint1_ready <= 1'd0;
@@ -9187,12 +8947,12 @@ always @(*) begin
 		sdram_multiplexer_endpoint1_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_127 <= dummy_s;
+	dummy_d_103 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_128;
+reg dummy_d_104;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_endpoint2_ready <= 1'd0;
@@ -9203,12 +8963,12 @@ always @(*) begin
 		sdram_multiplexer_endpoint2_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_128 <= dummy_s;
+	dummy_d_104 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_129;
+reg dummy_d_105;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_endpoint3_ready <= 1'd0;
@@ -9219,12 +8979,12 @@ always @(*) begin
 		sdram_multiplexer_endpoint3_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_129 <= dummy_s;
+	dummy_d_105 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_130;
+reg dummy_d_106;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_endpoint4_ready <= 1'd0;
@@ -9235,12 +8995,12 @@ always @(*) begin
 		sdram_multiplexer_endpoint4_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_130 <= dummy_s;
+	dummy_d_106 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_131;
+reg dummy_d_107;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_endpoint5_ready <= 1'd0;
@@ -9251,12 +9011,12 @@ always @(*) begin
 		sdram_multiplexer_endpoint5_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_131 <= dummy_s;
+	dummy_d_107 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_132;
+reg dummy_d_108;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_endpoint6_ready <= 1'd0;
@@ -9267,12 +9027,12 @@ always @(*) begin
 		sdram_multiplexer_endpoint6_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_132 <= dummy_s;
+	dummy_d_108 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_133;
+reg dummy_d_109;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_endpoint7_ready <= 1'd0;
@@ -9283,7 +9043,7 @@ always @(*) begin
 		sdram_multiplexer_endpoint7_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_133 <= dummy_s;
+	dummy_d_109 <= dummy_s;
 // synthesis translate_on
 end
 assign sdram_multiplexer_choose_req_ce = (sdram_multiplexer_choose_req_cmd_ready | (~sdram_multiplexer_choose_req_cmd_valid));
@@ -9330,7 +9090,7 @@ assign sdram_multiplexer_control100 = (((slice_proxy786[31:0] & slice_proxy787[6
 assign {sdram_dfi_p3_wrdata_mask, sdram_dfi_p2_wrdata_mask, sdram_dfi_p1_wrdata_mask, sdram_dfi_p0_wrdata_mask} = sdram_multiplexer_control100;
 
 // synthesis translate_off
-reg dummy_d_134;
+reg dummy_d_110;
 // synthesis translate_on
 always @(*) begin
 	sdram_multiplexer_choose_cmd_want_activates <= 1'd0;
@@ -9477,7 +9237,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_134 <= dummy_s;
+	dummy_d_110 <= dummy_s;
 // synthesis translate_on
 end
 assign roundrobin0_request = {(((cmd_payload_addr[9:7] == 1'd0) & (~(((((((locked0 | (sdram_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (sdram_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (sdram_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (sdram_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (sdram_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (sdram_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (sdram_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & port_cmd_valid)};
@@ -9522,7 +9282,7 @@ assign sdram_interface_bank7_we = rhs_array_muxed34;
 assign sdram_interface_bank7_valid = rhs_array_muxed35;
 
 // synthesis translate_off
-reg dummy_d_135;
+reg dummy_d_111;
 // synthesis translate_on
 always @(*) begin
 	sdram_TMRinterface_wdata <= 768'd0;
@@ -9538,7 +9298,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_135 <= dummy_s;
+	dummy_d_111 <= dummy_s;
 // synthesis translate_on
 end
 assign port_TMRrdata_payload_data = sdram_TMRinterface_rdata;
@@ -10445,7 +10205,7 @@ assign slice_proxy790 = (~sdram_TMRinterface_wdata_we);
 assign slice_proxy791 = (~sdram_TMRinterface_wdata_we);
 
 // synthesis translate_off
-reg dummy_d_136;
+reg dummy_d_112;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed0 <= 1'd0;
@@ -10476,12 +10236,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_136 <= dummy_s;
+	dummy_d_112 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_137;
+reg dummy_d_113;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed1 <= 14'd0;
@@ -10512,12 +10272,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_137 <= dummy_s;
+	dummy_d_113 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_138;
+reg dummy_d_114;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed2 <= 3'd0;
@@ -10548,12 +10308,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_138 <= dummy_s;
+	dummy_d_114 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_139;
+reg dummy_d_115;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed3 <= 1'd0;
@@ -10584,12 +10344,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_139 <= dummy_s;
+	dummy_d_115 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_140;
+reg dummy_d_116;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed4 <= 1'd0;
@@ -10620,12 +10380,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_140 <= dummy_s;
+	dummy_d_116 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_141;
+reg dummy_d_117;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed5 <= 1'd0;
@@ -10656,12 +10416,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_141 <= dummy_s;
+	dummy_d_117 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_142;
+reg dummy_d_118;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed0 <= 1'd0;
@@ -10692,12 +10452,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_142 <= dummy_s;
+	dummy_d_118 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_143;
+reg dummy_d_119;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed1 <= 1'd0;
@@ -10728,12 +10488,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_143 <= dummy_s;
+	dummy_d_119 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_144;
+reg dummy_d_120;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed2 <= 1'd0;
@@ -10764,12 +10524,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_144 <= dummy_s;
+	dummy_d_120 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_145;
+reg dummy_d_121;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed6 <= 1'd0;
@@ -10800,12 +10560,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_145 <= dummy_s;
+	dummy_d_121 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_146;
+reg dummy_d_122;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed7 <= 14'd0;
@@ -10836,12 +10596,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_146 <= dummy_s;
+	dummy_d_122 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_147;
+reg dummy_d_123;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed8 <= 3'd0;
@@ -10872,12 +10632,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_147 <= dummy_s;
+	dummy_d_123 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_148;
+reg dummy_d_124;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed9 <= 1'd0;
@@ -10908,12 +10668,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_148 <= dummy_s;
+	dummy_d_124 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_149;
+reg dummy_d_125;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed10 <= 1'd0;
@@ -10944,12 +10704,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_149 <= dummy_s;
+	dummy_d_125 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_150;
+reg dummy_d_126;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed11 <= 1'd0;
@@ -10980,12 +10740,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_150 <= dummy_s;
+	dummy_d_126 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_151;
+reg dummy_d_127;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed3 <= 1'd0;
@@ -11016,12 +10776,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_151 <= dummy_s;
+	dummy_d_127 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_152;
+reg dummy_d_128;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed4 <= 1'd0;
@@ -11052,12 +10812,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_152 <= dummy_s;
+	dummy_d_128 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_153;
+reg dummy_d_129;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed5 <= 1'd0;
@@ -11088,12 +10848,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_153 <= dummy_s;
+	dummy_d_129 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_154;
+reg dummy_d_130;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed12 <= 21'd0;
@@ -11103,12 +10863,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_154 <= dummy_s;
+	dummy_d_130 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_155;
+reg dummy_d_131;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed13 <= 1'd0;
@@ -11118,12 +10878,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_155 <= dummy_s;
+	dummy_d_131 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_156;
+reg dummy_d_132;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed14 <= 1'd0;
@@ -11133,12 +10893,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_156 <= dummy_s;
+	dummy_d_132 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_157;
+reg dummy_d_133;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed15 <= 21'd0;
@@ -11148,12 +10908,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_157 <= dummy_s;
+	dummy_d_133 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_158;
+reg dummy_d_134;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed16 <= 1'd0;
@@ -11163,12 +10923,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_158 <= dummy_s;
+	dummy_d_134 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_159;
+reg dummy_d_135;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed17 <= 1'd0;
@@ -11178,12 +10938,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_159 <= dummy_s;
+	dummy_d_135 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_160;
+reg dummy_d_136;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed18 <= 21'd0;
@@ -11193,12 +10953,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_160 <= dummy_s;
+	dummy_d_136 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_161;
+reg dummy_d_137;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed19 <= 1'd0;
@@ -11208,12 +10968,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_161 <= dummy_s;
+	dummy_d_137 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_162;
+reg dummy_d_138;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed20 <= 1'd0;
@@ -11223,12 +10983,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_162 <= dummy_s;
+	dummy_d_138 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_163;
+reg dummy_d_139;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed21 <= 21'd0;
@@ -11238,12 +10998,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_163 <= dummy_s;
+	dummy_d_139 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_164;
+reg dummy_d_140;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed22 <= 1'd0;
@@ -11253,12 +11013,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_164 <= dummy_s;
+	dummy_d_140 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_165;
+reg dummy_d_141;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed23 <= 1'd0;
@@ -11268,12 +11028,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_165 <= dummy_s;
+	dummy_d_141 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_166;
+reg dummy_d_142;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed24 <= 21'd0;
@@ -11283,12 +11043,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_166 <= dummy_s;
+	dummy_d_142 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_167;
+reg dummy_d_143;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed25 <= 1'd0;
@@ -11298,12 +11058,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_167 <= dummy_s;
+	dummy_d_143 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_168;
+reg dummy_d_144;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed26 <= 1'd0;
@@ -11313,12 +11073,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_168 <= dummy_s;
+	dummy_d_144 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_169;
+reg dummy_d_145;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed27 <= 21'd0;
@@ -11328,12 +11088,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_169 <= dummy_s;
+	dummy_d_145 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_170;
+reg dummy_d_146;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed28 <= 1'd0;
@@ -11343,12 +11103,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_170 <= dummy_s;
+	dummy_d_146 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_171;
+reg dummy_d_147;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed29 <= 1'd0;
@@ -11358,12 +11118,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_171 <= dummy_s;
+	dummy_d_147 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_172;
+reg dummy_d_148;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed30 <= 21'd0;
@@ -11373,12 +11133,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_172 <= dummy_s;
+	dummy_d_148 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_173;
+reg dummy_d_149;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed31 <= 1'd0;
@@ -11388,12 +11148,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_173 <= dummy_s;
+	dummy_d_149 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_174;
+reg dummy_d_150;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed32 <= 1'd0;
@@ -11403,12 +11163,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_174 <= dummy_s;
+	dummy_d_150 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_175;
+reg dummy_d_151;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed33 <= 21'd0;
@@ -11418,12 +11178,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_175 <= dummy_s;
+	dummy_d_151 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_176;
+reg dummy_d_152;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed34 <= 1'd0;
@@ -11433,12 +11193,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_176 <= dummy_s;
+	dummy_d_152 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_177;
+reg dummy_d_153;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed35 <= 1'd0;
@@ -11448,12 +11208,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_177 <= dummy_s;
+	dummy_d_153 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_178;
+reg dummy_d_154;
 // synthesis translate_on
 always @(*) begin
 	array_muxed0 <= 3'd0;
@@ -11472,12 +11232,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_178 <= dummy_s;
+	dummy_d_154 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_179;
+reg dummy_d_155;
 // synthesis translate_on
 always @(*) begin
 	array_muxed1 <= 14'd0;
@@ -11496,12 +11256,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_179 <= dummy_s;
+	dummy_d_155 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_180;
+reg dummy_d_156;
 // synthesis translate_on
 always @(*) begin
 	array_muxed2 <= 1'd0;
@@ -11520,12 +11280,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_180 <= dummy_s;
+	dummy_d_156 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_181;
+reg dummy_d_157;
 // synthesis translate_on
 always @(*) begin
 	array_muxed3 <= 1'd0;
@@ -11544,12 +11304,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_181 <= dummy_s;
+	dummy_d_157 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_182;
+reg dummy_d_158;
 // synthesis translate_on
 always @(*) begin
 	array_muxed4 <= 1'd0;
@@ -11568,12 +11328,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_182 <= dummy_s;
+	dummy_d_158 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_183;
+reg dummy_d_159;
 // synthesis translate_on
 always @(*) begin
 	array_muxed5 <= 1'd0;
@@ -11592,12 +11352,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_183 <= dummy_s;
+	dummy_d_159 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_184;
+reg dummy_d_160;
 // synthesis translate_on
 always @(*) begin
 	array_muxed6 <= 1'd0;
@@ -11616,12 +11376,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_184 <= dummy_s;
+	dummy_d_160 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_185;
+reg dummy_d_161;
 // synthesis translate_on
 always @(*) begin
 	array_muxed7 <= 3'd0;
@@ -11640,12 +11400,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_185 <= dummy_s;
+	dummy_d_161 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_186;
+reg dummy_d_162;
 // synthesis translate_on
 always @(*) begin
 	array_muxed8 <= 14'd0;
@@ -11664,12 +11424,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_186 <= dummy_s;
+	dummy_d_162 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_187;
+reg dummy_d_163;
 // synthesis translate_on
 always @(*) begin
 	array_muxed9 <= 1'd0;
@@ -11688,12 +11448,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_187 <= dummy_s;
+	dummy_d_163 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_188;
+reg dummy_d_164;
 // synthesis translate_on
 always @(*) begin
 	array_muxed10 <= 1'd0;
@@ -11712,12 +11472,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_188 <= dummy_s;
+	dummy_d_164 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_189;
+reg dummy_d_165;
 // synthesis translate_on
 always @(*) begin
 	array_muxed11 <= 1'd0;
@@ -11736,12 +11496,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_189 <= dummy_s;
+	dummy_d_165 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_190;
+reg dummy_d_166;
 // synthesis translate_on
 always @(*) begin
 	array_muxed12 <= 1'd0;
@@ -11760,12 +11520,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_190 <= dummy_s;
+	dummy_d_166 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_191;
+reg dummy_d_167;
 // synthesis translate_on
 always @(*) begin
 	array_muxed13 <= 1'd0;
@@ -11784,12 +11544,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_191 <= dummy_s;
+	dummy_d_167 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_192;
+reg dummy_d_168;
 // synthesis translate_on
 always @(*) begin
 	array_muxed14 <= 3'd0;
@@ -11808,12 +11568,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_192 <= dummy_s;
+	dummy_d_168 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_193;
+reg dummy_d_169;
 // synthesis translate_on
 always @(*) begin
 	array_muxed15 <= 14'd0;
@@ -11832,12 +11592,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_193 <= dummy_s;
+	dummy_d_169 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_194;
+reg dummy_d_170;
 // synthesis translate_on
 always @(*) begin
 	array_muxed16 <= 1'd0;
@@ -11856,12 +11616,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_194 <= dummy_s;
+	dummy_d_170 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_195;
+reg dummy_d_171;
 // synthesis translate_on
 always @(*) begin
 	array_muxed17 <= 1'd0;
@@ -11880,12 +11640,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_195 <= dummy_s;
+	dummy_d_171 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_196;
+reg dummy_d_172;
 // synthesis translate_on
 always @(*) begin
 	array_muxed18 <= 1'd0;
@@ -11904,12 +11664,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_196 <= dummy_s;
+	dummy_d_172 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_197;
+reg dummy_d_173;
 // synthesis translate_on
 always @(*) begin
 	array_muxed19 <= 1'd0;
@@ -11928,12 +11688,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_197 <= dummy_s;
+	dummy_d_173 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_198;
+reg dummy_d_174;
 // synthesis translate_on
 always @(*) begin
 	array_muxed20 <= 1'd0;
@@ -11952,12 +11712,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_198 <= dummy_s;
+	dummy_d_174 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_199;
+reg dummy_d_175;
 // synthesis translate_on
 always @(*) begin
 	array_muxed21 <= 3'd0;
@@ -11976,12 +11736,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_199 <= dummy_s;
+	dummy_d_175 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_200;
+reg dummy_d_176;
 // synthesis translate_on
 always @(*) begin
 	array_muxed22 <= 14'd0;
@@ -12000,12 +11760,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_200 <= dummy_s;
+	dummy_d_176 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_201;
+reg dummy_d_177;
 // synthesis translate_on
 always @(*) begin
 	array_muxed23 <= 1'd0;
@@ -12024,12 +11784,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_201 <= dummy_s;
+	dummy_d_177 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_202;
+reg dummy_d_178;
 // synthesis translate_on
 always @(*) begin
 	array_muxed24 <= 1'd0;
@@ -12048,12 +11808,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_202 <= dummy_s;
+	dummy_d_178 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_203;
+reg dummy_d_179;
 // synthesis translate_on
 always @(*) begin
 	array_muxed25 <= 1'd0;
@@ -12072,12 +11832,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_203 <= dummy_s;
+	dummy_d_179 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_204;
+reg dummy_d_180;
 // synthesis translate_on
 always @(*) begin
 	array_muxed26 <= 1'd0;
@@ -12096,12 +11856,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_204 <= dummy_s;
+	dummy_d_180 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_205;
+reg dummy_d_181;
 // synthesis translate_on
 always @(*) begin
 	array_muxed27 <= 1'd0;
@@ -12120,7 +11880,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_205 <= dummy_s;
+	dummy_d_181 <= dummy_s;
 // synthesis translate_on
 end
 

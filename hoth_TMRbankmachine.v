@@ -49,12 +49,12 @@ reg auto_precharge;
 wire tmrinput_control1;
 wire tmrinput_control2;
 wire [20:0] tmrinput_control3;
-reg cmd_buffer_lookahead_sink_valid;
+wire cmd_buffer_lookahead_sink_valid;
 wire cmd_buffer_lookahead_sink_ready;
 reg cmd_buffer_lookahead_sink_first = 1'd0;
 reg cmd_buffer_lookahead_sink_last = 1'd0;
-reg cmd_buffer_lookahead_sink_payload_we;
-reg [20:0] cmd_buffer_lookahead_sink_payload_addr;
+wire cmd_buffer_lookahead_sink_payload_we;
+wire [20:0] cmd_buffer_lookahead_sink_payload_addr;
 wire cmd_buffer_lookahead_source_valid;
 wire cmd_buffer_lookahead_source_ready;
 wire cmd_buffer_lookahead_source_first;
@@ -98,12 +98,12 @@ reg cmd_buffer_source_first = 1'd0;
 reg cmd_buffer_source_last = 1'd0;
 reg cmd_buffer_source_payload_we = 1'd0;
 reg [20:0] cmd_buffer_source_payload_addr = 21'd0;
-reg cmd_buffer_lookahead2_sink_valid = 1'd0;
+wire cmd_buffer_lookahead2_sink_valid;
 wire cmd_buffer_lookahead2_sink_ready;
 reg cmd_buffer_lookahead2_sink_first = 1'd0;
 reg cmd_buffer_lookahead2_sink_last = 1'd0;
-reg cmd_buffer_lookahead2_sink_payload_we = 1'd0;
-reg [20:0] cmd_buffer_lookahead2_sink_payload_addr = 21'd0;
+wire cmd_buffer_lookahead2_sink_payload_we;
+wire [20:0] cmd_buffer_lookahead2_sink_payload_addr;
 wire cmd_buffer_lookahead2_source_valid;
 wire cmd_buffer_lookahead2_source_ready;
 wire cmd_buffer_lookahead2_source_first;
@@ -147,12 +147,12 @@ reg cmd_buffer2_source_first = 1'd0;
 reg cmd_buffer2_source_last = 1'd0;
 reg cmd_buffer2_source_payload_we = 1'd0;
 reg [20:0] cmd_buffer2_source_payload_addr = 21'd0;
-reg cmd_buffer_lookahead3_sink_valid = 1'd0;
+wire cmd_buffer_lookahead3_sink_valid;
 wire cmd_buffer_lookahead3_sink_ready;
 reg cmd_buffer_lookahead3_sink_first = 1'd0;
 reg cmd_buffer_lookahead3_sink_last = 1'd0;
-reg cmd_buffer_lookahead3_sink_payload_we = 1'd0;
-reg [20:0] cmd_buffer_lookahead3_sink_payload_addr = 21'd0;
+wire cmd_buffer_lookahead3_sink_payload_we;
+wire [20:0] cmd_buffer_lookahead3_sink_payload_addr;
 wire cmd_buffer_lookahead3_source_valid;
 wire cmd_buffer_lookahead3_source_ready;
 wire cmd_buffer_lookahead3_source_first;
@@ -300,6 +300,9 @@ reg dummy_s;
 initial dummy_s <= 1'd0;
 // synthesis translate_on
 
+assign cmd_buffer_lookahead_sink_valid = req_valid;
+assign cmd_buffer_lookahead_sink_payload_we = req_we;
+assign cmd_buffer_lookahead_sink_payload_addr = req_addr;
 assign cmd_buffer_sink_valid = cmd_buffer_lookahead_source_valid;
 assign cmd_buffer_lookahead_source_ready = cmd_buffer_sink_ready;
 assign cmd_buffer_sink_first = cmd_buffer_lookahead_source_first;
@@ -307,6 +310,9 @@ assign cmd_buffer_sink_last = cmd_buffer_lookahead_source_last;
 assign cmd_buffer_sink_payload_we = cmd_buffer_lookahead_source_payload_we;
 assign cmd_buffer_sink_payload_addr = cmd_buffer_lookahead_source_payload_addr;
 assign cmd_buffer_source_ready = (req_wdata_ready | req_rdata_valid);
+assign cmd_buffer_lookahead2_sink_valid = req_valid;
+assign cmd_buffer_lookahead2_sink_payload_we = req_we;
+assign cmd_buffer_lookahead2_sink_payload_addr = req_addr;
 assign cmd_buffer2_sink_valid = cmd_buffer_lookahead2_source_valid;
 assign cmd_buffer_lookahead2_source_ready = cmd_buffer2_sink_ready;
 assign cmd_buffer2_sink_first = cmd_buffer_lookahead2_source_first;
@@ -314,45 +320,9 @@ assign cmd_buffer2_sink_last = cmd_buffer_lookahead2_source_last;
 assign cmd_buffer2_sink_payload_we = cmd_buffer_lookahead2_source_payload_we;
 assign cmd_buffer2_sink_payload_addr = cmd_buffer_lookahead2_source_payload_addr;
 assign cmd_buffer2_source_ready = (req_wdata_ready | req_rdata_valid);
-
-// synthesis translate_off
-reg dummy_d;
-// synthesis translate_on
-always @(*) begin
-	cmd_buffer_lookahead_sink_valid <= 1'd0;
-	cmd_buffer_lookahead_sink_valid <= req_valid;
-	cmd_buffer_lookahead_sink_valid <= req_valid;
-	cmd_buffer_lookahead_sink_valid <= req_valid;
-// synthesis translate_off
-	dummy_d <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_1;
-// synthesis translate_on
-always @(*) begin
-	cmd_buffer_lookahead_sink_payload_we <= 1'd0;
-	cmd_buffer_lookahead_sink_payload_we <= req_we;
-	cmd_buffer_lookahead_sink_payload_we <= req_we;
-	cmd_buffer_lookahead_sink_payload_we <= req_we;
-// synthesis translate_off
-	dummy_d_1 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_2;
-// synthesis translate_on
-always @(*) begin
-	cmd_buffer_lookahead_sink_payload_addr <= 21'd0;
-	cmd_buffer_lookahead_sink_payload_addr <= req_addr;
-	cmd_buffer_lookahead_sink_payload_addr <= req_addr;
-	cmd_buffer_lookahead_sink_payload_addr <= req_addr;
-// synthesis translate_off
-	dummy_d_2 <= dummy_s;
-// synthesis translate_on
-end
+assign cmd_buffer_lookahead3_sink_valid = req_valid;
+assign cmd_buffer_lookahead3_sink_payload_we = req_we;
+assign cmd_buffer_lookahead3_sink_payload_addr = req_addr;
 assign cmd_buffer3_sink_valid = cmd_buffer_lookahead3_source_valid;
 assign cmd_buffer_lookahead3_source_ready = cmd_buffer3_sink_ready;
 assign cmd_buffer3_sink_first = cmd_buffer_lookahead3_source_first;
@@ -365,7 +335,7 @@ assign row_hit = (row == cmd_buffer_source_payload_addr[20:7]);
 assign cmd_payload_ba = 1'd0;
 
 // synthesis translate_off
-reg dummy_d_3;
+reg dummy_d;
 // synthesis translate_on
 always @(*) begin
 	cmd_payload_a <= 14'd0;
@@ -375,7 +345,7 @@ always @(*) begin
 		cmd_payload_a <= ((auto_precharge <<< 4'd10) | {cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
-	dummy_d_3 <= dummy_s;
+	dummy_d <= dummy_s;
 // synthesis translate_on
 end
 assign twtpcon_valid = ((cmd_valid & cmd_ready) & cmd_payload_is_write);
@@ -389,7 +359,7 @@ assign trascon2_valid = ((cmd_valid & cmd_ready) & row_open);
 assign trascon3_valid = ((cmd_valid & cmd_ready) & row_open);
 
 // synthesis translate_off
-reg dummy_d_4;
+reg dummy_d_1;
 // synthesis translate_on
 always @(*) begin
 	auto_precharge <= 1'd0;
@@ -399,7 +369,7 @@ always @(*) begin
 		end
 	end
 // synthesis translate_off
-	dummy_d_4 <= dummy_s;
+	dummy_d_1 <= dummy_s;
 // synthesis translate_on
 end
 assign TMRcmd_valid = {3{cmd_valid}};
@@ -441,7 +411,7 @@ assign cmd_buffer_lookahead_source_payload_addr = cmd_buffer_lookahead_fifo_out_
 assign cmd_buffer_lookahead_syncfifo_re = cmd_buffer_lookahead_source_ready;
 
 // synthesis translate_off
-reg dummy_d_5;
+reg dummy_d_2;
 // synthesis translate_on
 always @(*) begin
 	cmd_buffer_lookahead_wrport_adr <= 3'd0;
@@ -451,7 +421,7 @@ always @(*) begin
 		cmd_buffer_lookahead_wrport_adr <= cmd_buffer_lookahead_produce;
 	end
 // synthesis translate_off
-	dummy_d_5 <= dummy_s;
+	dummy_d_2 <= dummy_s;
 // synthesis translate_on
 end
 assign cmd_buffer_lookahead_wrport_dat_w = cmd_buffer_lookahead_syncfifo_din;
@@ -478,7 +448,7 @@ assign cmd_buffer_lookahead2_source_payload_addr = cmd_buffer_lookahead2_fifo_ou
 assign cmd_buffer_lookahead2_syncfifo_re = cmd_buffer_lookahead2_source_ready;
 
 // synthesis translate_off
-reg dummy_d_6;
+reg dummy_d_3;
 // synthesis translate_on
 always @(*) begin
 	cmd_buffer_lookahead2_wrport_adr <= 3'd0;
@@ -488,7 +458,7 @@ always @(*) begin
 		cmd_buffer_lookahead2_wrport_adr <= cmd_buffer_lookahead2_produce;
 	end
 // synthesis translate_off
-	dummy_d_6 <= dummy_s;
+	dummy_d_3 <= dummy_s;
 // synthesis translate_on
 end
 assign cmd_buffer_lookahead2_wrport_dat_w = cmd_buffer_lookahead2_syncfifo_din;
@@ -515,7 +485,7 @@ assign cmd_buffer_lookahead3_source_payload_addr = cmd_buffer_lookahead3_fifo_ou
 assign cmd_buffer_lookahead3_syncfifo_re = cmd_buffer_lookahead3_source_ready;
 
 // synthesis translate_off
-reg dummy_d_7;
+reg dummy_d_4;
 // synthesis translate_on
 always @(*) begin
 	cmd_buffer_lookahead3_wrport_adr <= 3'd0;
@@ -525,7 +495,7 @@ always @(*) begin
 		cmd_buffer_lookahead3_wrport_adr <= cmd_buffer_lookahead3_produce;
 	end
 // synthesis translate_off
-	dummy_d_7 <= dummy_s;
+	dummy_d_4 <= dummy_s;
 // synthesis translate_on
 end
 assign cmd_buffer_lookahead3_wrport_dat_w = cmd_buffer_lookahead3_syncfifo_din;
@@ -539,14 +509,14 @@ assign cmd_buffer3_sink_ready = ((~cmd_buffer3_source_valid) | cmd_buffer3_sourc
 assign tmrinput_control4 = (((slice_proxy0[0] & slice_proxy1[1]) | (slice_proxy2[1] & slice_proxy3[2])) | (slice_proxy4[0] & slice_proxy5[2]));
 
 // synthesis translate_off
-reg dummy_d_8;
+reg dummy_d_5;
 // synthesis translate_on
 always @(*) begin
 	req_lock <= 1'd0;
 	req_lock <= (cmd_buffer_lookahead_source_valid | cmd_buffer_source_valid);
 	req_lock <= tmrinput_control4;
 // synthesis translate_off
-	dummy_d_8 <= dummy_s;
+	dummy_d_5 <= dummy_s;
 // synthesis translate_on
 end
 assign lookAddrVote_control = (((slice_proxy6[20:0] & slice_proxy7[41:21]) | (slice_proxy8[41:21] & slice_proxy9[62:42])) | (slice_proxy10[20:0] & slice_proxy11[62:42]));
@@ -559,7 +529,7 @@ assign trcVote_control = (((slice_proxy42[0] & slice_proxy43[1]) | (slice_proxy4
 assign trasVote_control = (((slice_proxy48[0] & slice_proxy49[1]) | (slice_proxy50[1] & slice_proxy51[2])) | (slice_proxy52[0] & slice_proxy53[2]));
 
 // synthesis translate_off
-reg dummy_d_9;
+reg dummy_d_6;
 // synthesis translate_on
 always @(*) begin
 	req_wdata_ready <= 1'd0;
@@ -661,7 +631,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_9 <= dummy_s;
+	dummy_d_6 <= dummy_s;
 // synthesis translate_on
 end
 assign slice_proxy0 = {(cmd_buffer_lookahead3_source_valid | cmd_buffer3_source_valid), (cmd_buffer_lookahead2_source_valid | cmd_buffer2_source_valid), (cmd_buffer_lookahead_source_valid | cmd_buffer_source_valid)};
