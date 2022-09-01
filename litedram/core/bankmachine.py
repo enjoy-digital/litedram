@@ -479,7 +479,7 @@ class TMRBankMachine(Module):
                 If(row_opened,
                     If(row_hit,
                         cmd.valid.eq(1),
-                        If(bufWeVote, #Vote we
+                        If(bufWeVote.control, #Vote we
                             req.wdata_ready.eq(cmd.ready),
                             cmd.is_write.eq(1),
                             cmd.we.eq(1),

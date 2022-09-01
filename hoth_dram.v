@@ -5952,9 +5952,9 @@ reg dummy_d_38;
 always @(*) begin
 	sdram_tmrbankmachine0_cmd_payload_a <= 14'd0;
 	if (sdram_tmrbankmachine0_row_col_n_addr_sel) begin
-		sdram_tmrbankmachine0_cmd_payload_a <= sdram_tmrbankmachine0_cmd_buffer_source_payload_addr[20:7];
+		sdram_tmrbankmachine0_cmd_payload_a <= sdram_tmrbankmachine0_bufAddrVote_control[20:7];
 	end else begin
-		sdram_tmrbankmachine0_cmd_payload_a <= ((sdram_tmrbankmachine0_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine0_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
+		sdram_tmrbankmachine0_cmd_payload_a <= ((sdram_tmrbankmachine0_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine0_bufAddrVote_control[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
 	dummy_d_38 <= dummy_s;
@@ -5975,8 +5975,8 @@ reg dummy_d_39;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine0_auto_precharge <= 1'd0;
-	if ((sdram_tmrbankmachine0_cmd_buffer_lookahead_source_valid & sdram_tmrbankmachine0_cmd_buffer_source_valid)) begin
-		if ((sdram_tmrbankmachine0_cmd_buffer_lookahead_source_payload_addr[20:7] != sdram_tmrbankmachine0_cmd_buffer_source_payload_addr[20:7])) begin
+	if ((sdram_tmrbankmachine0_lookValidVote_control & sdram_tmrbankmachine0_bufValidVote_control)) begin
+		if ((sdram_tmrbankmachine0_lookAddrVote_control[20:7] != sdram_tmrbankmachine0_bufAddrVote_control[20:7])) begin
 			sdram_tmrbankmachine0_auto_precharge <= (sdram_tmrbankmachine0_row_close == 1'd0);
 		end
 	end
@@ -6205,11 +6205,11 @@ always @(*) begin
 			if (sdram_tmrbankmachine0_refresh_req) begin
 				tmrbankmachine0_next_state <= 3'd4;
 			end else begin
-				if (sdram_tmrbankmachine0_cmd_buffer_source_valid) begin
+				if (sdram_tmrbankmachine0_bufValidVote_control) begin
 					if (sdram_tmrbankmachine0_row_opened) begin
 						if (sdram_tmrbankmachine0_row_hit) begin
 							sdram_tmrbankmachine0_cmd_valid <= 1'd1;
-							if (sdram_tmrbankmachine0_cmd_buffer_source_payload_we) begin
+							if (sdram_tmrbankmachine0_bufWeVote_control) begin
 								sdram_tmrbankmachine0_req_wdata_ready <= sdram_tmrbankmachine0_cmd_ready;
 								sdram_tmrbankmachine0_cmd_payload_is_write <= 1'd1;
 								sdram_tmrbankmachine0_cmd_payload_we <= 1'd1;
@@ -6275,9 +6275,9 @@ reg dummy_d_44;
 always @(*) begin
 	sdram_tmrbankmachine1_cmd_payload_a <= 14'd0;
 	if (sdram_tmrbankmachine1_row_col_n_addr_sel) begin
-		sdram_tmrbankmachine1_cmd_payload_a <= sdram_tmrbankmachine1_cmd_buffer_source_payload_addr[20:7];
+		sdram_tmrbankmachine1_cmd_payload_a <= sdram_tmrbankmachine1_bufAddrVote_control[20:7];
 	end else begin
-		sdram_tmrbankmachine1_cmd_payload_a <= ((sdram_tmrbankmachine1_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine1_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
+		sdram_tmrbankmachine1_cmd_payload_a <= ((sdram_tmrbankmachine1_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine1_bufAddrVote_control[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
 	dummy_d_44 <= dummy_s;
@@ -6298,8 +6298,8 @@ reg dummy_d_45;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine1_auto_precharge <= 1'd0;
-	if ((sdram_tmrbankmachine1_cmd_buffer_lookahead_source_valid & sdram_tmrbankmachine1_cmd_buffer_source_valid)) begin
-		if ((sdram_tmrbankmachine1_cmd_buffer_lookahead_source_payload_addr[20:7] != sdram_tmrbankmachine1_cmd_buffer_source_payload_addr[20:7])) begin
+	if ((sdram_tmrbankmachine1_lookValidVote_control & sdram_tmrbankmachine1_bufValidVote_control)) begin
+		if ((sdram_tmrbankmachine1_lookAddrVote_control[20:7] != sdram_tmrbankmachine1_bufAddrVote_control[20:7])) begin
 			sdram_tmrbankmachine1_auto_precharge <= (sdram_tmrbankmachine1_row_close == 1'd0);
 		end
 	end
@@ -6528,11 +6528,11 @@ always @(*) begin
 			if (sdram_tmrbankmachine1_refresh_req) begin
 				tmrbankmachine1_next_state <= 3'd4;
 			end else begin
-				if (sdram_tmrbankmachine1_cmd_buffer_source_valid) begin
+				if (sdram_tmrbankmachine1_bufValidVote_control) begin
 					if (sdram_tmrbankmachine1_row_opened) begin
 						if (sdram_tmrbankmachine1_row_hit) begin
 							sdram_tmrbankmachine1_cmd_valid <= 1'd1;
-							if (sdram_tmrbankmachine1_cmd_buffer_source_payload_we) begin
+							if (sdram_tmrbankmachine1_bufWeVote_control) begin
 								sdram_tmrbankmachine1_req_wdata_ready <= sdram_tmrbankmachine1_cmd_ready;
 								sdram_tmrbankmachine1_cmd_payload_is_write <= 1'd1;
 								sdram_tmrbankmachine1_cmd_payload_we <= 1'd1;
@@ -6598,9 +6598,9 @@ reg dummy_d_50;
 always @(*) begin
 	sdram_tmrbankmachine2_cmd_payload_a <= 14'd0;
 	if (sdram_tmrbankmachine2_row_col_n_addr_sel) begin
-		sdram_tmrbankmachine2_cmd_payload_a <= sdram_tmrbankmachine2_cmd_buffer_source_payload_addr[20:7];
+		sdram_tmrbankmachine2_cmd_payload_a <= sdram_tmrbankmachine2_bufAddrVote_control[20:7];
 	end else begin
-		sdram_tmrbankmachine2_cmd_payload_a <= ((sdram_tmrbankmachine2_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine2_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
+		sdram_tmrbankmachine2_cmd_payload_a <= ((sdram_tmrbankmachine2_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine2_bufAddrVote_control[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
 	dummy_d_50 <= dummy_s;
@@ -6621,8 +6621,8 @@ reg dummy_d_51;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine2_auto_precharge <= 1'd0;
-	if ((sdram_tmrbankmachine2_cmd_buffer_lookahead_source_valid & sdram_tmrbankmachine2_cmd_buffer_source_valid)) begin
-		if ((sdram_tmrbankmachine2_cmd_buffer_lookahead_source_payload_addr[20:7] != sdram_tmrbankmachine2_cmd_buffer_source_payload_addr[20:7])) begin
+	if ((sdram_tmrbankmachine2_lookValidVote_control & sdram_tmrbankmachine2_bufValidVote_control)) begin
+		if ((sdram_tmrbankmachine2_lookAddrVote_control[20:7] != sdram_tmrbankmachine2_bufAddrVote_control[20:7])) begin
 			sdram_tmrbankmachine2_auto_precharge <= (sdram_tmrbankmachine2_row_close == 1'd0);
 		end
 	end
@@ -6851,11 +6851,11 @@ always @(*) begin
 			if (sdram_tmrbankmachine2_refresh_req) begin
 				tmrbankmachine2_next_state <= 3'd4;
 			end else begin
-				if (sdram_tmrbankmachine2_cmd_buffer_source_valid) begin
+				if (sdram_tmrbankmachine2_bufValidVote_control) begin
 					if (sdram_tmrbankmachine2_row_opened) begin
 						if (sdram_tmrbankmachine2_row_hit) begin
 							sdram_tmrbankmachine2_cmd_valid <= 1'd1;
-							if (sdram_tmrbankmachine2_cmd_buffer_source_payload_we) begin
+							if (sdram_tmrbankmachine2_bufWeVote_control) begin
 								sdram_tmrbankmachine2_req_wdata_ready <= sdram_tmrbankmachine2_cmd_ready;
 								sdram_tmrbankmachine2_cmd_payload_is_write <= 1'd1;
 								sdram_tmrbankmachine2_cmd_payload_we <= 1'd1;
@@ -6921,9 +6921,9 @@ reg dummy_d_56;
 always @(*) begin
 	sdram_tmrbankmachine3_cmd_payload_a <= 14'd0;
 	if (sdram_tmrbankmachine3_row_col_n_addr_sel) begin
-		sdram_tmrbankmachine3_cmd_payload_a <= sdram_tmrbankmachine3_cmd_buffer_source_payload_addr[20:7];
+		sdram_tmrbankmachine3_cmd_payload_a <= sdram_tmrbankmachine3_bufAddrVote_control[20:7];
 	end else begin
-		sdram_tmrbankmachine3_cmd_payload_a <= ((sdram_tmrbankmachine3_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine3_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
+		sdram_tmrbankmachine3_cmd_payload_a <= ((sdram_tmrbankmachine3_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine3_bufAddrVote_control[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
 	dummy_d_56 <= dummy_s;
@@ -6944,8 +6944,8 @@ reg dummy_d_57;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine3_auto_precharge <= 1'd0;
-	if ((sdram_tmrbankmachine3_cmd_buffer_lookahead_source_valid & sdram_tmrbankmachine3_cmd_buffer_source_valid)) begin
-		if ((sdram_tmrbankmachine3_cmd_buffer_lookahead_source_payload_addr[20:7] != sdram_tmrbankmachine3_cmd_buffer_source_payload_addr[20:7])) begin
+	if ((sdram_tmrbankmachine3_lookValidVote_control & sdram_tmrbankmachine3_bufValidVote_control)) begin
+		if ((sdram_tmrbankmachine3_lookAddrVote_control[20:7] != sdram_tmrbankmachine3_bufAddrVote_control[20:7])) begin
 			sdram_tmrbankmachine3_auto_precharge <= (sdram_tmrbankmachine3_row_close == 1'd0);
 		end
 	end
@@ -7174,11 +7174,11 @@ always @(*) begin
 			if (sdram_tmrbankmachine3_refresh_req) begin
 				tmrbankmachine3_next_state <= 3'd4;
 			end else begin
-				if (sdram_tmrbankmachine3_cmd_buffer_source_valid) begin
+				if (sdram_tmrbankmachine3_bufValidVote_control) begin
 					if (sdram_tmrbankmachine3_row_opened) begin
 						if (sdram_tmrbankmachine3_row_hit) begin
 							sdram_tmrbankmachine3_cmd_valid <= 1'd1;
-							if (sdram_tmrbankmachine3_cmd_buffer_source_payload_we) begin
+							if (sdram_tmrbankmachine3_bufWeVote_control) begin
 								sdram_tmrbankmachine3_req_wdata_ready <= sdram_tmrbankmachine3_cmd_ready;
 								sdram_tmrbankmachine3_cmd_payload_is_write <= 1'd1;
 								sdram_tmrbankmachine3_cmd_payload_we <= 1'd1;
@@ -7244,9 +7244,9 @@ reg dummy_d_62;
 always @(*) begin
 	sdram_tmrbankmachine4_cmd_payload_a <= 14'd0;
 	if (sdram_tmrbankmachine4_row_col_n_addr_sel) begin
-		sdram_tmrbankmachine4_cmd_payload_a <= sdram_tmrbankmachine4_cmd_buffer_source_payload_addr[20:7];
+		sdram_tmrbankmachine4_cmd_payload_a <= sdram_tmrbankmachine4_bufAddrVote_control[20:7];
 	end else begin
-		sdram_tmrbankmachine4_cmd_payload_a <= ((sdram_tmrbankmachine4_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine4_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
+		sdram_tmrbankmachine4_cmd_payload_a <= ((sdram_tmrbankmachine4_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine4_bufAddrVote_control[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
 	dummy_d_62 <= dummy_s;
@@ -7267,8 +7267,8 @@ reg dummy_d_63;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine4_auto_precharge <= 1'd0;
-	if ((sdram_tmrbankmachine4_cmd_buffer_lookahead_source_valid & sdram_tmrbankmachine4_cmd_buffer_source_valid)) begin
-		if ((sdram_tmrbankmachine4_cmd_buffer_lookahead_source_payload_addr[20:7] != sdram_tmrbankmachine4_cmd_buffer_source_payload_addr[20:7])) begin
+	if ((sdram_tmrbankmachine4_lookValidVote_control & sdram_tmrbankmachine4_bufValidVote_control)) begin
+		if ((sdram_tmrbankmachine4_lookAddrVote_control[20:7] != sdram_tmrbankmachine4_bufAddrVote_control[20:7])) begin
 			sdram_tmrbankmachine4_auto_precharge <= (sdram_tmrbankmachine4_row_close == 1'd0);
 		end
 	end
@@ -7497,11 +7497,11 @@ always @(*) begin
 			if (sdram_tmrbankmachine4_refresh_req) begin
 				tmrbankmachine4_next_state <= 3'd4;
 			end else begin
-				if (sdram_tmrbankmachine4_cmd_buffer_source_valid) begin
+				if (sdram_tmrbankmachine4_bufValidVote_control) begin
 					if (sdram_tmrbankmachine4_row_opened) begin
 						if (sdram_tmrbankmachine4_row_hit) begin
 							sdram_tmrbankmachine4_cmd_valid <= 1'd1;
-							if (sdram_tmrbankmachine4_cmd_buffer_source_payload_we) begin
+							if (sdram_tmrbankmachine4_bufWeVote_control) begin
 								sdram_tmrbankmachine4_req_wdata_ready <= sdram_tmrbankmachine4_cmd_ready;
 								sdram_tmrbankmachine4_cmd_payload_is_write <= 1'd1;
 								sdram_tmrbankmachine4_cmd_payload_we <= 1'd1;
@@ -7567,9 +7567,9 @@ reg dummy_d_68;
 always @(*) begin
 	sdram_tmrbankmachine5_cmd_payload_a <= 14'd0;
 	if (sdram_tmrbankmachine5_row_col_n_addr_sel) begin
-		sdram_tmrbankmachine5_cmd_payload_a <= sdram_tmrbankmachine5_cmd_buffer_source_payload_addr[20:7];
+		sdram_tmrbankmachine5_cmd_payload_a <= sdram_tmrbankmachine5_bufAddrVote_control[20:7];
 	end else begin
-		sdram_tmrbankmachine5_cmd_payload_a <= ((sdram_tmrbankmachine5_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine5_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
+		sdram_tmrbankmachine5_cmd_payload_a <= ((sdram_tmrbankmachine5_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine5_bufAddrVote_control[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
 	dummy_d_68 <= dummy_s;
@@ -7590,8 +7590,8 @@ reg dummy_d_69;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine5_auto_precharge <= 1'd0;
-	if ((sdram_tmrbankmachine5_cmd_buffer_lookahead_source_valid & sdram_tmrbankmachine5_cmd_buffer_source_valid)) begin
-		if ((sdram_tmrbankmachine5_cmd_buffer_lookahead_source_payload_addr[20:7] != sdram_tmrbankmachine5_cmd_buffer_source_payload_addr[20:7])) begin
+	if ((sdram_tmrbankmachine5_lookValidVote_control & sdram_tmrbankmachine5_bufValidVote_control)) begin
+		if ((sdram_tmrbankmachine5_lookAddrVote_control[20:7] != sdram_tmrbankmachine5_bufAddrVote_control[20:7])) begin
 			sdram_tmrbankmachine5_auto_precharge <= (sdram_tmrbankmachine5_row_close == 1'd0);
 		end
 	end
@@ -7820,11 +7820,11 @@ always @(*) begin
 			if (sdram_tmrbankmachine5_refresh_req) begin
 				tmrbankmachine5_next_state <= 3'd4;
 			end else begin
-				if (sdram_tmrbankmachine5_cmd_buffer_source_valid) begin
+				if (sdram_tmrbankmachine5_bufValidVote_control) begin
 					if (sdram_tmrbankmachine5_row_opened) begin
 						if (sdram_tmrbankmachine5_row_hit) begin
 							sdram_tmrbankmachine5_cmd_valid <= 1'd1;
-							if (sdram_tmrbankmachine5_cmd_buffer_source_payload_we) begin
+							if (sdram_tmrbankmachine5_bufWeVote_control) begin
 								sdram_tmrbankmachine5_req_wdata_ready <= sdram_tmrbankmachine5_cmd_ready;
 								sdram_tmrbankmachine5_cmd_payload_is_write <= 1'd1;
 								sdram_tmrbankmachine5_cmd_payload_we <= 1'd1;
@@ -7890,9 +7890,9 @@ reg dummy_d_74;
 always @(*) begin
 	sdram_tmrbankmachine6_cmd_payload_a <= 14'd0;
 	if (sdram_tmrbankmachine6_row_col_n_addr_sel) begin
-		sdram_tmrbankmachine6_cmd_payload_a <= sdram_tmrbankmachine6_cmd_buffer_source_payload_addr[20:7];
+		sdram_tmrbankmachine6_cmd_payload_a <= sdram_tmrbankmachine6_bufAddrVote_control[20:7];
 	end else begin
-		sdram_tmrbankmachine6_cmd_payload_a <= ((sdram_tmrbankmachine6_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine6_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
+		sdram_tmrbankmachine6_cmd_payload_a <= ((sdram_tmrbankmachine6_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine6_bufAddrVote_control[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
 	dummy_d_74 <= dummy_s;
@@ -7913,8 +7913,8 @@ reg dummy_d_75;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine6_auto_precharge <= 1'd0;
-	if ((sdram_tmrbankmachine6_cmd_buffer_lookahead_source_valid & sdram_tmrbankmachine6_cmd_buffer_source_valid)) begin
-		if ((sdram_tmrbankmachine6_cmd_buffer_lookahead_source_payload_addr[20:7] != sdram_tmrbankmachine6_cmd_buffer_source_payload_addr[20:7])) begin
+	if ((sdram_tmrbankmachine6_lookValidVote_control & sdram_tmrbankmachine6_bufValidVote_control)) begin
+		if ((sdram_tmrbankmachine6_lookAddrVote_control[20:7] != sdram_tmrbankmachine6_bufAddrVote_control[20:7])) begin
 			sdram_tmrbankmachine6_auto_precharge <= (sdram_tmrbankmachine6_row_close == 1'd0);
 		end
 	end
@@ -8143,11 +8143,11 @@ always @(*) begin
 			if (sdram_tmrbankmachine6_refresh_req) begin
 				tmrbankmachine6_next_state <= 3'd4;
 			end else begin
-				if (sdram_tmrbankmachine6_cmd_buffer_source_valid) begin
+				if (sdram_tmrbankmachine6_bufValidVote_control) begin
 					if (sdram_tmrbankmachine6_row_opened) begin
 						if (sdram_tmrbankmachine6_row_hit) begin
 							sdram_tmrbankmachine6_cmd_valid <= 1'd1;
-							if (sdram_tmrbankmachine6_cmd_buffer_source_payload_we) begin
+							if (sdram_tmrbankmachine6_bufWeVote_control) begin
 								sdram_tmrbankmachine6_req_wdata_ready <= sdram_tmrbankmachine6_cmd_ready;
 								sdram_tmrbankmachine6_cmd_payload_is_write <= 1'd1;
 								sdram_tmrbankmachine6_cmd_payload_we <= 1'd1;
@@ -8213,9 +8213,9 @@ reg dummy_d_80;
 always @(*) begin
 	sdram_tmrbankmachine7_cmd_payload_a <= 14'd0;
 	if (sdram_tmrbankmachine7_row_col_n_addr_sel) begin
-		sdram_tmrbankmachine7_cmd_payload_a <= sdram_tmrbankmachine7_cmd_buffer_source_payload_addr[20:7];
+		sdram_tmrbankmachine7_cmd_payload_a <= sdram_tmrbankmachine7_bufAddrVote_control[20:7];
 	end else begin
-		sdram_tmrbankmachine7_cmd_payload_a <= ((sdram_tmrbankmachine7_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine7_cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
+		sdram_tmrbankmachine7_cmd_payload_a <= ((sdram_tmrbankmachine7_auto_precharge <<< 4'd10) | {sdram_tmrbankmachine7_bufAddrVote_control[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
 	dummy_d_80 <= dummy_s;
@@ -8236,8 +8236,8 @@ reg dummy_d_81;
 // synthesis translate_on
 always @(*) begin
 	sdram_tmrbankmachine7_auto_precharge <= 1'd0;
-	if ((sdram_tmrbankmachine7_cmd_buffer_lookahead_source_valid & sdram_tmrbankmachine7_cmd_buffer_source_valid)) begin
-		if ((sdram_tmrbankmachine7_cmd_buffer_lookahead_source_payload_addr[20:7] != sdram_tmrbankmachine7_cmd_buffer_source_payload_addr[20:7])) begin
+	if ((sdram_tmrbankmachine7_lookValidVote_control & sdram_tmrbankmachine7_bufValidVote_control)) begin
+		if ((sdram_tmrbankmachine7_lookAddrVote_control[20:7] != sdram_tmrbankmachine7_bufAddrVote_control[20:7])) begin
 			sdram_tmrbankmachine7_auto_precharge <= (sdram_tmrbankmachine7_row_close == 1'd0);
 		end
 	end
@@ -8466,11 +8466,11 @@ always @(*) begin
 			if (sdram_tmrbankmachine7_refresh_req) begin
 				tmrbankmachine7_next_state <= 3'd4;
 			end else begin
-				if (sdram_tmrbankmachine7_cmd_buffer_source_valid) begin
+				if (sdram_tmrbankmachine7_bufValidVote_control) begin
 					if (sdram_tmrbankmachine7_row_opened) begin
 						if (sdram_tmrbankmachine7_row_hit) begin
 							sdram_tmrbankmachine7_cmd_valid <= 1'd1;
-							if (sdram_tmrbankmachine7_cmd_buffer_source_payload_we) begin
+							if (sdram_tmrbankmachine7_bufWeVote_control) begin
 								sdram_tmrbankmachine7_req_wdata_ready <= sdram_tmrbankmachine7_cmd_ready;
 								sdram_tmrbankmachine7_cmd_payload_is_write <= 1'd1;
 								sdram_tmrbankmachine7_cmd_payload_we <= 1'd1;

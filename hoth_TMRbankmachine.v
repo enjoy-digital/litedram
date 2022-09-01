@@ -340,9 +340,9 @@ reg dummy_d;
 always @(*) begin
 	cmd_payload_a <= 14'd0;
 	if (row_col_n_addr_sel) begin
-		cmd_payload_a <= cmd_buffer_source_payload_addr[20:7];
+		cmd_payload_a <= bufAddrVote_control[20:7];
 	end else begin
-		cmd_payload_a <= ((auto_precharge <<< 4'd10) | {cmd_buffer_source_payload_addr[6:0], {3{1'd0}}});
+		cmd_payload_a <= ((auto_precharge <<< 4'd10) | {bufAddrVote_control[6:0], {3{1'd0}}});
 	end
 // synthesis translate_off
 	dummy_d <= dummy_s;
@@ -363,8 +363,8 @@ reg dummy_d_1;
 // synthesis translate_on
 always @(*) begin
 	auto_precharge <= 1'd0;
-	if ((cmd_buffer_lookahead_source_valid & cmd_buffer_source_valid)) begin
-		if ((cmd_buffer_lookahead_source_payload_addr[20:7] != cmd_buffer_source_payload_addr[20:7])) begin
+	if ((lookValidVote_control & bufValidVote_control)) begin
+		if ((lookAddrVote_control[20:7] != bufAddrVote_control[20:7])) begin
 			auto_precharge <= (row_close == 1'd0);
 		end
 	end
@@ -593,11 +593,11 @@ always @(*) begin
 			if (refresh_req) begin
 				next_state <= 3'd4;
 			end else begin
-				if (cmd_buffer_source_valid) begin
+				if (bufValidVote_control) begin
 					if (row_opened) begin
 						if (row_hit) begin
 							cmd_valid <= 1'd1;
-							if (cmd_buffer_source_payload_we) begin
+							if (bufWeVote_control) begin
 								req_wdata_ready <= cmd_ready;
 								cmd_payload_is_write <= 1'd1;
 								cmd_payload_we <= 1'd1;
