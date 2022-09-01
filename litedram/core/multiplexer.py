@@ -447,3 +447,745 @@ class Multiplexer(Module, AutoCSR):
         if settings.with_bandwidth:
             data_width = settings.phy.dfi_databits*settings.phy.nphases
             self.submodules.bandwidth = Bandwidth(self.choose_req.cmd, data_width)
+
+class Multiplexer(Module, AutoCSR):
+    """Multplexes requets from BankMachines to DFI
+
+    This module multiplexes requests from BankMachines (and Refresher) and
+    connects them to DFI. Refresh commands are coordinated between the Refresher
+    and BankMachines to ensure there are no conflicts. Enforces required timings
+    between commands (some timings are enforced by BankMachines).
+
+    Parameters
+    ----------
+    settings : ControllerSettings
+        Controller settings (with .phy, .geom and .timing settings)
+    bank_machines : [BankMachine, ...]
+        Bank machines that generate command requests to the Multiplexer
+    refresher : Refresher
+        Generates REFRESH command requests
+    dfi : dfi.Interface
+        DFI connected to the PHY
+    interface : LiteDRAMInterface
+        Data interface connected directly to LiteDRAMCrossbar
+    """
+    def __init__(self,
+            settings,
+            bank_machines,
+            refresher,
+            dfi,
+            interface,
+            TMRinterface):
+        assert(settings.phy.nphases == len(dfi.phases))
+
+        ras_allowed = Signal(reset=1)
+        cas_allowed = Signal(reset=1)
+
+        # Read/Write Cmd/Dat phases ----------------------------------------------------------------
+        nphases = settings.phy.nphases
+        rdphase = settings.phy.rdphase
+        wrphase = settings.phy.wrphase
+        if isinstance(rdphase, Signal):
+            rdcmdphase = Signal.like(rdphase)
+            self.comb += rdcmdphase.eq(rdphase - 1) # Implicit %nphases.
+        else:
+            rdcmdphase = (rdphase - 1)%nphases
+        if isinstance(rdphase, Signal):
+            wrcmdphase = Signal.like(wrphase)
+            self.comb += wrcmdphase.eq(wrphase - 1) # Implicit %nphases.
+        else:
+            wrcmdphase = (wrphase - 1)%nphases
+
+        # Command choosing -------------------------------------------------------------------------
+        
+        #Create cmd's from TMRcmd's
+        requests = [bm.cmd for bm in bank_machines]
+        
+        TMRrequests = [stream.Endpoint(cmd_request_rw_layout(settings.geom.addressbits, settings.geom.bankbits + log2_int(settings.phy.nranks))) for bm in bank_machines]
+        
+        for TMRrequest, bm in zip(TMRrequests, bank_machines):
+            self.submodules += TMRInput(bm.TMRcmd.valid, TMRrequest.valid)
+            self.submodules += TMRInput(bm.TMRcmd.last, TMRrequest.last)
+            self.submodules += TMROutput(TMRrequest.ready, bm.TMRcmd.ready)
+            self.submodules += TMRInput(bm.TMRcmd.first, TMRrequest.first)
+            self.submodules += TMRInput(bm.TMRcmd.a, TMRrequest.a)
+            self.submodules += TMRInput(bm.TMRcmd.ba, TMRrequest.ba)
+            self.submodules += TMRInput(bm.TMRcmd.cas, TMRrequest.cas)
+            self.submodules += TMRInput(bm.TMRcmd.ras, TMRrequest.ras)
+            self.submodules += TMRInput(bm.TMRcmd.we, TMRrequest.we)
+            self.submodules += TMRInput(bm.TMRcmd.is_cmd, TMRrequest.is_cmd)
+            self.submodules += TMRInput(bm.TMRcmd.is_read, TMRrequest.is_read)
+            self.submodules += TMRInput(bm.TMRcmd.is_write, TMRrequest.is_write)
+        
+        self.submodules.choose_cmd = choose_cmd = _CommandChooser(TMRrequests)
+        self.submodules.choose_req = choose_req = _CommandChooser(TMRrequests)
+        if settings.phy.nphases == 1:
+            # When only 1 phase, use choose_req for all requests
+            choose_cmd = choose_req
+            self.comb += choose_req.want_cmds.eq(1)
+            self.comb += choose_req.want_activates.eq(ras_allowed)
+            
+        # Refresher cmd
+        
+        refreshCmd = stream.Endpoint(cmd_request_rw_layout(settings.geom.addressbits, settings.geom.bankbits + log2_int(settings.phy.nranks)))
+        
+        self.submodules += TMRInput(refresher.TMRcmd.valid, refreshCmd.valid)
+        self.submodules += TMRInput(refresher.TMRcmd.last, refreshCmd.last)
+        self.submodules += TMROutput(refreshCmd.ready, refresher.TMRcmd.ready)
+        self.submodules += TMRInput(refresher.TMRcmd.first, refreshCmd.first)
+        self.submodules += TMRInput(refresher.TMRcmd.a, refreshCmd.a)
+        self.submodules += TMRInput(refresher.TMRcmd.ba, refreshCmd.ba)
+        self.submodules += TMRInput(refresher.TMRcmd.cas, refreshCmd.cas)
+        self.submodules += TMRInput(refresher.TMRcmd.ras, refreshCmd.ras)
+        self.submodules += TMRInput(refresher.TMRcmd.we, refreshCmd.we)
+        self.submodules += TMRInput(refresher.TMRcmd.is_cmd, refreshCmd.is_cmd)
+        self.submodules += TMRInput(refresher.TMRcmd.is_read, refreshCmd.is_read)
+        self.submodules += TMRInput(refresher.TMRcmd.is_write, refreshCmd.is_write)
+
+        # Command steering -------------------------------------------------------------------------
+        nop = Record(cmd_request_layout(settings.geom.addressbits,
+                                        log2_int(len(bank_machines))))
+        # nop must be 1st
+        commands = [nop, choose_cmd.cmd, choose_req.cmd, refreshCmd]
+        steerer = _Steerer(commands, dfi)
+        self.submodules += steerer
+
+        # tRRD timing (Row to Row delay) -----------------------------------------------------------
+        self.submodules.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
+        self.comb += trrdcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+
+        # tFAW timing (Four Activate Window) -------------------------------------------------------
+        self.submodules.tfawcon = tfawcon = tFAWController(settings.timing.tFAW)
+        self.comb += tfawcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+
+        # RAS control ------------------------------------------------------------------------------
+        self.comb += ras_allowed.eq(trrdcon.ready & tfawcon.ready)
+
+        # tCCD timing (Column to Column delay) -----------------------------------------------------
+        self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
+        self.comb += tccdcon.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
+
+        # CAS control ------------------------------------------------------------------------------
+        self.comb += cas_allowed.eq(tccdcon.ready)
+
+        # tWTR timing (Write to Read delay) --------------------------------------------------------
+        write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
+        self.submodules.twtrcon = twtrcon = tXXDController(
+            settings.timing.tWTR + write_latency +
+            # tCCD must be added since tWTR begins after the transfer is complete
+            settings.timing.tCCD if settings.timing.tCCD is not None else 0)
+        self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
+
+        # Read/write turnaround --------------------------------------------------------------------
+        read_available = Signal()
+        write_available = Signal()
+        reads = [req.valid & req.is_read for req in requests]
+        writes = [req.valid & req.is_write for req in requests]
+        self.comb += [
+            read_available.eq(reduce(or_, reads)),
+            write_available.eq(reduce(or_, writes))
+        ]
+
+        # Anti Starvation --------------------------------------------------------------------------
+
+        def anti_starvation(timeout):
+            en = Signal()
+            max_time = Signal()
+            if timeout:
+                t = timeout - 1
+                time = Signal(max=t+1)
+                self.comb += max_time.eq(time == 0)
+                self.sync += If(~en,
+                        time.eq(t)
+                    ).Elif(~max_time,
+                        time.eq(time - 1)
+                    )
+            else:
+                self.comb += max_time.eq(0)
+            return en, max_time
+
+        read_time_en,   max_read_time = anti_starvation(settings.read_time)
+        write_time_en, max_write_time = anti_starvation(settings.write_time)
+
+        # Refresh ----------------------------------------------------------------------------------
+        self.comb += [bm.refresh_req.eq(refreshCmd.valid) for bm in bank_machines]
+        go_to_refresh = Signal()
+        bm_refresh_gnts = [bm.refresh_gnt for bm in bank_machines]
+        self.comb += go_to_refresh.eq(reduce(and_, bm_refresh_gnts))
+
+        # Datapath ---------------------------------------------------------------------------------
+        all_rddata = [p.rddata for p in dfi.phases]
+        all_wrdata = [p.wrdata for p in dfi.phases]
+        all_wrdata_mask = [p.wrdata_mask for p in dfi.phases]
+        #self.comb += [
+        #    interface.rdata.eq(Cat(*all_rddata)),
+        #    Cat(*all_wrdata).eq(interface.wdata),
+        #    Cat(*all_wrdata_mask).eq(~interface.wdata_we)
+        #]
+        
+        self.submodules += TMROutput(Cat(*all_rddata), TMRinterface.rdata)
+        self.submodules += TMRInput(TMRinterface.wdata, Cat(*all_wrdata))
+        self.submodules += TMRInput(~TMRinterface.wdata_we, Cat(*all_wrdata_mask))
+
+        def steerer_sel(steerer, access):
+            assert access in ["read", "write"]
+            r = []
+            for i in range(nphases):
+                r.append(steerer.sel[i].eq(STEER_NOP))
+                if access == "read":
+                    r.append(If(i == rdphase,    steerer.sel[i].eq(STEER_REQ)))
+                    r.append(If(i == rdcmdphase, steerer.sel[i].eq(STEER_CMD)))
+                if access == "write":
+                    r.append(If(i == wrphase,    steerer.sel[i].eq(STEER_REQ)))
+                    r.append(If(i == wrcmdphase, steerer.sel[i].eq(STEER_CMD)))
+            return r
+
+        # Control FSM ------------------------------------------------------------------------------
+        self.submodules.fsm = fsm = FSM()
+        fsm.act("READ",
+            read_time_en.eq(1),
+            choose_req.want_reads.eq(1),
+            If(settings.phy.nphases == 1,
+                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+            ).Else(
+                choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_req.cmd.ready.eq(cas_allowed)
+            ),
+            steerer_sel(steerer, access="read"),
+            If(write_available,
+                # TODO: switch only after several cycles of ~read_available?
+                If(~read_available | max_read_time,
+                    NextState("RTW")
+                )
+            ),
+            If(go_to_refresh,
+                NextState("REFRESH")
+            )
+        )
+        fsm.act("WRITE",
+            write_time_en.eq(1),
+            choose_req.want_writes.eq(1),
+            If(settings.phy.nphases == 1,
+                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+            ).Else(
+                choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_req.cmd.ready.eq(cas_allowed),
+            ),
+            steerer_sel(steerer, access="write"),
+            If(read_available,
+                If(~write_available | max_write_time,
+                    NextState("WTR")
+                )
+            ),
+            If(go_to_refresh,
+                NextState("REFRESH")
+            )
+        )
+        fsm.act("REFRESH",
+            steerer.sel[0].eq(STEER_REFRESH),
+            refreshCmd.ready.eq(1),
+            If(refreshCmd.last,
+                NextState("READ")
+            )
+        )
+        fsm.act("WTR",
+            If(twtrcon.ready,
+                NextState("READ")
+            )
+        )
+        # TODO: reduce this, actual limit is around (cl+1)/nphases
+        fsm.delayed_enter("RTW", "WRITE", settings.phy.read_latency-1)
+
+        if settings.with_bandwidth:
+            data_width = settings.phy.dfi_databits*settings.phy.nphases
+            self.submodules.bandwidth = Bandwidth(self.choose_req.cmd, data_width)
+
+class Multiplexer(Module, AutoCSR):
+    """Multplexes requets from BankMachines to DFI
+
+    This module multiplexes requests from BankMachines (and Refresher) and
+    connects them to DFI. Refresh commands are coordinated between the Refresher
+    and BankMachines to ensure there are no conflicts. Enforces required timings
+    between commands (some timings are enforced by BankMachines).
+
+    Parameters
+    ----------
+    settings : ControllerSettings
+        Controller settings (with .phy, .geom and .timing settings)
+    bank_machines : [BankMachine, ...]
+        Bank machines that generate command requests to the Multiplexer
+    refresher : Refresher
+        Generates REFRESH command requests
+    dfi : dfi.Interface
+        DFI connected to the PHY
+    interface : LiteDRAMInterface
+        Data interface connected directly to LiteDRAMCrossbar
+    """
+    def __init__(self,
+            settings,
+            bank_machines,
+            refresher,
+            dfi,
+            interface,
+            TMRinterface):
+        assert(settings.phy.nphases == len(dfi.phases))
+
+        ras_allowed = Signal(reset=1)
+        cas_allowed = Signal(reset=1)
+
+        # Read/Write Cmd/Dat phases ----------------------------------------------------------------
+        nphases = settings.phy.nphases
+        rdphase = settings.phy.rdphase
+        wrphase = settings.phy.wrphase
+        if isinstance(rdphase, Signal):
+            rdcmdphase = Signal.like(rdphase)
+            self.comb += rdcmdphase.eq(rdphase - 1) # Implicit %nphases.
+        else:
+            rdcmdphase = (rdphase - 1)%nphases
+        if isinstance(rdphase, Signal):
+            wrcmdphase = Signal.like(wrphase)
+            self.comb += wrcmdphase.eq(wrphase - 1) # Implicit %nphases.
+        else:
+            wrcmdphase = (wrphase - 1)%nphases
+
+        # Command choosing -------------------------------------------------------------------------
+        
+        #Create cmd's from TMRcmd's
+        requests = [bm.cmd for bm in bank_machines]
+        
+        TMRrequests = [stream.Endpoint(cmd_request_rw_layout(settings.geom.addressbits, settings.geom.bankbits + log2_int(settings.phy.nranks))) for bm in bank_machines]
+        
+        for TMRrequest, bm in zip(TMRrequests, bank_machines):
+            self.submodules += TMRInput(bm.TMRcmd.valid, TMRrequest.valid)
+            self.submodules += TMRInput(bm.TMRcmd.last, TMRrequest.last)
+            self.submodules += TMROutput(TMRrequest.ready, bm.TMRcmd.ready)
+            self.submodules += TMRInput(bm.TMRcmd.first, TMRrequest.first)
+            self.submodules += TMRInput(bm.TMRcmd.a, TMRrequest.a)
+            self.submodules += TMRInput(bm.TMRcmd.ba, TMRrequest.ba)
+            self.submodules += TMRInput(bm.TMRcmd.cas, TMRrequest.cas)
+            self.submodules += TMRInput(bm.TMRcmd.ras, TMRrequest.ras)
+            self.submodules += TMRInput(bm.TMRcmd.we, TMRrequest.we)
+            self.submodules += TMRInput(bm.TMRcmd.is_cmd, TMRrequest.is_cmd)
+            self.submodules += TMRInput(bm.TMRcmd.is_read, TMRrequest.is_read)
+            self.submodules += TMRInput(bm.TMRcmd.is_write, TMRrequest.is_write)
+        
+        self.submodules.choose_cmd = choose_cmd = _CommandChooser(TMRrequests)
+        self.submodules.choose_req = choose_req = _CommandChooser(TMRrequests)
+        if settings.phy.nphases == 1:
+            # When only 1 phase, use choose_req for all requests
+            choose_cmd = choose_req
+            self.comb += choose_req.want_cmds.eq(1)
+            self.comb += choose_req.want_activates.eq(ras_allowed)
+            
+        # Refresher cmd
+        
+        refreshCmd = stream.Endpoint(cmd_request_rw_layout(settings.geom.addressbits, settings.geom.bankbits + log2_int(settings.phy.nranks)))
+        
+        self.submodules += TMRInput(refresher.TMRcmd.valid, refreshCmd.valid)
+        self.submodules += TMRInput(refresher.TMRcmd.last, refreshCmd.last)
+        self.submodules += TMROutput(refreshCmd.ready, refresher.TMRcmd.ready)
+        self.submodules += TMRInput(refresher.TMRcmd.first, refreshCmd.first)
+        self.submodules += TMRInput(refresher.TMRcmd.a, refreshCmd.a)
+        self.submodules += TMRInput(refresher.TMRcmd.ba, refreshCmd.ba)
+        self.submodules += TMRInput(refresher.TMRcmd.cas, refreshCmd.cas)
+        self.submodules += TMRInput(refresher.TMRcmd.ras, refreshCmd.ras)
+        self.submodules += TMRInput(refresher.TMRcmd.we, refreshCmd.we)
+        self.submodules += TMRInput(refresher.TMRcmd.is_cmd, refreshCmd.is_cmd)
+        self.submodules += TMRInput(refresher.TMRcmd.is_read, refreshCmd.is_read)
+        self.submodules += TMRInput(refresher.TMRcmd.is_write, refreshCmd.is_write)
+
+        # Command steering -------------------------------------------------------------------------
+        nop = Record(cmd_request_layout(settings.geom.addressbits,
+                                        log2_int(len(bank_machines))))
+        # nop must be 1st
+        commands = [nop, choose_cmd.cmd, choose_req.cmd, refreshCmd]
+        steerer = _Steerer(commands, dfi)
+        self.submodules += steerer
+
+        # tRRD timing (Row to Row delay) -----------------------------------------------------------
+        self.submodules.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
+        self.comb += trrdcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+
+        # tFAW timing (Four Activate Window) -------------------------------------------------------
+        self.submodules.tfawcon = tfawcon = tFAWController(settings.timing.tFAW)
+        self.comb += tfawcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+
+        # RAS control ------------------------------------------------------------------------------
+        self.comb += ras_allowed.eq(trrdcon.ready & tfawcon.ready)
+
+        # tCCD timing (Column to Column delay) -----------------------------------------------------
+        self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
+        self.comb += tccdcon.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
+
+        # CAS control ------------------------------------------------------------------------------
+        self.comb += cas_allowed.eq(tccdcon.ready)
+
+        # tWTR timing (Write to Read delay) --------------------------------------------------------
+        write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
+        self.submodules.twtrcon = twtrcon = tXXDController(
+            settings.timing.tWTR + write_latency +
+            # tCCD must be added since tWTR begins after the transfer is complete
+            settings.timing.tCCD if settings.timing.tCCD is not None else 0)
+        self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
+
+        # Read/write turnaround --------------------------------------------------------------------
+        read_available = Signal()
+        write_available = Signal()
+        reads = [req.valid & req.is_read for req in requests]
+        writes = [req.valid & req.is_write for req in requests]
+        self.comb += [
+            read_available.eq(reduce(or_, reads)),
+            write_available.eq(reduce(or_, writes))
+        ]
+
+        # Anti Starvation --------------------------------------------------------------------------
+
+        def anti_starvation(timeout):
+            en = Signal()
+            max_time = Signal()
+            if timeout:
+                t = timeout - 1
+                time = Signal(max=t+1)
+                self.comb += max_time.eq(time == 0)
+                self.sync += If(~en,
+                        time.eq(t)
+                    ).Elif(~max_time,
+                        time.eq(time - 1)
+                    )
+            else:
+                self.comb += max_time.eq(0)
+            return en, max_time
+
+        read_time_en,   max_read_time = anti_starvation(settings.read_time)
+        write_time_en, max_write_time = anti_starvation(settings.write_time)
+
+        # Refresh ----------------------------------------------------------------------------------
+        self.comb += [bm.refresh_req.eq(refreshCmd.valid) for bm in bank_machines]
+        go_to_refresh = Signal()
+        bm_refresh_gnts = [bm.refresh_gnt for bm in bank_machines]
+        self.comb += go_to_refresh.eq(reduce(and_, bm_refresh_gnts))
+
+        # Datapath ---------------------------------------------------------------------------------
+        all_rddata = [p.rddata for p in dfi.phases]
+        all_wrdata = [p.wrdata for p in dfi.phases]
+        all_wrdata_mask = [p.wrdata_mask for p in dfi.phases]
+        #self.comb += [
+        #    interface.rdata.eq(Cat(*all_rddata)),
+        #    Cat(*all_wrdata).eq(interface.wdata),
+        #    Cat(*all_wrdata_mask).eq(~interface.wdata_we)
+        #]
+        
+        self.submodules += TMROutput(Cat(*all_rddata), TMRinterface.rdata)
+        self.submodules += TMRInput(TMRinterface.wdata, Cat(*all_wrdata))
+        self.submodules += TMRInput(~TMRinterface.wdata_we, Cat(*all_wrdata_mask))
+
+        def steerer_sel(steerer, access):
+            assert access in ["read", "write"]
+            r = []
+            for i in range(nphases):
+                r.append(steerer.sel[i].eq(STEER_NOP))
+                if access == "read":
+                    r.append(If(i == rdphase,    steerer.sel[i].eq(STEER_REQ)))
+                    r.append(If(i == rdcmdphase, steerer.sel[i].eq(STEER_CMD)))
+                if access == "write":
+                    r.append(If(i == wrphase,    steerer.sel[i].eq(STEER_REQ)))
+                    r.append(If(i == wrcmdphase, steerer.sel[i].eq(STEER_CMD)))
+            return r
+
+        # Control FSM ------------------------------------------------------------------------------
+        self.submodules.fsm = fsm = FSM()
+        fsm.act("READ",
+            read_time_en.eq(1),
+            choose_req.want_reads.eq(1),
+            If(settings.phy.nphases == 1,
+                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+            ).Else(
+                choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_req.cmd.ready.eq(cas_allowed)
+            ),
+            steerer_sel(steerer, access="read"),
+            If(write_available,
+                # TODO: switch only after several cycles of ~read_available?
+                If(~read_available | max_read_time,
+                    NextState("RTW")
+                )
+            ),
+            If(go_to_refresh,
+                NextState("REFRESH")
+            )
+        )
+        fsm.act("WRITE",
+            write_time_en.eq(1),
+            choose_req.want_writes.eq(1),
+            If(settings.phy.nphases == 1,
+                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+            ).Else(
+                choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_req.cmd.ready.eq(cas_allowed),
+            ),
+            steerer_sel(steerer, access="write"),
+            If(read_available,
+                If(~write_available | max_write_time,
+                    NextState("WTR")
+                )
+            ),
+            If(go_to_refresh,
+                NextState("REFRESH")
+            )
+        )
+        fsm.act("REFRESH",
+            steerer.sel[0].eq(STEER_REFRESH),
+            refreshCmd.ready.eq(1),
+            If(refreshCmd.last,
+                NextState("READ")
+            )
+        )
+        fsm.act("WTR",
+            If(twtrcon.ready,
+                NextState("READ")
+            )
+        )
+        # TODO: reduce this, actual limit is around (cl+1)/nphases
+        fsm.delayed_enter("RTW", "WRITE", settings.phy.read_latency-1)
+
+        if settings.with_bandwidth:
+            data_width = settings.phy.dfi_databits*settings.phy.nphases
+            self.submodules.bandwidth = Bandwidth(self.choose_req.cmd, data_width)
+
+class TMRMultiplexer(Module, AutoCSR):
+    def __init__(self,
+            settings,
+            bank_machines,
+            refresher,
+            dfi,
+            interface,
+            TMRinterface):
+        assert(settings.phy.nphases == len(dfi.phases))
+
+        ras_allowed = Signal(reset=1)
+        cas_allowed = Signal(reset=1)
+
+        # Read/Write Cmd/Dat phases ----------------------------------------------------------------
+        nphases = settings.phy.nphases
+        rdphase = settings.phy.rdphase
+        wrphase = settings.phy.wrphase
+        if isinstance(rdphase, Signal):
+            rdcmdphase = Signal.like(rdphase)
+            self.comb += rdcmdphase.eq(rdphase - 1) # Implicit %nphases.
+        else:
+            rdcmdphase = (rdphase - 1)%nphases
+        if isinstance(rdphase, Signal):
+            wrcmdphase = Signal.like(wrphase)
+            self.comb += wrcmdphase.eq(wrphase - 1) # Implicit %nphases.
+        else:
+            wrcmdphase = (wrphase - 1)%nphases
+
+        # Command choosing -------------------------------------------------------------------------
+        
+        #Create cmd's from TMRcmd's
+        requests = [bm.cmd for bm in bank_machines]
+        
+        TMRrequests = [stream.Endpoint(cmd_request_rw_layout(settings.geom.addressbits, settings.geom.bankbits + log2_int(settings.phy.nranks))) for bm in bank_machines]
+        
+        for TMRrequest, bm in zip(TMRrequests, bank_machines):
+            self.submodules += TMRInput(bm.TMRcmd.valid, TMRrequest.valid)
+            self.submodules += TMRInput(bm.TMRcmd.last, TMRrequest.last)
+            self.submodules += TMROutput(TMRrequest.ready, bm.TMRcmd.ready)
+            self.submodules += TMRInput(bm.TMRcmd.first, TMRrequest.first)
+            self.submodules += TMRInput(bm.TMRcmd.a, TMRrequest.a)
+            self.submodules += TMRInput(bm.TMRcmd.ba, TMRrequest.ba)
+            self.submodules += TMRInput(bm.TMRcmd.cas, TMRrequest.cas)
+            self.submodules += TMRInput(bm.TMRcmd.ras, TMRrequest.ras)
+            self.submodules += TMRInput(bm.TMRcmd.we, TMRrequest.we)
+            self.submodules += TMRInput(bm.TMRcmd.is_cmd, TMRrequest.is_cmd)
+            self.submodules += TMRInput(bm.TMRcmd.is_read, TMRrequest.is_read)
+            self.submodules += TMRInput(bm.TMRcmd.is_write, TMRrequest.is_write)
+        
+        self.submodules.choose_cmd = choose_cmd = _CommandChooser(TMRrequests)
+        self.submodules.choose_req = choose_req = _CommandChooser(TMRrequests)
+        if settings.phy.nphases == 1:
+            # When only 1 phase, use choose_req for all requests
+            choose_cmd = choose_req
+            self.comb += choose_req.want_cmds.eq(1)
+            self.comb += choose_req.want_activates.eq(ras_allowed)
+            
+        # Refresher cmd
+        
+        refreshCmd = stream.Endpoint(cmd_request_rw_layout(settings.geom.addressbits, settings.geom.bankbits + log2_int(settings.phy.nranks)))
+        
+        self.submodules += TMRInput(refresher.TMRcmd.valid, refreshCmd.valid)
+        self.submodules += TMRInput(refresher.TMRcmd.last, refreshCmd.last)
+        self.submodules += TMROutput(refreshCmd.ready, refresher.TMRcmd.ready)
+        self.submodules += TMRInput(refresher.TMRcmd.first, refreshCmd.first)
+        self.submodules += TMRInput(refresher.TMRcmd.a, refreshCmd.a)
+        self.submodules += TMRInput(refresher.TMRcmd.ba, refreshCmd.ba)
+        self.submodules += TMRInput(refresher.TMRcmd.cas, refreshCmd.cas)
+        self.submodules += TMRInput(refresher.TMRcmd.ras, refreshCmd.ras)
+        self.submodules += TMRInput(refresher.TMRcmd.we, refreshCmd.we)
+        self.submodules += TMRInput(refresher.TMRcmd.is_cmd, refreshCmd.is_cmd)
+        self.submodules += TMRInput(refresher.TMRcmd.is_read, refreshCmd.is_read)
+        self.submodules += TMRInput(refresher.TMRcmd.is_write, refreshCmd.is_write)
+
+        # Command steering -------------------------------------------------------------------------
+        nop = Record(cmd_request_layout(settings.geom.addressbits,
+                                        log2_int(len(bank_machines))))
+        # nop must be 1st
+        commands = [nop, choose_cmd.cmd, choose_req.cmd, refreshCmd]
+        steerer = _Steerer(commands, dfi)
+        self.submodules += steerer
+
+        # tRRD timing (Row to Row delay) -----------------------------------------------------------
+        self.submodules.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
+        self.comb += trrdcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+
+        # tFAW timing (Four Activate Window) -------------------------------------------------------
+        self.submodules.tfawcon = tfawcon = tFAWController(settings.timing.tFAW)
+        self.comb += tfawcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+
+        # RAS control ------------------------------------------------------------------------------
+        self.comb += ras_allowed.eq(trrdcon.ready & tfawcon.ready)
+
+        # tCCD timing (Column to Column delay) -----------------------------------------------------
+        self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
+        self.comb += tccdcon.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
+
+        # CAS control ------------------------------------------------------------------------------
+        self.comb += cas_allowed.eq(tccdcon.ready)
+
+        # tWTR timing (Write to Read delay) --------------------------------------------------------
+        write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
+        self.submodules.twtrcon = twtrcon = tXXDController(
+            settings.timing.tWTR + write_latency +
+            # tCCD must be added since tWTR begins after the transfer is complete
+            settings.timing.tCCD if settings.timing.tCCD is not None else 0)
+        self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
+
+        # Read/write turnaround --------------------------------------------------------------------
+        read_available = Signal()
+        write_available = Signal()
+        reads = [req.valid & req.is_read for req in requests]
+        writes = [req.valid & req.is_write for req in requests]
+        self.comb += [
+            read_available.eq(reduce(or_, reads)),
+            write_available.eq(reduce(or_, writes))
+        ]
+
+        # Anti Starvation --------------------------------------------------------------------------
+
+        def anti_starvation(timeout):
+            en = Signal()
+            max_time = Signal()
+            if timeout:
+                t = timeout - 1
+                time = Signal(max=t+1)
+                self.comb += max_time.eq(time == 0)
+                self.sync += If(~en,
+                        time.eq(t)
+                    ).Elif(~max_time,
+                        time.eq(time - 1)
+                    )
+            else:
+                self.comb += max_time.eq(0)
+            return en, max_time
+
+        read_time_en,   max_read_time = anti_starvation(settings.read_time)
+        write_time_en, max_write_time = anti_starvation(settings.write_time)
+
+        # Refresh ----------------------------------------------------------------------------------
+        self.comb += [bm.refresh_req.eq(refreshCmd.valid) for bm in bank_machines]
+        go_to_refresh = Signal()
+        bm_refresh_gnts = [bm.refresh_gnt for bm in bank_machines]
+        self.comb += go_to_refresh.eq(reduce(and_, bm_refresh_gnts))
+
+        # Datapath ---------------------------------------------------------------------------------
+        all_rddata = [p.rddata for p in dfi.phases]
+        all_wrdata = [p.wrdata for p in dfi.phases]
+        all_wrdata_mask = [p.wrdata_mask for p in dfi.phases]
+        #self.comb += [
+        #    interface.rdata.eq(Cat(*all_rddata)),
+        #    Cat(*all_wrdata).eq(interface.wdata),
+        #    Cat(*all_wrdata_mask).eq(~interface.wdata_we)
+        #]
+        
+        self.submodules += TMROutput(Cat(*all_rddata), TMRinterface.rdata)
+        self.submodules += TMRInput(TMRinterface.wdata, Cat(*all_wrdata))
+        self.submodules += TMRInput(~TMRinterface.wdata_we, Cat(*all_wrdata_mask))
+
+        def steerer_sel(steerer, access):
+            assert access in ["read", "write"]
+            r = []
+            for i in range(nphases):
+                r.append(steerer.sel[i].eq(STEER_NOP))
+                if access == "read":
+                    r.append(If(i == rdphase,    steerer.sel[i].eq(STEER_REQ)))
+                    r.append(If(i == rdcmdphase, steerer.sel[i].eq(STEER_CMD)))
+                if access == "write":
+                    r.append(If(i == wrphase,    steerer.sel[i].eq(STEER_REQ)))
+                    r.append(If(i == wrcmdphase, steerer.sel[i].eq(STEER_CMD)))
+            return r
+
+        # Control FSM ------------------------------------------------------------------------------
+        self.submodules.fsm = fsm = FSM()
+        fsm.act("READ",
+            read_time_en.eq(1),
+            choose_req.want_reads.eq(1),
+            If(settings.phy.nphases == 1,
+                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+            ).Else(
+                choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_req.cmd.ready.eq(cas_allowed)
+            ),
+            steerer_sel(steerer, access="read"),
+            If(write_available,
+                # TODO: switch only after several cycles of ~read_available?
+                If(~read_available | max_read_time,
+                    NextState("RTW")
+                )
+            ),
+            If(go_to_refresh,
+                NextState("REFRESH")
+            )
+        )
+        fsm.act("WRITE",
+            write_time_en.eq(1),
+            choose_req.want_writes.eq(1),
+            If(settings.phy.nphases == 1,
+                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+            ).Else(
+                choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_req.cmd.ready.eq(cas_allowed),
+            ),
+            steerer_sel(steerer, access="write"),
+            If(read_available,
+                If(~write_available | max_write_time,
+                    NextState("WTR")
+                )
+            ),
+            If(go_to_refresh,
+                NextState("REFRESH")
+            )
+        )
+        fsm.act("REFRESH",
+            steerer.sel[0].eq(STEER_REFRESH),
+            refreshCmd.ready.eq(1),
+            If(refreshCmd.last,
+                NextState("READ")
+            )
+        )
+        fsm.act("WTR",
+            If(twtrcon.ready,
+                NextState("READ")
+            )
+        )
+        # TODO: reduce this, actual limit is around (cl+1)/nphases
+        fsm.delayed_enter("RTW", "WRITE", settings.phy.read_latency-1)
+
+        if settings.with_bandwidth:
+            data_width = settings.phy.dfi_databits*settings.phy.nphases
+            self.submodules.bandwidth = Bandwidth(self.choose_req.cmd, data_width)

@@ -13,7 +13,7 @@ from litedram.common import *
 from litedram.phy import dfi
 from litedram.core.refresher import Refresher, TMRRefresher
 from litedram.core.bankmachine import BankMachine, TMRBankMachine
-from litedram.core.multiplexer import Multiplexer
+from litedram.core.multiplexer import Multiplexer, TMRMultiplexer
 
 # Settings -----------------------------------------------------------------------------------------
 
@@ -103,7 +103,7 @@ class LiteDRAMController(Module):
             self.comb += getattr(TMRinterface, "bank"+str(n)).connect(bank_machine.TMRreq)
 
         # Multiplexer ------------------------------------------------------------------------------
-        self.submodules.multiplexer = Multiplexer(
+        self.submodules.multiplexer = TMRMultiplexer(
             settings      = self.settings,
             bank_machines = bank_machines,
             refresher     = self.refresher,

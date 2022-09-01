@@ -3352,8 +3352,8 @@ reg [3:0] tmrbankmachine6_state = 4'd0;
 reg [3:0] tmrbankmachine6_next_state;
 reg [3:0] tmrbankmachine7_state = 4'd0;
 reg [3:0] tmrbankmachine7_next_state;
-reg [3:0] multiplexer_state = 4'd0;
-reg [3:0] multiplexer_next_state;
+reg [3:0] tmrmultiplexer_state = 4'd0;
+reg [3:0] tmrmultiplexer_next_state;
 wire roundrobin0_request;
 wire roundrobin0_grant;
 wire roundrobin0_ce;
@@ -9017,9 +9017,9 @@ always @(*) begin
 	sdram_multiplexer_steerer3 <= 2'd0;
 	sdram_multiplexer_en0 <= 1'd0;
 	sdram_multiplexer_en1 <= 1'd0;
-	multiplexer_next_state <= 4'd0;
-	multiplexer_next_state <= multiplexer_state;
-	case (multiplexer_state)
+	tmrmultiplexer_next_state <= 4'd0;
+	tmrmultiplexer_next_state <= tmrmultiplexer_state;
+	case (tmrmultiplexer_state)
 		1'd1: begin
 			sdram_multiplexer_en1 <= 1'd1;
 			sdram_multiplexer_choose_req_want_writes <= 1'd1;
@@ -9060,45 +9060,45 @@ always @(*) begin
 			end
 			if (sdram_multiplexer_read_available) begin
 				if (((~sdram_multiplexer_write_available) | sdram_multiplexer_max_time1)) begin
-					multiplexer_next_state <= 2'd3;
+					tmrmultiplexer_next_state <= 2'd3;
 				end
 			end
 			if (sdram_multiplexer_go_to_refresh) begin
-				multiplexer_next_state <= 2'd2;
+				tmrmultiplexer_next_state <= 2'd2;
 			end
 		end
 		2'd2: begin
 			sdram_multiplexer_steerer0 <= 2'd3;
 			sdram_multiplexer_refreshCmd_ready <= 1'd1;
 			if (sdram_multiplexer_refreshCmd_last) begin
-				multiplexer_next_state <= 1'd0;
+				tmrmultiplexer_next_state <= 1'd0;
 			end
 		end
 		2'd3: begin
 			if (sdram_multiplexer_twtrcon_ready) begin
-				multiplexer_next_state <= 1'd0;
+				tmrmultiplexer_next_state <= 1'd0;
 			end
 		end
 		3'd4: begin
-			multiplexer_next_state <= 3'd5;
+			tmrmultiplexer_next_state <= 3'd5;
 		end
 		3'd5: begin
-			multiplexer_next_state <= 3'd6;
+			tmrmultiplexer_next_state <= 3'd6;
 		end
 		3'd6: begin
-			multiplexer_next_state <= 3'd7;
+			tmrmultiplexer_next_state <= 3'd7;
 		end
 		3'd7: begin
-			multiplexer_next_state <= 4'd8;
+			tmrmultiplexer_next_state <= 4'd8;
 		end
 		4'd8: begin
-			multiplexer_next_state <= 4'd9;
+			tmrmultiplexer_next_state <= 4'd9;
 		end
 		4'd9: begin
-			multiplexer_next_state <= 4'd10;
+			tmrmultiplexer_next_state <= 4'd10;
 		end
 		4'd10: begin
-			multiplexer_next_state <= 1'd1;
+			tmrmultiplexer_next_state <= 1'd1;
 		end
 		default: begin
 			sdram_multiplexer_en0 <= 1'd1;
@@ -9140,11 +9140,11 @@ always @(*) begin
 			end
 			if (sdram_multiplexer_write_available) begin
 				if (((~sdram_multiplexer_read_available) | sdram_multiplexer_max_time0)) begin
-					multiplexer_next_state <= 3'd4;
+					tmrmultiplexer_next_state <= 3'd4;
 				end
 			end
 			if (sdram_multiplexer_go_to_refresh) begin
-				multiplexer_next_state <= 2'd2;
+				tmrmultiplexer_next_state <= 2'd2;
 			end
 		end
 	endcase
@@ -14321,7 +14321,7 @@ always @(posedge sys_clk) begin
 			end
 		end
 	end
-	multiplexer_state <= multiplexer_next_state;
+	tmrmultiplexer_state <= tmrmultiplexer_next_state;
 	new_master_wdata_ready0 <= ((((((((1'd0 | ((roundrobin0_grant == 1'd0) & sdram_interface_bank0_wdata_ready)) | ((roundrobin1_grant == 1'd0) & sdram_interface_bank1_wdata_ready)) | ((roundrobin2_grant == 1'd0) & sdram_interface_bank2_wdata_ready)) | ((roundrobin3_grant == 1'd0) & sdram_interface_bank3_wdata_ready)) | ((roundrobin4_grant == 1'd0) & sdram_interface_bank4_wdata_ready)) | ((roundrobin5_grant == 1'd0) & sdram_interface_bank5_wdata_ready)) | ((roundrobin6_grant == 1'd0) & sdram_interface_bank6_wdata_ready)) | ((roundrobin7_grant == 1'd0) & sdram_interface_bank7_wdata_ready));
 	new_master_wdata_ready1 <= new_master_wdata_ready0;
 	new_master_rdata_valid0 <= ((((((((1'd0 | ((roundrobin0_grant == 1'd0) & sdram_interface_bank0_rdata_valid)) | ((roundrobin1_grant == 1'd0) & sdram_interface_bank1_rdata_valid)) | ((roundrobin2_grant == 1'd0) & sdram_interface_bank2_rdata_valid)) | ((roundrobin3_grant == 1'd0) & sdram_interface_bank3_rdata_valid)) | ((roundrobin4_grant == 1'd0) & sdram_interface_bank4_rdata_valid)) | ((roundrobin5_grant == 1'd0) & sdram_interface_bank5_rdata_valid)) | ((roundrobin6_grant == 1'd0) & sdram_interface_bank6_rdata_valid)) | ((roundrobin7_grant == 1'd0) & sdram_interface_bank7_rdata_valid));
@@ -14751,7 +14751,7 @@ always @(posedge sys_clk) begin
 		tmrbankmachine5_state <= 4'd0;
 		tmrbankmachine6_state <= 4'd0;
 		tmrbankmachine7_state <= 4'd0;
-		multiplexer_state <= 4'd0;
+		tmrmultiplexer_state <= 4'd0;
 		new_master_wdata_ready0 <= 1'd0;
 		new_master_wdata_ready1 <= 1'd0;
 		new_master_rdata_valid0 <= 1'd0;
