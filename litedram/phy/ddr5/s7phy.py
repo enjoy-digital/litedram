@@ -26,8 +26,8 @@ class S7DDR5PHY(DDR5PHY, S7Common):
         # DoubleRateDDR5PHY outputs half-width signals (comparing to DDR5PHY) in sys2x domain.
         # This allows us to use 8:1 DDR OSERDESE2/ISERDESE2 to (de-)serialize the data.
         super().__init__(pads,
-            ser_latency = Latency(sys2x=1),  # OSERDESE2 8:1 DDR (4 full-rate clocks)
-            des_latency = Latency(sys2x=2),  # ISERDESE2 NETWORKING
+            ser_latency = Latency(sys=1),  # OSERDESE2 8:1 DDR (4 full-rate clocks)
+            des_latency = Latency(sys=2),  # ISERDESE2 NETWORKING
             phytype     = self.__class__.__name__,
             **kwargs
         )
@@ -44,7 +44,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
         # Note: this should be named sys16x, but using sys8x due to a name hard-coded in BIOS
         assert iodelay_clk_freq in [200e6, 300e6, 400e6]
         iodelay_tap_average = 1 / (2*32 * iodelay_clk_freq)
-        half_sys8x_taps = math.floor(self.tck / (4 * iodelay_tap_average))
+        half_sys4x_taps = math.floor(self.tck / (4 * iodelay_tap_average))
         assert half_sys8x_taps < 32, "Exceeded ODELAYE2 max value: {} >= 32".format(half_sys8x_taps)
 
         # Registers --------------------------------------------------------------------------------

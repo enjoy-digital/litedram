@@ -38,18 +38,18 @@ class DDR5Output:
 
             setattr(self, prefix+'dq_o',  [Signal(2*nphases) for _ in range(databits)])
             setattr(self, prefix+'dq_i',  [Signal(2*nphases) for _ in range(databits)])
-            setattr(self, prefix+'dq_oe', Signal())  # no serialization
+            setattr(self, prefix+'dq_oe', Signal(2*nphases))
 
             setattr(self, prefix+'dm_n_o',  [Signal(2*nphases) for _ in range(nstrobes)])
             setattr(self, prefix+'dm_n_i',  [Signal(2*nphases) for _ in range(nstrobes)])
-            setattr(self, prefix+'dm_n_oe', Signal())  # no serialization
+            setattr(self, prefix+'dm_n_oe', Signal(2*nphases))
 
             setattr(self, prefix+'dqs_t_o',  [Signal(2*nphases) for _ in range(nstrobes)])
             setattr(self, prefix+'dqs_t_i',  [Signal(2*nphases) for _ in range(nstrobes)])
-            setattr(self, prefix+'dqs_t_oe', Signal())  # no serialization
+            setattr(self, prefix+'dqs_t_oe', Signal(2*nphases))
             setattr(self, prefix+'dqs_c_o',  [Signal(2*nphases) for _ in range(nstrobes)])
             setattr(self, prefix+'dqs_c_i',  [Signal(2*nphases) for _ in range(nstrobes)])
-            setattr(self, prefix+'dqs_c_oe', Signal())  # no serialization
+            setattr(self, prefix+'dqs_c_oe', Signal(2*nphases))
 
 
 class DDR5DQSPattern(Module):
