@@ -272,6 +272,10 @@ class DFISequencer:
     @staticmethod
     def input_generator(dfi, sequence: DFISequence):
         names = dfi_names(cmd=True, wrdata=True, rddata=False) + ["rddata_en"]
+        names.remove("alert_n")
+        for phase in dfi.phases:
+            yield getattr(phase, "alert_n").eq(1)  # value setup by PHY
+
         for per_phase in sequence:
             # set values
             for phase, values in per_phase.items():
@@ -283,4 +287,6 @@ class DFISequencer:
             for phase, values in per_phase.items():
                 for sig in values.keys():
                     yield getattr(dfi.phases[phase], sig).eq(0)
+                    if sig == "alert_n":
+                        yield getattr(dfi.phases[phase], sig).eq(1) # default value for alert_n is 1
         yield

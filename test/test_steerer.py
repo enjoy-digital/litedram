@@ -232,10 +232,10 @@ class TestSteerer(unittest.TestCase):
             yield dut.steerer.sel[1].eq(STEER_NOP)
             yield
 
-            self.assertEqual((yield dut.dfi.phases[0].odt), 0b11)
-            self.assertEqual((yield dut.dfi.phases[1].odt), 0b11)
-            self.assertEqual((yield dut.dfi.phases[2].odt), 0b11)
-            self.assertEqual((yield dut.dfi.phases[3].odt), 0b11)
+            self.assertEqual((yield dut.dfi.phases[0].odt), 0b1)
+            self.assertEqual((yield dut.dfi.phases[1].odt), 0b1)
+            self.assertEqual((yield dut.dfi.phases[2].odt), 0b1)
+            self.assertEqual((yield dut.dfi.phases[3].odt), 0b1)
 
         dut = SteererDUT(nranks=2, dfi_databits=16, nphases=4)
         run_simulation(dut, main_generator(dut))

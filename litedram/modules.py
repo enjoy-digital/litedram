@@ -1297,9 +1297,9 @@ class M329R8GA0BB0(DDR5RegisteredModule):
 
 class DDR5SimX8(MT60B2G8HB48B):
     # modified so simulation uses less memory in CI
-    nrows       = 2 ** 14
+    nrows       = 2 ** 13
 
 
 class DDR5SimX4(M329R8GA0BB0):
     # modified so simulation uses less memory in CI
-    nrows       = 2 ** 14
+    nrows       = 2 ** 13

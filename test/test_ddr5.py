@@ -13,7 +13,7 @@ from collections import defaultdict
 
 from migen import *
 
-from litedram.phy.ddr5.simphy import DDR5SimPHY, DoubleRateDDR5SimPHY
+from litedram.phy.ddr5.simphy import DDR5SimPHY
 from litedram.phy.ddr5 import simsoc
 from litedram.phy.sim_utils import SimLogger
 from litedram.phy.utils import Serializer, Deserializer
@@ -35,14 +35,15 @@ from test.phy_common import DFISequencer, PadChecker
 # BUT a generator starts before first edge, so a `yield` is needed to wait until the first
 # rising edge!
 sim_clocks={
-    "sys":          (64, 31),
-    "sys_rst":      (64, 30),
-    "sys2x":        (32, 15),
-    "sys4x":        (16,  7),
-    "sys4x_ddr":    ( 8,  3),
-    "sys4x_90":     (16,  3),
-    "sys4x_90_ddr": ( 8,  7),
-    "sys4x_180":    (16, 15),
+    "sys":            (64, 31),
+    "sys_rst":        (64, 30),
+    "sys2x":          (32, 15),
+    "sys4x":          (16,  7),
+    "sys4x_ddr":      ( 8,  3),
+    "sys4x_90":       (16,  3),
+    "sys4x_90_ddr":   ( 8,  7),
+    "sys4x_180":      (16, 15),
+    "sys4x_180s_ddr": ( 8,  5),
 }
 run_simulation = partial(test.phy_common.run_simulation, clocks=sim_clocks)
 
