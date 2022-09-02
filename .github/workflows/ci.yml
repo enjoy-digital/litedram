@@ -41,7 +41,7 @@ jobs:
           # temporary hack until merged to master
           git -C ../litex remote add antmicro https://github.com/antmicro/litex.git
           git -C ../litex fetch antmicro
-          git -C ../litex checkout antmicro/4_bit_dqs
+          git -C ../litex checkout antmicro/msieron/add-blocking-assign-back
 
       # Install RISC-V GCC
       - name: Install RISC-V GCC
