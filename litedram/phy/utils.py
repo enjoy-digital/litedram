@@ -228,7 +228,7 @@ class Serializer(Module):
 
     LATENCY = 1
 
-    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None):
+    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None, aligned=False):
         assert i_dw > o_dw, (i_dw, o_dw)
         assert i_dw % o_dw == 0, (i_dw, o_dw)
         ratio = i_dw // o_dw
@@ -262,7 +262,7 @@ class Serializer(Module):
         )
 
         # Parallel part
-        sd_clkdiv += i_d[~cnt[0]].eq(i)
+        sd_clkdiv += i_d[~cnt[0]].eq(i) if not aligned else i_d[cnt[0]].eq(i)
 
         self.i_array = i_array = Array([i_d[n%2][n//2*o_dw:(n//2+1)*o_dw] for n in range(2 * ratio)])
         self.comb += self.o.eq(i_array[cnt])
@@ -281,7 +281,7 @@ class Deserializer(Module):
     """
     LATENCY = 2
 
-    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None):
+    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None, aligned=False):
         assert i_dw < o_dw, (i_dw, o_dw)
         assert o_dw % i_dw == 0, (i_dw, o_dw)
         ratio = o_dw // i_dw

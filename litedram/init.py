@@ -1085,6 +1085,8 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     r.define("SDRAM_PHY_MODULES", phy_settings.strobes)
     if phy_settings.delays > 0:
         r.define("SDRAM_PHY_DELAYS", phy_settings.delays)
+        if phy_settings.with_per_dq_idelay:
+            r.define("SDRAM_DELAY_PER_DQ")
     if phy_settings.bitslips > 0:
         r.define("SDRAM_PHY_BITSLIPS", phy_settings.bitslips)
 

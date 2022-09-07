@@ -76,7 +76,7 @@ class DDR5Tests(unittest.TestCase):
         self.dqs_t_rd_latency: str = self.xs * 2 + (self.read_latency - 2 - 1) * self.xs + 'x' * (self.NPHASES - 1) * 2
         self.dq_rd_latency:    str = self.xs * 2 + (self.read_latency - 2) * self.zeros  + '0' * (self.NPHASES - 1) * 2
         self.dqs_t_wr_latency: str = self.xs * 2 + (self.cmd_latency + self.write_latency - 1) * self.xs + 'x' * (self.NPHASES - 1) * 2
-        self.dq_wr_latency:    str = self.xs * 2 + (self.cmd_latency + self.write_latency) * self.zeros  + '0' * (self.NPHASES - 1) * 2
+        self.dq_wr_latency:    str = self.xs * 2 + (self.cmd_latency + self.write_latency) * self.zeros  + 'x' * (self.NPHASES - 1) * 2
 
     @staticmethod
     def process_ca(ca: str) -> int:
@@ -158,7 +158,7 @@ class DDR5Tests(unittest.TestCase):
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
             ],
             pad_checkers = {"sys4x_90_ddr": {
-                'ck_t': self.xs * 2 + '10101010' * (self.cmd_latency + 1),
+                'ck_t': self.xs * 3 + '10101010' * (self.cmd_latency),
             }},
             vcd_name="ddr5_clk.vcd"
         )

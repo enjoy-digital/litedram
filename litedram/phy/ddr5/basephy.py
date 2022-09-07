@@ -38,50 +38,191 @@ class DDR5Output:
 
             setattr(self, prefix+'dq_o',  [Signal(2*nphases) for _ in range(databits)])
             setattr(self, prefix+'dq_i',  [Signal(2*nphases) for _ in range(databits)])
-            setattr(self, prefix+'dq_oe', Signal(2*nphases))
+#            setattr(self, prefix+'dq_oe', Signal(2*nphases)) // use DQS oe as DQ will only output if DQS is in output mode
 
             setattr(self, prefix+'dm_n_o',  [Signal(2*nphases) for _ in range(nstrobes)])
             setattr(self, prefix+'dm_n_i',  [Signal(2*nphases) for _ in range(nstrobes)])
-            setattr(self, prefix+'dm_n_oe', Signal(2*nphases))
+#            setattr(self, prefix+'dm_n_oe', Signal(2*nphases)) // use DQS oe as DQ will only output if DQS is in output mode
 
             setattr(self, prefix+'dqs_t_o',  [Signal(2*nphases) for _ in range(nstrobes)])
             setattr(self, prefix+'dqs_t_i',  [Signal(2*nphases) for _ in range(nstrobes)])
-            setattr(self, prefix+'dqs_t_oe', Signal(2*nphases))
+            setattr(self, prefix+'dqs_oe',   Signal(2*nphases))
             setattr(self, prefix+'dqs_c_o',  [Signal(2*nphases) for _ in range(nstrobes)])
             setattr(self, prefix+'dqs_c_i',  [Signal(2*nphases) for _ in range(nstrobes)])
-            setattr(self, prefix+'dqs_c_oe', Signal(2*nphases))
 
 
 class DDR5DQSPattern(Module):
-    def __init__(self, preamble=None, postamble=None, wlevel_en=0, wlevel_strobe=0, register=False):
-        self.preamble  = Signal() if preamble  is None else preamble
-        self.postamble = Signal() if postamble is None else postamble
-        self.o = Signal(8)
+    def __init__(self, old_tap: Signal(4), now_tap: Signal(4), next_tap:Signal(4),
+                 wlevel_en: Signal(), wlevel_strobe: Signal()):
+        self.o  = Signal(8)
+        self.oe = Signal(8)
 
         # # #
 
         # DQS Pattern transmitted as LSB-first.
+        # Always enabled in write leveling mode, else during transfers
+        # Assumptions: read/writes start in phase 0, preamble is 2 cycles and post amble is 0.5 cycle
 
         self.comb += [
-            self.o.eq(0b01010101),
-            If(self.preamble,
-                self.o.eq(0b01000000)  # 2tCK write preamble (0100 prefix matters only)
-            ),
-            If(self.postamble,
-                self.o.eq(0b00000000) # 0.5 tCK write postamble (0 prefix matters only)
-            ),
+            self.o.eq(0),
+            self.oe.eq(0),
             If(wlevel_en,
                 self.o.eq(0b00000000),
+                self.oe.eq(0b11111111),
                 If(wlevel_strobe,
                     # use 2 toggles as, according to datasheet, the first one may not be registered
                     self.o.eq(0b00000101)
                 )
+            ).Else(
+                Case(old_tap, {
+                    0b0001   : [
+                        Case(now_tap, {
+                            0b0000 : [
+                                Case(next_tap, {
+                                    0b0001   : [
+                                        self.o.eq( 0b01000000),
+                                        self.oe.eq(0b11110000),
+                                    ],
+                                    0b0010   : [
+                                        self.o.eq( 0b00000000),
+                                        self.oe.eq(0b11000000),
+                                    ],
+                                })
+                            ],
+                            0b0001 : [
+                                self.o.eq( 0b01010101),
+                                self.oe.eq(0b11111111)
+                            ],
+                            0b0010 : [
+                                self.o.eq( 0b01010101),
+                                self.oe.eq(0b11111111)
+                            ],
+                            0b0100 : [
+                                self.o.eq( 0b01010100),
+                                self.oe.eq(0b11111111)
+                            ],
+                            0b1000 : [
+                                self.o.eq( 0b01010000),
+                                self.oe.eq(0b11111100)
+                            ],
+                        })
+                    ],
+                    0b0010   : [
+                        Case(now_tap, {
+                            0b0000 : [
+                                Case(next_tap, {
+                                    0b0001   : [
+                                        self.o.eq( 0b01000001),
+                                        self.oe.eq(0b11110011),
+                                    ],
+                                    0b0010   : [
+                                        self.o.eq( 0b00000001),
+                                        self.oe.eq(0b11000011),
+                                    ],
+                                    "default": [
+                                        self.o.eq( 0b00000001),
+                                        self.oe.eq(0b00000011),
+                                    ],
+                                })
+                            ],
+                            0b0010 : [
+                                self.o.eq( 0b01010101),
+                                self.oe.eq(0b11111111)
+                            ],
+                            0b0100 : [
+                                self.o.eq( 0b01010101),
+                                self.oe.eq(0b11111111)
+                            ],
+                            0b1000 : [
+                                self.o.eq( 0b01010001),
+                                self.oe.eq(0b11111111)
+                            ],
+                        })
+                    ],
+                    0b0100   : [
+                        Case(now_tap, {
+                            0b0000 : [
+                                Case(next_tap, {
+                                    0b0001   : [
+                                        self.o.eq( 0b01000101),
+                                        self.oe.eq(0b11111111),
+                                    ],
+                                    0b0010   : [
+                                        self.o.eq( 0b00000101),
+                                        self.oe.eq(0b11001111),
+                                    ],
+                                    "default": [
+                                        self.o.eq( 0b00000101),
+                                        self.oe.eq(0b00001111),
+                                    ],
+                                })
+                            ],
+                            0b0100 : [
+                                self.o.eq( 0b01010101),
+                                self.oe.eq(0b11111111)
+                            ],
+                            0b1000 : [
+                                self.o.eq( 0b01010101),
+                                self.oe.eq(0b11111111)
+                            ],
+                        })
+                    ],
+                    0b1000   : [
+                        Case(now_tap, {
+                            0b0000 : [
+                                Case(next_tap, {
+                                    0b0001   : [
+                                        self.o.eq( 0b01010101),
+                                        self.oe.eq(0b11111111),
+                                    ],
+                                    0b0010   : [
+                                        self.o.eq( 0b00010101),
+                                        self.oe.eq(0b11111111),
+                                    ],
+                                    "default": [
+                                        self.o.eq( 0b00010101),
+                                        self.oe.eq(0b00111111),
+                                    ],
+                                })
+                            ],
+                            0b1000 : [
+                                self.o.eq( 0b01010101),
+                                self.oe.eq(0b11111111)
+                            ],
+                        })
+                    ],
+                    "default": [
+                        Case(now_tap, {
+                            0b0000 : [
+                                If(next_tap == 0b0001,
+                                    self.o.eq( 0b01000000),
+                                    self.oe.eq(0b11110000),
+                                ).Elif(next_tap == 0b1010,
+                                    self.o.eq( 0b00000000),
+                                    self.oe.eq(0b11000000),
+                                )
+                            ],
+                            0b0001 : [
+                                self.o.eq( 0b01010101),
+                                self.oe.eq(0b11111111)
+                            ],
+                            0b0010 : [
+                                self.o.eq( 0b01010101),
+                                self.oe.eq(0b11111111)
+                            ],
+                            0b0100 : [
+                                self.o.eq( 0b01010100),
+                                self.oe.eq(0b11111111)
+                            ],
+                            0b1000 : [
+                                self.o.eq( 0b01010000),
+                                self.oe.eq(0b11111100)
+                            ],
+                        })
+                    ],
+                })
             )
         ]
-        if register:
-            o = Signal.like(self.o)
-            self.sync += o.eq(self.o)
-            self.o = o
 
 
 class DDR5PHY(Module, AutoCSR):
@@ -228,7 +369,7 @@ class DDR5PHY(Module, AutoCSR):
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
             bitslips      = 1,
-            strobes       = strobes,
+            strobes       = 2 * strobes,
             with_sub_channels = with_sub_channels,
         )
 
@@ -287,9 +428,6 @@ class DDR5PHY(Module, AutoCSR):
                     Cat([getattr(phase, prefix).address[bit] for phase in dfi.phases for _ in range (2)]))
 
             # DQ ---------------------------------------------------------------------------------------
-            dq_oe = Signal()
-            self.comb += getattr(self.out, prefix+'dq_oe').eq(dq_oe)
-
             delayed_rddata = Array([Signal.like(getattr(dfi.phases[0], prefix).rddata) for _ in range(nphases)])
 
             for bit in range(self.databits):
@@ -314,23 +452,45 @@ class DDR5PHY(Module, AutoCSR):
                     self.comb += getattr(self.dfi.phases[0], prefix).rddata[i%2 * self.databits + bit].eq(
                         delayed_rddata[i//2][i%2 * self.databits + bit])
             # DQS --------------------------------------------------------------------------------------
-            dqs_oe        = Signal()
-            dqs_preamble  = Signal()
-            dqs_postamble = Signal()
+
+            # Write Control Path -----------------------------------------------------------------------
+            wrtap = cwl_sys_latency - 1
+            assert wrtap >= 0
+
+            # Create a delay line of write commands coming from the DFI interface. This taps are used to
+            # control DQ/DQS tristates.
+            wrdata_en = TappedDelayLine(
+                signal = Cat([getattr(dfi.phases[i], prefix).wrdata_en for i in range(nphases-1, -1, -1)]),
+                ntaps  = wrtap + 2
+            )
+            self.submodules += wrdata_en
+
+            # Assumptions: nphases = 4
+
+            old_tap  = Signal(4)
+            now_tap  = Signal(4)
+            next_tap = Signal(4)
+
+            # wrtap is at least 5
+            self.comb += [
+                old_tap.eq(Cat(wrdata_en.taps[ wrtap    ][1:], wrdata_en.taps[wrtap - 1][0])),
+                now_tap.eq(Cat(wrdata_en.taps[ wrtap - 1][1:], wrdata_en.taps[wrtap - 2][0])),
+                next_tap.eq(Cat(wrdata_en.taps[wrtap - 2][1:], wrdata_en.taps[wrtap - 3][0])),
+            ]
+
+            dqs_oe        = Signal(2*nphases)
             dqs_pattern   = DDR5DQSPattern(
-                preamble      = dqs_preamble,
-                postamble     = dqs_postamble,
+                old_tap       = old_tap,
+                now_tap       = now_tap,
+                next_tap      = next_tap,
                 wlevel_en     = self._wlevel_en.storage,
                 wlevel_strobe = self._wlevel_strobe.re)
             self.submodules += dqs_pattern
 
-            self.comb += [
-                getattr(self.out, prefix+'dqs_t_oe').eq(dqs_oe),
-                getattr(self.out, prefix+'dqs_c_oe').eq(dqs_oe),
-            ]
-
             dqs_pattern_delayed = Signal.like(dqs_pattern.o)
+            dqs_oe_delayed = Signal.like(dqs_pattern.oe)
             self.sync += dqs_pattern_delayed.eq(dqs_pattern.o)
+            self.sync += dqs_oe_delayed.eq(dqs_pattern.oe)
 
             for byte in range(strobes):
                 # output
@@ -339,6 +499,11 @@ class DDR5PHY(Module, AutoCSR):
                     getattr(self.out, prefix+'dqs_c_o')[byte].eq(~Cat(dqs_pattern_delayed[2:8], dqs_pattern.o[0:2])),
                 ]
 
+            self.comb += [
+                getattr(self.out, prefix+'dqs_oe').eq(Cat(dqs_oe_delayed[2:8], dqs_pattern.oe[0:2])),
+            ]
+
+
             # DMI --------------------------------------------------------------------------------------
             # DMI signal is used for Data Mask or Data Bus Invertion depending on Mode Registers values.
             # With DM and DBI disabled, this signal is a Don't Care.
@@ -346,7 +511,6 @@ class DDR5PHY(Module, AutoCSR):
             # We don't support DBI, DM support is configured statically with `masked_write`.
             for byte in range(strobes):
                 if isinstance(masked_write, Signal) or masked_write:
-                    self.comb += getattr(self.out, prefix+'dm_n_oe').eq(getattr(self.out, prefix+'dq_oe'))
                     wrdata_mask = [
                         getattr(dfi.phases[i//2], prefix).wrdata_mask[i%2 * strobes + byte]
                         for i in range(2, 2*nphases)
@@ -356,8 +520,7 @@ class DDR5PHY(Module, AutoCSR):
                     ]
                     self.comb += getattr(self.out, prefix+'dm_n_o')[byte].eq(Cat(*wrdata_mask))
                 else:
-                    self.comb += getattr(self.out, prefix+'dm_n_o')[byte].eq(0)
-                    self.comb += getattr(self.out, prefix+'dm_n_oe').eq(0)
+                    self.comb += getattr(self.out, prefix+'dm_n_o')[byte].eq(1)
 
             # Read Control Path ------------------------------------------------------------------------
             # Creates a delay line of read commands coming from the DFI interface. The output is used to
@@ -375,43 +538,6 @@ class DDR5PHY(Module, AutoCSR):
                 getattr(phase, prefix).rddata_valid.eq(rddata_en.output | self._wlevel_en.storage)
                 for phase in self.dfi.phases
             ]
-
-            # Write Control Path -----------------------------------------------------------------------
-            wrtap = cwl_sys_latency - 1
-            assert wrtap >= 0
-
-            # Create a delay line of write commands coming from the DFI interface. This taps are used to
-            # control DQ/DQS tristates.
-            wrdata_en = TappedDelayLine(
-                signal = reduce(or_, [getattr(dfi.phases[i], prefix).wrdata_en for i in range(nphases)]),
-                ntaps  = wrtap + 2
-            )
-            self.submodules += wrdata_en
-
-            dq_oe_delay_serial = TappedDelayLine(
-                signal=wrdata_en.taps[wrtap],
-                ntaps=Serializer.LATENCY,
-            )
-
-            dq_oe_delay = TappedDelayLine(
-                signal=dq_oe_delay_serial.output,
-                ntaps=6,
-            )
-
-            self.submodules += dq_oe_delay_serial
-            self.submodules += ClockDomainsRenamer("sys4x_90_ddr")(dq_oe_delay)
-            self.comb += dq_oe.eq(dq_oe_delay.output)
-            # Always enabled in write leveling mode, else during transfers
-            self.sync += dqs_oe.eq(self._wlevel_en.storage | (dqs_preamble | wrdata_en.taps[wrtap] | dqs_postamble))
-
-            # Write DQS Postamble/Preamble Control Path ------------------------------------------------
-            # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
-            # write. During writes, DQS tristate is configured as output for at least 3 sys_clk cycles:
-            # 1 for Preamble, 1 for the Write and 1 for the Postamble.
-            def wrdata_en_tap(i):  # allows to have wrtap == 0
-                return wrdata_en.input if i == -1 else wrdata_en.taps[i]
-            self.comb += dqs_preamble.eq( wrdata_en_tap(wrtap - 1)  & ~wrdata_en_tap(wrtap - 0))
-            self.comb += dqs_postamble.eq(wrdata_en_tap(wrtap + 1)  & ~wrdata_en_tap(wrtap - 0))
 
     def get_rst(self, byte, rst):
         return (self._dly_sel.storage[byte] & rst) | self._rst.storage

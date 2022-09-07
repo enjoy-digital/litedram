@@ -103,6 +103,7 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
             cs["reset_cnt"] = 0
             cmd["reset_cnt"] = 0
             ddr["reset_cnt"] = 0
+            ddr["aligned"] = True
             ddr_90["reset_cnt"] = 0
 
         # Clock is shifted 180 degrees to get rising edge in the middle of SDR signals.
@@ -158,12 +159,16 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
                          i=getattr(self.pads, prefix+'dq')[i],
                          name=f'{prefix}dq_i{i}', **ddr_90)
 
-            # Output enable signals
-            self.comb += [
-                getattr(self.pads, prefix+'dm_n_oe').eq(getattr(self.out, prefix+'dm_n_oe')),
-                getattr(self.pads, prefix+'dqs_t_oe').eq(
-                    delay(getattr(self.out, prefix+'dqs_t_oe'), cycles=Serializer.LATENCY)),
-                getattr(self.pads, prefix+'dqs_c_oe').eq(delay(
-                    getattr(self.out, prefix+'dqs_c_oe'), cycles=Serializer.LATENCY)),
-                getattr(self.pads, prefix+'dq_oe').eq(getattr(self.out, prefix+'dq_oe')),
-            ]
+            # Output enable signals can be and should be serialized as well
+            self.ser(i=getattr(self.out, prefix+'dqs_oe'),
+                     o=getattr(self.pads, prefix+'dqs_t_oe'),
+                     name=f'{prefix}dqs_t_oe', **ddr)
+            self.ser(i=getattr(self.out, prefix+'dqs_oe'),
+                     o=getattr(self.pads, prefix+'dqs_c_oe'),
+                     name=f'{prefix}dqs_c_oe', **ddr)
+            self.ser(i=getattr(self.out, prefix+'dqs_oe'),
+                     o=getattr(self.pads, prefix+'dm_n_oe'),
+                     name=f'{prefix}dm_n_oe', **ddr)
+            self.ser(i=getattr(self.out, prefix+'dqs_oe'),
+                     o=getattr(self.pads, prefix+'dq_oe'),
+                     name=f'{prefix}dq_oe', **ddr)
