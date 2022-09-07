@@ -25,6 +25,30 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
+# BitSlip ------------------------------------------------------------------------------------------
+
+# FIXME: Use BitSlip from litedram.common.
+
+class BitSlip(Module):
+    def __init__(self, dw, rst=None, slp=None, cycles=1):
+        self.i = Signal(dw)
+        self.o = Signal(dw)
+        self.rst = Signal() if rst is None else rst
+        self.slp = Signal() if slp is None else slp
+
+        # # #
+
+        value = Signal(max=cycles*dw)
+        self.sync += If(self.slp, value.eq(value + 1))
+        self.sync += If(self.rst, value.eq(0))
+
+        r = Signal((cycles+1)*dw, reset_less=True)
+        self.sync += r.eq(Cat(r[dw:], self.i))
+        cases = {}
+        for i in range(cycles*dw):
+            cases[i] = self.o.eq(r[i:dw+i])
+        self.comb += Case(value, cases)
+
 # Gowin GW2A DDR PHY Initialization -----------------------------------------------------------------
 
 class GW2DDRPHYInit(Module):
