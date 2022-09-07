@@ -78,7 +78,8 @@ class BankMachineDUT(Module):
             address_width = self.address_width,
             address_align = self.address_align,
             nranks        = settings.phy.nranks,
-            settings      = settings)
+            settings      = settings,
+            TMRreq        = getattr(TMRRecord(LiteDRAMInterface(self.address_align, settings)), 'bank'+str(n)))
         self.submodules.bankmachine = bankmachine
 
     def get_cmd(self):
