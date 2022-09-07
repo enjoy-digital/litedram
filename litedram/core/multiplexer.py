@@ -506,14 +506,30 @@ class TMRMultiplexer(Module, AutoCSR):
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(TMRrequests)
         self.submodules.choose_cmd2 = choose_cmd2 = _CommandChooser(TMRrequests)
         self.submodules.choose_cmd3 = choose_cmd3 = _CommandChooser(TMRrequests)
+        
+        a = len(TMRrequests[0].a)
+        ba = len(TMRrequests[0].ba)
+        choose_tmrcmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
+        vote_TMR(self, choose_tmrcmd, choose_cmd.cmd, choose_cmd2.cmd, choose_cmd3.cmd)
+        
         self.submodules.choose_req = choose_req = _CommandChooser(TMRrequests)
         self.submodules.choose_req2 = choose_req2 = _CommandChooser(TMRrequests)
         self.submodules.choose_req3 = choose_req3 = _CommandChooser(TMRrequests)
+        
+        choose_tmrreq = stream.Endpoint(cmd_request_rw_layout(a, ba))
+        vote_TMR(self, choose_tmrreq, choose_req.cmd, choose_req2.cmd, choose_req3.cmd)
+        
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
             choose_cmd = choose_req
+            choose_cmd2 = choose_req2
+            choose_cmd3 = choose_req3
             self.comb += choose_req.want_cmds.eq(1)
+            self.comb += choose_req2.want_cmds.eq(1)
+            self.comb += choose_req3.want_cmds.eq(1)
             self.comb += choose_req.want_activates.eq(ras_allowed)
+            self.comb += choose_req2.want_activates.eq(ras_allowed)
+            self.comb += choose_req3.want_activates.eq(ras_allowed)
             
         # Refresher cmd
         
