@@ -1,5 +1,69 @@
 /* Machine-generated using Migen */
 module Multiplexer(
+	output reg [13:0] p0_address,
+	output reg [2:0] p0_bank,
+	output reg p0_cas_n,
+	output reg p0_cs_n,
+	output reg p0_ras_n,
+	output reg p0_we_n,
+	output p0_cke,
+	output p0_odt,
+	output p0_reset_n,
+	input p0_act_n,
+	output [63:0] p0_wrdata,
+	output reg p0_wrdata_en,
+	output [7:0] p0_wrdata_mask,
+	output reg p0_rddata_en,
+	input [63:0] p0_rddata,
+	input p0_rddata_valid,
+	output reg [13:0] p1_address,
+	output reg [2:0] p1_bank,
+	output reg p1_cas_n,
+	output reg p1_cs_n,
+	output reg p1_ras_n,
+	output reg p1_we_n,
+	output p1_cke,
+	output p1_odt,
+	output p1_reset_n,
+	input p1_act_n,
+	output [63:0] p1_wrdata,
+	output reg p1_wrdata_en,
+	output [7:0] p1_wrdata_mask,
+	output reg p1_rddata_en,
+	input [63:0] p1_rddata,
+	input p1_rddata_valid,
+	output reg [13:0] p2_address,
+	output reg [2:0] p2_bank,
+	output reg p2_cas_n,
+	output reg p2_cs_n,
+	output reg p2_ras_n,
+	output reg p2_we_n,
+	output p2_cke,
+	output p2_odt,
+	output p2_reset_n,
+	input p2_act_n,
+	output [63:0] p2_wrdata,
+	output reg p2_wrdata_en,
+	output [7:0] p2_wrdata_mask,
+	output reg p2_rddata_en,
+	input [63:0] p2_rddata,
+	input p2_rddata_valid,
+	output reg [13:0] p3_address,
+	output reg [2:0] p3_bank,
+	output reg p3_cas_n,
+	output reg p3_cs_n,
+	output reg p3_ras_n,
+	output reg p3_we_n,
+	output p3_cke,
+	output p3_odt,
+	output p3_reset_n,
+	input p3_act_n,
+	output [63:0] p3_wrdata,
+	output reg p3_wrdata_en,
+	output [7:0] p3_wrdata_mask,
+	output reg p3_rddata_en,
+	input [63:0] p3_rddata,
+	input p3_rddata_valid,
 	input [2:0] bank0_valid,
 	input [2:0] bank0_ready,
 	input [2:0] bank0_we,
@@ -145,62 +209,6 @@ reg [2:0] mock_multiplexer_TMRcmd_payload_we = 3'd0;
 reg [2:0] mock_multiplexer_TMRcmd_payload_is_cmd = 3'd0;
 reg [2:0] mock_multiplexer_TMRcmd_payload_is_read = 3'd0;
 reg [2:0] mock_multiplexer_TMRcmd_payload_is_write = 3'd0;
-reg [13:0] mock_multiplexer_p0_address = 14'd0;
-reg [2:0] mock_multiplexer_p0_bank = 3'd0;
-reg mock_multiplexer_p0_cas_n = 1'd1;
-reg mock_multiplexer_p0_cs_n = 1'd1;
-reg mock_multiplexer_p0_ras_n = 1'd1;
-reg mock_multiplexer_p0_we_n = 1'd1;
-wire mock_multiplexer_p0_cke;
-wire mock_multiplexer_p0_odt;
-wire mock_multiplexer_p0_reset_n;
-wire [63:0] mock_multiplexer_p0_wrdata;
-reg mock_multiplexer_p0_wrdata_en = 1'd0;
-wire [7:0] mock_multiplexer_p0_wrdata_mask;
-reg mock_multiplexer_p0_rddata_en = 1'd0;
-reg [63:0] mock_multiplexer_p0_rddata = 64'd0;
-reg [13:0] mock_multiplexer_p1_address = 14'd0;
-reg [2:0] mock_multiplexer_p1_bank = 3'd0;
-reg mock_multiplexer_p1_cas_n = 1'd1;
-reg mock_multiplexer_p1_cs_n = 1'd1;
-reg mock_multiplexer_p1_ras_n = 1'd1;
-reg mock_multiplexer_p1_we_n = 1'd1;
-wire mock_multiplexer_p1_cke;
-wire mock_multiplexer_p1_odt;
-wire mock_multiplexer_p1_reset_n;
-wire [63:0] mock_multiplexer_p1_wrdata;
-reg mock_multiplexer_p1_wrdata_en = 1'd0;
-wire [7:0] mock_multiplexer_p1_wrdata_mask;
-reg mock_multiplexer_p1_rddata_en = 1'd0;
-reg [63:0] mock_multiplexer_p1_rddata = 64'd0;
-reg [13:0] mock_multiplexer_p2_address = 14'd0;
-reg [2:0] mock_multiplexer_p2_bank = 3'd0;
-reg mock_multiplexer_p2_cas_n = 1'd1;
-reg mock_multiplexer_p2_cs_n = 1'd1;
-reg mock_multiplexer_p2_ras_n = 1'd1;
-reg mock_multiplexer_p2_we_n = 1'd1;
-wire mock_multiplexer_p2_cke;
-wire mock_multiplexer_p2_odt;
-wire mock_multiplexer_p2_reset_n;
-wire [63:0] mock_multiplexer_p2_wrdata;
-reg mock_multiplexer_p2_wrdata_en = 1'd0;
-wire [7:0] mock_multiplexer_p2_wrdata_mask;
-reg mock_multiplexer_p2_rddata_en = 1'd0;
-reg [63:0] mock_multiplexer_p2_rddata = 64'd0;
-reg [13:0] mock_multiplexer_p3_address = 14'd0;
-reg [2:0] mock_multiplexer_p3_bank = 3'd0;
-reg mock_multiplexer_p3_cas_n = 1'd1;
-reg mock_multiplexer_p3_cs_n = 1'd1;
-reg mock_multiplexer_p3_ras_n = 1'd1;
-reg mock_multiplexer_p3_we_n = 1'd1;
-wire mock_multiplexer_p3_cke;
-wire mock_multiplexer_p3_odt;
-wire mock_multiplexer_p3_reset_n;
-wire [63:0] mock_multiplexer_p3_wrdata;
-reg mock_multiplexer_p3_wrdata_en = 1'd0;
-wire [7:0] mock_multiplexer_p3_wrdata_mask;
-reg mock_multiplexer_p3_rddata_en = 1'd0;
-reg [63:0] mock_multiplexer_p3_rddata = 64'd0;
 wire ras_allowed;
 wire cas_allowed;
 wire [1:0] rdcmdphase;
@@ -772,24 +780,24 @@ assign control53 = (((mock_multiplexer_TMRcmd_payload_is_read[0] & mock_multiple
 assign refreshCmd_payload_is_read = control53;
 assign control54 = (((mock_multiplexer_TMRcmd_payload_is_write[0] & mock_multiplexer_TMRcmd_payload_is_write[1]) | (mock_multiplexer_TMRcmd_payload_is_write[1] & mock_multiplexer_TMRcmd_payload_is_write[2])) | (mock_multiplexer_TMRcmd_payload_is_write[0] & mock_multiplexer_TMRcmd_payload_is_write[2]));
 assign refreshCmd_payload_is_write = control54;
-assign mock_multiplexer_p0_reset_n = 1'd1;
-assign mock_multiplexer_p0_cke = {1{steerer4}};
-assign mock_multiplexer_p0_odt = {1{steerer5}};
-assign mock_multiplexer_p1_reset_n = 1'd1;
-assign mock_multiplexer_p1_cke = {1{steerer6}};
-assign mock_multiplexer_p1_odt = {1{steerer7}};
-assign mock_multiplexer_p2_reset_n = 1'd1;
-assign mock_multiplexer_p2_cke = {1{steerer8}};
-assign mock_multiplexer_p2_odt = {1{steerer9}};
-assign mock_multiplexer_p3_reset_n = 1'd1;
-assign mock_multiplexer_p3_cke = {1{steerer10}};
-assign mock_multiplexer_p3_odt = {1{steerer11}};
+assign p0_reset_n = 1'd1;
+assign p0_cke = {1{steerer4}};
+assign p0_odt = {1{steerer5}};
+assign p1_reset_n = 1'd1;
+assign p1_cke = {1{steerer6}};
+assign p1_odt = {1{steerer7}};
+assign p2_reset_n = 1'd1;
+assign p2_cke = {1{steerer8}};
+assign p2_odt = {1{steerer9}};
+assign p3_reset_n = 1'd1;
+assign p3_cke = {1{steerer10}};
+assign p3_odt = {1{steerer11}};
 assign tfawcon_count = ((((tfawcon_window[0] + tfawcon_window[1]) + tfawcon_window[2]) + tfawcon_window[3]) + tfawcon_window[4]);
-assign rdata = {3{{mock_multiplexer_p3_rddata, mock_multiplexer_p2_rddata, mock_multiplexer_p1_rddata, mock_multiplexer_p0_rddata}}};
+assign rdata = {3{{p3_rddata, p2_rddata, p1_rddata, p0_rddata}}};
 assign control55 = (((wdata[255:0] & wdata[511:256]) | (wdata[511:256] & wdata[767:512])) | (wdata[255:0] & wdata[767:512]));
-assign {mock_multiplexer_p3_wrdata, mock_multiplexer_p2_wrdata, mock_multiplexer_p1_wrdata, mock_multiplexer_p0_wrdata} = control55;
+assign {p3_wrdata, p2_wrdata, p1_wrdata, p0_wrdata} = control55;
 assign control56 = (((slice_proxy0[31:0] & slice_proxy1[63:32]) | (slice_proxy2[63:32] & slice_proxy3[95:64])) | (slice_proxy4[31:0] & slice_proxy5[95:64]));
-assign {mock_multiplexer_p3_wrdata_mask, mock_multiplexer_p2_wrdata_mask, mock_multiplexer_p1_wrdata_mask, mock_multiplexer_p0_wrdata_mask} = control56;
+assign {p3_wrdata_mask, p2_wrdata_mask, p1_wrdata_mask, p0_wrdata_mask} = control56;
 
 // synthesis translate_off
 reg dummy_d_12;
@@ -2180,38 +2188,38 @@ always @(posedge sys_clk) begin
 			end
 		endcase
 	end
-	mock_multiplexer_p0_cs_n <= 1'd0;
-	mock_multiplexer_p0_bank <= array_muxed0;
-	mock_multiplexer_p0_address <= array_muxed1;
-	mock_multiplexer_p0_cas_n <= (~array_muxed2);
-	mock_multiplexer_p0_ras_n <= (~array_muxed3);
-	mock_multiplexer_p0_we_n <= (~array_muxed4);
-	mock_multiplexer_p0_rddata_en <= array_muxed5;
-	mock_multiplexer_p0_wrdata_en <= array_muxed6;
-	mock_multiplexer_p1_cs_n <= 1'd0;
-	mock_multiplexer_p1_bank <= array_muxed7;
-	mock_multiplexer_p1_address <= array_muxed8;
-	mock_multiplexer_p1_cas_n <= (~array_muxed9);
-	mock_multiplexer_p1_ras_n <= (~array_muxed10);
-	mock_multiplexer_p1_we_n <= (~array_muxed11);
-	mock_multiplexer_p1_rddata_en <= array_muxed12;
-	mock_multiplexer_p1_wrdata_en <= array_muxed13;
-	mock_multiplexer_p2_cs_n <= 1'd0;
-	mock_multiplexer_p2_bank <= array_muxed14;
-	mock_multiplexer_p2_address <= array_muxed15;
-	mock_multiplexer_p2_cas_n <= (~array_muxed16);
-	mock_multiplexer_p2_ras_n <= (~array_muxed17);
-	mock_multiplexer_p2_we_n <= (~array_muxed18);
-	mock_multiplexer_p2_rddata_en <= array_muxed19;
-	mock_multiplexer_p2_wrdata_en <= array_muxed20;
-	mock_multiplexer_p3_cs_n <= 1'd0;
-	mock_multiplexer_p3_bank <= array_muxed21;
-	mock_multiplexer_p3_address <= array_muxed22;
-	mock_multiplexer_p3_cas_n <= (~array_muxed23);
-	mock_multiplexer_p3_ras_n <= (~array_muxed24);
-	mock_multiplexer_p3_we_n <= (~array_muxed25);
-	mock_multiplexer_p3_rddata_en <= array_muxed26;
-	mock_multiplexer_p3_wrdata_en <= array_muxed27;
+	p0_cs_n <= 1'd0;
+	p0_bank <= array_muxed0;
+	p0_address <= array_muxed1;
+	p0_cas_n <= (~array_muxed2);
+	p0_ras_n <= (~array_muxed3);
+	p0_we_n <= (~array_muxed4);
+	p0_rddata_en <= array_muxed5;
+	p0_wrdata_en <= array_muxed6;
+	p1_cs_n <= 1'd0;
+	p1_bank <= array_muxed7;
+	p1_address <= array_muxed8;
+	p1_cas_n <= (~array_muxed9);
+	p1_ras_n <= (~array_muxed10);
+	p1_we_n <= (~array_muxed11);
+	p1_rddata_en <= array_muxed12;
+	p1_wrdata_en <= array_muxed13;
+	p2_cs_n <= 1'd0;
+	p2_bank <= array_muxed14;
+	p2_address <= array_muxed15;
+	p2_cas_n <= (~array_muxed16);
+	p2_ras_n <= (~array_muxed17);
+	p2_we_n <= (~array_muxed18);
+	p2_rddata_en <= array_muxed19;
+	p2_wrdata_en <= array_muxed20;
+	p3_cs_n <= 1'd0;
+	p3_bank <= array_muxed21;
+	p3_address <= array_muxed22;
+	p3_cas_n <= (~array_muxed23);
+	p3_ras_n <= (~array_muxed24);
+	p3_we_n <= (~array_muxed25);
+	p3_rddata_en <= array_muxed26;
+	p3_wrdata_en <= array_muxed27;
 	if (trrdcon_valid) begin
 		trrdcon_count <= 1'd1;
 		if (1'd0) begin
@@ -2267,38 +2275,38 @@ always @(posedge sys_clk) begin
 	end
 	state <= next_state;
 	if (sys_rst) begin
-		mock_multiplexer_p0_address <= 14'd0;
-		mock_multiplexer_p0_bank <= 3'd0;
-		mock_multiplexer_p0_cas_n <= 1'd1;
-		mock_multiplexer_p0_cs_n <= 1'd1;
-		mock_multiplexer_p0_ras_n <= 1'd1;
-		mock_multiplexer_p0_we_n <= 1'd1;
-		mock_multiplexer_p0_wrdata_en <= 1'd0;
-		mock_multiplexer_p0_rddata_en <= 1'd0;
-		mock_multiplexer_p1_address <= 14'd0;
-		mock_multiplexer_p1_bank <= 3'd0;
-		mock_multiplexer_p1_cas_n <= 1'd1;
-		mock_multiplexer_p1_cs_n <= 1'd1;
-		mock_multiplexer_p1_ras_n <= 1'd1;
-		mock_multiplexer_p1_we_n <= 1'd1;
-		mock_multiplexer_p1_wrdata_en <= 1'd0;
-		mock_multiplexer_p1_rddata_en <= 1'd0;
-		mock_multiplexer_p2_address <= 14'd0;
-		mock_multiplexer_p2_bank <= 3'd0;
-		mock_multiplexer_p2_cas_n <= 1'd1;
-		mock_multiplexer_p2_cs_n <= 1'd1;
-		mock_multiplexer_p2_ras_n <= 1'd1;
-		mock_multiplexer_p2_we_n <= 1'd1;
-		mock_multiplexer_p2_wrdata_en <= 1'd0;
-		mock_multiplexer_p2_rddata_en <= 1'd0;
-		mock_multiplexer_p3_address <= 14'd0;
-		mock_multiplexer_p3_bank <= 3'd0;
-		mock_multiplexer_p3_cas_n <= 1'd1;
-		mock_multiplexer_p3_cs_n <= 1'd1;
-		mock_multiplexer_p3_ras_n <= 1'd1;
-		mock_multiplexer_p3_we_n <= 1'd1;
-		mock_multiplexer_p3_wrdata_en <= 1'd0;
-		mock_multiplexer_p3_rddata_en <= 1'd0;
+		p0_address <= 14'd0;
+		p0_bank <= 3'd0;
+		p0_cas_n <= 1'd1;
+		p0_cs_n <= 1'd1;
+		p0_ras_n <= 1'd1;
+		p0_we_n <= 1'd1;
+		p0_wrdata_en <= 1'd0;
+		p0_rddata_en <= 1'd0;
+		p1_address <= 14'd0;
+		p1_bank <= 3'd0;
+		p1_cas_n <= 1'd1;
+		p1_cs_n <= 1'd1;
+		p1_ras_n <= 1'd1;
+		p1_we_n <= 1'd1;
+		p1_wrdata_en <= 1'd0;
+		p1_rddata_en <= 1'd0;
+		p2_address <= 14'd0;
+		p2_bank <= 3'd0;
+		p2_cas_n <= 1'd1;
+		p2_cs_n <= 1'd1;
+		p2_ras_n <= 1'd1;
+		p2_we_n <= 1'd1;
+		p2_wrdata_en <= 1'd0;
+		p2_rddata_en <= 1'd0;
+		p3_address <= 14'd0;
+		p3_bank <= 3'd0;
+		p3_cas_n <= 1'd1;
+		p3_cs_n <= 1'd1;
+		p3_ras_n <= 1'd1;
+		p3_we_n <= 1'd1;
+		p3_wrdata_en <= 1'd0;
+		p3_rddata_en <= 1'd0;
 		choose_cmd_grant <= 2'd0;
 		choose_req_grant <= 2'd0;
 		trrdcon_ready <= 1'd0;

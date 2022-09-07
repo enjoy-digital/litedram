@@ -228,6 +228,7 @@ class Multiplexer(Module, AutoCSR):
         cas_allowed = Signal(reset=1)
         
         self.TMRinterface = TMRinterface
+        self.dfi = dfi
 
         # Read/Write Cmd/Dat phases ----------------------------------------------------------------
         nphases = settings.phy.nphases
@@ -462,6 +463,9 @@ class TMRMultiplexer(Module, AutoCSR):
 
         ras_allowed = Signal(reset=1)
         cas_allowed = Signal(reset=1)
+        
+        self.TMRinterface = TMRinterface
+        self.dfi = dfi
 
         # Read/Write Cmd/Dat phases ----------------------------------------------------------------
         nphases = settings.phy.nphases
