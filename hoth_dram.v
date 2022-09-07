@@ -3318,6 +3318,7 @@ wire litedramcontroller_multiplexer_tfawcon3_valid;
 (* no_retiming = "true" *) reg litedramcontroller_multiplexer_tfawcon3_ready = 1'd1;
 wire [2:0] litedramcontroller_multiplexer_tfawcon3_count;
 reg [4:0] litedramcontroller_multiplexer_tfawcon3_window = 5'd0;
+wire litedramcontroller_multiplexer_tfawVote_control;
 wire litedramcontroller_multiplexer_tccdcon_valid;
 (* no_retiming = "true" *) reg litedramcontroller_multiplexer_tccdcon_ready = 1'd0;
 reg litedramcontroller_multiplexer_tccdcon_count = 1'd0;
@@ -3327,6 +3328,7 @@ reg litedramcontroller_multiplexer_tccdcon2_count = 1'd0;
 wire litedramcontroller_multiplexer_tccdcon3_valid;
 (* no_retiming = "true" *) reg litedramcontroller_multiplexer_tccdcon3_ready = 1'd0;
 reg litedramcontroller_multiplexer_tccdcon3_count = 1'd0;
+wire litedramcontroller_multiplexer_tccdVote_control;
 wire litedramcontroller_multiplexer_twtrcon_valid;
 (* no_retiming = "true" *) reg litedramcontroller_multiplexer_twtrcon_ready = 1'd0;
 reg [2:0] litedramcontroller_multiplexer_twtrcon_count = 3'd0;
@@ -3336,6 +3338,7 @@ reg [2:0] litedramcontroller_multiplexer_twtrcon2_count = 3'd0;
 wire litedramcontroller_multiplexer_twtrcon3_valid;
 (* no_retiming = "true" *) reg litedramcontroller_multiplexer_twtrcon3_ready = 1'd0;
 reg [2:0] litedramcontroller_multiplexer_twtrcon3_count = 3'd0;
+wire litedramcontroller_multiplexer_twtrVote_control;
 wire litedramcontroller_multiplexer_read_available;
 wire litedramcontroller_multiplexer_write_available;
 reg litedramcontroller_multiplexer_en0;
@@ -4252,12 +4255,30 @@ wire [2:0] slice_proxy788;
 wire [2:0] slice_proxy789;
 wire [2:0] slice_proxy790;
 wire [2:0] slice_proxy791;
-wire [95:0] slice_proxy792;
-wire [95:0] slice_proxy793;
-wire [95:0] slice_proxy794;
-wire [95:0] slice_proxy795;
-wire [95:0] slice_proxy796;
-wire [95:0] slice_proxy797;
+wire [2:0] slice_proxy792;
+wire [2:0] slice_proxy793;
+wire [2:0] slice_proxy794;
+wire [2:0] slice_proxy795;
+wire [2:0] slice_proxy796;
+wire [2:0] slice_proxy797;
+wire [2:0] slice_proxy798;
+wire [2:0] slice_proxy799;
+wire [2:0] slice_proxy800;
+wire [2:0] slice_proxy801;
+wire [2:0] slice_proxy802;
+wire [2:0] slice_proxy803;
+wire [2:0] slice_proxy804;
+wire [2:0] slice_proxy805;
+wire [2:0] slice_proxy806;
+wire [2:0] slice_proxy807;
+wire [2:0] slice_proxy808;
+wire [2:0] slice_proxy809;
+wire [95:0] slice_proxy810;
+wire [95:0] slice_proxy811;
+wire [95:0] slice_proxy812;
+wire [95:0] slice_proxy813;
+wire [95:0] slice_proxy814;
+wire [95:0] slice_proxy815;
 reg rhs_array_muxed0;
 reg [13:0] rhs_array_muxed1;
 reg [2:0] rhs_array_muxed2;
@@ -8537,11 +8558,11 @@ assign litedramcontroller_multiplexer_trrdcon3_valid = ((litedramcontroller_mult
 assign litedramcontroller_multiplexer_tfawcon_valid = ((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & ((litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_we)));
 assign litedramcontroller_multiplexer_tfawcon2_valid = ((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & ((litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_we)));
 assign litedramcontroller_multiplexer_tfawcon3_valid = ((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & ((litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_we)));
-assign litedramcontroller_multiplexer_ras_allowed = (litedramcontroller_multiplexer_trrdVote_control & litedramcontroller_multiplexer_tfawcon_ready);
+assign litedramcontroller_multiplexer_ras_allowed = (litedramcontroller_multiplexer_trrdVote_control & litedramcontroller_multiplexer_tfawVote_control);
 assign litedramcontroller_multiplexer_tccdcon_valid = ((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_cmd_payload_is_write | litedramcontroller_multiplexer_choose_req_cmd_payload_is_read));
 assign litedramcontroller_multiplexer_tccdcon2_valid = ((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_cmd_payload_is_write | litedramcontroller_multiplexer_choose_req_cmd_payload_is_read));
 assign litedramcontroller_multiplexer_tccdcon3_valid = ((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_cmd_payload_is_write | litedramcontroller_multiplexer_choose_req_cmd_payload_is_read));
-assign litedramcontroller_multiplexer_cas_allowed = litedramcontroller_multiplexer_tccdcon_ready;
+assign litedramcontroller_multiplexer_cas_allowed = litedramcontroller_multiplexer_tccdVote_control;
 assign litedramcontroller_multiplexer_twtrcon_valid = ((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & litedramcontroller_multiplexer_choose_req_cmd_payload_is_write);
 assign litedramcontroller_multiplexer_twtrcon2_valid = ((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & litedramcontroller_multiplexer_choose_req_cmd_payload_is_write);
 assign litedramcontroller_multiplexer_twtrcon3_valid = ((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & litedramcontroller_multiplexer_choose_req_cmd_payload_is_write);
@@ -9039,10 +9060,13 @@ assign litedramcontroller_multiplexer_trrdVote_control = (((slice_proxy786[0] & 
 assign litedramcontroller_multiplexer_tfawcon_count = ((((litedramcontroller_multiplexer_tfawcon_window[0] + litedramcontroller_multiplexer_tfawcon_window[1]) + litedramcontroller_multiplexer_tfawcon_window[2]) + litedramcontroller_multiplexer_tfawcon_window[3]) + litedramcontroller_multiplexer_tfawcon_window[4]);
 assign litedramcontroller_multiplexer_tfawcon2_count = ((((litedramcontroller_multiplexer_tfawcon2_window[0] + litedramcontroller_multiplexer_tfawcon2_window[1]) + litedramcontroller_multiplexer_tfawcon2_window[2]) + litedramcontroller_multiplexer_tfawcon2_window[3]) + litedramcontroller_multiplexer_tfawcon2_window[4]);
 assign litedramcontroller_multiplexer_tfawcon3_count = ((((litedramcontroller_multiplexer_tfawcon3_window[0] + litedramcontroller_multiplexer_tfawcon3_window[1]) + litedramcontroller_multiplexer_tfawcon3_window[2]) + litedramcontroller_multiplexer_tfawcon3_window[3]) + litedramcontroller_multiplexer_tfawcon3_window[4]);
+assign litedramcontroller_multiplexer_tfawVote_control = (((slice_proxy792[0] & slice_proxy793[1]) | (slice_proxy794[1] & slice_proxy795[2])) | (slice_proxy796[0] & slice_proxy797[2]));
+assign litedramcontroller_multiplexer_tccdVote_control = (((slice_proxy798[0] & slice_proxy799[1]) | (slice_proxy800[1] & slice_proxy801[2])) | (slice_proxy802[0] & slice_proxy803[2]));
+assign litedramcontroller_multiplexer_twtrVote_control = (((slice_proxy804[0] & slice_proxy805[1]) | (slice_proxy806[1] & slice_proxy807[2])) | (slice_proxy808[0] & slice_proxy809[2]));
 assign litedramcontroller_TMRinterface_rdata = {3{{litedramcontroller_dfi_p3_rddata, litedramcontroller_dfi_p2_rddata, litedramcontroller_dfi_p1_rddata, litedramcontroller_dfi_p0_rddata}}};
 assign litedramcontroller_multiplexer_tmrinput_control99 = (((litedramcontroller_TMRinterface_wdata[255:0] & litedramcontroller_TMRinterface_wdata[511:256]) | (litedramcontroller_TMRinterface_wdata[511:256] & litedramcontroller_TMRinterface_wdata[767:512])) | (litedramcontroller_TMRinterface_wdata[255:0] & litedramcontroller_TMRinterface_wdata[767:512]));
 assign {litedramcontroller_dfi_p3_wrdata, litedramcontroller_dfi_p2_wrdata, litedramcontroller_dfi_p1_wrdata, litedramcontroller_dfi_p0_wrdata} = litedramcontroller_multiplexer_tmrinput_control99;
-assign litedramcontroller_multiplexer_tmrinput_control100 = (((slice_proxy792[31:0] & slice_proxy793[63:32]) | (slice_proxy794[63:32] & slice_proxy795[95:64])) | (slice_proxy796[31:0] & slice_proxy797[95:64]));
+assign litedramcontroller_multiplexer_tmrinput_control100 = (((slice_proxy810[31:0] & slice_proxy811[63:32]) | (slice_proxy812[63:32] & slice_proxy813[95:64])) | (slice_proxy814[31:0] & slice_proxy815[95:64]));
 assign {litedramcontroller_dfi_p3_wrdata_mask, litedramcontroller_dfi_p2_wrdata_mask, litedramcontroller_dfi_p1_wrdata_mask, litedramcontroller_dfi_p0_wrdata_mask} = litedramcontroller_multiplexer_tmrinput_control100;
 
 // synthesis translate_off
@@ -9119,7 +9143,7 @@ always @(*) begin
 			end
 		end
 		2'd3: begin
-			if (litedramcontroller_multiplexer_twtrcon_ready) begin
+			if (litedramcontroller_multiplexer_twtrVote_control) begin
 				tmrmultiplexer_next_state <= 1'd0;
 			end
 		end
@@ -10159,12 +10183,30 @@ assign slice_proxy788 = {litedramcontroller_multiplexer_trrdcon3_ready, litedram
 assign slice_proxy789 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
 assign slice_proxy790 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
 assign slice_proxy791 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
-assign slice_proxy792 = (~litedramcontroller_TMRinterface_wdata_we);
-assign slice_proxy793 = (~litedramcontroller_TMRinterface_wdata_we);
-assign slice_proxy794 = (~litedramcontroller_TMRinterface_wdata_we);
-assign slice_proxy795 = (~litedramcontroller_TMRinterface_wdata_we);
-assign slice_proxy796 = (~litedramcontroller_TMRinterface_wdata_we);
-assign slice_proxy797 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy792 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy793 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy794 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy795 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy796 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy797 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy798 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy799 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy800 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy801 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy802 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy803 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy804 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy805 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy806 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy807 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy808 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy809 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy810 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy811 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy812 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy813 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy814 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy815 = (~litedramcontroller_TMRinterface_wdata_we);
 
 // synthesis translate_off
 reg dummy_d_104;

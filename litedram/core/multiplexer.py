@@ -562,9 +562,10 @@ class TMRMultiplexer(Module, AutoCSR):
 
         tfawSig = Cat(tfawcon.ready, tfawcon2.ready, tfawcon3.ready)
         tfawVote = TMRInput(tfawSig)
+        self.submodules += tfawVote
 
         # RAS control ------------------------------------------------------------------------------
-        self.comb += ras_allowed.eq(trrdVote.control & tfawcon.ready)
+        self.comb += ras_allowed.eq(trrdVote.control & tfawVote.control)
 
         # tCCD timing (Column to Column delay) -----------------------------------------------------
         self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
@@ -578,9 +579,10 @@ class TMRMultiplexer(Module, AutoCSR):
 
         tccdSig = Cat(tccdcon.ready, tccdcon2.ready, tccdcon3.ready)
         tccdVote = TMRInput(tccdSig)
+        self.submodules += tccdVote
 
         # CAS control ------------------------------------------------------------------------------
-        self.comb += cas_allowed.eq(tccdcon.ready)
+        self.comb += cas_allowed.eq(tccdVote.control)
 
         # tWTR timing (Write to Read delay) --------------------------------------------------------
         write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
@@ -602,6 +604,7 @@ class TMRMultiplexer(Module, AutoCSR):
 
         twtrSig = Cat(twtrcon.ready, twtrcon2.ready, twtrcon3.ready)
         twtrVote = TMRInput(twtrSig)
+        self.submodules += twtrVote
 
         # Read/write turnaround --------------------------------------------------------------------
         read_available = Signal()
@@ -718,7 +721,7 @@ class TMRMultiplexer(Module, AutoCSR):
             )
         )
         fsm.act("WTR",
-            If(twtrcon.ready,
+            If(twtrVote.control,
                 NextState("READ")
             )
         )
