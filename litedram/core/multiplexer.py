@@ -504,7 +504,11 @@ class TMRMultiplexer(Module, AutoCSR):
             self.submodules += TMRInput(bm.TMRcmd.is_write, TMRrequest.is_write)
         
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(TMRrequests)
+        self.submodules.choose_cmd2 = choose_cmd2 = _CommandChooser(TMRrequests)
+        self.submodules.choose_cmd3 = choose_cmd3 = _CommandChooser(TMRrequests)
         self.submodules.choose_req = choose_req = _CommandChooser(TMRrequests)
+        self.submodules.choose_req2 = choose_req2 = _CommandChooser(TMRrequests)
+        self.submodules.choose_req3 = choose_req3 = _CommandChooser(TMRrequests)
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
             choose_cmd = choose_req
