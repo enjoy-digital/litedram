@@ -6,7 +6,7 @@
 # Copyright (c) 2022 Icenowy Zheng <icenowy@aosc.io>
 # SPDX-License-Identifier: BSD-2-Clause
 
-# 1:2 frequency-ratio DDR3 PHY for Gowin's GW2
+# 1:2 frequency-ratio DDR3 PHY for Gowin's GW2A
 # DDR3: 800 MT/s
 
 from functools import reduce
@@ -45,13 +45,14 @@ class GW2DDRPHYInit(Module):
 
         # DDRDLLA instance -------------------------------------------------------------------------
         _lock = Signal()
+        delay = Signal(8)
         self.specials += Instance("DLL",
             p_SCAL_EN  = "false",
             i_RESET    = ResetSignal("init"),
             i_CLKIN    = ClockSignal("sys2x"),
             i_UPDNCNTL = ~update,
             i_STOP     = freeze,
-            o_STEP     = self.delay,
+            o_STEP     = delay,
             o_LOCK     = _lock
         )
         lock   = Signal()
@@ -75,13 +76,14 @@ class GW2DDRPHYInit(Module):
                 ( 8*t, [update.eq(1)]), # Update DDRDLLA
                 ( 9*t, [update.eq(0)]), # Release DDRDMMA update
                 (10*t, [ pause.eq(0)]), # Release DQSBUFM pause
-                ])
-            ]
+            ])
+        ]
 
         # ------------------------------------------------------------------------------------------
         self.comb += [
             self.pause.eq(pause),
             self.stop.eq(stop),
+            self.delay.eq(delay),
             self.reset.eq(reset),
         ]
 
@@ -172,8 +174,7 @@ class GW2DDRPHY(Module, AutoCSR):
                     i_RESET = ResetSignal("sys"),
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal("sys2x"),
-                    i_TX0   = 1,
-                    i_TX1   = 1,
+                    **{f"i_TX{n}": 0b0 for n in range(2)}, # CHECKME: Polarity
                     **{f"i_D{n}": (clk_pattern >> n) & 0b1 for n in range(4)},
                     o_Q0   = pad_oddrx2f
                 )
@@ -216,8 +217,7 @@ class GW2DDRPHY(Module, AutoCSR):
                         i_RESET = ResetSignal("sys"),
                         i_PCLK = ClockSignal("sys"),
                         i_FCLK = ClockSignal("sys2x"),
-                        i_TX0   = 1,
-                        i_TX1   = 1,
+                        **{f"i_TX{n}": 0b0 for n in range(2)}, # CHECKME: Polarity
                         **{f"i_D{n}": getattr(dfi.phases[n//2], dfi_name)[i] for n in range(4)},
                         o_Q0   = pad_oddrx2f
                     )
@@ -279,7 +279,7 @@ class GW2DDRPHY(Module, AutoCSR):
                 o_RBURST         = burstdet,
 
                 # Writes (generate shifted ECLK clock for writes)
-                i_WSTEP          = 0,
+                i_WSTEP          = 0, # CHECKME: Useful?
                 o_DQSW270        = dqsw270,
                 o_DQSW0          = dqsw
             )
@@ -299,8 +299,8 @@ class GW2DDRPHY(Module, AutoCSR):
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal("sys2x"),
                     i_TCLK  = dqsw,
-                    i_TX0   = ~(dqs_oe | dqs_postamble),
-                    i_TX1   = ~(dqs_oe | dqs_preamble),
+                    i_TX0   = ~(dqs_oe | dqs_postamble), # CHECKME: Polarity + Latency.
+                    i_TX1   = ~(dqs_oe | dqs_preamble),  # CHECKME: Polatiry + Latency.
                     **{f"i_D{n}": (0b1010 >> n) & 0b1 for n in range(4)},
                     o_Q0    = dqs,
                     o_Q1    = dqs_oe_pad
@@ -331,8 +331,7 @@ class GW2DDRPHY(Module, AutoCSR):
                 i_PCLK  = ClockSignal("sys"),
                 i_FCLK  = ClockSignal("sys2x"),
                 i_TCLK  = dqsw270,
-                i_TX0   = 1,
-                i_TX1   = 1,
+                **{f"i_TX{n}": 0b0 for n in range(2)}, # CHECKME: Polarity
                 **{f"i_D{n}": dm_o_data_muxed[n] for n in range(4)},
                 o_Q0    = pads.dm[i]
             )
@@ -360,8 +359,8 @@ class GW2DDRPHY(Module, AutoCSR):
                         i_PCLK  = ClockSignal("sys"),
                         i_FCLK  = ClockSignal("sys2x"),
                         i_TCLK  = dqsw270,
-                        i_TX0   = ~dq_oe,
-                        i_TX1   = ~dq_oe,
+                        i_TX0   = ~dq_oe, # CHECKME: Polarity + Latency.
+                        i_TX1   = ~dq_oe, # CHECKME: Polarity + Latency.
                         **{f"i_D{n}": dq_o_data_muxed[n] for n in range(4)},
                         o_Q0    = dq_o,
                         o_Q1    = dq_o_q1,
@@ -400,7 +399,7 @@ class GW2DDRPHY(Module, AutoCSR):
                 ]
 
         # Read Control Path ------------------------------------------------------------------------
-        rdtap = cl_sys_latency
+        rdtap = cl_sys_latency # CHECKME: Latency.
 
         # Creates a delay line of read commands coming from the DFI interface. The taps are used to
         # control DQS read (internal read pulse of the DQSBUF) and the output of the delay is used
@@ -421,7 +420,7 @@ class GW2DDRPHY(Module, AutoCSR):
         self.comb += dqs_re.eq(rddata_en.taps[rdtap] | rddata_en.taps[rdtap + 1])
 
         # Write Control Path -----------------------------------------------------------------------
-        wrtap = cwl_sys_latency
+        wrtap = cwl_sys_latency  # CHECKME: Latency.
 
         # Create a delay line of write commands coming from the DFI interface. This taps are used to
         # control DQ/DQS tristates and to select write data of the DRAM burst from the DFI interface.
@@ -430,7 +429,7 @@ class GW2DDRPHY(Module, AutoCSR):
         # then performed in 2 sys_clk cycles and data needs to be selected for each cycle.
         wrdata_en = TappedDelayLine(
             signal = reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]),
-            ntaps  = wrtap + 4
+            ntaps  = wrtap + 4  # CHECKME: Latency.
         )
         self.submodules += wrdata_en
 
