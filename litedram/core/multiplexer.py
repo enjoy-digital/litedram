@@ -548,6 +548,7 @@ class TMRMultiplexer(Module, AutoCSR):
 
         trrdSig = Cat(trrdcon.ready, trrdcon2.ready, trrdcon3.ready)
         trrdVote = TMRInput(trrdSig)
+        self.submodules += trrdVote
 
         # tFAW timing (Four Activate Window) -------------------------------------------------------
         self.submodules.tfawcon = tfawcon = tFAWController(settings.timing.tFAW)
@@ -563,7 +564,7 @@ class TMRMultiplexer(Module, AutoCSR):
         tfawVote = TMRInput(tfawSig)
 
         # RAS control ------------------------------------------------------------------------------
-        self.comb += ras_allowed.eq(trrdcon2.ready & tfawcon.ready)
+        self.comb += ras_allowed.eq(trrdVote.control & tfawcon.ready)
 
         # tCCD timing (Column to Column delay) -----------------------------------------------------
         self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
