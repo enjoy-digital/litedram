@@ -552,7 +552,7 @@ class TMRMultiplexer(Module, AutoCSR):
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
-        commands = [nop, choose_cmd.cmd, choose_req.cmd, refreshCmd]
+        commands = [nop, choose_tmrcmd, choose_tmrreq, refreshCmd]
         steerer = _Steerer(commands, dfi)
         self.submodules += steerer
 
@@ -695,12 +695,22 @@ class TMRMultiplexer(Module, AutoCSR):
         fsm.act("READ",
             read_time_en.eq(1),
             choose_req.want_reads.eq(1),
+            choose_req2.want_reads.eq(1),
+            choose_req3.want_reads.eq(1),
             If(settings.phy.nphases == 1,
-                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed)),
+                choose_req2.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed)),
+                choose_req3.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
             ).Else(
                 choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd2.want_activates.eq(ras_allowed),
+                choose_cmd3.want_activates.eq(ras_allowed),
                 choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
-                choose_req.cmd.ready.eq(cas_allowed)
+                choose_cmd2.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_cmd3.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_req.cmd.ready.eq(cas_allowed),
+                choose_req2.cmd.ready.eq(cas_allowed),
+                choose_req3.cmd.ready.eq(cas_allowed)
             ),
             steerer_sel(steerer, access="read"),
             If(write_available,
@@ -716,12 +726,22 @@ class TMRMultiplexer(Module, AutoCSR):
         fsm.act("WRITE",
             write_time_en.eq(1),
             choose_req.want_writes.eq(1),
+            choose_req2.want_writes.eq(1),
+            choose_req3.want_writes.eq(1),
             If(settings.phy.nphases == 1,
-                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed)),
+                choose_req2.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed)),
+                choose_req3.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
             ).Else(
                 choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd2.want_activates.eq(ras_allowed),
+                choose_cmd3.want_activates.eq(ras_allowed),
                 choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_cmd2.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_cmd3.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_req.cmd.ready.eq(cas_allowed),
+                choose_req2.cmd.ready.eq(cas_allowed),
+                choose_req3.cmd.ready.eq(cas_allowed),
             ),
             steerer_sel(steerer, access="write"),
             If(read_available,
