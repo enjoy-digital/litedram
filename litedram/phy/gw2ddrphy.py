@@ -315,8 +315,8 @@ class GW2DDRPHY(Module, AutoCSR):
             ]
 
             # DQS ----------------------------------------------------------------------------------
-            dqs      = Signal()
-            dqs_oe_pad = Signal()
+            dqs_o     = Signal()
+            dqs_o_oen = Signal()
             self.specials += [
                 Instance("OSER4_MEM",
                     i_RESET = ResetSignal("sys"),
@@ -326,12 +326,12 @@ class GW2DDRPHY(Module, AutoCSR):
                     i_TX0   = ~(dqs_oe | dqs_postamble), # CHECKME: Polarity + Latency.
                     i_TX1   = ~(dqs_oe | dqs_preamble),  # CHECKME: Polatiry + Latency.
                     **{f"i_D{n}": (0b1010 >> n) & 0b1 for n in range(4)},
-                    o_Q0    = dqs,
-                    o_Q1    = dqs_oe_pad
+                    o_Q0    = dqs_o,
+                    o_Q1    = dqs_o_oen
                 ),
                 Instance("ELVDS_IOBUF",
-                    i_I     = dqs,
-                    i_OEN   = dqs_oe_pad,
+                    i_I     = dqs_o,
+                    i_OEN   = dqs_o_oen,
                     o_O     = dqs_i,
                     io_IO   = pads.dqs_p[i],
                     io_IOB  = pads.dqs_n[i]
@@ -363,7 +363,7 @@ class GW2DDRPHY(Module, AutoCSR):
             # DQ -----------------------------------------------------------------------------------
             for j in range(8*i, 8*(i+1)):
                 dq_o            = Signal()
-                dq_o_q1         = Signal()
+                dq_o_oen        = Signal()
                 dq_i            = Signal()
                 dq_i_data       = Signal(8)
                 dq_o_data       = Signal(8)
@@ -387,7 +387,7 @@ class GW2DDRPHY(Module, AutoCSR):
                         i_TX1   = ~dq_oe, # CHECKME: Polarity + Latency.
                         **{f"i_D{n}": dq_o_data_muxed[n] for n in range(4)},
                         o_Q0    = dq_o,
-                        o_Q1    = dq_o_q1,
+                        o_Q1    = dq_o_oen,
                     ),
                 ]
                 dq_i_bitslip = BitSlip(4,
@@ -416,7 +416,7 @@ class GW2DDRPHY(Module, AutoCSR):
                 self.specials += [
                     Instance("IOBUF",
                         i_I   = dq_o,
-                        i_OEN = dq_o_q1,
+                        i_OEN = dq_o_oen,
                         o_O   = dq_i,
                         io_IO = pads.dq[j]
                     )
