@@ -3,9 +3,10 @@
 #
 # Copyright (c) 2019 David Shah <dave@ds0.me>
 # Copyright (c) 2019-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2022 Icenowy Zheng <icenowy@aosc.io>
 # SPDX-License-Identifier: BSD-2-Clause
 
-# 1:2 frequency-ratio DDR3 PHY for Lattice's GW2
+# 1:2 frequency-ratio DDR3 PHY for Gowin's GW2
 # DDR3: 800 MT/s
 
 from functools import reduce
