@@ -160,15 +160,15 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
                          name=f'{prefix}dq_i{i}', **ddr_90)
 
             # Output enable signals can be and should be serialized as well
-            self.ser(i=getattr(self.out, prefix+'dqs_oe'),
+            self.ser(i=getattr(self.out, prefix+'dqs_oe')[0],
                      o=getattr(self.pads, prefix+'dqs_t_oe'),
                      name=f'{prefix}dqs_t_oe', **ddr)
-            self.ser(i=getattr(self.out, prefix+'dqs_oe'),
+            self.ser(i=getattr(self.out, prefix+'dqs_oe')[0],
                      o=getattr(self.pads, prefix+'dqs_c_oe'),
                      name=f'{prefix}dqs_c_oe', **ddr)
-            self.ser(i=getattr(self.out, prefix+'dqs_oe'),
+            self.ser(i=getattr(self.out, prefix+'dm_n_oe')[0],
                      o=getattr(self.pads, prefix+'dm_n_oe'),
                      name=f'{prefix}dm_n_oe', **ddr)
-            self.ser(i=getattr(self.out, prefix+'dqs_oe'),
+            self.ser(i=getattr(self.out, prefix+'dq_oe')[0],
                      o=getattr(self.pads, prefix+'dq_oe'),
                      name=f'{prefix}dq_oe', **ddr)

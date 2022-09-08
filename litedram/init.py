@@ -1130,6 +1130,8 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
         r.define("DDRX_MR_WRLVL_ADDRESS", 2)
         r.define("DDRX_MR_WRLVL_RESET", mr[2])
         r.define("DDRX_MR_WRLVL_BIT", 7)
+        if phy_settings.with_sub_channels:
+            r.define("SRAM_PHY_SUBCHANNELS")
         r.newline()
     elif phy_settings.memtype in ["LPDDR5"]:
         # Write leveling enabled by MR18[6]
