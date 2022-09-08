@@ -201,20 +201,20 @@ class GW2DDRPHY(Module, AutoCSR):
                     i_FCLK  = ClockSignal("sys2x"),
                     **{f"i_TX{n}": 0b0 for n in range(2)}, # CHECKME: Polarity
                     **{f"i_D{n}": (clk_pattern >> n) & 0b1 for n in range(4)},
-                    o_Q0   = pad_oddrx2f
+                    o_Q0    = pad_oddrx2f
                 )
                 self.specials += Instance("IODELAY",
                     p_C_STATIC_DLY = cmd_delay,
-                    i_SDTAP     = 0,
-                    i_SETN      = 0,
-                    i_VALUE     = 0,
-                    i_DI        = pad_oddrx2f,
-                    o_DO        = pad_clk,
+                    i_SDTAP = 0,
+                    i_SETN  = 0,
+                    i_VALUE = 0,
+                    i_DI    = pad_oddrx2f,
+                    o_DO    = pad_clk,
                 )
                 self.specials += Instance("ELVDS_OBUF",
-                    i_I   = pad_clk,
-                    o_O   = pads.clk_p[i],
-                    o_OB  = pads.clk_n[i]
+                    i_I  = pad_clk,
+                    o_O  = pads.clk_p[i],
+                    o_OB = pads.clk_n[i]
                 )
 
             # Commands -----------------------------------------------------------------------------
@@ -277,37 +277,37 @@ class GW2DDRPHY(Module, AutoCSR):
                 If(self._dly_sel.storage[i] & self._rdly_dq_inc.re, rdly.eq(rdly + 1))
             ]
             self.specials += Instance("DQS",
-                p_DQS_MODE       = "X2_DDR3",
+                p_DQS_MODE = "X2_DDR3",
                 # Clocks / Reset
-                i_RESET          = ResetSignal("sys"),
-                i_PCLK           = ClockSignal("sys"),
-                i_FCLK           = ClockSignal("sys2x"),
-                i_DLLSTEP        = self.init.delay,
-                i_HOLD           = self.init.pause | self._dly_sel.storage[i],
+                i_RESET    = ResetSignal("sys"),
+                i_PCLK     = ClockSignal("sys"),
+                i_FCLK     = ClockSignal("sys2x"),
+                i_DLLSTEP  = self.init.delay,
+                i_HOLD     = self.init.pause | self._dly_sel.storage[i],
 
                 # Control
                 # Assert LOADNs to use DDRDEL control
-                i_RLOADN         = 0,
-                i_RMOVE          = 0,
-                i_RDIR           = 1,
-                i_WLOADN         = 0,
-                i_WMOVE          = 0,
-                i_WDIR           = 1,
+                i_RLOADN   = 0,
+                i_RMOVE    = 0,
+                i_RDIR     = 1,
+                i_WLOADN   = 0,
+                i_WMOVE    = 0,
+                i_WDIR     = 1,
 
                 # Reads (generate shifted DQS clock for reads)
-                i_READ           = Replicate(dqs_re, 4),
-                i_RCLKSEL        = rdly,
-                i_DQSIN          = dqs_i,
-                o_DQSR90         = dqsr90,
-                o_RPOINT         = rdpntr,
-                o_WPOINT         = wrpntr,
-                o_RVALID         = self.datavalid[i],
-                o_RBURST         = burstdet,
+                i_READ     = Replicate(dqs_re, 4),
+                i_RCLKSEL  = rdly,
+                i_DQSIN    = dqs_i,
+                o_DQSR90   = dqsr90,
+                o_RPOINT   = rdpntr,
+                o_WPOINT   = wrpntr,
+                o_RVALID   = self.datavalid[i],
+                o_RBURST   = burstdet,
 
                 # Writes (generate shifted ECLK clock for writes)
-                i_WSTEP          = 0, # CHECKME: Useful?
-                o_DQSW270        = dqsw270,
-                o_DQSW0          = dqsw
+                i_WSTEP    = 0, # CHECKME: Useful?
+                o_DQSW270  = dqsw270,
+                o_DQSW0    = dqsw
             )
             burstdet_d = Signal()
             self.sync += [
@@ -334,11 +334,11 @@ class GW2DDRPHY(Module, AutoCSR):
                     o_Q1    = dqs_o_oen
                 ),
                 Instance("ELVDS_IOBUF",
-                    i_I     = dqs_o,
-                    i_OEN   = dqs_o_oen,
-                    o_O     = dqs_i,
-                    io_IO   = pads.dqs_p[i],
-                    io_IOB  = pads.dqs_n[i]
+                    i_I    = dqs_o,
+                    i_OEN  = dqs_o_oen,
+                    o_O    = dqs_i,
+                    io_IO  = pads.dqs_p[i],
+                    io_IOB = pads.dqs_n[i]
                 )
             ]
 
@@ -381,52 +381,46 @@ class GW2DDRPHY(Module, AutoCSR):
                 dq_bl8_cases[0] = dq_o_data_muxed.eq(dq_o_data[:4])
                 dq_bl8_cases[1] = dq_o_data_muxed.eq(dq_o_data_d[4:])
                 self.sync += Case(bl8_chunk, dq_bl8_cases)
-                self.specials += [
-                    Instance("OSER4_MEM",
-                        p_TCLK_SOURCE = "DQSW270",
-                        p_TXCLK_POL   = 0b0,
-                        i_RESET = ResetSignal("sys"),
-                        i_PCLK  = ClockSignal("sys"),
-                        i_FCLK  = ClockSignal("sys2x"),
-                        i_TCLK  = dqsw270,
-                        i_TX0   = ~dq_oe, # CHECKME: Polarity + Latency.
-                        i_TX1   = ~dq_oe, # CHECKME: Polarity + Latency.
-                        **{f"i_D{n}": dq_o_data_muxed[n] for n in range(4)},
-                        o_Q0    = dq_o,
-                        o_Q1    = dq_o_oen,
-                    ),
-                ]
+                self.specials += Instance("OSER4_MEM",
+                    p_TCLK_SOURCE = "DQSW270",
+                    p_TXCLK_POL   = 0b0,
+                    i_RESET = ResetSignal("sys"),
+                    i_PCLK  = ClockSignal("sys"),
+                    i_FCLK  = ClockSignal("sys2x"),
+                    i_TCLK  = dqsw270,
+                    i_TX0   = ~dq_oe, # CHECKME: Polarity + Latency.
+                    i_TX1   = ~dq_oe, # CHECKME: Polarity + Latency.
+                    **{f"i_D{n}": dq_o_data_muxed[n] for n in range(4)},
+                    o_Q0    = dq_o,
+                    o_Q1    = dq_o_oen,
+                )
                 dq_i_bitslip = BitSlip(4,
                     rst    = self._dly_sel.storage[i] & self._rdly_dq_bitslip_rst.re,
                     slp    = self._dly_sel.storage[i] & self._rdly_dq_bitslip.re,
                     cycles = 1)
                 self.submodules += dq_i_bitslip
-                self.specials += [
-                    Instance("IDES4_MEM",
-                        i_RESET = ResetSignal("sys"),
-                        i_PCLK  = ClockSignal("sys"),
-                        i_FCLK  = ClockSignal("sys2x"),
-                        i_ICLK  = dqsr90,
-                        i_RADDR = rdpntr,
-                        i_WADDR = wrpntr,
-                        i_D     = dq_i,
-                        i_CALIB = 0,
-                        **{f"o_Q{n}": dq_i_bitslip.i[n] for n in range(4)},
-                    )
-                ]
+                self.specials += Instance("IDES4_MEM",
+                    i_RESET = ResetSignal("sys"),
+                    i_PCLK  = ClockSignal("sys"),
+                    i_FCLK  = ClockSignal("sys2x"),
+                    i_ICLK  = dqsr90,
+                    i_RADDR = rdpntr,
+                    i_WADDR = wrpntr,
+                    i_D     = dq_i,
+                    i_CALIB = 0,
+                    **{f"o_Q{n}": dq_i_bitslip.i[n] for n in range(4)},
+                )
                 dq_i_bitslip_o_d = Signal(4)
                 self.sync += dq_i_bitslip_o_d.eq(dq_i_bitslip.o)
                 self.comb += dq_i_data.eq(Cat(dq_i_bitslip_o_d, dq_i_bitslip.o))
                 for n in range(8):
                     self.comb += dfi.phases[n//4].rddata[n%4*databits+j].eq(dq_i_data[n])
-                self.specials += [
-                    Instance("IOBUF",
-                        i_I   = dq_o,
-                        i_OEN = dq_o_oen,
-                        o_O   = dq_i,
-                        io_IO = pads.dq[j]
-                    )
-                ]
+                self.specials += Instance("IOBUF",
+                    i_I   = dq_o,
+                    i_OEN = dq_o_oen,
+                    o_O   = dq_i,
+                    io_IO = pads.dq[j]
+                )
 
         # Read Control Path ------------------------------------------------------------------------
         rdtap = cl_sys_latency # CHECKME: Latency.
