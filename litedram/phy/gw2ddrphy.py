@@ -195,6 +195,7 @@ class GW2DDRPHY(Module, AutoCSR):
                 pad_oddrx2f = Signal()
                 pad_clk = Signal()
                 self.specials += Instance("OSER4",
+                    p_TXCLK_POL = 0b0,
                     i_RESET = ResetSignal("sys"),
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal("sys2x"),
@@ -238,6 +239,7 @@ class GW2DDRPHY(Module, AutoCSR):
                 for i in range(len(pad)):
                     pad_oddrx2f = Signal()
                     self.specials += Instance("OSER4",
+                        p_TXCLK_POL = 0b0,
                         i_RESET = ResetSignal("sys"),
                         i_PCLK = ClockSignal("sys"),
                         i_FCLK = ClockSignal("sys2x"),
@@ -320,6 +322,7 @@ class GW2DDRPHY(Module, AutoCSR):
             self.specials += [
                 Instance("OSER4_MEM",
                     p_TCLK_SOURCE = "DQSW",
+                    p_TXCLK_POL   = 0b1,
                     i_RESET = ResetSignal("sys"),
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal("sys2x"),
@@ -352,6 +355,7 @@ class GW2DDRPHY(Module, AutoCSR):
             self.sync += Case(bl8_chunk, dm_bl8_cases)
             self.specials += Instance("OSER4_MEM",
                 p_TCLK_SOURCE = "DQSW270",
+                p_TXCLK_POL   = 0b0,
                 i_RESET = ResetSignal("sys"),
                 i_PCLK  = ClockSignal("sys"),
                 i_FCLK  = ClockSignal("sys2x"),
@@ -380,6 +384,7 @@ class GW2DDRPHY(Module, AutoCSR):
                 self.specials += [
                     Instance("OSER4_MEM",
                         p_TCLK_SOURCE = "DQSW270",
+                        p_TXCLK_POL   = 0b0,
                         i_RESET = ResetSignal("sys"),
                         i_PCLK  = ClockSignal("sys"),
                         i_FCLK  = ClockSignal("sys2x"),
