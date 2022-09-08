@@ -319,6 +319,7 @@ class GW2DDRPHY(Module, AutoCSR):
             dqs_o_oen = Signal()
             self.specials += [
                 Instance("OSER4_MEM",
+                    p_TCLK_SOURCE = "DQSW",
                     i_RESET = ResetSignal("sys"),
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal("sys2x"),
