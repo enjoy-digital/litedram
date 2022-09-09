@@ -166,9 +166,9 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
             self.ser(i=getattr(self.out, prefix+'dqs_oe')[0],
                      o=getattr(self.pads, prefix+'dqs_c_oe'),
                      name=f'{prefix}dqs_c_oe', **ddr)
-            self.ser(i=getattr(self.out, prefix+'dm_n_oe')[0],
+            self.ser(i=getattr(self.out, prefix+'dqs_oe')[0],
                      o=getattr(self.pads, prefix+'dm_n_oe'),
                      name=f'{prefix}dm_n_oe', **ddr)
-            self.ser(i=getattr(self.out, prefix+'dq_oe')[0],
+            self.ser(i=getattr(self.out, prefix+'dqs_oe')[0],
                      o=getattr(self.pads, prefix+'dq_oe'),
                      name=f'{prefix}dq_oe', **ddr)

@@ -18,7 +18,8 @@ from litedram.phy.ddr5.basephy import DDR5PHY
 from litedram.phy.s7common import S7Common
 
 class S7DDR5PHY(DDR5PHY, S7Common):
-    def __init__(self, pads, *, iodelay_clk_freq, with_odelay, **kwargs):
+    def __init__(self, pads, *, iodelay_clk_freq, with_odelay,
+                 with_per_dq_idelay=False, with_sub_channels=False, **kwargs):
         self.iodelay_clk_freq = iodelay_clk_freq
 
         with_sub_channels = kwargs.get("with_sub_channels", False)
@@ -26,7 +27,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
         # DoubleRateDDR5PHY outputs half-width signals (comparing to DDR5PHY) in sys2x domain.
         # This allows us to use 8:1 DDR OSERDESE2/ISERDESE2 to (de-)serialize the data.
         super().__init__(pads,
-            ser_latency = Latency(sys=1),  # OSERDESE2 8:1 DDR (4 full-rate clocks)
+            ser_latency = Latency(sys2x=1),  # OSERDESE2 4:1 DDR (2 full-rate clocks)
             des_latency = Latency(sys=2),  # ISERDESE2 NETWORKING
             phytype     = self.__class__.__name__,
             **kwargs
