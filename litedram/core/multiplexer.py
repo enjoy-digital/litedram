@@ -460,12 +460,15 @@ class TMRMultiplexer(Module, AutoCSR):
             interface,
             TMRinterface):
         assert(settings.phy.nphases == len(dfi.phases))
+        
+        #TODO Refactor interface here
+        self.TMRinterface = TMRinterface
+        self.dfi = dfi
+        
+        ###
 
         ras_allowed = Signal(reset=1)
         cas_allowed = Signal(reset=1)
-        
-        self.TMRinterface = TMRinterface
-        self.dfi = dfi
 
         # Read/Write Cmd/Dat phases ----------------------------------------------------------------
         nphases = settings.phy.nphases
@@ -476,6 +479,7 @@ class TMRMultiplexer(Module, AutoCSR):
             self.comb += rdcmdphase.eq(rdphase - 1) # Implicit %nphases.
         else:
             rdcmdphase = (rdphase - 1)%nphases
+            
         if isinstance(rdphase, Signal):
             wrcmdphase = Signal.like(wrphase)
             self.comb += wrcmdphase.eq(wrphase - 1) # Implicit %nphases.
@@ -503,6 +507,8 @@ class TMRMultiplexer(Module, AutoCSR):
             self.submodules += TMRInput(bm.TMRcmd.is_read, TMRrequest.is_read)
             self.submodules += TMRInput(bm.TMRcmd.is_write, TMRrequest.is_write)
         
+        
+        #CommandChoosers
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(TMRrequests)
         self.submodules.choose_cmd2 = choose_cmd2 = _CommandChooser(TMRrequests)
         self.submodules.choose_cmd3 = choose_cmd3 = _CommandChooser(TMRrequests)
@@ -552,7 +558,7 @@ class TMRMultiplexer(Module, AutoCSR):
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
-        commands = [nop, choose_tmrcmd, choose_tmrreq, refreshCmd]
+        commands = [nop, choose_cmd.cmd, choose_req.cmd, refreshCmd]
         steerer = _Steerer(commands, dfi)
         self.submodules += steerer
 
