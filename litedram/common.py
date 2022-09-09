@@ -402,6 +402,10 @@ def vote_TMR(module, result, rec1, rec2, rec3, master=True):
             vote_TMR(module, subResult, subRec1, subRec2, subRec3, master)
         else:
             raise TypeError
+    
+#    
+def triplicate_module(module):
+    return module
 
 # Ports --------------------------------------------------------------------------------------------
 

@@ -115,6 +115,94 @@ class _CommandChooser(Module):
     def read(self):
         return self.cmd.is_read
 
+class _CommandChooserInt(Module):
+    """
+    Arbitrates between requests, filtering them based on their type
+
+    Uses RoundRobin to choose current request, filters requests based on
+    `want_*` signals.
+
+    Attributes
+    ----------
+    requests : [Endpoint(cmd_request_rw_layout), ...]
+        Request streams to consider for arbitration
+    cmd : Endpoint(cmd_request_rw_layout)
+        Currently selected request stream (when ~cmd.valid, cas/ras/we are 0)
+    want_reads : Signal, in
+        Consider read requests
+    want_writes : Signal, in
+        Consider write requests
+    want_cmds : Signal, in
+        Consider command requests (without ACT)
+    want_activates : Signal, in
+        Also consider ACT commands
+    """
+    def __init__(self, nreqs, a, ba):
+        self.requests = requests = [stream.Endpoint(cmd_request_rw_layout(a, ba)) for n in range(nreqs)]
+        self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
+        
+        self.want_reads     = Signal()
+        self.want_writes    = Signal()
+        self.want_cmds      = Signal()
+        self.want_activates = Signal()
+
+        # # #
+
+        # Find valid requests
+        valids = Signal(nreqs)
+        for i, request in enumerate(requests):
+            is_act_cmd = request.ras & ~request.cas & ~request.we
+            command = request.is_cmd & self.want_cmds & (~is_act_cmd | self.want_activates)
+            read = request.is_read == self.want_reads
+            write = request.is_write == self.want_writes
+            self.comb += valids[i].eq(request.valid & (command | (read & write)))
+
+        # Create arbiters
+        arbiter = RoundRobin(nreqs, SP_CE)
+        self.submodules += arbiter
+        choices = Array(valids[i] for i in range(nreqs))
+        self.comb += [
+            arbiter.request.eq(valids),
+            cmd.valid.eq(choices[arbiter.grant])
+        ]
+
+        # Connect arbiter selection to cmd
+        for name in ["a", "ba", "is_read", "is_write", "is_cmd"]:
+            choices = Array(getattr(req, name) for req in requests)
+            self.comb += getattr(cmd, name).eq(choices[arbiter.grant])
+
+        for name in ["cas", "ras", "we"]:
+            # we should only assert those signals when valid is 1
+            choices = Array(getattr(req, name) for req in requests)
+            self.comb += \
+                If(cmd.valid,
+                    getattr(cmd, name).eq(choices[arbiter.grant])
+                )
+
+        # Connect arbiter selection to req.ready
+        for i, request in enumerate(requests):
+            self.comb += \
+                If(cmd.valid & cmd.ready & (arbiter.grant == i),
+                    request.ready.eq(1)
+                )
+                
+        # Arbitrate if a command is being accepted or if the command is not valid to ensure a valid
+        # command is selected when cmd.ready goes high.
+        self.comb += arbiter.ce.eq(cmd.ready | ~cmd.valid)
+
+    # helpers
+    def accept(self):
+        return self.cmd.valid & self.cmd.ready
+
+    def activate(self):
+        return self.cmd.ras & ~self.cmd.cas & ~self.cmd.we
+
+    def write(self):
+        return self.cmd.is_write
+
+    def read(self):
+        return self.cmd.is_read
+
 # _Steerer -----------------------------------------------------------------------------------------
 
 (STEER_NOP, STEER_CMD, STEER_REQ, STEER_REFRESH) = range(4)
@@ -178,6 +266,80 @@ class _Steerer(Module):
                 self.sync += phase.cs_n.eq(0)
                 self.sync += phase.bank.eq(Array(cmd.ba[:] for cmd in commands)[sel])
 
+            self.sync += [
+                phase.address.eq(Array(cmd.a for cmd in commands)[sel]),
+                phase.cas_n.eq(~Array(valid_and(cmd, "cas") for cmd in commands)[sel]),
+                phase.ras_n.eq(~Array(valid_and(cmd, "ras") for cmd in commands)[sel]),
+                phase.we_n.eq(~Array(valid_and(cmd, "we") for cmd in commands)[sel])
+            ]
+
+            rddata_ens = Array(valid_and(cmd, "is_read") for cmd in commands)
+            wrdata_ens = Array(valid_and(cmd, "is_write") for cmd in commands)
+            self.sync += [
+                phase.rddata_en.eq(rddata_ens[sel]),
+                phase.wrdata_en.eq(wrdata_ens[sel])
+            ]
+
+class _SteererInt(Module):
+    """
+    Connects selected request to DFI interface
+
+    cas/ras/we/is_write/is_read are connected only when `cmd.valid & cmd.ready`.
+    Rank bits are decoded and used to drive cs_n in multi-rank systems,
+    STEER_REFRESH always enables all ranks.
+
+    Attributes
+    ----------
+    commands : [Endpoint(cmd_request_rw_layout), ...]
+        Command streams to choose from. Must be of len=4 in the order:
+            NOP, CMD, REQ, REFRESH
+        NOP can be of type Record(cmd_request_rw_layout) instead, so that it is
+        always considered invalid (because of lack of the `valid` attribute).
+    dfi : dfi.Interface
+        DFI interface connected to PHY
+    sel : [Signal(max=len(commands)), ...], in
+        Signals for selecting which request gets connected to the corresponding
+        DFI phase. The signals should take one of the values from STEER_* to
+        select given source.
+    """
+    def __init__(self, a, ba, nranks, databits, nphases):        
+        self.sel = [Signal(max=ncmd) for i in range(nph)]
+        self.commands = [stream.Endpoint(cmd_request_rw_layout(a, ba)) for n in range(4)]
+        self.dfi = dfi.Interface(a, ba, nranks, databits, nphases)
+
+        # # #
+
+        def valid_and(cmd, attr):
+            if not hasattr(cmd, "valid"):
+                return 0
+            else:
+                return cmd.valid & cmd.ready & getattr(cmd, attr)
+
+        for i, (phase, sel) in enumerate(zip(dfi.phases, self.sel)):
+            rankbits = log2_int(nranks)
+            
+            if hasattr(phase, "reset_n"):
+                self.comb += phase.reset_n.eq(1)
+            self.comb += phase.cke.eq(Replicate(Signal(reset=1), nranks))
+            
+            if hasattr(phase, "odt"):
+                # FIXME: add dynamic drive for multi-rank (will be needed for high frequencies)
+                self.comb += phase.odt.eq(Replicate(Signal(reset=1), nranks))
+            
+            if rankbits:
+                rank_decoder = Decoder(nranks)
+                self.submodules += rank_decoder
+                self.comb += rank_decoder.i.eq((Array(cmd.ba[-rankbits:] for cmd in commands)[sel]))
+                if i == 0: # Select all ranks on refresh.
+                    self.sync += If(sel == STEER_REFRESH, phase.cs_n.eq(0)).Else(phase.cs_n.eq(~rank_decoder.o))
+                else:
+                    self.sync += phase.cs_n.eq(~rank_decoder.o)
+                self.sync += phase.bank.eq(Array(cmd.ba[:-rankbits] for cmd in commands)[sel])
+            else:
+                self.sync += phase.cs_n.eq(0)
+                self.sync += phase.bank.eq(Array(cmd.ba[:] for cmd in commands)[sel])
+
+            # Connect selection to dfi
             self.sync += [
                 phase.address.eq(Array(cmd.a for cmd in commands)[sel]),
                 phase.cas_n.eq(~Array(valid_and(cmd, "cas") for cmd in commands)[sel]),
@@ -509,12 +671,15 @@ class TMRMultiplexer(Module, AutoCSR):
         
         
         #CommandChoosers
+        a = len(TMRrequests[0].a)
+        ba = len(TMRrequests[0].ba)
+        
+        self.submodules.choose_cmd_int = _CommandChooserInt(len(TMRrequests), a, ba)
+        
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(TMRrequests)
         self.submodules.choose_cmd2 = choose_cmd2 = _CommandChooser(TMRrequests)
         self.submodules.choose_cmd3 = choose_cmd3 = _CommandChooser(TMRrequests)
         
-        a = len(TMRrequests[0].a)
-        ba = len(TMRrequests[0].ba)
         choose_tmrcmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
         vote_TMR(self, choose_tmrcmd, choose_cmd.cmd, choose_cmd2.cmd, choose_cmd3.cmd)
         
@@ -559,7 +724,9 @@ class TMRMultiplexer(Module, AutoCSR):
                                         log2_int(len(bank_machines))))
         # nop must be 1st
         commands = [nop, choose_cmd.cmd, choose_req.cmd, refreshCmd]
+        
         steerer = _Steerer(commands, dfi)
+        
         self.submodules += steerer
 
         # tRRD timing (Row to Row delay) -----------------------------------------------------------
@@ -672,13 +839,7 @@ class TMRMultiplexer(Module, AutoCSR):
         # Datapath ---------------------------------------------------------------------------------
         all_rddata = [p.rddata for p in dfi.phases]
         all_wrdata = [p.wrdata for p in dfi.phases]
-        all_wrdata_mask = [p.wrdata_mask for p in dfi.phases]
-        #self.comb += [
-        #    interface.rdata.eq(Cat(*all_rddata)),
-        #    Cat(*all_wrdata).eq(interface.wdata),
-        #    Cat(*all_wrdata_mask).eq(~interface.wdata_we)
-        #]
-        
+        all_wrdata_mask = [p.wrdata_mask for p in dfi.phases]        
         self.submodules += TMROutput(Cat(*all_rddata), TMRinterface.rdata)
         self.submodules += TMRInput(TMRinterface.wdata, Cat(*all_wrdata))
         self.submodules += TMRInput(~TMRinterface.wdata_we, Cat(*all_wrdata_mask))
