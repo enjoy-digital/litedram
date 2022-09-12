@@ -674,7 +674,10 @@ class TMRMultiplexer(Module, AutoCSR):
         a = len(TMRrequests[0].a)
         ba = len(TMRrequests[0].ba)
         
-        self.submodules.choose_cmd_int = _CommandChooserInt(len(TMRrequests), a, ba)
+        self.submodules.choose_cmd_int = choose_cmd_int = _CommandChooserInt(len(TMRrequests), a, ba)
+        
+        for i, TMRrequest in enumerate(TMRrequests):
+            TMRrequest.connect(choose_cmd_int.requests[i])
         
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(TMRrequests)
         self.submodules.choose_cmd2 = choose_cmd2 = _CommandChooser(TMRrequests)
@@ -723,7 +726,7 @@ class TMRMultiplexer(Module, AutoCSR):
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
-        commands = [nop, choose_cmd.cmd, choose_req.cmd, refreshCmd]
+        commands = [nop, choose_cmd_int.cmd, choose_req.cmd, refreshCmd]
         
         steerer = _Steerer(commands, dfi)
         
@@ -731,13 +734,13 @@ class TMRMultiplexer(Module, AutoCSR):
 
         # tRRD timing (Row to Row delay) -----------------------------------------------------------
         self.submodules.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
-        self.comb += trrdcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+        self.comb += trrdcon.valid.eq(choose_cmd_int.accept() & choose_cmd_int.activate())
 
         self.submodules.trrdcon2 = trrdcon2 = tXXDController(settings.timing.tRRD)
-        self.comb += trrdcon2.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+        self.comb += trrdcon2.valid.eq(choose_cmd_int.accept() & choose_cmd_int.activate())
 
         self.submodules.trrdcon3 = trrdcon3 = tXXDController(settings.timing.tRRD)
-        self.comb += trrdcon3.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+        self.comb += trrdcon3.valid.eq(choose_cmd_int.accept() & choose_cmd_int.activate())
 
         trrdSig = Cat(trrdcon.ready, trrdcon2.ready, trrdcon3.ready)
         trrdVote = TMRInput(trrdSig)
@@ -745,13 +748,13 @@ class TMRMultiplexer(Module, AutoCSR):
 
         # tFAW timing (Four Activate Window) -------------------------------------------------------
         self.submodules.tfawcon = tfawcon = tFAWController(settings.timing.tFAW)
-        self.comb += tfawcon.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+        self.comb += tfawcon.valid.eq(choose_cmd_int.accept() & choose_cmd_int.activate())
 
         self.submodules.tfawcon2 = tfawcon2 = tFAWController(settings.timing.tFAW)
-        self.comb += tfawcon2.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+        self.comb += tfawcon2.valid.eq(choose_cmd_int.accept() & choose_cmd_int.activate())
 
         self.submodules.tfawcon3 = tfawcon3 = tFAWController(settings.timing.tFAW)
-        self.comb += tfawcon3.valid.eq(choose_cmd.accept() & choose_cmd.activate())
+        self.comb += tfawcon3.valid.eq(choose_cmd_int.accept() & choose_cmd_int.activate())
 
         tfawSig = Cat(tfawcon.ready, tfawcon2.ready, tfawcon3.ready)
         tfawVote = TMRInput(tfawSig)
@@ -870,9 +873,11 @@ class TMRMultiplexer(Module, AutoCSR):
                 choose_req3.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
             ).Else(
                 choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd_int.want_activates.eq(ras_allowed),
                 choose_cmd2.want_activates.eq(ras_allowed),
                 choose_cmd3.want_activates.eq(ras_allowed),
                 choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_cmd_int.cmd.ready.eq(~choose_cmd_int.activate() | ras_allowed),
                 choose_cmd2.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_cmd3.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_req.cmd.ready.eq(cas_allowed),
@@ -901,9 +906,11 @@ class TMRMultiplexer(Module, AutoCSR):
                 choose_req3.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
             ).Else(
                 choose_cmd.want_activates.eq(ras_allowed),
+                choose_cmd_int.want_activates.eq(ras_allowed),
                 choose_cmd2.want_activates.eq(ras_allowed),
                 choose_cmd3.want_activates.eq(ras_allowed),
                 choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
+                choose_cmd_int.cmd.ready.eq(~choose_cmd_int.activate() | ras_allowed),
                 choose_cmd2.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_cmd3.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_req.cmd.ready.eq(cas_allowed),
