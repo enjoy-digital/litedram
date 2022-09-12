@@ -675,36 +675,18 @@ class TMRMultiplexer(Module, AutoCSR):
         ba = len(TMRrequests[0].ba)
         
         self.submodules.choose_cmd_int = choose_cmd_int = _CommandChooserInt(len(TMRrequests), a, ba)
+        self.submodules.choose_req_int = choose_req_int = _CommandChooserInt(len(TMRrequests), a, ba)
         
         for i, TMRrequest in enumerate(TMRrequests):
             self.comb += TMRrequest.connect(choose_cmd_int.requests[i])
-        
-        #self.submodules.choose_cmd = choose_cmd = _CommandChooser(TMRrequests)
-        #self.submodules.choose_cmd2 = choose_cmd2 = _CommandChooser(TMRrequests)
-        #self.submodules.choose_cmd3 = choose_cmd3 = _CommandChooser(TMRrequests)
-        
-        #choose_tmrcmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
-        #vote_TMR(self, choose_tmrcmd, choose_cmd.cmd, choose_cmd2.cmd, choose_cmd3.cmd)
-        
-        self.submodules.choose_req = choose_req = _CommandChooser(TMRrequests)
-        self.submodules.choose_req2 = choose_req2 = _CommandChooser(TMRrequests)
-        self.submodules.choose_req3 = choose_req3 = _CommandChooser(TMRrequests)
-        
-        #choose_tmrreq = stream.Endpoint(cmd_request_rw_layout(a, ba))
-        #vote_TMR(self, choose_cmd_int.cmd, choose_req.cmd, choose_req2.cmd, choose_req3.cmd)
+            self.comb += TMRrequest.connect(choose_req_int.requests[i])
         
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
             #choose_cmd = choose_req
             choose_cmd_int = choose_req
-            #choose_cmd2 = choose_req2
-            #choose_cmd3 = choose_req3
-            self.comb += choose_req.want_cmds.eq(1)
-            self.comb += choose_req2.want_cmds.eq(1)
-            self.comb += choose_req3.want_cmds.eq(1)
-            self.comb += choose_req.want_activates.eq(ras_allowed)
-            self.comb += choose_req2.want_activates.eq(ras_allowed)
-            self.comb += choose_req3.want_activates.eq(ras_allowed)
+            self.comb += choose_req_int.want_cmds.eq(1)
+            self.comb += choose_req_int.want_activates.eq(ras_allowed)
             
         # Refresher cmd
         
@@ -727,7 +709,7 @@ class TMRMultiplexer(Module, AutoCSR):
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
-        commands = [nop, choose_cmd_int.cmd, choose_req.cmd, refreshCmd]
+        commands = [nop, choose_cmd_int.cmd, choose_req_int.cmd, refreshCmd]
         
         steerer = _Steerer(commands, dfi)
         
@@ -766,13 +748,13 @@ class TMRMultiplexer(Module, AutoCSR):
 
         # tCCD timing (Column to Column delay) -----------------------------------------------------
         self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
-        self.comb += tccdcon.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
+        self.comb += tccdcon.valid.eq(choose_req_int.accept() & (choose_req_int.write() | choose_req_int.read()))
 
         self.submodules.tccdcon2 = tccdcon2 = tXXDController(settings.timing.tCCD)
-        self.comb += tccdcon2.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
+        self.comb += tccdcon2.valid.eq(choose_req_int.accept() & (choose_req_int.write() | choose_req_int.read()))
 
         self.submodules.tccdcon3 = tccdcon3 = tXXDController(settings.timing.tCCD)
-        self.comb += tccdcon3.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
+        self.comb += tccdcon3.valid.eq(choose_req_int.accept() & (choose_req_int.write() | choose_req_int.read()))
 
         tccdSig = Cat(tccdcon.ready, tccdcon2.ready, tccdcon3.ready)
         tccdVote = TMRInput(tccdSig)
@@ -787,17 +769,17 @@ class TMRMultiplexer(Module, AutoCSR):
             settings.timing.tWTR + write_latency +
             # tCCD must be added since tWTR begins after the transfer is complete
             settings.timing.tCCD if settings.timing.tCCD is not None else 0)
-        self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
+        self.comb += twtrcon.valid.eq(choose_req_int.accept() & choose_req_int.write())
 
         self.submodules.twtrcon2 = twtrcon2 = tXXDController(
             settings.timing.tWTR + write_latency +
             settings.timing.tCCD if settings.timing.tCCD is not None else 0)
-        self.comb += twtrcon2.valid.eq(choose_req.accept() & choose_req.write())
+        self.comb += twtrcon2.valid.eq(choose_req_int.accept() & choose_req_int.write())
 
         self.submodules.twtrcon3 = twtrcon3 = tXXDController(
             settings.timing.tWTR + write_latency +
             settings.timing.tCCD if settings.timing.tCCD is not None else 0)
-        self.comb += twtrcon3.valid.eq(choose_req.accept() & choose_req.write())
+        self.comb += twtrcon3.valid.eq(choose_req_int.accept() & choose_req_int.write())
 
         twtrSig = Cat(twtrcon.ready, twtrcon2.ready, twtrcon3.ready)
         twtrVote = TMRInput(twtrSig)
@@ -865,25 +847,13 @@ class TMRMultiplexer(Module, AutoCSR):
         self.submodules.fsm = fsm = FSM()
         fsm.act("READ",
             read_time_en.eq(1),
-            choose_req.want_reads.eq(1),
-            choose_req2.want_reads.eq(1),
-            choose_req3.want_reads.eq(1),
+            choose_req_int.want_reads.eq(1),
             If(settings.phy.nphases == 1,
-                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed)),
-                choose_req2.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed)),
-                choose_req3.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+                choose_req_int.cmd.ready.eq(cas_allowed & (~choose_req_int.activate() | ras_allowed))
             ).Else(
-                #choose_cmd.want_activates.eq(ras_allowed),
                 choose_cmd_int.want_activates.eq(ras_allowed),
-                #choose_cmd2.want_activates.eq(ras_allowed),
-                #choose_cmd3.want_activates.eq(ras_allowed),
-                #choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_cmd_int.cmd.ready.eq(~choose_cmd_int.activate() | ras_allowed),
-                #choose_cmd2.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
-                #choose_cmd3.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
-                choose_req.cmd.ready.eq(cas_allowed),
-                choose_req2.cmd.ready.eq(cas_allowed),
-                choose_req3.cmd.ready.eq(cas_allowed)
+                choose_req_int.cmd.ready.eq(cas_allowed)
             ),
             steerer_sel(steerer, access="read"),
             If(write_available,
@@ -898,25 +868,13 @@ class TMRMultiplexer(Module, AutoCSR):
         )
         fsm.act("WRITE",
             write_time_en.eq(1),
-            choose_req.want_writes.eq(1),
-            choose_req2.want_writes.eq(1),
-            choose_req3.want_writes.eq(1),
+            choose_req_int.want_writes.eq(1),
             If(settings.phy.nphases == 1,
-                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed)),
-                choose_req2.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed)),
-                choose_req3.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+                choose_req_int.cmd.ready.eq(cas_allowed & (~choose_req_int.activate() | ras_allowed))
             ).Else(
-                #choose_cmd.want_activates.eq(ras_allowed),
                 choose_cmd_int.want_activates.eq(ras_allowed),
-                #choose_cmd2.want_activates.eq(ras_allowed),
-                #choose_cmd3.want_activates.eq(ras_allowed),
-                #choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_cmd_int.cmd.ready.eq(~choose_cmd_int.activate() | ras_allowed),
-                #choose_cmd2.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
-                #choose_cmd3.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
-                choose_req.cmd.ready.eq(cas_allowed),
-                choose_req2.cmd.ready.eq(cas_allowed),
-                choose_req3.cmd.ready.eq(cas_allowed),
+                choose_req_int.cmd.ready.eq(cas_allowed)
             ),
             steerer_sel(steerer, access="write"),
             If(read_available,
