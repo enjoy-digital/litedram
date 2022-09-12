@@ -678,22 +678,13 @@ class TMRMultiplexer(Module, AutoCSR):
         self.submodules.choose_req_int = choose_req_int = _CommandChooserInt(len(TMRrequests), a, ba)
         
         for i, TMRrequest in enumerate(TMRrequests):
-            self.comb += TMRrequest.connect(choose_cmd_int.requests[i])
-            self.comb += TMRrequest.connect(choose_req_int.requests[i])
-        
-        self.submodules.choose_req = choose_req = _CommandChooser(TMRrequests)
-        self.submodules.choose_req2 = choose_req2 = _CommandChooser(TMRrequests)
-        self.submodules.choose_req3 = choose_req3 = _CommandChooser(TMRrequests)
+            self.comb += TMRrequest.connect(choose_cmd_int.requests[i], choose_req_int.requests[i])
         
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
-            choose_cmd_int = choose_req
-            self.comb += choose_req.want_cmds.eq(1)
-            self.comb += choose_req2.want_cmds.eq(1)
-            self.comb += choose_req3.want_cmds.eq(1)
-            self.comb += choose_req.want_activates.eq(ras_allowed)
-            self.comb += choose_req2.want_activates.eq(ras_allowed)
-            self.comb += choose_req3.want_activates.eq(ras_allowed)
+            choose_cmd_int = choose_req_int
+            self.comb += choose_req_int.want_cmds.eq(1)
+            self.comb += choose_req_int.want_activates.eq(ras_allowed)
             
         # Refresher cmd
         
