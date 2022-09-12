@@ -696,6 +696,7 @@ class TMRMultiplexer(Module, AutoCSR):
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
             choose_cmd = choose_req
+            choose_cmd_int = choose_req
             choose_cmd2 = choose_req2
             choose_cmd3 = choose_req3
             self.comb += choose_req.want_cmds.eq(1)
