@@ -3321,89 +3321,6 @@ reg [7:0] litedramcontroller_multiplexer_choose_cmd_int_valids;
 wire [7:0] litedramcontroller_multiplexer_choose_cmd_int_request;
 reg [2:0] litedramcontroller_multiplexer_choose_cmd_int_grant = 3'd0;
 wire litedramcontroller_multiplexer_choose_cmd_int_ce;
-reg litedramcontroller_multiplexer_choose_cmd_want_reads = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd_want_writes = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd_want_cmds = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd_want_activates;
-wire litedramcontroller_multiplexer_choose_cmd_cmd_valid;
-reg litedramcontroller_multiplexer_choose_cmd_cmd_ready;
-reg litedramcontroller_multiplexer_choose_cmd_cmd_first = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd_cmd_last = 1'd0;
-wire [13:0] litedramcontroller_multiplexer_choose_cmd_cmd_payload_a;
-wire [2:0] litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba;
-reg litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas;
-reg litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras;
-reg litedramcontroller_multiplexer_choose_cmd_cmd_payload_we;
-wire litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd;
-wire litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read;
-wire litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write;
-reg [7:0] litedramcontroller_multiplexer_choose_cmd_valids;
-wire [7:0] litedramcontroller_multiplexer_choose_cmd_request;
-reg [2:0] litedramcontroller_multiplexer_choose_cmd_grant = 3'd0;
-wire litedramcontroller_multiplexer_choose_cmd_ce;
-reg litedramcontroller_multiplexer_choose_cmd2_want_reads = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd2_want_writes = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd2_want_cmds = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd2_want_activates;
-wire litedramcontroller_multiplexer_choose_cmd2_cmd_valid;
-reg litedramcontroller_multiplexer_choose_cmd2_cmd_ready;
-reg litedramcontroller_multiplexer_choose_cmd2_cmd_first = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd2_cmd_last = 1'd0;
-wire [13:0] litedramcontroller_multiplexer_choose_cmd2_cmd_payload_a;
-wire [2:0] litedramcontroller_multiplexer_choose_cmd2_cmd_payload_ba;
-reg litedramcontroller_multiplexer_choose_cmd2_cmd_payload_cas;
-reg litedramcontroller_multiplexer_choose_cmd2_cmd_payload_ras;
-reg litedramcontroller_multiplexer_choose_cmd2_cmd_payload_we;
-wire litedramcontroller_multiplexer_choose_cmd2_cmd_payload_is_cmd;
-wire litedramcontroller_multiplexer_choose_cmd2_cmd_payload_is_read;
-wire litedramcontroller_multiplexer_choose_cmd2_cmd_payload_is_write;
-reg [7:0] litedramcontroller_multiplexer_choose_cmd2_valids;
-wire [7:0] litedramcontroller_multiplexer_choose_cmd2_request;
-reg [2:0] litedramcontroller_multiplexer_choose_cmd2_grant = 3'd0;
-wire litedramcontroller_multiplexer_choose_cmd2_ce;
-reg litedramcontroller_multiplexer_choose_cmd3_want_reads = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd3_want_writes = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd3_want_cmds = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd3_want_activates;
-wire litedramcontroller_multiplexer_choose_cmd3_cmd_valid;
-reg litedramcontroller_multiplexer_choose_cmd3_cmd_ready;
-reg litedramcontroller_multiplexer_choose_cmd3_cmd_first = 1'd0;
-reg litedramcontroller_multiplexer_choose_cmd3_cmd_last = 1'd0;
-wire [13:0] litedramcontroller_multiplexer_choose_cmd3_cmd_payload_a;
-wire [2:0] litedramcontroller_multiplexer_choose_cmd3_cmd_payload_ba;
-reg litedramcontroller_multiplexer_choose_cmd3_cmd_payload_cas;
-reg litedramcontroller_multiplexer_choose_cmd3_cmd_payload_ras;
-reg litedramcontroller_multiplexer_choose_cmd3_cmd_payload_we;
-wire litedramcontroller_multiplexer_choose_cmd3_cmd_payload_is_cmd;
-wire litedramcontroller_multiplexer_choose_cmd3_cmd_payload_is_read;
-wire litedramcontroller_multiplexer_choose_cmd3_cmd_payload_is_write;
-reg [7:0] litedramcontroller_multiplexer_choose_cmd3_valids;
-wire [7:0] litedramcontroller_multiplexer_choose_cmd3_request;
-reg [2:0] litedramcontroller_multiplexer_choose_cmd3_grant = 3'd0;
-wire litedramcontroller_multiplexer_choose_cmd3_ce;
-wire litedramcontroller_multiplexer_choose_tmrcmd_valid;
-reg litedramcontroller_multiplexer_choose_tmrcmd_ready = 1'd0;
-wire litedramcontroller_multiplexer_choose_tmrcmd_first;
-wire litedramcontroller_multiplexer_choose_tmrcmd_last;
-wire [13:0] litedramcontroller_multiplexer_choose_tmrcmd_payload_a;
-wire [2:0] litedramcontroller_multiplexer_choose_tmrcmd_payload_ba;
-wire litedramcontroller_multiplexer_choose_tmrcmd_payload_cas;
-wire litedramcontroller_multiplexer_choose_tmrcmd_payload_ras;
-wire litedramcontroller_multiplexer_choose_tmrcmd_payload_we;
-wire litedramcontroller_multiplexer_choose_tmrcmd_payload_is_cmd;
-wire litedramcontroller_multiplexer_choose_tmrcmd_payload_is_read;
-wire litedramcontroller_multiplexer_choose_tmrcmd_payload_is_write;
-wire litedramcontroller_multiplexer_tmrinput_control88;
-wire litedramcontroller_multiplexer_tmrinput_control89;
-wire litedramcontroller_multiplexer_tmrinput_control90;
-wire [13:0] litedramcontroller_multiplexer_tmrinput_control91;
-wire [2:0] litedramcontroller_multiplexer_tmrinput_control92;
-wire litedramcontroller_multiplexer_tmrinput_control93;
-wire litedramcontroller_multiplexer_tmrinput_control94;
-wire litedramcontroller_multiplexer_tmrinput_control95;
-wire litedramcontroller_multiplexer_tmrinput_control96;
-wire litedramcontroller_multiplexer_tmrinput_control97;
-wire litedramcontroller_multiplexer_tmrinput_control98;
 reg litedramcontroller_multiplexer_choose_req_want_reads;
 reg litedramcontroller_multiplexer_choose_req_want_writes;
 reg litedramcontroller_multiplexer_choose_req_want_cmds = 1'd0;
@@ -3476,17 +3393,17 @@ wire litedramcontroller_multiplexer_choose_tmrreq_payload_we;
 wire litedramcontroller_multiplexer_choose_tmrreq_payload_is_cmd;
 wire litedramcontroller_multiplexer_choose_tmrreq_payload_is_read;
 wire litedramcontroller_multiplexer_choose_tmrreq_payload_is_write;
-wire litedramcontroller_multiplexer_tmrinput_control99;
-wire litedramcontroller_multiplexer_tmrinput_control100;
-wire litedramcontroller_multiplexer_tmrinput_control101;
-wire [13:0] litedramcontroller_multiplexer_tmrinput_control102;
-wire [2:0] litedramcontroller_multiplexer_tmrinput_control103;
-wire litedramcontroller_multiplexer_tmrinput_control104;
-wire litedramcontroller_multiplexer_tmrinput_control105;
-wire litedramcontroller_multiplexer_tmrinput_control106;
-wire litedramcontroller_multiplexer_tmrinput_control107;
-wire litedramcontroller_multiplexer_tmrinput_control108;
-wire litedramcontroller_multiplexer_tmrinput_control109;
+wire litedramcontroller_multiplexer_tmrinput_control88;
+wire litedramcontroller_multiplexer_tmrinput_control89;
+wire litedramcontroller_multiplexer_tmrinput_control90;
+wire [13:0] litedramcontroller_multiplexer_tmrinput_control91;
+wire [2:0] litedramcontroller_multiplexer_tmrinput_control92;
+wire litedramcontroller_multiplexer_tmrinput_control93;
+wire litedramcontroller_multiplexer_tmrinput_control94;
+wire litedramcontroller_multiplexer_tmrinput_control95;
+wire litedramcontroller_multiplexer_tmrinput_control96;
+wire litedramcontroller_multiplexer_tmrinput_control97;
+wire litedramcontroller_multiplexer_tmrinput_control98;
 wire litedramcontroller_multiplexer_refreshCmd_valid;
 reg litedramcontroller_multiplexer_refreshCmd_ready;
 wire litedramcontroller_multiplexer_refreshCmd_first;
@@ -3499,17 +3416,17 @@ wire litedramcontroller_multiplexer_refreshCmd_payload_we;
 wire litedramcontroller_multiplexer_refreshCmd_payload_is_cmd;
 wire litedramcontroller_multiplexer_refreshCmd_payload_is_read;
 wire litedramcontroller_multiplexer_refreshCmd_payload_is_write;
-wire litedramcontroller_multiplexer_tmrinput_control110;
-wire litedramcontroller_multiplexer_tmrinput_control111;
-wire litedramcontroller_multiplexer_tmrinput_control112;
-wire [13:0] litedramcontroller_multiplexer_tmrinput_control113;
-wire [2:0] litedramcontroller_multiplexer_tmrinput_control114;
-wire litedramcontroller_multiplexer_tmrinput_control115;
-wire litedramcontroller_multiplexer_tmrinput_control116;
-wire litedramcontroller_multiplexer_tmrinput_control117;
-wire litedramcontroller_multiplexer_tmrinput_control118;
-wire litedramcontroller_multiplexer_tmrinput_control119;
-wire litedramcontroller_multiplexer_tmrinput_control120;
+wire litedramcontroller_multiplexer_tmrinput_control99;
+wire litedramcontroller_multiplexer_tmrinput_control100;
+wire litedramcontroller_multiplexer_tmrinput_control101;
+wire [13:0] litedramcontroller_multiplexer_tmrinput_control102;
+wire [2:0] litedramcontroller_multiplexer_tmrinput_control103;
+wire litedramcontroller_multiplexer_tmrinput_control104;
+wire litedramcontroller_multiplexer_tmrinput_control105;
+wire litedramcontroller_multiplexer_tmrinput_control106;
+wire litedramcontroller_multiplexer_tmrinput_control107;
+wire litedramcontroller_multiplexer_tmrinput_control108;
+wire litedramcontroller_multiplexer_tmrinput_control109;
 reg [13:0] litedramcontroller_multiplexer_nop_a = 14'd0;
 reg [2:0] litedramcontroller_multiplexer_nop_ba = 3'd0;
 reg [1:0] litedramcontroller_multiplexer_steerer0;
@@ -3576,8 +3493,8 @@ reg litedramcontroller_multiplexer_en1;
 wire litedramcontroller_multiplexer_max_time1;
 reg [3:0] litedramcontroller_multiplexer_time1 = 4'd0;
 wire litedramcontroller_multiplexer_go_to_refresh;
-wire [255:0] litedramcontroller_multiplexer_tmrinput_control121;
-wire [31:0] litedramcontroller_multiplexer_tmrinput_control122;
+wire [255:0] litedramcontroller_multiplexer_tmrinput_control110;
+wire [31:0] litedramcontroller_multiplexer_tmrinput_control111;
 reg cmd_valid = 1'd0;
 wire cmd_ready;
 reg cmd_payload_we = 1'd0;
@@ -4561,84 +4478,18 @@ wire [2:0] slice_proxy866;
 wire [2:0] slice_proxy867;
 wire [2:0] slice_proxy868;
 wire [2:0] slice_proxy869;
-wire [41:0] slice_proxy870;
-wire [41:0] slice_proxy871;
-wire [41:0] slice_proxy872;
-wire [41:0] slice_proxy873;
-wire [41:0] slice_proxy874;
-wire [41:0] slice_proxy875;
-wire [8:0] slice_proxy876;
-wire [8:0] slice_proxy877;
-wire [8:0] slice_proxy878;
-wire [8:0] slice_proxy879;
-wire [8:0] slice_proxy880;
-wire [8:0] slice_proxy881;
-wire [2:0] slice_proxy882;
-wire [2:0] slice_proxy883;
-wire [2:0] slice_proxy884;
-wire [2:0] slice_proxy885;
-wire [2:0] slice_proxy886;
-wire [2:0] slice_proxy887;
-wire [2:0] slice_proxy888;
-wire [2:0] slice_proxy889;
-wire [2:0] slice_proxy890;
-wire [2:0] slice_proxy891;
-wire [2:0] slice_proxy892;
-wire [2:0] slice_proxy893;
-wire [2:0] slice_proxy894;
-wire [2:0] slice_proxy895;
-wire [2:0] slice_proxy896;
-wire [2:0] slice_proxy897;
-wire [2:0] slice_proxy898;
-wire [2:0] slice_proxy899;
-wire [2:0] slice_proxy900;
-wire [2:0] slice_proxy901;
-wire [2:0] slice_proxy902;
-wire [2:0] slice_proxy903;
-wire [2:0] slice_proxy904;
-wire [2:0] slice_proxy905;
-wire [2:0] slice_proxy906;
-wire [2:0] slice_proxy907;
-wire [2:0] slice_proxy908;
-wire [2:0] slice_proxy909;
-wire [2:0] slice_proxy910;
-wire [2:0] slice_proxy911;
-wire [2:0] slice_proxy912;
-wire [2:0] slice_proxy913;
-wire [2:0] slice_proxy914;
-wire [2:0] slice_proxy915;
-wire [2:0] slice_proxy916;
-wire [2:0] slice_proxy917;
-wire [2:0] slice_proxy918;
-wire [2:0] slice_proxy919;
-wire [2:0] slice_proxy920;
-wire [2:0] slice_proxy921;
-wire [2:0] slice_proxy922;
-wire [2:0] slice_proxy923;
-wire [2:0] slice_proxy924;
-wire [2:0] slice_proxy925;
-wire [2:0] slice_proxy926;
-wire [2:0] slice_proxy927;
-wire [2:0] slice_proxy928;
-wire [2:0] slice_proxy929;
-wire [2:0] slice_proxy930;
-wire [2:0] slice_proxy931;
-wire [2:0] slice_proxy932;
-wire [2:0] slice_proxy933;
-wire [2:0] slice_proxy934;
-wire [2:0] slice_proxy935;
-wire [2:0] slice_proxy936;
-wire [2:0] slice_proxy937;
-wire [2:0] slice_proxy938;
-wire [2:0] slice_proxy939;
-wire [2:0] slice_proxy940;
-wire [2:0] slice_proxy941;
-wire [95:0] slice_proxy942;
-wire [95:0] slice_proxy943;
-wire [95:0] slice_proxy944;
-wire [95:0] slice_proxy945;
-wire [95:0] slice_proxy946;
-wire [95:0] slice_proxy947;
+wire [2:0] slice_proxy870;
+wire [2:0] slice_proxy871;
+wire [2:0] slice_proxy872;
+wire [2:0] slice_proxy873;
+wire [2:0] slice_proxy874;
+wire [2:0] slice_proxy875;
+wire [95:0] slice_proxy876;
+wire [95:0] slice_proxy877;
+wire [95:0] slice_proxy878;
+wire [95:0] slice_proxy879;
+wire [95:0] slice_proxy880;
+wire [95:0] slice_proxy881;
 reg rhs_array_muxed0;
 reg [13:0] rhs_array_muxed1;
 reg [2:0] rhs_array_muxed2;
@@ -4675,57 +4526,30 @@ reg rhs_array_muxed23;
 reg t_array_muxed9;
 reg t_array_muxed10;
 reg t_array_muxed11;
-reg rhs_array_muxed24;
-reg [13:0] rhs_array_muxed25;
-reg [2:0] rhs_array_muxed26;
-reg rhs_array_muxed27;
+reg [20:0] rhs_array_muxed24;
+reg rhs_array_muxed25;
+reg rhs_array_muxed26;
+reg [20:0] rhs_array_muxed27;
 reg rhs_array_muxed28;
 reg rhs_array_muxed29;
-reg t_array_muxed12;
-reg t_array_muxed13;
-reg t_array_muxed14;
-reg rhs_array_muxed30;
-reg [13:0] rhs_array_muxed31;
-reg [2:0] rhs_array_muxed32;
-reg rhs_array_muxed33;
+reg [20:0] rhs_array_muxed30;
+reg rhs_array_muxed31;
+reg rhs_array_muxed32;
+reg [20:0] rhs_array_muxed33;
 reg rhs_array_muxed34;
 reg rhs_array_muxed35;
-reg t_array_muxed15;
-reg t_array_muxed16;
-reg t_array_muxed17;
-reg rhs_array_muxed36;
-reg [13:0] rhs_array_muxed37;
-reg [2:0] rhs_array_muxed38;
-reg rhs_array_muxed39;
+reg [20:0] rhs_array_muxed36;
+reg rhs_array_muxed37;
+reg rhs_array_muxed38;
+reg [20:0] rhs_array_muxed39;
 reg rhs_array_muxed40;
 reg rhs_array_muxed41;
-reg t_array_muxed18;
-reg t_array_muxed19;
-reg t_array_muxed20;
 reg [20:0] rhs_array_muxed42;
 reg rhs_array_muxed43;
 reg rhs_array_muxed44;
 reg [20:0] rhs_array_muxed45;
 reg rhs_array_muxed46;
 reg rhs_array_muxed47;
-reg [20:0] rhs_array_muxed48;
-reg rhs_array_muxed49;
-reg rhs_array_muxed50;
-reg [20:0] rhs_array_muxed51;
-reg rhs_array_muxed52;
-reg rhs_array_muxed53;
-reg [20:0] rhs_array_muxed54;
-reg rhs_array_muxed55;
-reg rhs_array_muxed56;
-reg [20:0] rhs_array_muxed57;
-reg rhs_array_muxed58;
-reg rhs_array_muxed59;
-reg [20:0] rhs_array_muxed60;
-reg rhs_array_muxed61;
-reg rhs_array_muxed62;
-reg [20:0] rhs_array_muxed63;
-reg rhs_array_muxed64;
-reg rhs_array_muxed65;
 reg [2:0] array_muxed0;
 reg [13:0] array_muxed1;
 reg array_muxed2;
@@ -9342,223 +9166,6 @@ assign litedramcontroller_multiplexer_choose_cmd_int_ce = (litedramcontroller_mu
 reg dummy_d_98;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_valids <= 8'd0;
-	litedramcontroller_multiplexer_choose_cmd_valids[0] <= (litedramcontroller_multiplexer_endpoint0_valid & (((litedramcontroller_multiplexer_endpoint0_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint0_payload_ras & (~litedramcontroller_multiplexer_endpoint0_payload_cas)) & (~litedramcontroller_multiplexer_endpoint0_payload_we))) | litedramcontroller_multiplexer_choose_cmd_want_activates)) | ((litedramcontroller_multiplexer_endpoint0_payload_is_read == litedramcontroller_multiplexer_choose_cmd_want_reads) & (litedramcontroller_multiplexer_endpoint0_payload_is_write == litedramcontroller_multiplexer_choose_cmd_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd_valids[1] <= (litedramcontroller_multiplexer_endpoint1_valid & (((litedramcontroller_multiplexer_endpoint1_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint1_payload_ras & (~litedramcontroller_multiplexer_endpoint1_payload_cas)) & (~litedramcontroller_multiplexer_endpoint1_payload_we))) | litedramcontroller_multiplexer_choose_cmd_want_activates)) | ((litedramcontroller_multiplexer_endpoint1_payload_is_read == litedramcontroller_multiplexer_choose_cmd_want_reads) & (litedramcontroller_multiplexer_endpoint1_payload_is_write == litedramcontroller_multiplexer_choose_cmd_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd_valids[2] <= (litedramcontroller_multiplexer_endpoint2_valid & (((litedramcontroller_multiplexer_endpoint2_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint2_payload_ras & (~litedramcontroller_multiplexer_endpoint2_payload_cas)) & (~litedramcontroller_multiplexer_endpoint2_payload_we))) | litedramcontroller_multiplexer_choose_cmd_want_activates)) | ((litedramcontroller_multiplexer_endpoint2_payload_is_read == litedramcontroller_multiplexer_choose_cmd_want_reads) & (litedramcontroller_multiplexer_endpoint2_payload_is_write == litedramcontroller_multiplexer_choose_cmd_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd_valids[3] <= (litedramcontroller_multiplexer_endpoint3_valid & (((litedramcontroller_multiplexer_endpoint3_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint3_payload_ras & (~litedramcontroller_multiplexer_endpoint3_payload_cas)) & (~litedramcontroller_multiplexer_endpoint3_payload_we))) | litedramcontroller_multiplexer_choose_cmd_want_activates)) | ((litedramcontroller_multiplexer_endpoint3_payload_is_read == litedramcontroller_multiplexer_choose_cmd_want_reads) & (litedramcontroller_multiplexer_endpoint3_payload_is_write == litedramcontroller_multiplexer_choose_cmd_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd_valids[4] <= (litedramcontroller_multiplexer_endpoint4_valid & (((litedramcontroller_multiplexer_endpoint4_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint4_payload_ras & (~litedramcontroller_multiplexer_endpoint4_payload_cas)) & (~litedramcontroller_multiplexer_endpoint4_payload_we))) | litedramcontroller_multiplexer_choose_cmd_want_activates)) | ((litedramcontroller_multiplexer_endpoint4_payload_is_read == litedramcontroller_multiplexer_choose_cmd_want_reads) & (litedramcontroller_multiplexer_endpoint4_payload_is_write == litedramcontroller_multiplexer_choose_cmd_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd_valids[5] <= (litedramcontroller_multiplexer_endpoint5_valid & (((litedramcontroller_multiplexer_endpoint5_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint5_payload_ras & (~litedramcontroller_multiplexer_endpoint5_payload_cas)) & (~litedramcontroller_multiplexer_endpoint5_payload_we))) | litedramcontroller_multiplexer_choose_cmd_want_activates)) | ((litedramcontroller_multiplexer_endpoint5_payload_is_read == litedramcontroller_multiplexer_choose_cmd_want_reads) & (litedramcontroller_multiplexer_endpoint5_payload_is_write == litedramcontroller_multiplexer_choose_cmd_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd_valids[6] <= (litedramcontroller_multiplexer_endpoint6_valid & (((litedramcontroller_multiplexer_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint6_payload_ras & (~litedramcontroller_multiplexer_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_cmd_want_activates)) | ((litedramcontroller_multiplexer_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_cmd_want_reads) & (litedramcontroller_multiplexer_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_cmd_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd_valids[7] <= (litedramcontroller_multiplexer_endpoint7_valid & (((litedramcontroller_multiplexer_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint7_payload_ras & (~litedramcontroller_multiplexer_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_cmd_want_activates)) | ((litedramcontroller_multiplexer_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_cmd_want_reads) & (litedramcontroller_multiplexer_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_cmd_want_writes))));
-// synthesis translate_off
-	dummy_d_98 <= dummy_s;
-// synthesis translate_on
-end
-assign litedramcontroller_multiplexer_choose_cmd_request = litedramcontroller_multiplexer_choose_cmd_valids;
-assign litedramcontroller_multiplexer_choose_cmd_cmd_valid = rhs_array_muxed6;
-assign litedramcontroller_multiplexer_choose_cmd_cmd_payload_a = rhs_array_muxed7;
-assign litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba = rhs_array_muxed8;
-assign litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read = rhs_array_muxed9;
-assign litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write = rhs_array_muxed10;
-assign litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd = rhs_array_muxed11;
-
-// synthesis translate_off
-reg dummy_d_99;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas <= t_array_muxed3;
-	end
-// synthesis translate_off
-	dummy_d_99 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_100;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras <= t_array_muxed4;
-	end
-// synthesis translate_off
-	dummy_d_100 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_101;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_cmd_payload_we <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd_cmd_payload_we <= t_array_muxed5;
-	end
-// synthesis translate_off
-	dummy_d_101 <= dummy_s;
-// synthesis translate_on
-end
-assign litedramcontroller_multiplexer_choose_cmd_ce = (litedramcontroller_multiplexer_choose_cmd_cmd_ready | (~litedramcontroller_multiplexer_choose_cmd_cmd_valid));
-
-// synthesis translate_off
-reg dummy_d_102;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd2_valids <= 8'd0;
-	litedramcontroller_multiplexer_choose_cmd2_valids[0] <= (litedramcontroller_multiplexer_endpoint0_valid & (((litedramcontroller_multiplexer_endpoint0_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd2_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint0_payload_ras & (~litedramcontroller_multiplexer_endpoint0_payload_cas)) & (~litedramcontroller_multiplexer_endpoint0_payload_we))) | litedramcontroller_multiplexer_choose_cmd2_want_activates)) | ((litedramcontroller_multiplexer_endpoint0_payload_is_read == litedramcontroller_multiplexer_choose_cmd2_want_reads) & (litedramcontroller_multiplexer_endpoint0_payload_is_write == litedramcontroller_multiplexer_choose_cmd2_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd2_valids[1] <= (litedramcontroller_multiplexer_endpoint1_valid & (((litedramcontroller_multiplexer_endpoint1_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd2_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint1_payload_ras & (~litedramcontroller_multiplexer_endpoint1_payload_cas)) & (~litedramcontroller_multiplexer_endpoint1_payload_we))) | litedramcontroller_multiplexer_choose_cmd2_want_activates)) | ((litedramcontroller_multiplexer_endpoint1_payload_is_read == litedramcontroller_multiplexer_choose_cmd2_want_reads) & (litedramcontroller_multiplexer_endpoint1_payload_is_write == litedramcontroller_multiplexer_choose_cmd2_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd2_valids[2] <= (litedramcontroller_multiplexer_endpoint2_valid & (((litedramcontroller_multiplexer_endpoint2_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd2_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint2_payload_ras & (~litedramcontroller_multiplexer_endpoint2_payload_cas)) & (~litedramcontroller_multiplexer_endpoint2_payload_we))) | litedramcontroller_multiplexer_choose_cmd2_want_activates)) | ((litedramcontroller_multiplexer_endpoint2_payload_is_read == litedramcontroller_multiplexer_choose_cmd2_want_reads) & (litedramcontroller_multiplexer_endpoint2_payload_is_write == litedramcontroller_multiplexer_choose_cmd2_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd2_valids[3] <= (litedramcontroller_multiplexer_endpoint3_valid & (((litedramcontroller_multiplexer_endpoint3_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd2_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint3_payload_ras & (~litedramcontroller_multiplexer_endpoint3_payload_cas)) & (~litedramcontroller_multiplexer_endpoint3_payload_we))) | litedramcontroller_multiplexer_choose_cmd2_want_activates)) | ((litedramcontroller_multiplexer_endpoint3_payload_is_read == litedramcontroller_multiplexer_choose_cmd2_want_reads) & (litedramcontroller_multiplexer_endpoint3_payload_is_write == litedramcontroller_multiplexer_choose_cmd2_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd2_valids[4] <= (litedramcontroller_multiplexer_endpoint4_valid & (((litedramcontroller_multiplexer_endpoint4_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd2_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint4_payload_ras & (~litedramcontroller_multiplexer_endpoint4_payload_cas)) & (~litedramcontroller_multiplexer_endpoint4_payload_we))) | litedramcontroller_multiplexer_choose_cmd2_want_activates)) | ((litedramcontroller_multiplexer_endpoint4_payload_is_read == litedramcontroller_multiplexer_choose_cmd2_want_reads) & (litedramcontroller_multiplexer_endpoint4_payload_is_write == litedramcontroller_multiplexer_choose_cmd2_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd2_valids[5] <= (litedramcontroller_multiplexer_endpoint5_valid & (((litedramcontroller_multiplexer_endpoint5_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd2_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint5_payload_ras & (~litedramcontroller_multiplexer_endpoint5_payload_cas)) & (~litedramcontroller_multiplexer_endpoint5_payload_we))) | litedramcontroller_multiplexer_choose_cmd2_want_activates)) | ((litedramcontroller_multiplexer_endpoint5_payload_is_read == litedramcontroller_multiplexer_choose_cmd2_want_reads) & (litedramcontroller_multiplexer_endpoint5_payload_is_write == litedramcontroller_multiplexer_choose_cmd2_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd2_valids[6] <= (litedramcontroller_multiplexer_endpoint6_valid & (((litedramcontroller_multiplexer_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd2_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint6_payload_ras & (~litedramcontroller_multiplexer_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_cmd2_want_activates)) | ((litedramcontroller_multiplexer_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_cmd2_want_reads) & (litedramcontroller_multiplexer_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_cmd2_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd2_valids[7] <= (litedramcontroller_multiplexer_endpoint7_valid & (((litedramcontroller_multiplexer_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd2_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint7_payload_ras & (~litedramcontroller_multiplexer_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_cmd2_want_activates)) | ((litedramcontroller_multiplexer_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_cmd2_want_reads) & (litedramcontroller_multiplexer_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_cmd2_want_writes))));
-// synthesis translate_off
-	dummy_d_102 <= dummy_s;
-// synthesis translate_on
-end
-assign litedramcontroller_multiplexer_choose_cmd2_request = litedramcontroller_multiplexer_choose_cmd2_valids;
-assign litedramcontroller_multiplexer_choose_cmd2_cmd_valid = rhs_array_muxed12;
-assign litedramcontroller_multiplexer_choose_cmd2_cmd_payload_a = rhs_array_muxed13;
-assign litedramcontroller_multiplexer_choose_cmd2_cmd_payload_ba = rhs_array_muxed14;
-assign litedramcontroller_multiplexer_choose_cmd2_cmd_payload_is_read = rhs_array_muxed15;
-assign litedramcontroller_multiplexer_choose_cmd2_cmd_payload_is_write = rhs_array_muxed16;
-assign litedramcontroller_multiplexer_choose_cmd2_cmd_payload_is_cmd = rhs_array_muxed17;
-
-// synthesis translate_off
-reg dummy_d_103;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd2_cmd_payload_cas <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd2_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd2_cmd_payload_cas <= t_array_muxed6;
-	end
-// synthesis translate_off
-	dummy_d_103 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_104;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd2_cmd_payload_ras <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd2_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd2_cmd_payload_ras <= t_array_muxed7;
-	end
-// synthesis translate_off
-	dummy_d_104 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_105;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd2_cmd_payload_we <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd2_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd2_cmd_payload_we <= t_array_muxed8;
-	end
-// synthesis translate_off
-	dummy_d_105 <= dummy_s;
-// synthesis translate_on
-end
-assign litedramcontroller_multiplexer_choose_cmd2_ce = (litedramcontroller_multiplexer_choose_cmd2_cmd_ready | (~litedramcontroller_multiplexer_choose_cmd2_cmd_valid));
-
-// synthesis translate_off
-reg dummy_d_106;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd3_valids <= 8'd0;
-	litedramcontroller_multiplexer_choose_cmd3_valids[0] <= (litedramcontroller_multiplexer_endpoint0_valid & (((litedramcontroller_multiplexer_endpoint0_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd3_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint0_payload_ras & (~litedramcontroller_multiplexer_endpoint0_payload_cas)) & (~litedramcontroller_multiplexer_endpoint0_payload_we))) | litedramcontroller_multiplexer_choose_cmd3_want_activates)) | ((litedramcontroller_multiplexer_endpoint0_payload_is_read == litedramcontroller_multiplexer_choose_cmd3_want_reads) & (litedramcontroller_multiplexer_endpoint0_payload_is_write == litedramcontroller_multiplexer_choose_cmd3_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd3_valids[1] <= (litedramcontroller_multiplexer_endpoint1_valid & (((litedramcontroller_multiplexer_endpoint1_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd3_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint1_payload_ras & (~litedramcontroller_multiplexer_endpoint1_payload_cas)) & (~litedramcontroller_multiplexer_endpoint1_payload_we))) | litedramcontroller_multiplexer_choose_cmd3_want_activates)) | ((litedramcontroller_multiplexer_endpoint1_payload_is_read == litedramcontroller_multiplexer_choose_cmd3_want_reads) & (litedramcontroller_multiplexer_endpoint1_payload_is_write == litedramcontroller_multiplexer_choose_cmd3_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd3_valids[2] <= (litedramcontroller_multiplexer_endpoint2_valid & (((litedramcontroller_multiplexer_endpoint2_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd3_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint2_payload_ras & (~litedramcontroller_multiplexer_endpoint2_payload_cas)) & (~litedramcontroller_multiplexer_endpoint2_payload_we))) | litedramcontroller_multiplexer_choose_cmd3_want_activates)) | ((litedramcontroller_multiplexer_endpoint2_payload_is_read == litedramcontroller_multiplexer_choose_cmd3_want_reads) & (litedramcontroller_multiplexer_endpoint2_payload_is_write == litedramcontroller_multiplexer_choose_cmd3_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd3_valids[3] <= (litedramcontroller_multiplexer_endpoint3_valid & (((litedramcontroller_multiplexer_endpoint3_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd3_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint3_payload_ras & (~litedramcontroller_multiplexer_endpoint3_payload_cas)) & (~litedramcontroller_multiplexer_endpoint3_payload_we))) | litedramcontroller_multiplexer_choose_cmd3_want_activates)) | ((litedramcontroller_multiplexer_endpoint3_payload_is_read == litedramcontroller_multiplexer_choose_cmd3_want_reads) & (litedramcontroller_multiplexer_endpoint3_payload_is_write == litedramcontroller_multiplexer_choose_cmd3_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd3_valids[4] <= (litedramcontroller_multiplexer_endpoint4_valid & (((litedramcontroller_multiplexer_endpoint4_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd3_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint4_payload_ras & (~litedramcontroller_multiplexer_endpoint4_payload_cas)) & (~litedramcontroller_multiplexer_endpoint4_payload_we))) | litedramcontroller_multiplexer_choose_cmd3_want_activates)) | ((litedramcontroller_multiplexer_endpoint4_payload_is_read == litedramcontroller_multiplexer_choose_cmd3_want_reads) & (litedramcontroller_multiplexer_endpoint4_payload_is_write == litedramcontroller_multiplexer_choose_cmd3_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd3_valids[5] <= (litedramcontroller_multiplexer_endpoint5_valid & (((litedramcontroller_multiplexer_endpoint5_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd3_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint5_payload_ras & (~litedramcontroller_multiplexer_endpoint5_payload_cas)) & (~litedramcontroller_multiplexer_endpoint5_payload_we))) | litedramcontroller_multiplexer_choose_cmd3_want_activates)) | ((litedramcontroller_multiplexer_endpoint5_payload_is_read == litedramcontroller_multiplexer_choose_cmd3_want_reads) & (litedramcontroller_multiplexer_endpoint5_payload_is_write == litedramcontroller_multiplexer_choose_cmd3_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd3_valids[6] <= (litedramcontroller_multiplexer_endpoint6_valid & (((litedramcontroller_multiplexer_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd3_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint6_payload_ras & (~litedramcontroller_multiplexer_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_cmd3_want_activates)) | ((litedramcontroller_multiplexer_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_cmd3_want_reads) & (litedramcontroller_multiplexer_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_cmd3_want_writes))));
-	litedramcontroller_multiplexer_choose_cmd3_valids[7] <= (litedramcontroller_multiplexer_endpoint7_valid & (((litedramcontroller_multiplexer_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd3_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint7_payload_ras & (~litedramcontroller_multiplexer_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_cmd3_want_activates)) | ((litedramcontroller_multiplexer_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_cmd3_want_reads) & (litedramcontroller_multiplexer_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_cmd3_want_writes))));
-// synthesis translate_off
-	dummy_d_106 <= dummy_s;
-// synthesis translate_on
-end
-assign litedramcontroller_multiplexer_choose_cmd3_request = litedramcontroller_multiplexer_choose_cmd3_valids;
-assign litedramcontroller_multiplexer_choose_cmd3_cmd_valid = rhs_array_muxed18;
-assign litedramcontroller_multiplexer_choose_cmd3_cmd_payload_a = rhs_array_muxed19;
-assign litedramcontroller_multiplexer_choose_cmd3_cmd_payload_ba = rhs_array_muxed20;
-assign litedramcontroller_multiplexer_choose_cmd3_cmd_payload_is_read = rhs_array_muxed21;
-assign litedramcontroller_multiplexer_choose_cmd3_cmd_payload_is_write = rhs_array_muxed22;
-assign litedramcontroller_multiplexer_choose_cmd3_cmd_payload_is_cmd = rhs_array_muxed23;
-
-// synthesis translate_off
-reg dummy_d_107;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd3_cmd_payload_cas <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd3_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd3_cmd_payload_cas <= t_array_muxed9;
-	end
-// synthesis translate_off
-	dummy_d_107 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_108;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd3_cmd_payload_ras <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd3_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd3_cmd_payload_ras <= t_array_muxed10;
-	end
-// synthesis translate_off
-	dummy_d_108 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_109;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd3_cmd_payload_we <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd3_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd3_cmd_payload_we <= t_array_muxed11;
-	end
-// synthesis translate_off
-	dummy_d_109 <= dummy_s;
-// synthesis translate_on
-end
-assign litedramcontroller_multiplexer_choose_cmd3_ce = (litedramcontroller_multiplexer_choose_cmd3_cmd_ready | (~litedramcontroller_multiplexer_choose_cmd3_cmd_valid));
-assign litedramcontroller_multiplexer_tmrinput_control88 = (((slice_proxy786[0] & slice_proxy787[1]) | (slice_proxy788[1] & slice_proxy789[2])) | (slice_proxy790[0] & slice_proxy791[2]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_valid = litedramcontroller_multiplexer_tmrinput_control88;
-assign litedramcontroller_multiplexer_tmrinput_control89 = (((slice_proxy792[0] & slice_proxy793[1]) | (slice_proxy794[1] & slice_proxy795[2])) | (slice_proxy796[0] & slice_proxy797[2]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_first = litedramcontroller_multiplexer_tmrinput_control89;
-assign litedramcontroller_multiplexer_tmrinput_control90 = (((slice_proxy798[0] & slice_proxy799[1]) | (slice_proxy800[1] & slice_proxy801[2])) | (slice_proxy802[0] & slice_proxy803[2]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_last = litedramcontroller_multiplexer_tmrinput_control90;
-assign litedramcontroller_multiplexer_tmrinput_control91 = (((slice_proxy804[13:0] & slice_proxy805[27:14]) | (slice_proxy806[27:14] & slice_proxy807[41:28])) | (slice_proxy808[13:0] & slice_proxy809[41:28]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_payload_a = litedramcontroller_multiplexer_tmrinput_control91;
-assign litedramcontroller_multiplexer_tmrinput_control92 = (((slice_proxy810[2:0] & slice_proxy811[5:3]) | (slice_proxy812[5:3] & slice_proxy813[8:6])) | (slice_proxy814[2:0] & slice_proxy815[8:6]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_payload_ba = litedramcontroller_multiplexer_tmrinput_control92;
-assign litedramcontroller_multiplexer_tmrinput_control93 = (((slice_proxy816[0] & slice_proxy817[1]) | (slice_proxy818[1] & slice_proxy819[2])) | (slice_proxy820[0] & slice_proxy821[2]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_payload_cas = litedramcontroller_multiplexer_tmrinput_control93;
-assign litedramcontroller_multiplexer_tmrinput_control94 = (((slice_proxy822[0] & slice_proxy823[1]) | (slice_proxy824[1] & slice_proxy825[2])) | (slice_proxy826[0] & slice_proxy827[2]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_payload_ras = litedramcontroller_multiplexer_tmrinput_control94;
-assign litedramcontroller_multiplexer_tmrinput_control95 = (((slice_proxy828[0] & slice_proxy829[1]) | (slice_proxy830[1] & slice_proxy831[2])) | (slice_proxy832[0] & slice_proxy833[2]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_payload_we = litedramcontroller_multiplexer_tmrinput_control95;
-assign litedramcontroller_multiplexer_tmrinput_control96 = (((slice_proxy834[0] & slice_proxy835[1]) | (slice_proxy836[1] & slice_proxy837[2])) | (slice_proxy838[0] & slice_proxy839[2]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_payload_is_cmd = litedramcontroller_multiplexer_tmrinput_control96;
-assign litedramcontroller_multiplexer_tmrinput_control97 = (((slice_proxy840[0] & slice_proxy841[1]) | (slice_proxy842[1] & slice_proxy843[2])) | (slice_proxy844[0] & slice_proxy845[2]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_payload_is_read = litedramcontroller_multiplexer_tmrinput_control97;
-assign litedramcontroller_multiplexer_tmrinput_control98 = (((slice_proxy846[0] & slice_proxy847[1]) | (slice_proxy848[1] & slice_proxy849[2])) | (slice_proxy850[0] & slice_proxy851[2]));
-assign litedramcontroller_multiplexer_choose_tmrcmd_payload_is_write = litedramcontroller_multiplexer_tmrinput_control98;
-
-// synthesis translate_off
-reg dummy_d_110;
-// synthesis translate_on
-always @(*) begin
 	litedramcontroller_multiplexer_choose_req_valids <= 8'd0;
 	litedramcontroller_multiplexer_choose_req_valids[0] <= (litedramcontroller_multiplexer_endpoint0_valid & (((litedramcontroller_multiplexer_endpoint0_payload_is_cmd & litedramcontroller_multiplexer_choose_req_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint0_payload_ras & (~litedramcontroller_multiplexer_endpoint0_payload_cas)) & (~litedramcontroller_multiplexer_endpoint0_payload_we))) | litedramcontroller_multiplexer_choose_req_want_activates)) | ((litedramcontroller_multiplexer_endpoint0_payload_is_read == litedramcontroller_multiplexer_choose_req_want_reads) & (litedramcontroller_multiplexer_endpoint0_payload_is_write == litedramcontroller_multiplexer_choose_req_want_writes))));
 	litedramcontroller_multiplexer_choose_req_valids[1] <= (litedramcontroller_multiplexer_endpoint1_valid & (((litedramcontroller_multiplexer_endpoint1_payload_is_cmd & litedramcontroller_multiplexer_choose_req_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint1_payload_ras & (~litedramcontroller_multiplexer_endpoint1_payload_cas)) & (~litedramcontroller_multiplexer_endpoint1_payload_we))) | litedramcontroller_multiplexer_choose_req_want_activates)) | ((litedramcontroller_multiplexer_endpoint1_payload_is_read == litedramcontroller_multiplexer_choose_req_want_reads) & (litedramcontroller_multiplexer_endpoint1_payload_is_write == litedramcontroller_multiplexer_choose_req_want_writes))));
@@ -9569,59 +9176,59 @@ always @(*) begin
 	litedramcontroller_multiplexer_choose_req_valids[6] <= (litedramcontroller_multiplexer_endpoint6_valid & (((litedramcontroller_multiplexer_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_req_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint6_payload_ras & (~litedramcontroller_multiplexer_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_req_want_activates)) | ((litedramcontroller_multiplexer_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_req_want_reads) & (litedramcontroller_multiplexer_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_req_want_writes))));
 	litedramcontroller_multiplexer_choose_req_valids[7] <= (litedramcontroller_multiplexer_endpoint7_valid & (((litedramcontroller_multiplexer_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_req_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint7_payload_ras & (~litedramcontroller_multiplexer_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_req_want_activates)) | ((litedramcontroller_multiplexer_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_req_want_reads) & (litedramcontroller_multiplexer_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_req_want_writes))));
 // synthesis translate_off
-	dummy_d_110 <= dummy_s;
+	dummy_d_98 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_req_request = litedramcontroller_multiplexer_choose_req_valids;
-assign litedramcontroller_multiplexer_choose_req_cmd_valid = rhs_array_muxed24;
-assign litedramcontroller_multiplexer_choose_req_cmd_payload_a = rhs_array_muxed25;
-assign litedramcontroller_multiplexer_choose_req_cmd_payload_ba = rhs_array_muxed26;
-assign litedramcontroller_multiplexer_choose_req_cmd_payload_is_read = rhs_array_muxed27;
-assign litedramcontroller_multiplexer_choose_req_cmd_payload_is_write = rhs_array_muxed28;
-assign litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd = rhs_array_muxed29;
+assign litedramcontroller_multiplexer_choose_req_cmd_valid = rhs_array_muxed6;
+assign litedramcontroller_multiplexer_choose_req_cmd_payload_a = rhs_array_muxed7;
+assign litedramcontroller_multiplexer_choose_req_cmd_payload_ba = rhs_array_muxed8;
+assign litedramcontroller_multiplexer_choose_req_cmd_payload_is_read = rhs_array_muxed9;
+assign litedramcontroller_multiplexer_choose_req_cmd_payload_is_write = rhs_array_muxed10;
+assign litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd = rhs_array_muxed11;
 
 // synthesis translate_off
-reg dummy_d_111;
+reg dummy_d_99;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req_cmd_payload_cas <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req_cmd_payload_cas <= t_array_muxed12;
+		litedramcontroller_multiplexer_choose_req_cmd_payload_cas <= t_array_muxed3;
 	end
 // synthesis translate_off
-	dummy_d_111 <= dummy_s;
+	dummy_d_99 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_112;
+reg dummy_d_100;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req_cmd_payload_ras <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req_cmd_payload_ras <= t_array_muxed13;
+		litedramcontroller_multiplexer_choose_req_cmd_payload_ras <= t_array_muxed4;
 	end
 // synthesis translate_off
-	dummy_d_112 <= dummy_s;
+	dummy_d_100 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_113;
+reg dummy_d_101;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req_cmd_payload_we <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req_cmd_payload_we <= t_array_muxed14;
+		litedramcontroller_multiplexer_choose_req_cmd_payload_we <= t_array_muxed5;
 	end
 // synthesis translate_off
-	dummy_d_113 <= dummy_s;
+	dummy_d_101 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_req_ce = (litedramcontroller_multiplexer_choose_req_cmd_ready | (~litedramcontroller_multiplexer_choose_req_cmd_valid));
 
 // synthesis translate_off
-reg dummy_d_114;
+reg dummy_d_102;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req2_valids <= 8'd0;
@@ -9634,59 +9241,59 @@ always @(*) begin
 	litedramcontroller_multiplexer_choose_req2_valids[6] <= (litedramcontroller_multiplexer_endpoint6_valid & (((litedramcontroller_multiplexer_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_req2_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint6_payload_ras & (~litedramcontroller_multiplexer_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_req2_want_activates)) | ((litedramcontroller_multiplexer_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_req2_want_reads) & (litedramcontroller_multiplexer_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_req2_want_writes))));
 	litedramcontroller_multiplexer_choose_req2_valids[7] <= (litedramcontroller_multiplexer_endpoint7_valid & (((litedramcontroller_multiplexer_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_req2_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint7_payload_ras & (~litedramcontroller_multiplexer_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_req2_want_activates)) | ((litedramcontroller_multiplexer_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_req2_want_reads) & (litedramcontroller_multiplexer_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_req2_want_writes))));
 // synthesis translate_off
-	dummy_d_114 <= dummy_s;
+	dummy_d_102 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_req2_request = litedramcontroller_multiplexer_choose_req2_valids;
-assign litedramcontroller_multiplexer_choose_req2_cmd_valid = rhs_array_muxed30;
-assign litedramcontroller_multiplexer_choose_req2_cmd_payload_a = rhs_array_muxed31;
-assign litedramcontroller_multiplexer_choose_req2_cmd_payload_ba = rhs_array_muxed32;
-assign litedramcontroller_multiplexer_choose_req2_cmd_payload_is_read = rhs_array_muxed33;
-assign litedramcontroller_multiplexer_choose_req2_cmd_payload_is_write = rhs_array_muxed34;
-assign litedramcontroller_multiplexer_choose_req2_cmd_payload_is_cmd = rhs_array_muxed35;
+assign litedramcontroller_multiplexer_choose_req2_cmd_valid = rhs_array_muxed12;
+assign litedramcontroller_multiplexer_choose_req2_cmd_payload_a = rhs_array_muxed13;
+assign litedramcontroller_multiplexer_choose_req2_cmd_payload_ba = rhs_array_muxed14;
+assign litedramcontroller_multiplexer_choose_req2_cmd_payload_is_read = rhs_array_muxed15;
+assign litedramcontroller_multiplexer_choose_req2_cmd_payload_is_write = rhs_array_muxed16;
+assign litedramcontroller_multiplexer_choose_req2_cmd_payload_is_cmd = rhs_array_muxed17;
 
 // synthesis translate_off
-reg dummy_d_115;
+reg dummy_d_103;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req2_cmd_payload_cas <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req2_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req2_cmd_payload_cas <= t_array_muxed15;
+		litedramcontroller_multiplexer_choose_req2_cmd_payload_cas <= t_array_muxed6;
 	end
 // synthesis translate_off
-	dummy_d_115 <= dummy_s;
+	dummy_d_103 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_116;
+reg dummy_d_104;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req2_cmd_payload_ras <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req2_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req2_cmd_payload_ras <= t_array_muxed16;
+		litedramcontroller_multiplexer_choose_req2_cmd_payload_ras <= t_array_muxed7;
 	end
 // synthesis translate_off
-	dummy_d_116 <= dummy_s;
+	dummy_d_104 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_117;
+reg dummy_d_105;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req2_cmd_payload_we <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req2_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req2_cmd_payload_we <= t_array_muxed17;
+		litedramcontroller_multiplexer_choose_req2_cmd_payload_we <= t_array_muxed8;
 	end
 // synthesis translate_off
-	dummy_d_117 <= dummy_s;
+	dummy_d_105 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_req2_ce = (litedramcontroller_multiplexer_choose_req2_cmd_ready | (~litedramcontroller_multiplexer_choose_req2_cmd_valid));
 
 // synthesis translate_off
-reg dummy_d_118;
+reg dummy_d_106;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req3_valids <= 8'd0;
@@ -9699,70 +9306,61 @@ always @(*) begin
 	litedramcontroller_multiplexer_choose_req3_valids[6] <= (litedramcontroller_multiplexer_endpoint6_valid & (((litedramcontroller_multiplexer_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_req3_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint6_payload_ras & (~litedramcontroller_multiplexer_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_req3_want_activates)) | ((litedramcontroller_multiplexer_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_req3_want_reads) & (litedramcontroller_multiplexer_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_req3_want_writes))));
 	litedramcontroller_multiplexer_choose_req3_valids[7] <= (litedramcontroller_multiplexer_endpoint7_valid & (((litedramcontroller_multiplexer_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_req3_want_cmds) & ((~((litedramcontroller_multiplexer_endpoint7_payload_ras & (~litedramcontroller_multiplexer_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_req3_want_activates)) | ((litedramcontroller_multiplexer_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_req3_want_reads) & (litedramcontroller_multiplexer_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_req3_want_writes))));
 // synthesis translate_off
-	dummy_d_118 <= dummy_s;
+	dummy_d_106 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_req3_request = litedramcontroller_multiplexer_choose_req3_valids;
-assign litedramcontroller_multiplexer_choose_req3_cmd_valid = rhs_array_muxed36;
-assign litedramcontroller_multiplexer_choose_req3_cmd_payload_a = rhs_array_muxed37;
-assign litedramcontroller_multiplexer_choose_req3_cmd_payload_ba = rhs_array_muxed38;
-assign litedramcontroller_multiplexer_choose_req3_cmd_payload_is_read = rhs_array_muxed39;
-assign litedramcontroller_multiplexer_choose_req3_cmd_payload_is_write = rhs_array_muxed40;
-assign litedramcontroller_multiplexer_choose_req3_cmd_payload_is_cmd = rhs_array_muxed41;
+assign litedramcontroller_multiplexer_choose_req3_cmd_valid = rhs_array_muxed18;
+assign litedramcontroller_multiplexer_choose_req3_cmd_payload_a = rhs_array_muxed19;
+assign litedramcontroller_multiplexer_choose_req3_cmd_payload_ba = rhs_array_muxed20;
+assign litedramcontroller_multiplexer_choose_req3_cmd_payload_is_read = rhs_array_muxed21;
+assign litedramcontroller_multiplexer_choose_req3_cmd_payload_is_write = rhs_array_muxed22;
+assign litedramcontroller_multiplexer_choose_req3_cmd_payload_is_cmd = rhs_array_muxed23;
 
 // synthesis translate_off
-reg dummy_d_119;
+reg dummy_d_107;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req3_cmd_payload_cas <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req3_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req3_cmd_payload_cas <= t_array_muxed18;
+		litedramcontroller_multiplexer_choose_req3_cmd_payload_cas <= t_array_muxed9;
 	end
 // synthesis translate_off
-	dummy_d_119 <= dummy_s;
+	dummy_d_107 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_120;
+reg dummy_d_108;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req3_cmd_payload_ras <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req3_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req3_cmd_payload_ras <= t_array_muxed19;
+		litedramcontroller_multiplexer_choose_req3_cmd_payload_ras <= t_array_muxed10;
 	end
 // synthesis translate_off
-	dummy_d_120 <= dummy_s;
+	dummy_d_108 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_121;
+reg dummy_d_109;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req3_cmd_payload_we <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req3_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req3_cmd_payload_we <= t_array_muxed20;
+		litedramcontroller_multiplexer_choose_req3_cmd_payload_we <= t_array_muxed11;
 	end
 // synthesis translate_off
-	dummy_d_121 <= dummy_s;
+	dummy_d_109 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_122;
+reg dummy_d_110;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_endpoint0_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_grant == 1'd0))) begin
-		litedramcontroller_multiplexer_endpoint0_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd2_cmd_valid & litedramcontroller_multiplexer_choose_cmd2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd2_grant == 1'd0))) begin
-		litedramcontroller_multiplexer_endpoint0_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd3_cmd_valid & litedramcontroller_multiplexer_choose_cmd3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd3_grant == 1'd0))) begin
-		litedramcontroller_multiplexer_endpoint0_ready <= 1'd1;
-	end
 	if (((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_grant == 1'd0))) begin
 		litedramcontroller_multiplexer_endpoint0_ready <= 1'd1;
 	end
@@ -9773,24 +9371,15 @@ always @(*) begin
 		litedramcontroller_multiplexer_endpoint0_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_122 <= dummy_s;
+	dummy_d_110 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_123;
+reg dummy_d_111;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_endpoint1_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_grant == 1'd1))) begin
-		litedramcontroller_multiplexer_endpoint1_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd2_cmd_valid & litedramcontroller_multiplexer_choose_cmd2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd2_grant == 1'd1))) begin
-		litedramcontroller_multiplexer_endpoint1_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd3_cmd_valid & litedramcontroller_multiplexer_choose_cmd3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd3_grant == 1'd1))) begin
-		litedramcontroller_multiplexer_endpoint1_ready <= 1'd1;
-	end
 	if (((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_grant == 1'd1))) begin
 		litedramcontroller_multiplexer_endpoint1_ready <= 1'd1;
 	end
@@ -9801,24 +9390,15 @@ always @(*) begin
 		litedramcontroller_multiplexer_endpoint1_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_123 <= dummy_s;
+	dummy_d_111 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_124;
+reg dummy_d_112;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_endpoint2_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_grant == 2'd2))) begin
-		litedramcontroller_multiplexer_endpoint2_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd2_cmd_valid & litedramcontroller_multiplexer_choose_cmd2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd2_grant == 2'd2))) begin
-		litedramcontroller_multiplexer_endpoint2_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd3_cmd_valid & litedramcontroller_multiplexer_choose_cmd3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd3_grant == 2'd2))) begin
-		litedramcontroller_multiplexer_endpoint2_ready <= 1'd1;
-	end
 	if (((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_grant == 2'd2))) begin
 		litedramcontroller_multiplexer_endpoint2_ready <= 1'd1;
 	end
@@ -9829,24 +9409,15 @@ always @(*) begin
 		litedramcontroller_multiplexer_endpoint2_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_124 <= dummy_s;
+	dummy_d_112 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_125;
+reg dummy_d_113;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_endpoint3_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_grant == 2'd3))) begin
-		litedramcontroller_multiplexer_endpoint3_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd2_cmd_valid & litedramcontroller_multiplexer_choose_cmd2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd2_grant == 2'd3))) begin
-		litedramcontroller_multiplexer_endpoint3_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd3_cmd_valid & litedramcontroller_multiplexer_choose_cmd3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd3_grant == 2'd3))) begin
-		litedramcontroller_multiplexer_endpoint3_ready <= 1'd1;
-	end
 	if (((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_grant == 2'd3))) begin
 		litedramcontroller_multiplexer_endpoint3_ready <= 1'd1;
 	end
@@ -9857,24 +9428,15 @@ always @(*) begin
 		litedramcontroller_multiplexer_endpoint3_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_125 <= dummy_s;
+	dummy_d_113 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_126;
+reg dummy_d_114;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_endpoint4_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_grant == 3'd4))) begin
-		litedramcontroller_multiplexer_endpoint4_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd2_cmd_valid & litedramcontroller_multiplexer_choose_cmd2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd2_grant == 3'd4))) begin
-		litedramcontroller_multiplexer_endpoint4_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd3_cmd_valid & litedramcontroller_multiplexer_choose_cmd3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd3_grant == 3'd4))) begin
-		litedramcontroller_multiplexer_endpoint4_ready <= 1'd1;
-	end
 	if (((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_grant == 3'd4))) begin
 		litedramcontroller_multiplexer_endpoint4_ready <= 1'd1;
 	end
@@ -9885,24 +9447,15 @@ always @(*) begin
 		litedramcontroller_multiplexer_endpoint4_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_126 <= dummy_s;
+	dummy_d_114 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_127;
+reg dummy_d_115;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_endpoint5_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_grant == 3'd5))) begin
-		litedramcontroller_multiplexer_endpoint5_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd2_cmd_valid & litedramcontroller_multiplexer_choose_cmd2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd2_grant == 3'd5))) begin
-		litedramcontroller_multiplexer_endpoint5_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd3_cmd_valid & litedramcontroller_multiplexer_choose_cmd3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd3_grant == 3'd5))) begin
-		litedramcontroller_multiplexer_endpoint5_ready <= 1'd1;
-	end
 	if (((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_grant == 3'd5))) begin
 		litedramcontroller_multiplexer_endpoint5_ready <= 1'd1;
 	end
@@ -9913,24 +9466,15 @@ always @(*) begin
 		litedramcontroller_multiplexer_endpoint5_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_127 <= dummy_s;
+	dummy_d_115 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_128;
+reg dummy_d_116;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_endpoint6_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_grant == 3'd6))) begin
-		litedramcontroller_multiplexer_endpoint6_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd2_cmd_valid & litedramcontroller_multiplexer_choose_cmd2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd2_grant == 3'd6))) begin
-		litedramcontroller_multiplexer_endpoint6_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd3_cmd_valid & litedramcontroller_multiplexer_choose_cmd3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd3_grant == 3'd6))) begin
-		litedramcontroller_multiplexer_endpoint6_ready <= 1'd1;
-	end
 	if (((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_grant == 3'd6))) begin
 		litedramcontroller_multiplexer_endpoint6_ready <= 1'd1;
 	end
@@ -9941,24 +9485,15 @@ always @(*) begin
 		litedramcontroller_multiplexer_endpoint6_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_128 <= dummy_s;
+	dummy_d_116 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_129;
+reg dummy_d_117;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_endpoint7_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_cmd_valid & litedramcontroller_multiplexer_choose_cmd_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_grant == 3'd7))) begin
-		litedramcontroller_multiplexer_endpoint7_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd2_cmd_valid & litedramcontroller_multiplexer_choose_cmd2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd2_grant == 3'd7))) begin
-		litedramcontroller_multiplexer_endpoint7_ready <= 1'd1;
-	end
-	if (((litedramcontroller_multiplexer_choose_cmd3_cmd_valid & litedramcontroller_multiplexer_choose_cmd3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd3_grant == 3'd7))) begin
-		litedramcontroller_multiplexer_endpoint7_ready <= 1'd1;
-	end
 	if (((litedramcontroller_multiplexer_choose_req_cmd_valid & litedramcontroller_multiplexer_choose_req_cmd_ready) & (litedramcontroller_multiplexer_choose_req_grant == 3'd7))) begin
 		litedramcontroller_multiplexer_endpoint7_ready <= 1'd1;
 	end
@@ -9969,55 +9504,55 @@ always @(*) begin
 		litedramcontroller_multiplexer_endpoint7_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_129 <= dummy_s;
+	dummy_d_117 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_req3_ce = (litedramcontroller_multiplexer_choose_req3_cmd_ready | (~litedramcontroller_multiplexer_choose_req3_cmd_valid));
-assign litedramcontroller_multiplexer_tmrinput_control99 = (((slice_proxy852[0] & slice_proxy853[1]) | (slice_proxy854[1] & slice_proxy855[2])) | (slice_proxy856[0] & slice_proxy857[2]));
-assign litedramcontroller_multiplexer_choose_tmrreq_valid = litedramcontroller_multiplexer_tmrinput_control99;
-assign litedramcontroller_multiplexer_tmrinput_control100 = (((slice_proxy858[0] & slice_proxy859[1]) | (slice_proxy860[1] & slice_proxy861[2])) | (slice_proxy862[0] & slice_proxy863[2]));
-assign litedramcontroller_multiplexer_choose_tmrreq_first = litedramcontroller_multiplexer_tmrinput_control100;
-assign litedramcontroller_multiplexer_tmrinput_control101 = (((slice_proxy864[0] & slice_proxy865[1]) | (slice_proxy866[1] & slice_proxy867[2])) | (slice_proxy868[0] & slice_proxy869[2]));
-assign litedramcontroller_multiplexer_choose_tmrreq_last = litedramcontroller_multiplexer_tmrinput_control101;
-assign litedramcontroller_multiplexer_tmrinput_control102 = (((slice_proxy870[13:0] & slice_proxy871[27:14]) | (slice_proxy872[27:14] & slice_proxy873[41:28])) | (slice_proxy874[13:0] & slice_proxy875[41:28]));
-assign litedramcontroller_multiplexer_choose_tmrreq_payload_a = litedramcontroller_multiplexer_tmrinput_control102;
-assign litedramcontroller_multiplexer_tmrinput_control103 = (((slice_proxy876[2:0] & slice_proxy877[5:3]) | (slice_proxy878[5:3] & slice_proxy879[8:6])) | (slice_proxy880[2:0] & slice_proxy881[8:6]));
-assign litedramcontroller_multiplexer_choose_tmrreq_payload_ba = litedramcontroller_multiplexer_tmrinput_control103;
-assign litedramcontroller_multiplexer_tmrinput_control104 = (((slice_proxy882[0] & slice_proxy883[1]) | (slice_proxy884[1] & slice_proxy885[2])) | (slice_proxy886[0] & slice_proxy887[2]));
-assign litedramcontroller_multiplexer_choose_tmrreq_payload_cas = litedramcontroller_multiplexer_tmrinput_control104;
-assign litedramcontroller_multiplexer_tmrinput_control105 = (((slice_proxy888[0] & slice_proxy889[1]) | (slice_proxy890[1] & slice_proxy891[2])) | (slice_proxy892[0] & slice_proxy893[2]));
-assign litedramcontroller_multiplexer_choose_tmrreq_payload_ras = litedramcontroller_multiplexer_tmrinput_control105;
-assign litedramcontroller_multiplexer_tmrinput_control106 = (((slice_proxy894[0] & slice_proxy895[1]) | (slice_proxy896[1] & slice_proxy897[2])) | (slice_proxy898[0] & slice_proxy899[2]));
-assign litedramcontroller_multiplexer_choose_tmrreq_payload_we = litedramcontroller_multiplexer_tmrinput_control106;
-assign litedramcontroller_multiplexer_tmrinput_control107 = (((slice_proxy900[0] & slice_proxy901[1]) | (slice_proxy902[1] & slice_proxy903[2])) | (slice_proxy904[0] & slice_proxy905[2]));
-assign litedramcontroller_multiplexer_choose_tmrreq_payload_is_cmd = litedramcontroller_multiplexer_tmrinput_control107;
-assign litedramcontroller_multiplexer_tmrinput_control108 = (((slice_proxy906[0] & slice_proxy907[1]) | (slice_proxy908[1] & slice_proxy909[2])) | (slice_proxy910[0] & slice_proxy911[2]));
-assign litedramcontroller_multiplexer_choose_tmrreq_payload_is_read = litedramcontroller_multiplexer_tmrinput_control108;
-assign litedramcontroller_multiplexer_tmrinput_control109 = (((slice_proxy912[0] & slice_proxy913[1]) | (slice_proxy914[1] & slice_proxy915[2])) | (slice_proxy916[0] & slice_proxy917[2]));
-assign litedramcontroller_multiplexer_choose_tmrreq_payload_is_write = litedramcontroller_multiplexer_tmrinput_control109;
-assign litedramcontroller_multiplexer_tmrinput_control110 = (((litedramcontroller_refresher_TMRcmd_valid[0] & litedramcontroller_refresher_TMRcmd_valid[1]) | (litedramcontroller_refresher_TMRcmd_valid[1] & litedramcontroller_refresher_TMRcmd_valid[2])) | (litedramcontroller_refresher_TMRcmd_valid[0] & litedramcontroller_refresher_TMRcmd_valid[2]));
-assign litedramcontroller_multiplexer_refreshCmd_valid = litedramcontroller_multiplexer_tmrinput_control110;
-assign litedramcontroller_multiplexer_tmrinput_control111 = (((litedramcontroller_refresher_TMRcmd_last[0] & litedramcontroller_refresher_TMRcmd_last[1]) | (litedramcontroller_refresher_TMRcmd_last[1] & litedramcontroller_refresher_TMRcmd_last[2])) | (litedramcontroller_refresher_TMRcmd_last[0] & litedramcontroller_refresher_TMRcmd_last[2]));
-assign litedramcontroller_multiplexer_refreshCmd_last = litedramcontroller_multiplexer_tmrinput_control111;
+assign litedramcontroller_multiplexer_tmrinput_control88 = (((slice_proxy786[0] & slice_proxy787[1]) | (slice_proxy788[1] & slice_proxy789[2])) | (slice_proxy790[0] & slice_proxy791[2]));
+assign litedramcontroller_multiplexer_choose_tmrreq_valid = litedramcontroller_multiplexer_tmrinput_control88;
+assign litedramcontroller_multiplexer_tmrinput_control89 = (((slice_proxy792[0] & slice_proxy793[1]) | (slice_proxy794[1] & slice_proxy795[2])) | (slice_proxy796[0] & slice_proxy797[2]));
+assign litedramcontroller_multiplexer_choose_tmrreq_first = litedramcontroller_multiplexer_tmrinput_control89;
+assign litedramcontroller_multiplexer_tmrinput_control90 = (((slice_proxy798[0] & slice_proxy799[1]) | (slice_proxy800[1] & slice_proxy801[2])) | (slice_proxy802[0] & slice_proxy803[2]));
+assign litedramcontroller_multiplexer_choose_tmrreq_last = litedramcontroller_multiplexer_tmrinput_control90;
+assign litedramcontroller_multiplexer_tmrinput_control91 = (((slice_proxy804[13:0] & slice_proxy805[27:14]) | (slice_proxy806[27:14] & slice_proxy807[41:28])) | (slice_proxy808[13:0] & slice_proxy809[41:28]));
+assign litedramcontroller_multiplexer_choose_tmrreq_payload_a = litedramcontroller_multiplexer_tmrinput_control91;
+assign litedramcontroller_multiplexer_tmrinput_control92 = (((slice_proxy810[2:0] & slice_proxy811[5:3]) | (slice_proxy812[5:3] & slice_proxy813[8:6])) | (slice_proxy814[2:0] & slice_proxy815[8:6]));
+assign litedramcontroller_multiplexer_choose_tmrreq_payload_ba = litedramcontroller_multiplexer_tmrinput_control92;
+assign litedramcontroller_multiplexer_tmrinput_control93 = (((slice_proxy816[0] & slice_proxy817[1]) | (slice_proxy818[1] & slice_proxy819[2])) | (slice_proxy820[0] & slice_proxy821[2]));
+assign litedramcontroller_multiplexer_choose_tmrreq_payload_cas = litedramcontroller_multiplexer_tmrinput_control93;
+assign litedramcontroller_multiplexer_tmrinput_control94 = (((slice_proxy822[0] & slice_proxy823[1]) | (slice_proxy824[1] & slice_proxy825[2])) | (slice_proxy826[0] & slice_proxy827[2]));
+assign litedramcontroller_multiplexer_choose_tmrreq_payload_ras = litedramcontroller_multiplexer_tmrinput_control94;
+assign litedramcontroller_multiplexer_tmrinput_control95 = (((slice_proxy828[0] & slice_proxy829[1]) | (slice_proxy830[1] & slice_proxy831[2])) | (slice_proxy832[0] & slice_proxy833[2]));
+assign litedramcontroller_multiplexer_choose_tmrreq_payload_we = litedramcontroller_multiplexer_tmrinput_control95;
+assign litedramcontroller_multiplexer_tmrinput_control96 = (((slice_proxy834[0] & slice_proxy835[1]) | (slice_proxy836[1] & slice_proxy837[2])) | (slice_proxy838[0] & slice_proxy839[2]));
+assign litedramcontroller_multiplexer_choose_tmrreq_payload_is_cmd = litedramcontroller_multiplexer_tmrinput_control96;
+assign litedramcontroller_multiplexer_tmrinput_control97 = (((slice_proxy840[0] & slice_proxy841[1]) | (slice_proxy842[1] & slice_proxy843[2])) | (slice_proxy844[0] & slice_proxy845[2]));
+assign litedramcontroller_multiplexer_choose_tmrreq_payload_is_read = litedramcontroller_multiplexer_tmrinput_control97;
+assign litedramcontroller_multiplexer_tmrinput_control98 = (((slice_proxy846[0] & slice_proxy847[1]) | (slice_proxy848[1] & slice_proxy849[2])) | (slice_proxy850[0] & slice_proxy851[2]));
+assign litedramcontroller_multiplexer_choose_tmrreq_payload_is_write = litedramcontroller_multiplexer_tmrinput_control98;
+assign litedramcontroller_multiplexer_tmrinput_control99 = (((litedramcontroller_refresher_TMRcmd_valid[0] & litedramcontroller_refresher_TMRcmd_valid[1]) | (litedramcontroller_refresher_TMRcmd_valid[1] & litedramcontroller_refresher_TMRcmd_valid[2])) | (litedramcontroller_refresher_TMRcmd_valid[0] & litedramcontroller_refresher_TMRcmd_valid[2]));
+assign litedramcontroller_multiplexer_refreshCmd_valid = litedramcontroller_multiplexer_tmrinput_control99;
+assign litedramcontroller_multiplexer_tmrinput_control100 = (((litedramcontroller_refresher_TMRcmd_last[0] & litedramcontroller_refresher_TMRcmd_last[1]) | (litedramcontroller_refresher_TMRcmd_last[1] & litedramcontroller_refresher_TMRcmd_last[2])) | (litedramcontroller_refresher_TMRcmd_last[0] & litedramcontroller_refresher_TMRcmd_last[2]));
+assign litedramcontroller_multiplexer_refreshCmd_last = litedramcontroller_multiplexer_tmrinput_control100;
 assign litedramcontroller_refresher_TMRcmd_ready = {3{litedramcontroller_multiplexer_refreshCmd_ready}};
-assign litedramcontroller_multiplexer_tmrinput_control112 = (((litedramcontroller_refresher_TMRcmd_first[0] & litedramcontroller_refresher_TMRcmd_first[1]) | (litedramcontroller_refresher_TMRcmd_first[1] & litedramcontroller_refresher_TMRcmd_first[2])) | (litedramcontroller_refresher_TMRcmd_first[0] & litedramcontroller_refresher_TMRcmd_first[2]));
-assign litedramcontroller_multiplexer_refreshCmd_first = litedramcontroller_multiplexer_tmrinput_control112;
-assign litedramcontroller_multiplexer_tmrinput_control113 = (((litedramcontroller_refresher_TMRcmd_payload_a[13:0] & litedramcontroller_refresher_TMRcmd_payload_a[27:14]) | (litedramcontroller_refresher_TMRcmd_payload_a[27:14] & litedramcontroller_refresher_TMRcmd_payload_a[41:28])) | (litedramcontroller_refresher_TMRcmd_payload_a[13:0] & litedramcontroller_refresher_TMRcmd_payload_a[41:28]));
-assign litedramcontroller_multiplexer_refreshCmd_payload_a = litedramcontroller_multiplexer_tmrinput_control113;
-assign litedramcontroller_multiplexer_tmrinput_control114 = (((litedramcontroller_refresher_TMRcmd_payload_ba[2:0] & litedramcontroller_refresher_TMRcmd_payload_ba[5:3]) | (litedramcontroller_refresher_TMRcmd_payload_ba[5:3] & litedramcontroller_refresher_TMRcmd_payload_ba[8:6])) | (litedramcontroller_refresher_TMRcmd_payload_ba[2:0] & litedramcontroller_refresher_TMRcmd_payload_ba[8:6]));
-assign litedramcontroller_multiplexer_refreshCmd_payload_ba = litedramcontroller_multiplexer_tmrinput_control114;
-assign litedramcontroller_multiplexer_tmrinput_control115 = (((litedramcontroller_refresher_TMRcmd_payload_cas[0] & litedramcontroller_refresher_TMRcmd_payload_cas[1]) | (litedramcontroller_refresher_TMRcmd_payload_cas[1] & litedramcontroller_refresher_TMRcmd_payload_cas[2])) | (litedramcontroller_refresher_TMRcmd_payload_cas[0] & litedramcontroller_refresher_TMRcmd_payload_cas[2]));
-assign litedramcontroller_multiplexer_refreshCmd_payload_cas = litedramcontroller_multiplexer_tmrinput_control115;
-assign litedramcontroller_multiplexer_tmrinput_control116 = (((litedramcontroller_refresher_TMRcmd_payload_ras[0] & litedramcontroller_refresher_TMRcmd_payload_ras[1]) | (litedramcontroller_refresher_TMRcmd_payload_ras[1] & litedramcontroller_refresher_TMRcmd_payload_ras[2])) | (litedramcontroller_refresher_TMRcmd_payload_ras[0] & litedramcontroller_refresher_TMRcmd_payload_ras[2]));
-assign litedramcontroller_multiplexer_refreshCmd_payload_ras = litedramcontroller_multiplexer_tmrinput_control116;
-assign litedramcontroller_multiplexer_tmrinput_control117 = (((litedramcontroller_refresher_TMRcmd_payload_we[0] & litedramcontroller_refresher_TMRcmd_payload_we[1]) | (litedramcontroller_refresher_TMRcmd_payload_we[1] & litedramcontroller_refresher_TMRcmd_payload_we[2])) | (litedramcontroller_refresher_TMRcmd_payload_we[0] & litedramcontroller_refresher_TMRcmd_payload_we[2]));
-assign litedramcontroller_multiplexer_refreshCmd_payload_we = litedramcontroller_multiplexer_tmrinput_control117;
-assign litedramcontroller_multiplexer_tmrinput_control118 = (((litedramcontroller_refresher_TMRcmd_payload_is_cmd[0] & litedramcontroller_refresher_TMRcmd_payload_is_cmd[1]) | (litedramcontroller_refresher_TMRcmd_payload_is_cmd[1] & litedramcontroller_refresher_TMRcmd_payload_is_cmd[2])) | (litedramcontroller_refresher_TMRcmd_payload_is_cmd[0] & litedramcontroller_refresher_TMRcmd_payload_is_cmd[2]));
-assign litedramcontroller_multiplexer_refreshCmd_payload_is_cmd = litedramcontroller_multiplexer_tmrinput_control118;
-assign litedramcontroller_multiplexer_tmrinput_control119 = (((litedramcontroller_refresher_TMRcmd_payload_is_read[0] & litedramcontroller_refresher_TMRcmd_payload_is_read[1]) | (litedramcontroller_refresher_TMRcmd_payload_is_read[1] & litedramcontroller_refresher_TMRcmd_payload_is_read[2])) | (litedramcontroller_refresher_TMRcmd_payload_is_read[0] & litedramcontroller_refresher_TMRcmd_payload_is_read[2]));
-assign litedramcontroller_multiplexer_refreshCmd_payload_is_read = litedramcontroller_multiplexer_tmrinput_control119;
-assign litedramcontroller_multiplexer_tmrinput_control120 = (((litedramcontroller_refresher_TMRcmd_payload_is_write[0] & litedramcontroller_refresher_TMRcmd_payload_is_write[1]) | (litedramcontroller_refresher_TMRcmd_payload_is_write[1] & litedramcontroller_refresher_TMRcmd_payload_is_write[2])) | (litedramcontroller_refresher_TMRcmd_payload_is_write[0] & litedramcontroller_refresher_TMRcmd_payload_is_write[2]));
-assign litedramcontroller_multiplexer_refreshCmd_payload_is_write = litedramcontroller_multiplexer_tmrinput_control120;
+assign litedramcontroller_multiplexer_tmrinput_control101 = (((litedramcontroller_refresher_TMRcmd_first[0] & litedramcontroller_refresher_TMRcmd_first[1]) | (litedramcontroller_refresher_TMRcmd_first[1] & litedramcontroller_refresher_TMRcmd_first[2])) | (litedramcontroller_refresher_TMRcmd_first[0] & litedramcontroller_refresher_TMRcmd_first[2]));
+assign litedramcontroller_multiplexer_refreshCmd_first = litedramcontroller_multiplexer_tmrinput_control101;
+assign litedramcontroller_multiplexer_tmrinput_control102 = (((litedramcontroller_refresher_TMRcmd_payload_a[13:0] & litedramcontroller_refresher_TMRcmd_payload_a[27:14]) | (litedramcontroller_refresher_TMRcmd_payload_a[27:14] & litedramcontroller_refresher_TMRcmd_payload_a[41:28])) | (litedramcontroller_refresher_TMRcmd_payload_a[13:0] & litedramcontroller_refresher_TMRcmd_payload_a[41:28]));
+assign litedramcontroller_multiplexer_refreshCmd_payload_a = litedramcontroller_multiplexer_tmrinput_control102;
+assign litedramcontroller_multiplexer_tmrinput_control103 = (((litedramcontroller_refresher_TMRcmd_payload_ba[2:0] & litedramcontroller_refresher_TMRcmd_payload_ba[5:3]) | (litedramcontroller_refresher_TMRcmd_payload_ba[5:3] & litedramcontroller_refresher_TMRcmd_payload_ba[8:6])) | (litedramcontroller_refresher_TMRcmd_payload_ba[2:0] & litedramcontroller_refresher_TMRcmd_payload_ba[8:6]));
+assign litedramcontroller_multiplexer_refreshCmd_payload_ba = litedramcontroller_multiplexer_tmrinput_control103;
+assign litedramcontroller_multiplexer_tmrinput_control104 = (((litedramcontroller_refresher_TMRcmd_payload_cas[0] & litedramcontroller_refresher_TMRcmd_payload_cas[1]) | (litedramcontroller_refresher_TMRcmd_payload_cas[1] & litedramcontroller_refresher_TMRcmd_payload_cas[2])) | (litedramcontroller_refresher_TMRcmd_payload_cas[0] & litedramcontroller_refresher_TMRcmd_payload_cas[2]));
+assign litedramcontroller_multiplexer_refreshCmd_payload_cas = litedramcontroller_multiplexer_tmrinput_control104;
+assign litedramcontroller_multiplexer_tmrinput_control105 = (((litedramcontroller_refresher_TMRcmd_payload_ras[0] & litedramcontroller_refresher_TMRcmd_payload_ras[1]) | (litedramcontroller_refresher_TMRcmd_payload_ras[1] & litedramcontroller_refresher_TMRcmd_payload_ras[2])) | (litedramcontroller_refresher_TMRcmd_payload_ras[0] & litedramcontroller_refresher_TMRcmd_payload_ras[2]));
+assign litedramcontroller_multiplexer_refreshCmd_payload_ras = litedramcontroller_multiplexer_tmrinput_control105;
+assign litedramcontroller_multiplexer_tmrinput_control106 = (((litedramcontroller_refresher_TMRcmd_payload_we[0] & litedramcontroller_refresher_TMRcmd_payload_we[1]) | (litedramcontroller_refresher_TMRcmd_payload_we[1] & litedramcontroller_refresher_TMRcmd_payload_we[2])) | (litedramcontroller_refresher_TMRcmd_payload_we[0] & litedramcontroller_refresher_TMRcmd_payload_we[2]));
+assign litedramcontroller_multiplexer_refreshCmd_payload_we = litedramcontroller_multiplexer_tmrinput_control106;
+assign litedramcontroller_multiplexer_tmrinput_control107 = (((litedramcontroller_refresher_TMRcmd_payload_is_cmd[0] & litedramcontroller_refresher_TMRcmd_payload_is_cmd[1]) | (litedramcontroller_refresher_TMRcmd_payload_is_cmd[1] & litedramcontroller_refresher_TMRcmd_payload_is_cmd[2])) | (litedramcontroller_refresher_TMRcmd_payload_is_cmd[0] & litedramcontroller_refresher_TMRcmd_payload_is_cmd[2]));
+assign litedramcontroller_multiplexer_refreshCmd_payload_is_cmd = litedramcontroller_multiplexer_tmrinput_control107;
+assign litedramcontroller_multiplexer_tmrinput_control108 = (((litedramcontroller_refresher_TMRcmd_payload_is_read[0] & litedramcontroller_refresher_TMRcmd_payload_is_read[1]) | (litedramcontroller_refresher_TMRcmd_payload_is_read[1] & litedramcontroller_refresher_TMRcmd_payload_is_read[2])) | (litedramcontroller_refresher_TMRcmd_payload_is_read[0] & litedramcontroller_refresher_TMRcmd_payload_is_read[2]));
+assign litedramcontroller_multiplexer_refreshCmd_payload_is_read = litedramcontroller_multiplexer_tmrinput_control108;
+assign litedramcontroller_multiplexer_tmrinput_control109 = (((litedramcontroller_refresher_TMRcmd_payload_is_write[0] & litedramcontroller_refresher_TMRcmd_payload_is_write[1]) | (litedramcontroller_refresher_TMRcmd_payload_is_write[1] & litedramcontroller_refresher_TMRcmd_payload_is_write[2])) | (litedramcontroller_refresher_TMRcmd_payload_is_write[0] & litedramcontroller_refresher_TMRcmd_payload_is_write[2]));
+assign litedramcontroller_multiplexer_refreshCmd_payload_is_write = litedramcontroller_multiplexer_tmrinput_control109;
 assign litedramcontroller_dfi_p0_reset_n = 1'd1;
 assign litedramcontroller_dfi_p0_cke = {1{litedramcontroller_multiplexer_steerer4}};
 assign litedramcontroller_dfi_p0_odt = {1{litedramcontroller_multiplexer_steerer5}};
@@ -10030,31 +9565,25 @@ assign litedramcontroller_dfi_p2_odt = {1{litedramcontroller_multiplexer_steerer
 assign litedramcontroller_dfi_p3_reset_n = 1'd1;
 assign litedramcontroller_dfi_p3_cke = {1{litedramcontroller_multiplexer_steerer10}};
 assign litedramcontroller_dfi_p3_odt = {1{litedramcontroller_multiplexer_steerer11}};
-assign litedramcontroller_multiplexer_trrdVote_control = (((slice_proxy918[0] & slice_proxy919[1]) | (slice_proxy920[1] & slice_proxy921[2])) | (slice_proxy922[0] & slice_proxy923[2]));
+assign litedramcontroller_multiplexer_trrdVote_control = (((slice_proxy852[0] & slice_proxy853[1]) | (slice_proxy854[1] & slice_proxy855[2])) | (slice_proxy856[0] & slice_proxy857[2]));
 assign litedramcontroller_multiplexer_tfawcon_count = ((((litedramcontroller_multiplexer_tfawcon_window[0] + litedramcontroller_multiplexer_tfawcon_window[1]) + litedramcontroller_multiplexer_tfawcon_window[2]) + litedramcontroller_multiplexer_tfawcon_window[3]) + litedramcontroller_multiplexer_tfawcon_window[4]);
 assign litedramcontroller_multiplexer_tfawcon2_count = ((((litedramcontroller_multiplexer_tfawcon2_window[0] + litedramcontroller_multiplexer_tfawcon2_window[1]) + litedramcontroller_multiplexer_tfawcon2_window[2]) + litedramcontroller_multiplexer_tfawcon2_window[3]) + litedramcontroller_multiplexer_tfawcon2_window[4]);
 assign litedramcontroller_multiplexer_tfawcon3_count = ((((litedramcontroller_multiplexer_tfawcon3_window[0] + litedramcontroller_multiplexer_tfawcon3_window[1]) + litedramcontroller_multiplexer_tfawcon3_window[2]) + litedramcontroller_multiplexer_tfawcon3_window[3]) + litedramcontroller_multiplexer_tfawcon3_window[4]);
-assign litedramcontroller_multiplexer_tfawVote_control = (((slice_proxy924[0] & slice_proxy925[1]) | (slice_proxy926[1] & slice_proxy927[2])) | (slice_proxy928[0] & slice_proxy929[2]));
-assign litedramcontroller_multiplexer_tccdVote_control = (((slice_proxy930[0] & slice_proxy931[1]) | (slice_proxy932[1] & slice_proxy933[2])) | (slice_proxy934[0] & slice_proxy935[2]));
-assign litedramcontroller_multiplexer_twtrVote_control = (((slice_proxy936[0] & slice_proxy937[1]) | (slice_proxy938[1] & slice_proxy939[2])) | (slice_proxy940[0] & slice_proxy941[2]));
+assign litedramcontroller_multiplexer_tfawVote_control = (((slice_proxy858[0] & slice_proxy859[1]) | (slice_proxy860[1] & slice_proxy861[2])) | (slice_proxy862[0] & slice_proxy863[2]));
+assign litedramcontroller_multiplexer_tccdVote_control = (((slice_proxy864[0] & slice_proxy865[1]) | (slice_proxy866[1] & slice_proxy867[2])) | (slice_proxy868[0] & slice_proxy869[2]));
+assign litedramcontroller_multiplexer_twtrVote_control = (((slice_proxy870[0] & slice_proxy871[1]) | (slice_proxy872[1] & slice_proxy873[2])) | (slice_proxy874[0] & slice_proxy875[2]));
 assign litedramcontroller_TMRinterface_rdata = {3{{litedramcontroller_dfi_p3_rddata, litedramcontroller_dfi_p2_rddata, litedramcontroller_dfi_p1_rddata, litedramcontroller_dfi_p0_rddata}}};
-assign litedramcontroller_multiplexer_tmrinput_control121 = (((litedramcontroller_TMRinterface_wdata[255:0] & litedramcontroller_TMRinterface_wdata[511:256]) | (litedramcontroller_TMRinterface_wdata[511:256] & litedramcontroller_TMRinterface_wdata[767:512])) | (litedramcontroller_TMRinterface_wdata[255:0] & litedramcontroller_TMRinterface_wdata[767:512]));
-assign {litedramcontroller_dfi_p3_wrdata, litedramcontroller_dfi_p2_wrdata, litedramcontroller_dfi_p1_wrdata, litedramcontroller_dfi_p0_wrdata} = litedramcontroller_multiplexer_tmrinput_control121;
-assign litedramcontroller_multiplexer_tmrinput_control122 = (((slice_proxy942[31:0] & slice_proxy943[63:32]) | (slice_proxy944[63:32] & slice_proxy945[95:64])) | (slice_proxy946[31:0] & slice_proxy947[95:64]));
-assign {litedramcontroller_dfi_p3_wrdata_mask, litedramcontroller_dfi_p2_wrdata_mask, litedramcontroller_dfi_p1_wrdata_mask, litedramcontroller_dfi_p0_wrdata_mask} = litedramcontroller_multiplexer_tmrinput_control122;
+assign litedramcontroller_multiplexer_tmrinput_control110 = (((litedramcontroller_TMRinterface_wdata[255:0] & litedramcontroller_TMRinterface_wdata[511:256]) | (litedramcontroller_TMRinterface_wdata[511:256] & litedramcontroller_TMRinterface_wdata[767:512])) | (litedramcontroller_TMRinterface_wdata[255:0] & litedramcontroller_TMRinterface_wdata[767:512]));
+assign {litedramcontroller_dfi_p3_wrdata, litedramcontroller_dfi_p2_wrdata, litedramcontroller_dfi_p1_wrdata, litedramcontroller_dfi_p0_wrdata} = litedramcontroller_multiplexer_tmrinput_control110;
+assign litedramcontroller_multiplexer_tmrinput_control111 = (((slice_proxy876[31:0] & slice_proxy877[63:32]) | (slice_proxy878[63:32] & slice_proxy879[95:64])) | (slice_proxy880[31:0] & slice_proxy881[95:64]));
+assign {litedramcontroller_dfi_p3_wrdata_mask, litedramcontroller_dfi_p2_wrdata_mask, litedramcontroller_dfi_p1_wrdata_mask, litedramcontroller_dfi_p0_wrdata_mask} = litedramcontroller_multiplexer_tmrinput_control111;
 
 // synthesis translate_off
-reg dummy_d_130;
+reg dummy_d_118;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int_cmd_ready <= 1'd0;
 	litedramcontroller_multiplexer_choose_cmd_int_want_activates <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_want_activates <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_cmd_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd2_want_activates <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd2_cmd_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd3_want_activates <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd3_cmd_ready <= 1'd0;
 	litedramcontroller_multiplexer_choose_req_want_reads <= 1'd0;
 	litedramcontroller_multiplexer_choose_req_want_writes <= 1'd0;
 	litedramcontroller_multiplexer_choose_req_cmd_ready <= 1'd0;
@@ -10072,9 +9601,6 @@ always @(*) begin
 	litedramcontroller_multiplexer_en0 <= 1'd0;
 	litedramcontroller_multiplexer_en1 <= 1'd0;
 	tmrmultiplexer_next_state <= 4'd0;
-	litedramcontroller_multiplexer_choose_cmd_cmd_ready <= litedramcontroller_multiplexer_choose_tmrcmd_ready;
-	litedramcontroller_multiplexer_choose_cmd2_cmd_ready <= litedramcontroller_multiplexer_choose_tmrcmd_ready;
-	litedramcontroller_multiplexer_choose_cmd3_cmd_ready <= litedramcontroller_multiplexer_choose_tmrcmd_ready;
 	litedramcontroller_multiplexer_choose_req_cmd_ready <= litedramcontroller_multiplexer_choose_tmrreq_ready;
 	litedramcontroller_multiplexer_choose_req2_cmd_ready <= litedramcontroller_multiplexer_choose_tmrreq_ready;
 	litedramcontroller_multiplexer_choose_req3_cmd_ready <= litedramcontroller_multiplexer_choose_tmrreq_ready;
@@ -10090,14 +9616,8 @@ always @(*) begin
 				litedramcontroller_multiplexer_choose_req2_cmd_ready <= (litedramcontroller_multiplexer_cas_allowed & ((~((litedramcontroller_multiplexer_choose_req_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_req_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_req_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed));
 				litedramcontroller_multiplexer_choose_req3_cmd_ready <= (litedramcontroller_multiplexer_cas_allowed & ((~((litedramcontroller_multiplexer_choose_req_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_req_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_req_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed));
 			end else begin
-				litedramcontroller_multiplexer_choose_cmd_want_activates <= litedramcontroller_multiplexer_ras_allowed;
 				litedramcontroller_multiplexer_choose_cmd_int_want_activates <= litedramcontroller_multiplexer_ras_allowed;
-				litedramcontroller_multiplexer_choose_cmd2_want_activates <= litedramcontroller_multiplexer_ras_allowed;
-				litedramcontroller_multiplexer_choose_cmd3_want_activates <= litedramcontroller_multiplexer_ras_allowed;
-				litedramcontroller_multiplexer_choose_cmd_cmd_ready <= ((~((litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed);
 				litedramcontroller_multiplexer_choose_cmd_int_cmd_ready <= ((~((litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed);
-				litedramcontroller_multiplexer_choose_cmd2_cmd_ready <= ((~((litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed);
-				litedramcontroller_multiplexer_choose_cmd3_cmd_ready <= ((~((litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed);
 				litedramcontroller_multiplexer_choose_req_cmd_ready <= litedramcontroller_multiplexer_cas_allowed;
 				litedramcontroller_multiplexer_choose_req2_cmd_ready <= litedramcontroller_multiplexer_cas_allowed;
 				litedramcontroller_multiplexer_choose_req3_cmd_ready <= litedramcontroller_multiplexer_cas_allowed;
@@ -10182,14 +9702,8 @@ always @(*) begin
 				litedramcontroller_multiplexer_choose_req2_cmd_ready <= (litedramcontroller_multiplexer_cas_allowed & ((~((litedramcontroller_multiplexer_choose_req_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_req_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_req_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed));
 				litedramcontroller_multiplexer_choose_req3_cmd_ready <= (litedramcontroller_multiplexer_cas_allowed & ((~((litedramcontroller_multiplexer_choose_req_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_req_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_req_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed));
 			end else begin
-				litedramcontroller_multiplexer_choose_cmd_want_activates <= litedramcontroller_multiplexer_ras_allowed;
 				litedramcontroller_multiplexer_choose_cmd_int_want_activates <= litedramcontroller_multiplexer_ras_allowed;
-				litedramcontroller_multiplexer_choose_cmd2_want_activates <= litedramcontroller_multiplexer_ras_allowed;
-				litedramcontroller_multiplexer_choose_cmd3_want_activates <= litedramcontroller_multiplexer_ras_allowed;
-				litedramcontroller_multiplexer_choose_cmd_cmd_ready <= ((~((litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed);
 				litedramcontroller_multiplexer_choose_cmd_int_cmd_ready <= ((~((litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed);
-				litedramcontroller_multiplexer_choose_cmd2_cmd_ready <= ((~((litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed);
-				litedramcontroller_multiplexer_choose_cmd3_cmd_ready <= ((~((litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_cmd_payload_we))) | litedramcontroller_multiplexer_ras_allowed);
 				litedramcontroller_multiplexer_choose_req_cmd_ready <= litedramcontroller_multiplexer_cas_allowed;
 				litedramcontroller_multiplexer_choose_req2_cmd_ready <= litedramcontroller_multiplexer_cas_allowed;
 				litedramcontroller_multiplexer_choose_req3_cmd_ready <= litedramcontroller_multiplexer_cas_allowed;
@@ -10233,52 +9747,52 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_130 <= dummy_s;
+	dummy_d_118 <= dummy_s;
 // synthesis translate_on
 end
 assign roundrobin0_request = {(((cmd_payload_addr[9:7] == 1'd0) & (~(((((((locked0 | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid)};
 assign roundrobin0_ce = ((~interface_bank0_valid) & (~litedramcontroller_interface_bank0_lock));
-assign litedramcontroller_interface_bank0_addr = rhs_array_muxed42;
-assign litedramcontroller_interface_bank0_we = rhs_array_muxed43;
-assign interface_bank0_valid = rhs_array_muxed44;
+assign litedramcontroller_interface_bank0_addr = rhs_array_muxed24;
+assign litedramcontroller_interface_bank0_we = rhs_array_muxed25;
+assign interface_bank0_valid = rhs_array_muxed26;
 assign roundrobin1_request = {(((cmd_payload_addr[9:7] == 1'd1) & (~(((((((locked1 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid)};
 assign roundrobin1_ce = ((~litedramcontroller_interface_bank1_valid) & (~litedramcontroller_interface_bank1_lock));
-assign litedramcontroller_interface_bank1_addr = rhs_array_muxed45;
-assign litedramcontroller_interface_bank1_we = rhs_array_muxed46;
-assign litedramcontroller_interface_bank1_valid = rhs_array_muxed47;
+assign litedramcontroller_interface_bank1_addr = rhs_array_muxed27;
+assign litedramcontroller_interface_bank1_we = rhs_array_muxed28;
+assign litedramcontroller_interface_bank1_valid = rhs_array_muxed29;
 assign roundrobin2_request = {(((cmd_payload_addr[9:7] == 2'd2) & (~(((((((locked2 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid)};
 assign roundrobin2_ce = ((~litedramcontroller_interface_bank2_valid) & (~litedramcontroller_interface_bank2_lock));
-assign litedramcontroller_interface_bank2_addr = rhs_array_muxed48;
-assign litedramcontroller_interface_bank2_we = rhs_array_muxed49;
-assign litedramcontroller_interface_bank2_valid = rhs_array_muxed50;
+assign litedramcontroller_interface_bank2_addr = rhs_array_muxed30;
+assign litedramcontroller_interface_bank2_we = rhs_array_muxed31;
+assign litedramcontroller_interface_bank2_valid = rhs_array_muxed32;
 assign roundrobin3_request = {(((cmd_payload_addr[9:7] == 2'd3) & (~(((((((locked3 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid)};
 assign roundrobin3_ce = ((~litedramcontroller_interface_bank3_valid) & (~litedramcontroller_interface_bank3_lock));
-assign litedramcontroller_interface_bank3_addr = rhs_array_muxed51;
-assign litedramcontroller_interface_bank3_we = rhs_array_muxed52;
-assign litedramcontroller_interface_bank3_valid = rhs_array_muxed53;
+assign litedramcontroller_interface_bank3_addr = rhs_array_muxed33;
+assign litedramcontroller_interface_bank3_we = rhs_array_muxed34;
+assign litedramcontroller_interface_bank3_valid = rhs_array_muxed35;
 assign roundrobin4_request = {(((cmd_payload_addr[9:7] == 3'd4) & (~(((((((locked4 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid)};
 assign roundrobin4_ce = ((~litedramcontroller_interface_bank4_valid) & (~litedramcontroller_interface_bank4_lock));
-assign litedramcontroller_interface_bank4_addr = rhs_array_muxed54;
-assign litedramcontroller_interface_bank4_we = rhs_array_muxed55;
-assign litedramcontroller_interface_bank4_valid = rhs_array_muxed56;
+assign litedramcontroller_interface_bank4_addr = rhs_array_muxed36;
+assign litedramcontroller_interface_bank4_we = rhs_array_muxed37;
+assign litedramcontroller_interface_bank4_valid = rhs_array_muxed38;
 assign roundrobin5_request = {(((cmd_payload_addr[9:7] == 3'd5) & (~(((((((locked5 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid)};
 assign roundrobin5_ce = ((~litedramcontroller_interface_bank5_valid) & (~litedramcontroller_interface_bank5_lock));
-assign litedramcontroller_interface_bank5_addr = rhs_array_muxed57;
-assign litedramcontroller_interface_bank5_we = rhs_array_muxed58;
-assign litedramcontroller_interface_bank5_valid = rhs_array_muxed59;
+assign litedramcontroller_interface_bank5_addr = rhs_array_muxed39;
+assign litedramcontroller_interface_bank5_we = rhs_array_muxed40;
+assign litedramcontroller_interface_bank5_valid = rhs_array_muxed41;
 assign roundrobin6_request = {(((cmd_payload_addr[9:7] == 3'd6) & (~(((((((locked6 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid)};
 assign roundrobin6_ce = ((~litedramcontroller_interface_bank6_valid) & (~litedramcontroller_interface_bank6_lock));
-assign litedramcontroller_interface_bank6_addr = rhs_array_muxed60;
-assign litedramcontroller_interface_bank6_we = rhs_array_muxed61;
-assign litedramcontroller_interface_bank6_valid = rhs_array_muxed62;
+assign litedramcontroller_interface_bank6_addr = rhs_array_muxed42;
+assign litedramcontroller_interface_bank6_we = rhs_array_muxed43;
+assign litedramcontroller_interface_bank6_valid = rhs_array_muxed44;
 assign roundrobin7_request = {(((cmd_payload_addr[9:7] == 3'd7) & (~(((((((locked7 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))))) & cmd_valid)};
 assign roundrobin7_ce = ((~litedramcontroller_interface_bank7_valid) & (~litedramcontroller_interface_bank7_lock));
-assign litedramcontroller_interface_bank7_addr = rhs_array_muxed63;
-assign litedramcontroller_interface_bank7_we = rhs_array_muxed64;
-assign litedramcontroller_interface_bank7_valid = rhs_array_muxed65;
+assign litedramcontroller_interface_bank7_addr = rhs_array_muxed45;
+assign litedramcontroller_interface_bank7_we = rhs_array_muxed46;
+assign litedramcontroller_interface_bank7_valid = rhs_array_muxed47;
 
 // synthesis translate_off
-reg dummy_d_131;
+reg dummy_d_119;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_TMRinterface_wdata <= 768'd0;
@@ -10294,7 +9808,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_131 <= dummy_s;
+	dummy_d_119 <= dummy_s;
 // synthesis translate_on
 end
 assign TMRrdata_payload_data = litedramcontroller_TMRinterface_rdata;
@@ -11193,171 +10707,105 @@ assign slice_proxy782 = {litedramcontroller_tmrbankmachine7_trascon3_ready, lite
 assign slice_proxy783 = {litedramcontroller_tmrbankmachine7_trascon3_ready, litedramcontroller_tmrbankmachine7_trascon2_ready, litedramcontroller_tmrbankmachine7_trascon_ready};
 assign slice_proxy784 = {litedramcontroller_tmrbankmachine7_trascon3_ready, litedramcontroller_tmrbankmachine7_trascon2_ready, litedramcontroller_tmrbankmachine7_trascon_ready};
 assign slice_proxy785 = {litedramcontroller_tmrbankmachine7_trascon3_ready, litedramcontroller_tmrbankmachine7_trascon2_ready, litedramcontroller_tmrbankmachine7_trascon_ready};
-assign slice_proxy786 = {litedramcontroller_multiplexer_choose_cmd3_cmd_valid, litedramcontroller_multiplexer_choose_cmd2_cmd_valid, litedramcontroller_multiplexer_choose_cmd_cmd_valid};
-assign slice_proxy787 = {litedramcontroller_multiplexer_choose_cmd3_cmd_valid, litedramcontroller_multiplexer_choose_cmd2_cmd_valid, litedramcontroller_multiplexer_choose_cmd_cmd_valid};
-assign slice_proxy788 = {litedramcontroller_multiplexer_choose_cmd3_cmd_valid, litedramcontroller_multiplexer_choose_cmd2_cmd_valid, litedramcontroller_multiplexer_choose_cmd_cmd_valid};
-assign slice_proxy789 = {litedramcontroller_multiplexer_choose_cmd3_cmd_valid, litedramcontroller_multiplexer_choose_cmd2_cmd_valid, litedramcontroller_multiplexer_choose_cmd_cmd_valid};
-assign slice_proxy790 = {litedramcontroller_multiplexer_choose_cmd3_cmd_valid, litedramcontroller_multiplexer_choose_cmd2_cmd_valid, litedramcontroller_multiplexer_choose_cmd_cmd_valid};
-assign slice_proxy791 = {litedramcontroller_multiplexer_choose_cmd3_cmd_valid, litedramcontroller_multiplexer_choose_cmd2_cmd_valid, litedramcontroller_multiplexer_choose_cmd_cmd_valid};
-assign slice_proxy792 = {litedramcontroller_multiplexer_choose_cmd3_cmd_first, litedramcontroller_multiplexer_choose_cmd2_cmd_first, litedramcontroller_multiplexer_choose_cmd_cmd_first};
-assign slice_proxy793 = {litedramcontroller_multiplexer_choose_cmd3_cmd_first, litedramcontroller_multiplexer_choose_cmd2_cmd_first, litedramcontroller_multiplexer_choose_cmd_cmd_first};
-assign slice_proxy794 = {litedramcontroller_multiplexer_choose_cmd3_cmd_first, litedramcontroller_multiplexer_choose_cmd2_cmd_first, litedramcontroller_multiplexer_choose_cmd_cmd_first};
-assign slice_proxy795 = {litedramcontroller_multiplexer_choose_cmd3_cmd_first, litedramcontroller_multiplexer_choose_cmd2_cmd_first, litedramcontroller_multiplexer_choose_cmd_cmd_first};
-assign slice_proxy796 = {litedramcontroller_multiplexer_choose_cmd3_cmd_first, litedramcontroller_multiplexer_choose_cmd2_cmd_first, litedramcontroller_multiplexer_choose_cmd_cmd_first};
-assign slice_proxy797 = {litedramcontroller_multiplexer_choose_cmd3_cmd_first, litedramcontroller_multiplexer_choose_cmd2_cmd_first, litedramcontroller_multiplexer_choose_cmd_cmd_first};
-assign slice_proxy798 = {litedramcontroller_multiplexer_choose_cmd3_cmd_last, litedramcontroller_multiplexer_choose_cmd2_cmd_last, litedramcontroller_multiplexer_choose_cmd_cmd_last};
-assign slice_proxy799 = {litedramcontroller_multiplexer_choose_cmd3_cmd_last, litedramcontroller_multiplexer_choose_cmd2_cmd_last, litedramcontroller_multiplexer_choose_cmd_cmd_last};
-assign slice_proxy800 = {litedramcontroller_multiplexer_choose_cmd3_cmd_last, litedramcontroller_multiplexer_choose_cmd2_cmd_last, litedramcontroller_multiplexer_choose_cmd_cmd_last};
-assign slice_proxy801 = {litedramcontroller_multiplexer_choose_cmd3_cmd_last, litedramcontroller_multiplexer_choose_cmd2_cmd_last, litedramcontroller_multiplexer_choose_cmd_cmd_last};
-assign slice_proxy802 = {litedramcontroller_multiplexer_choose_cmd3_cmd_last, litedramcontroller_multiplexer_choose_cmd2_cmd_last, litedramcontroller_multiplexer_choose_cmd_cmd_last};
-assign slice_proxy803 = {litedramcontroller_multiplexer_choose_cmd3_cmd_last, litedramcontroller_multiplexer_choose_cmd2_cmd_last, litedramcontroller_multiplexer_choose_cmd_cmd_last};
-assign slice_proxy804 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a};
-assign slice_proxy805 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a};
-assign slice_proxy806 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a};
-assign slice_proxy807 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a};
-assign slice_proxy808 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a};
-assign slice_proxy809 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a, litedramcontroller_multiplexer_choose_cmd_cmd_payload_a};
-assign slice_proxy810 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba};
-assign slice_proxy811 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba};
-assign slice_proxy812 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba};
-assign slice_proxy813 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba};
-assign slice_proxy814 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba};
-assign slice_proxy815 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ba};
-assign slice_proxy816 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas};
-assign slice_proxy817 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas};
-assign slice_proxy818 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas};
-assign slice_proxy819 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas};
-assign slice_proxy820 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas};
-assign slice_proxy821 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas, litedramcontroller_multiplexer_choose_cmd_cmd_payload_cas};
-assign slice_proxy822 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras};
-assign slice_proxy823 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras};
-assign slice_proxy824 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras};
-assign slice_proxy825 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras};
-assign slice_proxy826 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras};
-assign slice_proxy827 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras, litedramcontroller_multiplexer_choose_cmd_cmd_payload_ras};
-assign slice_proxy828 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we};
-assign slice_proxy829 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we};
-assign slice_proxy830 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we};
-assign slice_proxy831 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we};
-assign slice_proxy832 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we};
-assign slice_proxy833 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we, litedramcontroller_multiplexer_choose_cmd_cmd_payload_we};
-assign slice_proxy834 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd};
-assign slice_proxy835 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd};
-assign slice_proxy836 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd};
-assign slice_proxy837 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd};
-assign slice_proxy838 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd};
-assign slice_proxy839 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_cmd};
-assign slice_proxy840 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read};
-assign slice_proxy841 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read};
-assign slice_proxy842 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read};
-assign slice_proxy843 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read};
-assign slice_proxy844 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read};
-assign slice_proxy845 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_read};
-assign slice_proxy846 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write};
-assign slice_proxy847 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write};
-assign slice_proxy848 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write};
-assign slice_proxy849 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write};
-assign slice_proxy850 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write};
-assign slice_proxy851 = {litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write, litedramcontroller_multiplexer_choose_cmd_cmd_payload_is_write};
-assign slice_proxy852 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
-assign slice_proxy853 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
-assign slice_proxy854 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
-assign slice_proxy855 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
-assign slice_proxy856 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
-assign slice_proxy857 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
-assign slice_proxy858 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
-assign slice_proxy859 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
-assign slice_proxy860 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
-assign slice_proxy861 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
-assign slice_proxy862 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
-assign slice_proxy863 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
-assign slice_proxy864 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
-assign slice_proxy865 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
-assign slice_proxy866 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
-assign slice_proxy867 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
-assign slice_proxy868 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
-assign slice_proxy869 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
-assign slice_proxy870 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
-assign slice_proxy871 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
-assign slice_proxy872 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
-assign slice_proxy873 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
-assign slice_proxy874 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
-assign slice_proxy875 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
-assign slice_proxy876 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
-assign slice_proxy877 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
-assign slice_proxy878 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
-assign slice_proxy879 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
-assign slice_proxy880 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
-assign slice_proxy881 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
-assign slice_proxy882 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
-assign slice_proxy883 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
-assign slice_proxy884 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
-assign slice_proxy885 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
-assign slice_proxy886 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
-assign slice_proxy887 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
-assign slice_proxy888 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
-assign slice_proxy889 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
-assign slice_proxy890 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
-assign slice_proxy891 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
-assign slice_proxy892 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
-assign slice_proxy893 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
-assign slice_proxy894 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
-assign slice_proxy895 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
-assign slice_proxy896 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
-assign slice_proxy897 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
-assign slice_proxy898 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
-assign slice_proxy899 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
-assign slice_proxy900 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
-assign slice_proxy901 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
-assign slice_proxy902 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
-assign slice_proxy903 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
-assign slice_proxy904 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
-assign slice_proxy905 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
-assign slice_proxy906 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
-assign slice_proxy907 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
-assign slice_proxy908 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
-assign slice_proxy909 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
-assign slice_proxy910 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
-assign slice_proxy911 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
-assign slice_proxy912 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
-assign slice_proxy913 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
-assign slice_proxy914 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
-assign slice_proxy915 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
-assign slice_proxy916 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
-assign slice_proxy917 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
-assign slice_proxy918 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
-assign slice_proxy919 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
-assign slice_proxy920 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
-assign slice_proxy921 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
-assign slice_proxy922 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
-assign slice_proxy923 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
-assign slice_proxy924 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
-assign slice_proxy925 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
-assign slice_proxy926 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
-assign slice_proxy927 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
-assign slice_proxy928 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
-assign slice_proxy929 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
-assign slice_proxy930 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
-assign slice_proxy931 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
-assign slice_proxy932 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
-assign slice_proxy933 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
-assign slice_proxy934 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
-assign slice_proxy935 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
-assign slice_proxy936 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
-assign slice_proxy937 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
-assign slice_proxy938 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
-assign slice_proxy939 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
-assign slice_proxy940 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
-assign slice_proxy941 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
-assign slice_proxy942 = (~litedramcontroller_TMRinterface_wdata_we);
-assign slice_proxy943 = (~litedramcontroller_TMRinterface_wdata_we);
-assign slice_proxy944 = (~litedramcontroller_TMRinterface_wdata_we);
-assign slice_proxy945 = (~litedramcontroller_TMRinterface_wdata_we);
-assign slice_proxy946 = (~litedramcontroller_TMRinterface_wdata_we);
-assign slice_proxy947 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy786 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
+assign slice_proxy787 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
+assign slice_proxy788 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
+assign slice_proxy789 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
+assign slice_proxy790 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
+assign slice_proxy791 = {litedramcontroller_multiplexer_choose_req3_cmd_valid, litedramcontroller_multiplexer_choose_req2_cmd_valid, litedramcontroller_multiplexer_choose_req_cmd_valid};
+assign slice_proxy792 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
+assign slice_proxy793 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
+assign slice_proxy794 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
+assign slice_proxy795 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
+assign slice_proxy796 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
+assign slice_proxy797 = {litedramcontroller_multiplexer_choose_req3_cmd_first, litedramcontroller_multiplexer_choose_req2_cmd_first, litedramcontroller_multiplexer_choose_req_cmd_first};
+assign slice_proxy798 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
+assign slice_proxy799 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
+assign slice_proxy800 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
+assign slice_proxy801 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
+assign slice_proxy802 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
+assign slice_proxy803 = {litedramcontroller_multiplexer_choose_req3_cmd_last, litedramcontroller_multiplexer_choose_req2_cmd_last, litedramcontroller_multiplexer_choose_req_cmd_last};
+assign slice_proxy804 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
+assign slice_proxy805 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
+assign slice_proxy806 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
+assign slice_proxy807 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
+assign slice_proxy808 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
+assign slice_proxy809 = {litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a, litedramcontroller_multiplexer_choose_req_cmd_payload_a};
+assign slice_proxy810 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
+assign slice_proxy811 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
+assign slice_proxy812 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
+assign slice_proxy813 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
+assign slice_proxy814 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
+assign slice_proxy815 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba, litedramcontroller_multiplexer_choose_req_cmd_payload_ba};
+assign slice_proxy816 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
+assign slice_proxy817 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
+assign slice_proxy818 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
+assign slice_proxy819 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
+assign slice_proxy820 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
+assign slice_proxy821 = {litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas, litedramcontroller_multiplexer_choose_req_cmd_payload_cas};
+assign slice_proxy822 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
+assign slice_proxy823 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
+assign slice_proxy824 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
+assign slice_proxy825 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
+assign slice_proxy826 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
+assign slice_proxy827 = {litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras, litedramcontroller_multiplexer_choose_req_cmd_payload_ras};
+assign slice_proxy828 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
+assign slice_proxy829 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
+assign slice_proxy830 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
+assign slice_proxy831 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
+assign slice_proxy832 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
+assign slice_proxy833 = {litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we, litedramcontroller_multiplexer_choose_req_cmd_payload_we};
+assign slice_proxy834 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
+assign slice_proxy835 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
+assign slice_proxy836 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
+assign slice_proxy837 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
+assign slice_proxy838 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
+assign slice_proxy839 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd, litedramcontroller_multiplexer_choose_req_cmd_payload_is_cmd};
+assign slice_proxy840 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
+assign slice_proxy841 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
+assign slice_proxy842 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
+assign slice_proxy843 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
+assign slice_proxy844 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
+assign slice_proxy845 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read, litedramcontroller_multiplexer_choose_req_cmd_payload_is_read};
+assign slice_proxy846 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
+assign slice_proxy847 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
+assign slice_proxy848 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
+assign slice_proxy849 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
+assign slice_proxy850 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
+assign slice_proxy851 = {litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write, litedramcontroller_multiplexer_choose_req_cmd_payload_is_write};
+assign slice_proxy852 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
+assign slice_proxy853 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
+assign slice_proxy854 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
+assign slice_proxy855 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
+assign slice_proxy856 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
+assign slice_proxy857 = {litedramcontroller_multiplexer_trrdcon3_ready, litedramcontroller_multiplexer_trrdcon2_ready, litedramcontroller_multiplexer_trrdcon_ready};
+assign slice_proxy858 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy859 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy860 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy861 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy862 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy863 = {litedramcontroller_multiplexer_tfawcon3_ready, litedramcontroller_multiplexer_tfawcon2_ready, litedramcontroller_multiplexer_tfawcon_ready};
+assign slice_proxy864 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy865 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy866 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy867 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy868 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy869 = {litedramcontroller_multiplexer_tccdcon3_ready, litedramcontroller_multiplexer_tccdcon2_ready, litedramcontroller_multiplexer_tccdcon_ready};
+assign slice_proxy870 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy871 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy872 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy873 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy874 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy875 = {litedramcontroller_multiplexer_twtrcon3_ready, litedramcontroller_multiplexer_twtrcon2_ready, litedramcontroller_multiplexer_twtrcon_ready};
+assign slice_proxy876 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy877 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy878 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy879 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy880 = (~litedramcontroller_TMRinterface_wdata_we);
+assign slice_proxy881 = (~litedramcontroller_TMRinterface_wdata_we);
 
 // synthesis translate_off
-reg dummy_d_132;
+reg dummy_d_120;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed0 <= 1'd0;
@@ -11388,12 +10836,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_132 <= dummy_s;
+	dummy_d_120 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_133;
+reg dummy_d_121;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed1 <= 14'd0;
@@ -11424,12 +10872,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_133 <= dummy_s;
+	dummy_d_121 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_134;
+reg dummy_d_122;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed2 <= 3'd0;
@@ -11460,12 +10908,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_134 <= dummy_s;
+	dummy_d_122 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_135;
+reg dummy_d_123;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed3 <= 1'd0;
@@ -11496,12 +10944,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_135 <= dummy_s;
+	dummy_d_123 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_136;
+reg dummy_d_124;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed4 <= 1'd0;
@@ -11532,12 +10980,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_136 <= dummy_s;
+	dummy_d_124 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_137;
+reg dummy_d_125;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed5 <= 1'd0;
@@ -11568,12 +11016,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_137 <= dummy_s;
+	dummy_d_125 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_138;
+reg dummy_d_126;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed0 <= 1'd0;
@@ -11604,12 +11052,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_138 <= dummy_s;
+	dummy_d_126 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_139;
+reg dummy_d_127;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed1 <= 1'd0;
@@ -11640,12 +11088,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_139 <= dummy_s;
+	dummy_d_127 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_140;
+reg dummy_d_128;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed2 <= 1'd0;
@@ -11676,52 +11124,52 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_140 <= dummy_s;
+	dummy_d_128 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_141;
+reg dummy_d_129;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed6 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd_grant)
+	case (litedramcontroller_multiplexer_choose_req_grant)
 		1'd0: begin
-			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_cmd_valids[0];
+			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_req_valids[0];
 		end
 		1'd1: begin
-			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_cmd_valids[1];
+			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_req_valids[1];
 		end
 		2'd2: begin
-			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_cmd_valids[2];
+			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_req_valids[2];
 		end
 		2'd3: begin
-			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_cmd_valids[3];
+			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_req_valids[3];
 		end
 		3'd4: begin
-			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_cmd_valids[4];
+			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_req_valids[4];
 		end
 		3'd5: begin
-			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_cmd_valids[5];
+			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_req_valids[5];
 		end
 		3'd6: begin
-			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_cmd_valids[6];
+			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_req_valids[6];
 		end
 		default: begin
-			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_cmd_valids[7];
+			rhs_array_muxed6 <= litedramcontroller_multiplexer_choose_req_valids[7];
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_141 <= dummy_s;
+	dummy_d_129 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_142;
+reg dummy_d_130;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed7 <= 14'd0;
-	case (litedramcontroller_multiplexer_choose_cmd_grant)
+	case (litedramcontroller_multiplexer_choose_req_grant)
 		1'd0: begin
 			rhs_array_muxed7 <= litedramcontroller_multiplexer_endpoint0_payload_a;
 		end
@@ -11748,16 +11196,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_142 <= dummy_s;
+	dummy_d_130 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_143;
+reg dummy_d_131;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed8 <= 3'd0;
-	case (litedramcontroller_multiplexer_choose_cmd_grant)
+	case (litedramcontroller_multiplexer_choose_req_grant)
 		1'd0: begin
 			rhs_array_muxed8 <= litedramcontroller_multiplexer_endpoint0_payload_ba;
 		end
@@ -11784,16 +11232,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_143 <= dummy_s;
+	dummy_d_131 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_144;
+reg dummy_d_132;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed9 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd_grant)
+	case (litedramcontroller_multiplexer_choose_req_grant)
 		1'd0: begin
 			rhs_array_muxed9 <= litedramcontroller_multiplexer_endpoint0_payload_is_read;
 		end
@@ -11820,16 +11268,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_144 <= dummy_s;
+	dummy_d_132 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_145;
+reg dummy_d_133;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed10 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd_grant)
+	case (litedramcontroller_multiplexer_choose_req_grant)
 		1'd0: begin
 			rhs_array_muxed10 <= litedramcontroller_multiplexer_endpoint0_payload_is_write;
 		end
@@ -11856,16 +11304,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_145 <= dummy_s;
+	dummy_d_133 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_146;
+reg dummy_d_134;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed11 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd_grant)
+	case (litedramcontroller_multiplexer_choose_req_grant)
 		1'd0: begin
 			rhs_array_muxed11 <= litedramcontroller_multiplexer_endpoint0_payload_is_cmd;
 		end
@@ -11892,16 +11340,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_146 <= dummy_s;
+	dummy_d_134 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_147;
+reg dummy_d_135;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed3 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd_grant)
+	case (litedramcontroller_multiplexer_choose_req_grant)
 		1'd0: begin
 			t_array_muxed3 <= litedramcontroller_multiplexer_endpoint0_payload_cas;
 		end
@@ -11928,16 +11376,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_147 <= dummy_s;
+	dummy_d_135 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_148;
+reg dummy_d_136;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed4 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd_grant)
+	case (litedramcontroller_multiplexer_choose_req_grant)
 		1'd0: begin
 			t_array_muxed4 <= litedramcontroller_multiplexer_endpoint0_payload_ras;
 		end
@@ -11964,16 +11412,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_148 <= dummy_s;
+	dummy_d_136 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_149;
+reg dummy_d_137;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed5 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd_grant)
+	case (litedramcontroller_multiplexer_choose_req_grant)
 		1'd0: begin
 			t_array_muxed5 <= litedramcontroller_multiplexer_endpoint0_payload_we;
 		end
@@ -12000,52 +11448,52 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_149 <= dummy_s;
+	dummy_d_137 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_150;
+reg dummy_d_138;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed12 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd2_grant)
+	case (litedramcontroller_multiplexer_choose_req2_grant)
 		1'd0: begin
-			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_cmd2_valids[0];
+			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_req2_valids[0];
 		end
 		1'd1: begin
-			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_cmd2_valids[1];
+			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_req2_valids[1];
 		end
 		2'd2: begin
-			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_cmd2_valids[2];
+			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_req2_valids[2];
 		end
 		2'd3: begin
-			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_cmd2_valids[3];
+			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_req2_valids[3];
 		end
 		3'd4: begin
-			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_cmd2_valids[4];
+			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_req2_valids[4];
 		end
 		3'd5: begin
-			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_cmd2_valids[5];
+			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_req2_valids[5];
 		end
 		3'd6: begin
-			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_cmd2_valids[6];
+			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_req2_valids[6];
 		end
 		default: begin
-			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_cmd2_valids[7];
+			rhs_array_muxed12 <= litedramcontroller_multiplexer_choose_req2_valids[7];
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_150 <= dummy_s;
+	dummy_d_138 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_151;
+reg dummy_d_139;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed13 <= 14'd0;
-	case (litedramcontroller_multiplexer_choose_cmd2_grant)
+	case (litedramcontroller_multiplexer_choose_req2_grant)
 		1'd0: begin
 			rhs_array_muxed13 <= litedramcontroller_multiplexer_endpoint0_payload_a;
 		end
@@ -12072,16 +11520,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_151 <= dummy_s;
+	dummy_d_139 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_152;
+reg dummy_d_140;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed14 <= 3'd0;
-	case (litedramcontroller_multiplexer_choose_cmd2_grant)
+	case (litedramcontroller_multiplexer_choose_req2_grant)
 		1'd0: begin
 			rhs_array_muxed14 <= litedramcontroller_multiplexer_endpoint0_payload_ba;
 		end
@@ -12108,16 +11556,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_152 <= dummy_s;
+	dummy_d_140 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_153;
+reg dummy_d_141;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed15 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd2_grant)
+	case (litedramcontroller_multiplexer_choose_req2_grant)
 		1'd0: begin
 			rhs_array_muxed15 <= litedramcontroller_multiplexer_endpoint0_payload_is_read;
 		end
@@ -12144,16 +11592,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_153 <= dummy_s;
+	dummy_d_141 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_154;
+reg dummy_d_142;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed16 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd2_grant)
+	case (litedramcontroller_multiplexer_choose_req2_grant)
 		1'd0: begin
 			rhs_array_muxed16 <= litedramcontroller_multiplexer_endpoint0_payload_is_write;
 		end
@@ -12180,16 +11628,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_154 <= dummy_s;
+	dummy_d_142 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_155;
+reg dummy_d_143;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed17 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd2_grant)
+	case (litedramcontroller_multiplexer_choose_req2_grant)
 		1'd0: begin
 			rhs_array_muxed17 <= litedramcontroller_multiplexer_endpoint0_payload_is_cmd;
 		end
@@ -12216,16 +11664,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_155 <= dummy_s;
+	dummy_d_143 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_156;
+reg dummy_d_144;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed6 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd2_grant)
+	case (litedramcontroller_multiplexer_choose_req2_grant)
 		1'd0: begin
 			t_array_muxed6 <= litedramcontroller_multiplexer_endpoint0_payload_cas;
 		end
@@ -12252,16 +11700,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_156 <= dummy_s;
+	dummy_d_144 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_157;
+reg dummy_d_145;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed7 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd2_grant)
+	case (litedramcontroller_multiplexer_choose_req2_grant)
 		1'd0: begin
 			t_array_muxed7 <= litedramcontroller_multiplexer_endpoint0_payload_ras;
 		end
@@ -12288,16 +11736,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_157 <= dummy_s;
+	dummy_d_145 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_158;
+reg dummy_d_146;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed8 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd2_grant)
+	case (litedramcontroller_multiplexer_choose_req2_grant)
 		1'd0: begin
 			t_array_muxed8 <= litedramcontroller_multiplexer_endpoint0_payload_we;
 		end
@@ -12324,52 +11772,52 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_158 <= dummy_s;
+	dummy_d_146 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_159;
+reg dummy_d_147;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed18 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd3_grant)
+	case (litedramcontroller_multiplexer_choose_req3_grant)
 		1'd0: begin
-			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_cmd3_valids[0];
+			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_req3_valids[0];
 		end
 		1'd1: begin
-			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_cmd3_valids[1];
+			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_req3_valids[1];
 		end
 		2'd2: begin
-			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_cmd3_valids[2];
+			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_req3_valids[2];
 		end
 		2'd3: begin
-			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_cmd3_valids[3];
+			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_req3_valids[3];
 		end
 		3'd4: begin
-			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_cmd3_valids[4];
+			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_req3_valids[4];
 		end
 		3'd5: begin
-			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_cmd3_valids[5];
+			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_req3_valids[5];
 		end
 		3'd6: begin
-			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_cmd3_valids[6];
+			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_req3_valids[6];
 		end
 		default: begin
-			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_cmd3_valids[7];
+			rhs_array_muxed18 <= litedramcontroller_multiplexer_choose_req3_valids[7];
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_159 <= dummy_s;
+	dummy_d_147 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_160;
+reg dummy_d_148;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed19 <= 14'd0;
-	case (litedramcontroller_multiplexer_choose_cmd3_grant)
+	case (litedramcontroller_multiplexer_choose_req3_grant)
 		1'd0: begin
 			rhs_array_muxed19 <= litedramcontroller_multiplexer_endpoint0_payload_a;
 		end
@@ -12396,16 +11844,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_160 <= dummy_s;
+	dummy_d_148 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_161;
+reg dummy_d_149;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed20 <= 3'd0;
-	case (litedramcontroller_multiplexer_choose_cmd3_grant)
+	case (litedramcontroller_multiplexer_choose_req3_grant)
 		1'd0: begin
 			rhs_array_muxed20 <= litedramcontroller_multiplexer_endpoint0_payload_ba;
 		end
@@ -12432,16 +11880,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_161 <= dummy_s;
+	dummy_d_149 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_162;
+reg dummy_d_150;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed21 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd3_grant)
+	case (litedramcontroller_multiplexer_choose_req3_grant)
 		1'd0: begin
 			rhs_array_muxed21 <= litedramcontroller_multiplexer_endpoint0_payload_is_read;
 		end
@@ -12468,16 +11916,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_162 <= dummy_s;
+	dummy_d_150 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_163;
+reg dummy_d_151;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed22 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd3_grant)
+	case (litedramcontroller_multiplexer_choose_req3_grant)
 		1'd0: begin
 			rhs_array_muxed22 <= litedramcontroller_multiplexer_endpoint0_payload_is_write;
 		end
@@ -12504,16 +11952,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_163 <= dummy_s;
+	dummy_d_151 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_164;
+reg dummy_d_152;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed23 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd3_grant)
+	case (litedramcontroller_multiplexer_choose_req3_grant)
 		1'd0: begin
 			rhs_array_muxed23 <= litedramcontroller_multiplexer_endpoint0_payload_is_cmd;
 		end
@@ -12540,16 +11988,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_164 <= dummy_s;
+	dummy_d_152 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_165;
+reg dummy_d_153;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed9 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd3_grant)
+	case (litedramcontroller_multiplexer_choose_req3_grant)
 		1'd0: begin
 			t_array_muxed9 <= litedramcontroller_multiplexer_endpoint0_payload_cas;
 		end
@@ -12576,16 +12024,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_165 <= dummy_s;
+	dummy_d_153 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_166;
+reg dummy_d_154;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed10 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd3_grant)
+	case (litedramcontroller_multiplexer_choose_req3_grant)
 		1'd0: begin
 			t_array_muxed10 <= litedramcontroller_multiplexer_endpoint0_payload_ras;
 		end
@@ -12612,16 +12060,16 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_166 <= dummy_s;
+	dummy_d_154 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_167;
+reg dummy_d_155;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed11 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_cmd3_grant)
+	case (litedramcontroller_multiplexer_choose_req3_grant)
 		1'd0: begin
 			t_array_muxed11 <= litedramcontroller_multiplexer_endpoint0_payload_we;
 		end
@@ -12648,6 +12096,186 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
+	dummy_d_155 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_156;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed24 <= 21'd0;
+	case (roundrobin0_grant)
+		default: begin
+			rhs_array_muxed24 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_156 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_157;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed25 <= 1'd0;
+	case (roundrobin0_grant)
+		default: begin
+			rhs_array_muxed25 <= cmd_payload_we;
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_157 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_158;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed26 <= 1'd0;
+	case (roundrobin0_grant)
+		default: begin
+			rhs_array_muxed26 <= (((cmd_payload_addr[9:7] == 1'd0) & (~(((((((locked0 | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_158 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_159;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed27 <= 21'd0;
+	case (roundrobin1_grant)
+		default: begin
+			rhs_array_muxed27 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_159 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_160;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed28 <= 1'd0;
+	case (roundrobin1_grant)
+		default: begin
+			rhs_array_muxed28 <= cmd_payload_we;
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_160 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_161;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed29 <= 1'd0;
+	case (roundrobin1_grant)
+		default: begin
+			rhs_array_muxed29 <= (((cmd_payload_addr[9:7] == 1'd1) & (~(((((((locked1 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_161 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_162;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed30 <= 21'd0;
+	case (roundrobin2_grant)
+		default: begin
+			rhs_array_muxed30 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_162 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_163;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed31 <= 1'd0;
+	case (roundrobin2_grant)
+		default: begin
+			rhs_array_muxed31 <= cmd_payload_we;
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_163 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_164;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed32 <= 1'd0;
+	case (roundrobin2_grant)
+		default: begin
+			rhs_array_muxed32 <= (((cmd_payload_addr[9:7] == 2'd2) & (~(((((((locked2 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_164 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_165;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed33 <= 21'd0;
+	case (roundrobin3_grant)
+		default: begin
+			rhs_array_muxed33 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_165 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_166;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed34 <= 1'd0;
+	case (roundrobin3_grant)
+		default: begin
+			rhs_array_muxed34 <= cmd_payload_we;
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_166 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_167;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed35 <= 1'd0;
+	case (roundrobin3_grant)
+		default: begin
+			rhs_array_muxed35 <= (((cmd_payload_addr[9:7] == 2'd3) & (~(((((((locked3 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+		end
+	endcase
+// synthesis translate_off
 	dummy_d_167 <= dummy_s;
 // synthesis translate_on
 end
@@ -12656,31 +12284,10 @@ end
 reg dummy_d_168;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed24 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req_grant)
-		1'd0: begin
-			rhs_array_muxed24 <= litedramcontroller_multiplexer_choose_req_valids[0];
-		end
-		1'd1: begin
-			rhs_array_muxed24 <= litedramcontroller_multiplexer_choose_req_valids[1];
-		end
-		2'd2: begin
-			rhs_array_muxed24 <= litedramcontroller_multiplexer_choose_req_valids[2];
-		end
-		2'd3: begin
-			rhs_array_muxed24 <= litedramcontroller_multiplexer_choose_req_valids[3];
-		end
-		3'd4: begin
-			rhs_array_muxed24 <= litedramcontroller_multiplexer_choose_req_valids[4];
-		end
-		3'd5: begin
-			rhs_array_muxed24 <= litedramcontroller_multiplexer_choose_req_valids[5];
-		end
-		3'd6: begin
-			rhs_array_muxed24 <= litedramcontroller_multiplexer_choose_req_valids[6];
-		end
+	rhs_array_muxed36 <= 21'd0;
+	case (roundrobin4_grant)
 		default: begin
-			rhs_array_muxed24 <= litedramcontroller_multiplexer_choose_req_valids[7];
+			rhs_array_muxed36 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -12692,31 +12299,10 @@ end
 reg dummy_d_169;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed25 <= 14'd0;
-	case (litedramcontroller_multiplexer_choose_req_grant)
-		1'd0: begin
-			rhs_array_muxed25 <= litedramcontroller_multiplexer_endpoint0_payload_a;
-		end
-		1'd1: begin
-			rhs_array_muxed25 <= litedramcontroller_multiplexer_endpoint1_payload_a;
-		end
-		2'd2: begin
-			rhs_array_muxed25 <= litedramcontroller_multiplexer_endpoint2_payload_a;
-		end
-		2'd3: begin
-			rhs_array_muxed25 <= litedramcontroller_multiplexer_endpoint3_payload_a;
-		end
-		3'd4: begin
-			rhs_array_muxed25 <= litedramcontroller_multiplexer_endpoint4_payload_a;
-		end
-		3'd5: begin
-			rhs_array_muxed25 <= litedramcontroller_multiplexer_endpoint5_payload_a;
-		end
-		3'd6: begin
-			rhs_array_muxed25 <= litedramcontroller_multiplexer_endpoint6_payload_a;
-		end
+	rhs_array_muxed37 <= 1'd0;
+	case (roundrobin4_grant)
 		default: begin
-			rhs_array_muxed25 <= litedramcontroller_multiplexer_endpoint7_payload_a;
+			rhs_array_muxed37 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -12728,31 +12314,10 @@ end
 reg dummy_d_170;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed26 <= 3'd0;
-	case (litedramcontroller_multiplexer_choose_req_grant)
-		1'd0: begin
-			rhs_array_muxed26 <= litedramcontroller_multiplexer_endpoint0_payload_ba;
-		end
-		1'd1: begin
-			rhs_array_muxed26 <= litedramcontroller_multiplexer_endpoint1_payload_ba;
-		end
-		2'd2: begin
-			rhs_array_muxed26 <= litedramcontroller_multiplexer_endpoint2_payload_ba;
-		end
-		2'd3: begin
-			rhs_array_muxed26 <= litedramcontroller_multiplexer_endpoint3_payload_ba;
-		end
-		3'd4: begin
-			rhs_array_muxed26 <= litedramcontroller_multiplexer_endpoint4_payload_ba;
-		end
-		3'd5: begin
-			rhs_array_muxed26 <= litedramcontroller_multiplexer_endpoint5_payload_ba;
-		end
-		3'd6: begin
-			rhs_array_muxed26 <= litedramcontroller_multiplexer_endpoint6_payload_ba;
-		end
+	rhs_array_muxed38 <= 1'd0;
+	case (roundrobin4_grant)
 		default: begin
-			rhs_array_muxed26 <= litedramcontroller_multiplexer_endpoint7_payload_ba;
+			rhs_array_muxed38 <= (((cmd_payload_addr[9:7] == 3'd4) & (~(((((((locked4 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -12764,31 +12329,10 @@ end
 reg dummy_d_171;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed27 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req_grant)
-		1'd0: begin
-			rhs_array_muxed27 <= litedramcontroller_multiplexer_endpoint0_payload_is_read;
-		end
-		1'd1: begin
-			rhs_array_muxed27 <= litedramcontroller_multiplexer_endpoint1_payload_is_read;
-		end
-		2'd2: begin
-			rhs_array_muxed27 <= litedramcontroller_multiplexer_endpoint2_payload_is_read;
-		end
-		2'd3: begin
-			rhs_array_muxed27 <= litedramcontroller_multiplexer_endpoint3_payload_is_read;
-		end
-		3'd4: begin
-			rhs_array_muxed27 <= litedramcontroller_multiplexer_endpoint4_payload_is_read;
-		end
-		3'd5: begin
-			rhs_array_muxed27 <= litedramcontroller_multiplexer_endpoint5_payload_is_read;
-		end
-		3'd6: begin
-			rhs_array_muxed27 <= litedramcontroller_multiplexer_endpoint6_payload_is_read;
-		end
+	rhs_array_muxed39 <= 21'd0;
+	case (roundrobin5_grant)
 		default: begin
-			rhs_array_muxed27 <= litedramcontroller_multiplexer_endpoint7_payload_is_read;
+			rhs_array_muxed39 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -12800,31 +12344,10 @@ end
 reg dummy_d_172;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed28 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req_grant)
-		1'd0: begin
-			rhs_array_muxed28 <= litedramcontroller_multiplexer_endpoint0_payload_is_write;
-		end
-		1'd1: begin
-			rhs_array_muxed28 <= litedramcontroller_multiplexer_endpoint1_payload_is_write;
-		end
-		2'd2: begin
-			rhs_array_muxed28 <= litedramcontroller_multiplexer_endpoint2_payload_is_write;
-		end
-		2'd3: begin
-			rhs_array_muxed28 <= litedramcontroller_multiplexer_endpoint3_payload_is_write;
-		end
-		3'd4: begin
-			rhs_array_muxed28 <= litedramcontroller_multiplexer_endpoint4_payload_is_write;
-		end
-		3'd5: begin
-			rhs_array_muxed28 <= litedramcontroller_multiplexer_endpoint5_payload_is_write;
-		end
-		3'd6: begin
-			rhs_array_muxed28 <= litedramcontroller_multiplexer_endpoint6_payload_is_write;
-		end
+	rhs_array_muxed40 <= 1'd0;
+	case (roundrobin5_grant)
 		default: begin
-			rhs_array_muxed28 <= litedramcontroller_multiplexer_endpoint7_payload_is_write;
+			rhs_array_muxed40 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -12836,31 +12359,10 @@ end
 reg dummy_d_173;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed29 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req_grant)
-		1'd0: begin
-			rhs_array_muxed29 <= litedramcontroller_multiplexer_endpoint0_payload_is_cmd;
-		end
-		1'd1: begin
-			rhs_array_muxed29 <= litedramcontroller_multiplexer_endpoint1_payload_is_cmd;
-		end
-		2'd2: begin
-			rhs_array_muxed29 <= litedramcontroller_multiplexer_endpoint2_payload_is_cmd;
-		end
-		2'd3: begin
-			rhs_array_muxed29 <= litedramcontroller_multiplexer_endpoint3_payload_is_cmd;
-		end
-		3'd4: begin
-			rhs_array_muxed29 <= litedramcontroller_multiplexer_endpoint4_payload_is_cmd;
-		end
-		3'd5: begin
-			rhs_array_muxed29 <= litedramcontroller_multiplexer_endpoint5_payload_is_cmd;
-		end
-		3'd6: begin
-			rhs_array_muxed29 <= litedramcontroller_multiplexer_endpoint6_payload_is_cmd;
-		end
+	rhs_array_muxed41 <= 1'd0;
+	case (roundrobin5_grant)
 		default: begin
-			rhs_array_muxed29 <= litedramcontroller_multiplexer_endpoint7_payload_is_cmd;
+			rhs_array_muxed41 <= (((cmd_payload_addr[9:7] == 3'd5) & (~(((((((locked5 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -12872,31 +12374,10 @@ end
 reg dummy_d_174;
 // synthesis translate_on
 always @(*) begin
-	t_array_muxed12 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req_grant)
-		1'd0: begin
-			t_array_muxed12 <= litedramcontroller_multiplexer_endpoint0_payload_cas;
-		end
-		1'd1: begin
-			t_array_muxed12 <= litedramcontroller_multiplexer_endpoint1_payload_cas;
-		end
-		2'd2: begin
-			t_array_muxed12 <= litedramcontroller_multiplexer_endpoint2_payload_cas;
-		end
-		2'd3: begin
-			t_array_muxed12 <= litedramcontroller_multiplexer_endpoint3_payload_cas;
-		end
-		3'd4: begin
-			t_array_muxed12 <= litedramcontroller_multiplexer_endpoint4_payload_cas;
-		end
-		3'd5: begin
-			t_array_muxed12 <= litedramcontroller_multiplexer_endpoint5_payload_cas;
-		end
-		3'd6: begin
-			t_array_muxed12 <= litedramcontroller_multiplexer_endpoint6_payload_cas;
-		end
+	rhs_array_muxed42 <= 21'd0;
+	case (roundrobin6_grant)
 		default: begin
-			t_array_muxed12 <= litedramcontroller_multiplexer_endpoint7_payload_cas;
+			rhs_array_muxed42 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -12908,31 +12389,10 @@ end
 reg dummy_d_175;
 // synthesis translate_on
 always @(*) begin
-	t_array_muxed13 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req_grant)
-		1'd0: begin
-			t_array_muxed13 <= litedramcontroller_multiplexer_endpoint0_payload_ras;
-		end
-		1'd1: begin
-			t_array_muxed13 <= litedramcontroller_multiplexer_endpoint1_payload_ras;
-		end
-		2'd2: begin
-			t_array_muxed13 <= litedramcontroller_multiplexer_endpoint2_payload_ras;
-		end
-		2'd3: begin
-			t_array_muxed13 <= litedramcontroller_multiplexer_endpoint3_payload_ras;
-		end
-		3'd4: begin
-			t_array_muxed13 <= litedramcontroller_multiplexer_endpoint4_payload_ras;
-		end
-		3'd5: begin
-			t_array_muxed13 <= litedramcontroller_multiplexer_endpoint5_payload_ras;
-		end
-		3'd6: begin
-			t_array_muxed13 <= litedramcontroller_multiplexer_endpoint6_payload_ras;
-		end
+	rhs_array_muxed43 <= 1'd0;
+	case (roundrobin6_grant)
 		default: begin
-			t_array_muxed13 <= litedramcontroller_multiplexer_endpoint7_payload_ras;
+			rhs_array_muxed43 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -12944,31 +12404,10 @@ end
 reg dummy_d_176;
 // synthesis translate_on
 always @(*) begin
-	t_array_muxed14 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req_grant)
-		1'd0: begin
-			t_array_muxed14 <= litedramcontroller_multiplexer_endpoint0_payload_we;
-		end
-		1'd1: begin
-			t_array_muxed14 <= litedramcontroller_multiplexer_endpoint1_payload_we;
-		end
-		2'd2: begin
-			t_array_muxed14 <= litedramcontroller_multiplexer_endpoint2_payload_we;
-		end
-		2'd3: begin
-			t_array_muxed14 <= litedramcontroller_multiplexer_endpoint3_payload_we;
-		end
-		3'd4: begin
-			t_array_muxed14 <= litedramcontroller_multiplexer_endpoint4_payload_we;
-		end
-		3'd5: begin
-			t_array_muxed14 <= litedramcontroller_multiplexer_endpoint5_payload_we;
-		end
-		3'd6: begin
-			t_array_muxed14 <= litedramcontroller_multiplexer_endpoint6_payload_we;
-		end
+	rhs_array_muxed44 <= 1'd0;
+	case (roundrobin6_grant)
 		default: begin
-			t_array_muxed14 <= litedramcontroller_multiplexer_endpoint7_payload_we;
+			rhs_array_muxed44 <= (((cmd_payload_addr[9:7] == 3'd6) & (~(((((((locked6 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -12980,31 +12419,10 @@ end
 reg dummy_d_177;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed30 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req2_grant)
-		1'd0: begin
-			rhs_array_muxed30 <= litedramcontroller_multiplexer_choose_req2_valids[0];
-		end
-		1'd1: begin
-			rhs_array_muxed30 <= litedramcontroller_multiplexer_choose_req2_valids[1];
-		end
-		2'd2: begin
-			rhs_array_muxed30 <= litedramcontroller_multiplexer_choose_req2_valids[2];
-		end
-		2'd3: begin
-			rhs_array_muxed30 <= litedramcontroller_multiplexer_choose_req2_valids[3];
-		end
-		3'd4: begin
-			rhs_array_muxed30 <= litedramcontroller_multiplexer_choose_req2_valids[4];
-		end
-		3'd5: begin
-			rhs_array_muxed30 <= litedramcontroller_multiplexer_choose_req2_valids[5];
-		end
-		3'd6: begin
-			rhs_array_muxed30 <= litedramcontroller_multiplexer_choose_req2_valids[6];
-		end
+	rhs_array_muxed45 <= 21'd0;
+	case (roundrobin7_grant)
 		default: begin
-			rhs_array_muxed30 <= litedramcontroller_multiplexer_choose_req2_valids[7];
+			rhs_array_muxed45 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -13016,31 +12434,10 @@ end
 reg dummy_d_178;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed31 <= 14'd0;
-	case (litedramcontroller_multiplexer_choose_req2_grant)
-		1'd0: begin
-			rhs_array_muxed31 <= litedramcontroller_multiplexer_endpoint0_payload_a;
-		end
-		1'd1: begin
-			rhs_array_muxed31 <= litedramcontroller_multiplexer_endpoint1_payload_a;
-		end
-		2'd2: begin
-			rhs_array_muxed31 <= litedramcontroller_multiplexer_endpoint2_payload_a;
-		end
-		2'd3: begin
-			rhs_array_muxed31 <= litedramcontroller_multiplexer_endpoint3_payload_a;
-		end
-		3'd4: begin
-			rhs_array_muxed31 <= litedramcontroller_multiplexer_endpoint4_payload_a;
-		end
-		3'd5: begin
-			rhs_array_muxed31 <= litedramcontroller_multiplexer_endpoint5_payload_a;
-		end
-		3'd6: begin
-			rhs_array_muxed31 <= litedramcontroller_multiplexer_endpoint6_payload_a;
-		end
+	rhs_array_muxed46 <= 1'd0;
+	case (roundrobin7_grant)
 		default: begin
-			rhs_array_muxed31 <= litedramcontroller_multiplexer_endpoint7_payload_a;
+			rhs_array_muxed46 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -13052,31 +12449,10 @@ end
 reg dummy_d_179;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed32 <= 3'd0;
-	case (litedramcontroller_multiplexer_choose_req2_grant)
-		1'd0: begin
-			rhs_array_muxed32 <= litedramcontroller_multiplexer_endpoint0_payload_ba;
-		end
-		1'd1: begin
-			rhs_array_muxed32 <= litedramcontroller_multiplexer_endpoint1_payload_ba;
-		end
-		2'd2: begin
-			rhs_array_muxed32 <= litedramcontroller_multiplexer_endpoint2_payload_ba;
-		end
-		2'd3: begin
-			rhs_array_muxed32 <= litedramcontroller_multiplexer_endpoint3_payload_ba;
-		end
-		3'd4: begin
-			rhs_array_muxed32 <= litedramcontroller_multiplexer_endpoint4_payload_ba;
-		end
-		3'd5: begin
-			rhs_array_muxed32 <= litedramcontroller_multiplexer_endpoint5_payload_ba;
-		end
-		3'd6: begin
-			rhs_array_muxed32 <= litedramcontroller_multiplexer_endpoint6_payload_ba;
-		end
+	rhs_array_muxed47 <= 1'd0;
+	case (roundrobin7_grant)
 		default: begin
-			rhs_array_muxed32 <= litedramcontroller_multiplexer_endpoint7_payload_ba;
+			rhs_array_muxed47 <= (((cmd_payload_addr[9:7] == 3'd7) & (~(((((((locked7 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -13086,906 +12462,6 @@ end
 
 // synthesis translate_off
 reg dummy_d_180;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed33 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req2_grant)
-		1'd0: begin
-			rhs_array_muxed33 <= litedramcontroller_multiplexer_endpoint0_payload_is_read;
-		end
-		1'd1: begin
-			rhs_array_muxed33 <= litedramcontroller_multiplexer_endpoint1_payload_is_read;
-		end
-		2'd2: begin
-			rhs_array_muxed33 <= litedramcontroller_multiplexer_endpoint2_payload_is_read;
-		end
-		2'd3: begin
-			rhs_array_muxed33 <= litedramcontroller_multiplexer_endpoint3_payload_is_read;
-		end
-		3'd4: begin
-			rhs_array_muxed33 <= litedramcontroller_multiplexer_endpoint4_payload_is_read;
-		end
-		3'd5: begin
-			rhs_array_muxed33 <= litedramcontroller_multiplexer_endpoint5_payload_is_read;
-		end
-		3'd6: begin
-			rhs_array_muxed33 <= litedramcontroller_multiplexer_endpoint6_payload_is_read;
-		end
-		default: begin
-			rhs_array_muxed33 <= litedramcontroller_multiplexer_endpoint7_payload_is_read;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_180 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_181;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed34 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req2_grant)
-		1'd0: begin
-			rhs_array_muxed34 <= litedramcontroller_multiplexer_endpoint0_payload_is_write;
-		end
-		1'd1: begin
-			rhs_array_muxed34 <= litedramcontroller_multiplexer_endpoint1_payload_is_write;
-		end
-		2'd2: begin
-			rhs_array_muxed34 <= litedramcontroller_multiplexer_endpoint2_payload_is_write;
-		end
-		2'd3: begin
-			rhs_array_muxed34 <= litedramcontroller_multiplexer_endpoint3_payload_is_write;
-		end
-		3'd4: begin
-			rhs_array_muxed34 <= litedramcontroller_multiplexer_endpoint4_payload_is_write;
-		end
-		3'd5: begin
-			rhs_array_muxed34 <= litedramcontroller_multiplexer_endpoint5_payload_is_write;
-		end
-		3'd6: begin
-			rhs_array_muxed34 <= litedramcontroller_multiplexer_endpoint6_payload_is_write;
-		end
-		default: begin
-			rhs_array_muxed34 <= litedramcontroller_multiplexer_endpoint7_payload_is_write;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_181 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_182;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed35 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req2_grant)
-		1'd0: begin
-			rhs_array_muxed35 <= litedramcontroller_multiplexer_endpoint0_payload_is_cmd;
-		end
-		1'd1: begin
-			rhs_array_muxed35 <= litedramcontroller_multiplexer_endpoint1_payload_is_cmd;
-		end
-		2'd2: begin
-			rhs_array_muxed35 <= litedramcontroller_multiplexer_endpoint2_payload_is_cmd;
-		end
-		2'd3: begin
-			rhs_array_muxed35 <= litedramcontroller_multiplexer_endpoint3_payload_is_cmd;
-		end
-		3'd4: begin
-			rhs_array_muxed35 <= litedramcontroller_multiplexer_endpoint4_payload_is_cmd;
-		end
-		3'd5: begin
-			rhs_array_muxed35 <= litedramcontroller_multiplexer_endpoint5_payload_is_cmd;
-		end
-		3'd6: begin
-			rhs_array_muxed35 <= litedramcontroller_multiplexer_endpoint6_payload_is_cmd;
-		end
-		default: begin
-			rhs_array_muxed35 <= litedramcontroller_multiplexer_endpoint7_payload_is_cmd;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_182 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_183;
-// synthesis translate_on
-always @(*) begin
-	t_array_muxed15 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req2_grant)
-		1'd0: begin
-			t_array_muxed15 <= litedramcontroller_multiplexer_endpoint0_payload_cas;
-		end
-		1'd1: begin
-			t_array_muxed15 <= litedramcontroller_multiplexer_endpoint1_payload_cas;
-		end
-		2'd2: begin
-			t_array_muxed15 <= litedramcontroller_multiplexer_endpoint2_payload_cas;
-		end
-		2'd3: begin
-			t_array_muxed15 <= litedramcontroller_multiplexer_endpoint3_payload_cas;
-		end
-		3'd4: begin
-			t_array_muxed15 <= litedramcontroller_multiplexer_endpoint4_payload_cas;
-		end
-		3'd5: begin
-			t_array_muxed15 <= litedramcontroller_multiplexer_endpoint5_payload_cas;
-		end
-		3'd6: begin
-			t_array_muxed15 <= litedramcontroller_multiplexer_endpoint6_payload_cas;
-		end
-		default: begin
-			t_array_muxed15 <= litedramcontroller_multiplexer_endpoint7_payload_cas;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_183 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_184;
-// synthesis translate_on
-always @(*) begin
-	t_array_muxed16 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req2_grant)
-		1'd0: begin
-			t_array_muxed16 <= litedramcontroller_multiplexer_endpoint0_payload_ras;
-		end
-		1'd1: begin
-			t_array_muxed16 <= litedramcontroller_multiplexer_endpoint1_payload_ras;
-		end
-		2'd2: begin
-			t_array_muxed16 <= litedramcontroller_multiplexer_endpoint2_payload_ras;
-		end
-		2'd3: begin
-			t_array_muxed16 <= litedramcontroller_multiplexer_endpoint3_payload_ras;
-		end
-		3'd4: begin
-			t_array_muxed16 <= litedramcontroller_multiplexer_endpoint4_payload_ras;
-		end
-		3'd5: begin
-			t_array_muxed16 <= litedramcontroller_multiplexer_endpoint5_payload_ras;
-		end
-		3'd6: begin
-			t_array_muxed16 <= litedramcontroller_multiplexer_endpoint6_payload_ras;
-		end
-		default: begin
-			t_array_muxed16 <= litedramcontroller_multiplexer_endpoint7_payload_ras;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_184 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_185;
-// synthesis translate_on
-always @(*) begin
-	t_array_muxed17 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req2_grant)
-		1'd0: begin
-			t_array_muxed17 <= litedramcontroller_multiplexer_endpoint0_payload_we;
-		end
-		1'd1: begin
-			t_array_muxed17 <= litedramcontroller_multiplexer_endpoint1_payload_we;
-		end
-		2'd2: begin
-			t_array_muxed17 <= litedramcontroller_multiplexer_endpoint2_payload_we;
-		end
-		2'd3: begin
-			t_array_muxed17 <= litedramcontroller_multiplexer_endpoint3_payload_we;
-		end
-		3'd4: begin
-			t_array_muxed17 <= litedramcontroller_multiplexer_endpoint4_payload_we;
-		end
-		3'd5: begin
-			t_array_muxed17 <= litedramcontroller_multiplexer_endpoint5_payload_we;
-		end
-		3'd6: begin
-			t_array_muxed17 <= litedramcontroller_multiplexer_endpoint6_payload_we;
-		end
-		default: begin
-			t_array_muxed17 <= litedramcontroller_multiplexer_endpoint7_payload_we;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_185 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_186;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed36 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req3_grant)
-		1'd0: begin
-			rhs_array_muxed36 <= litedramcontroller_multiplexer_choose_req3_valids[0];
-		end
-		1'd1: begin
-			rhs_array_muxed36 <= litedramcontroller_multiplexer_choose_req3_valids[1];
-		end
-		2'd2: begin
-			rhs_array_muxed36 <= litedramcontroller_multiplexer_choose_req3_valids[2];
-		end
-		2'd3: begin
-			rhs_array_muxed36 <= litedramcontroller_multiplexer_choose_req3_valids[3];
-		end
-		3'd4: begin
-			rhs_array_muxed36 <= litedramcontroller_multiplexer_choose_req3_valids[4];
-		end
-		3'd5: begin
-			rhs_array_muxed36 <= litedramcontroller_multiplexer_choose_req3_valids[5];
-		end
-		3'd6: begin
-			rhs_array_muxed36 <= litedramcontroller_multiplexer_choose_req3_valids[6];
-		end
-		default: begin
-			rhs_array_muxed36 <= litedramcontroller_multiplexer_choose_req3_valids[7];
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_186 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_187;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed37 <= 14'd0;
-	case (litedramcontroller_multiplexer_choose_req3_grant)
-		1'd0: begin
-			rhs_array_muxed37 <= litedramcontroller_multiplexer_endpoint0_payload_a;
-		end
-		1'd1: begin
-			rhs_array_muxed37 <= litedramcontroller_multiplexer_endpoint1_payload_a;
-		end
-		2'd2: begin
-			rhs_array_muxed37 <= litedramcontroller_multiplexer_endpoint2_payload_a;
-		end
-		2'd3: begin
-			rhs_array_muxed37 <= litedramcontroller_multiplexer_endpoint3_payload_a;
-		end
-		3'd4: begin
-			rhs_array_muxed37 <= litedramcontroller_multiplexer_endpoint4_payload_a;
-		end
-		3'd5: begin
-			rhs_array_muxed37 <= litedramcontroller_multiplexer_endpoint5_payload_a;
-		end
-		3'd6: begin
-			rhs_array_muxed37 <= litedramcontroller_multiplexer_endpoint6_payload_a;
-		end
-		default: begin
-			rhs_array_muxed37 <= litedramcontroller_multiplexer_endpoint7_payload_a;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_187 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_188;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed38 <= 3'd0;
-	case (litedramcontroller_multiplexer_choose_req3_grant)
-		1'd0: begin
-			rhs_array_muxed38 <= litedramcontroller_multiplexer_endpoint0_payload_ba;
-		end
-		1'd1: begin
-			rhs_array_muxed38 <= litedramcontroller_multiplexer_endpoint1_payload_ba;
-		end
-		2'd2: begin
-			rhs_array_muxed38 <= litedramcontroller_multiplexer_endpoint2_payload_ba;
-		end
-		2'd3: begin
-			rhs_array_muxed38 <= litedramcontroller_multiplexer_endpoint3_payload_ba;
-		end
-		3'd4: begin
-			rhs_array_muxed38 <= litedramcontroller_multiplexer_endpoint4_payload_ba;
-		end
-		3'd5: begin
-			rhs_array_muxed38 <= litedramcontroller_multiplexer_endpoint5_payload_ba;
-		end
-		3'd6: begin
-			rhs_array_muxed38 <= litedramcontroller_multiplexer_endpoint6_payload_ba;
-		end
-		default: begin
-			rhs_array_muxed38 <= litedramcontroller_multiplexer_endpoint7_payload_ba;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_188 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_189;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed39 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req3_grant)
-		1'd0: begin
-			rhs_array_muxed39 <= litedramcontroller_multiplexer_endpoint0_payload_is_read;
-		end
-		1'd1: begin
-			rhs_array_muxed39 <= litedramcontroller_multiplexer_endpoint1_payload_is_read;
-		end
-		2'd2: begin
-			rhs_array_muxed39 <= litedramcontroller_multiplexer_endpoint2_payload_is_read;
-		end
-		2'd3: begin
-			rhs_array_muxed39 <= litedramcontroller_multiplexer_endpoint3_payload_is_read;
-		end
-		3'd4: begin
-			rhs_array_muxed39 <= litedramcontroller_multiplexer_endpoint4_payload_is_read;
-		end
-		3'd5: begin
-			rhs_array_muxed39 <= litedramcontroller_multiplexer_endpoint5_payload_is_read;
-		end
-		3'd6: begin
-			rhs_array_muxed39 <= litedramcontroller_multiplexer_endpoint6_payload_is_read;
-		end
-		default: begin
-			rhs_array_muxed39 <= litedramcontroller_multiplexer_endpoint7_payload_is_read;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_189 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_190;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed40 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req3_grant)
-		1'd0: begin
-			rhs_array_muxed40 <= litedramcontroller_multiplexer_endpoint0_payload_is_write;
-		end
-		1'd1: begin
-			rhs_array_muxed40 <= litedramcontroller_multiplexer_endpoint1_payload_is_write;
-		end
-		2'd2: begin
-			rhs_array_muxed40 <= litedramcontroller_multiplexer_endpoint2_payload_is_write;
-		end
-		2'd3: begin
-			rhs_array_muxed40 <= litedramcontroller_multiplexer_endpoint3_payload_is_write;
-		end
-		3'd4: begin
-			rhs_array_muxed40 <= litedramcontroller_multiplexer_endpoint4_payload_is_write;
-		end
-		3'd5: begin
-			rhs_array_muxed40 <= litedramcontroller_multiplexer_endpoint5_payload_is_write;
-		end
-		3'd6: begin
-			rhs_array_muxed40 <= litedramcontroller_multiplexer_endpoint6_payload_is_write;
-		end
-		default: begin
-			rhs_array_muxed40 <= litedramcontroller_multiplexer_endpoint7_payload_is_write;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_190 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_191;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed41 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req3_grant)
-		1'd0: begin
-			rhs_array_muxed41 <= litedramcontroller_multiplexer_endpoint0_payload_is_cmd;
-		end
-		1'd1: begin
-			rhs_array_muxed41 <= litedramcontroller_multiplexer_endpoint1_payload_is_cmd;
-		end
-		2'd2: begin
-			rhs_array_muxed41 <= litedramcontroller_multiplexer_endpoint2_payload_is_cmd;
-		end
-		2'd3: begin
-			rhs_array_muxed41 <= litedramcontroller_multiplexer_endpoint3_payload_is_cmd;
-		end
-		3'd4: begin
-			rhs_array_muxed41 <= litedramcontroller_multiplexer_endpoint4_payload_is_cmd;
-		end
-		3'd5: begin
-			rhs_array_muxed41 <= litedramcontroller_multiplexer_endpoint5_payload_is_cmd;
-		end
-		3'd6: begin
-			rhs_array_muxed41 <= litedramcontroller_multiplexer_endpoint6_payload_is_cmd;
-		end
-		default: begin
-			rhs_array_muxed41 <= litedramcontroller_multiplexer_endpoint7_payload_is_cmd;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_191 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_192;
-// synthesis translate_on
-always @(*) begin
-	t_array_muxed18 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req3_grant)
-		1'd0: begin
-			t_array_muxed18 <= litedramcontroller_multiplexer_endpoint0_payload_cas;
-		end
-		1'd1: begin
-			t_array_muxed18 <= litedramcontroller_multiplexer_endpoint1_payload_cas;
-		end
-		2'd2: begin
-			t_array_muxed18 <= litedramcontroller_multiplexer_endpoint2_payload_cas;
-		end
-		2'd3: begin
-			t_array_muxed18 <= litedramcontroller_multiplexer_endpoint3_payload_cas;
-		end
-		3'd4: begin
-			t_array_muxed18 <= litedramcontroller_multiplexer_endpoint4_payload_cas;
-		end
-		3'd5: begin
-			t_array_muxed18 <= litedramcontroller_multiplexer_endpoint5_payload_cas;
-		end
-		3'd6: begin
-			t_array_muxed18 <= litedramcontroller_multiplexer_endpoint6_payload_cas;
-		end
-		default: begin
-			t_array_muxed18 <= litedramcontroller_multiplexer_endpoint7_payload_cas;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_192 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_193;
-// synthesis translate_on
-always @(*) begin
-	t_array_muxed19 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req3_grant)
-		1'd0: begin
-			t_array_muxed19 <= litedramcontroller_multiplexer_endpoint0_payload_ras;
-		end
-		1'd1: begin
-			t_array_muxed19 <= litedramcontroller_multiplexer_endpoint1_payload_ras;
-		end
-		2'd2: begin
-			t_array_muxed19 <= litedramcontroller_multiplexer_endpoint2_payload_ras;
-		end
-		2'd3: begin
-			t_array_muxed19 <= litedramcontroller_multiplexer_endpoint3_payload_ras;
-		end
-		3'd4: begin
-			t_array_muxed19 <= litedramcontroller_multiplexer_endpoint4_payload_ras;
-		end
-		3'd5: begin
-			t_array_muxed19 <= litedramcontroller_multiplexer_endpoint5_payload_ras;
-		end
-		3'd6: begin
-			t_array_muxed19 <= litedramcontroller_multiplexer_endpoint6_payload_ras;
-		end
-		default: begin
-			t_array_muxed19 <= litedramcontroller_multiplexer_endpoint7_payload_ras;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_193 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_194;
-// synthesis translate_on
-always @(*) begin
-	t_array_muxed20 <= 1'd0;
-	case (litedramcontroller_multiplexer_choose_req3_grant)
-		1'd0: begin
-			t_array_muxed20 <= litedramcontroller_multiplexer_endpoint0_payload_we;
-		end
-		1'd1: begin
-			t_array_muxed20 <= litedramcontroller_multiplexer_endpoint1_payload_we;
-		end
-		2'd2: begin
-			t_array_muxed20 <= litedramcontroller_multiplexer_endpoint2_payload_we;
-		end
-		2'd3: begin
-			t_array_muxed20 <= litedramcontroller_multiplexer_endpoint3_payload_we;
-		end
-		3'd4: begin
-			t_array_muxed20 <= litedramcontroller_multiplexer_endpoint4_payload_we;
-		end
-		3'd5: begin
-			t_array_muxed20 <= litedramcontroller_multiplexer_endpoint5_payload_we;
-		end
-		3'd6: begin
-			t_array_muxed20 <= litedramcontroller_multiplexer_endpoint6_payload_we;
-		end
-		default: begin
-			t_array_muxed20 <= litedramcontroller_multiplexer_endpoint7_payload_we;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_194 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_195;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed42 <= 21'd0;
-	case (roundrobin0_grant)
-		default: begin
-			rhs_array_muxed42 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_195 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_196;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed43 <= 1'd0;
-	case (roundrobin0_grant)
-		default: begin
-			rhs_array_muxed43 <= cmd_payload_we;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_196 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_197;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed44 <= 1'd0;
-	case (roundrobin0_grant)
-		default: begin
-			rhs_array_muxed44 <= (((cmd_payload_addr[9:7] == 1'd0) & (~(((((((locked0 | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_197 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_198;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed45 <= 21'd0;
-	case (roundrobin1_grant)
-		default: begin
-			rhs_array_muxed45 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_198 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_199;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed46 <= 1'd0;
-	case (roundrobin1_grant)
-		default: begin
-			rhs_array_muxed46 <= cmd_payload_we;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_199 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_200;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed47 <= 1'd0;
-	case (roundrobin1_grant)
-		default: begin
-			rhs_array_muxed47 <= (((cmd_payload_addr[9:7] == 1'd1) & (~(((((((locked1 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_200 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_201;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed48 <= 21'd0;
-	case (roundrobin2_grant)
-		default: begin
-			rhs_array_muxed48 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_201 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_202;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed49 <= 1'd0;
-	case (roundrobin2_grant)
-		default: begin
-			rhs_array_muxed49 <= cmd_payload_we;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_202 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_203;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed50 <= 1'd0;
-	case (roundrobin2_grant)
-		default: begin
-			rhs_array_muxed50 <= (((cmd_payload_addr[9:7] == 2'd2) & (~(((((((locked2 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_203 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_204;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed51 <= 21'd0;
-	case (roundrobin3_grant)
-		default: begin
-			rhs_array_muxed51 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_204 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_205;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed52 <= 1'd0;
-	case (roundrobin3_grant)
-		default: begin
-			rhs_array_muxed52 <= cmd_payload_we;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_205 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_206;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed53 <= 1'd0;
-	case (roundrobin3_grant)
-		default: begin
-			rhs_array_muxed53 <= (((cmd_payload_addr[9:7] == 2'd3) & (~(((((((locked3 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_206 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_207;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed54 <= 21'd0;
-	case (roundrobin4_grant)
-		default: begin
-			rhs_array_muxed54 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_207 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_208;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed55 <= 1'd0;
-	case (roundrobin4_grant)
-		default: begin
-			rhs_array_muxed55 <= cmd_payload_we;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_208 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_209;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed56 <= 1'd0;
-	case (roundrobin4_grant)
-		default: begin
-			rhs_array_muxed56 <= (((cmd_payload_addr[9:7] == 3'd4) & (~(((((((locked4 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_209 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_210;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed57 <= 21'd0;
-	case (roundrobin5_grant)
-		default: begin
-			rhs_array_muxed57 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_210 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_211;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed58 <= 1'd0;
-	case (roundrobin5_grant)
-		default: begin
-			rhs_array_muxed58 <= cmd_payload_we;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_211 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_212;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed59 <= 1'd0;
-	case (roundrobin5_grant)
-		default: begin
-			rhs_array_muxed59 <= (((cmd_payload_addr[9:7] == 3'd5) & (~(((((((locked5 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_212 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_213;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed60 <= 21'd0;
-	case (roundrobin6_grant)
-		default: begin
-			rhs_array_muxed60 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_213 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_214;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed61 <= 1'd0;
-	case (roundrobin6_grant)
-		default: begin
-			rhs_array_muxed61 <= cmd_payload_we;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_214 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_215;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed62 <= 1'd0;
-	case (roundrobin6_grant)
-		default: begin
-			rhs_array_muxed62 <= (((cmd_payload_addr[9:7] == 3'd6) & (~(((((((locked6 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_215 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_216;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed63 <= 21'd0;
-	case (roundrobin7_grant)
-		default: begin
-			rhs_array_muxed63 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_216 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_217;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed64 <= 1'd0;
-	case (roundrobin7_grant)
-		default: begin
-			rhs_array_muxed64 <= cmd_payload_we;
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_217 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_218;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed65 <= 1'd0;
-	case (roundrobin7_grant)
-		default: begin
-			rhs_array_muxed65 <= (((cmd_payload_addr[9:7] == 3'd7) & (~(((((((locked7 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))))) & cmd_valid);
-		end
-	endcase
-// synthesis translate_off
-	dummy_d_218 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_219;
 // synthesis translate_on
 always @(*) begin
 	array_muxed0 <= 3'd0;
@@ -14004,12 +12480,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_219 <= dummy_s;
+	dummy_d_180 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_220;
+reg dummy_d_181;
 // synthesis translate_on
 always @(*) begin
 	array_muxed1 <= 14'd0;
@@ -14028,12 +12504,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_220 <= dummy_s;
+	dummy_d_181 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_221;
+reg dummy_d_182;
 // synthesis translate_on
 always @(*) begin
 	array_muxed2 <= 1'd0;
@@ -14052,12 +12528,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_221 <= dummy_s;
+	dummy_d_182 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_222;
+reg dummy_d_183;
 // synthesis translate_on
 always @(*) begin
 	array_muxed3 <= 1'd0;
@@ -14076,12 +12552,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_222 <= dummy_s;
+	dummy_d_183 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_223;
+reg dummy_d_184;
 // synthesis translate_on
 always @(*) begin
 	array_muxed4 <= 1'd0;
@@ -14100,12 +12576,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_223 <= dummy_s;
+	dummy_d_184 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_224;
+reg dummy_d_185;
 // synthesis translate_on
 always @(*) begin
 	array_muxed5 <= 1'd0;
@@ -14124,12 +12600,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_224 <= dummy_s;
+	dummy_d_185 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_225;
+reg dummy_d_186;
 // synthesis translate_on
 always @(*) begin
 	array_muxed6 <= 1'd0;
@@ -14148,12 +12624,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_225 <= dummy_s;
+	dummy_d_186 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_226;
+reg dummy_d_187;
 // synthesis translate_on
 always @(*) begin
 	array_muxed7 <= 3'd0;
@@ -14172,12 +12648,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_226 <= dummy_s;
+	dummy_d_187 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_227;
+reg dummy_d_188;
 // synthesis translate_on
 always @(*) begin
 	array_muxed8 <= 14'd0;
@@ -14196,12 +12672,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_227 <= dummy_s;
+	dummy_d_188 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_228;
+reg dummy_d_189;
 // synthesis translate_on
 always @(*) begin
 	array_muxed9 <= 1'd0;
@@ -14220,12 +12696,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_228 <= dummy_s;
+	dummy_d_189 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_229;
+reg dummy_d_190;
 // synthesis translate_on
 always @(*) begin
 	array_muxed10 <= 1'd0;
@@ -14244,12 +12720,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_229 <= dummy_s;
+	dummy_d_190 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_230;
+reg dummy_d_191;
 // synthesis translate_on
 always @(*) begin
 	array_muxed11 <= 1'd0;
@@ -14268,12 +12744,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_230 <= dummy_s;
+	dummy_d_191 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_231;
+reg dummy_d_192;
 // synthesis translate_on
 always @(*) begin
 	array_muxed12 <= 1'd0;
@@ -14292,12 +12768,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_231 <= dummy_s;
+	dummy_d_192 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_232;
+reg dummy_d_193;
 // synthesis translate_on
 always @(*) begin
 	array_muxed13 <= 1'd0;
@@ -14316,12 +12792,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_232 <= dummy_s;
+	dummy_d_193 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_233;
+reg dummy_d_194;
 // synthesis translate_on
 always @(*) begin
 	array_muxed14 <= 3'd0;
@@ -14340,12 +12816,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_233 <= dummy_s;
+	dummy_d_194 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_234;
+reg dummy_d_195;
 // synthesis translate_on
 always @(*) begin
 	array_muxed15 <= 14'd0;
@@ -14364,12 +12840,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_234 <= dummy_s;
+	dummy_d_195 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_235;
+reg dummy_d_196;
 // synthesis translate_on
 always @(*) begin
 	array_muxed16 <= 1'd0;
@@ -14388,12 +12864,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_235 <= dummy_s;
+	dummy_d_196 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_236;
+reg dummy_d_197;
 // synthesis translate_on
 always @(*) begin
 	array_muxed17 <= 1'd0;
@@ -14412,12 +12888,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_236 <= dummy_s;
+	dummy_d_197 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_237;
+reg dummy_d_198;
 // synthesis translate_on
 always @(*) begin
 	array_muxed18 <= 1'd0;
@@ -14436,12 +12912,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_237 <= dummy_s;
+	dummy_d_198 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_238;
+reg dummy_d_199;
 // synthesis translate_on
 always @(*) begin
 	array_muxed19 <= 1'd0;
@@ -14460,12 +12936,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_238 <= dummy_s;
+	dummy_d_199 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_239;
+reg dummy_d_200;
 // synthesis translate_on
 always @(*) begin
 	array_muxed20 <= 1'd0;
@@ -14484,12 +12960,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_239 <= dummy_s;
+	dummy_d_200 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_240;
+reg dummy_d_201;
 // synthesis translate_on
 always @(*) begin
 	array_muxed21 <= 3'd0;
@@ -14508,12 +12984,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_240 <= dummy_s;
+	dummy_d_201 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_241;
+reg dummy_d_202;
 // synthesis translate_on
 always @(*) begin
 	array_muxed22 <= 14'd0;
@@ -14532,12 +13008,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_241 <= dummy_s;
+	dummy_d_202 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_242;
+reg dummy_d_203;
 // synthesis translate_on
 always @(*) begin
 	array_muxed23 <= 1'd0;
@@ -14556,12 +13032,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_242 <= dummy_s;
+	dummy_d_203 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_243;
+reg dummy_d_204;
 // synthesis translate_on
 always @(*) begin
 	array_muxed24 <= 1'd0;
@@ -14580,12 +13056,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_243 <= dummy_s;
+	dummy_d_204 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_244;
+reg dummy_d_205;
 // synthesis translate_on
 always @(*) begin
 	array_muxed25 <= 1'd0;
@@ -14604,12 +13080,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_244 <= dummy_s;
+	dummy_d_205 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_245;
+reg dummy_d_206;
 // synthesis translate_on
 always @(*) begin
 	array_muxed26 <= 1'd0;
@@ -14628,12 +13104,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_245 <= dummy_s;
+	dummy_d_206 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_246;
+reg dummy_d_207;
 // synthesis translate_on
 always @(*) begin
 	array_muxed27 <= 1'd0;
@@ -14652,7 +13128,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_246 <= dummy_s;
+	dummy_d_207 <= dummy_s;
 // synthesis translate_on
 end
 
@@ -16860,714 +15336,6 @@ always @(posedge sys_clk) begin
 			end
 		endcase
 	end
-	if (litedramcontroller_multiplexer_choose_cmd_ce) begin
-		case (litedramcontroller_multiplexer_choose_cmd_grant)
-			1'd0: begin
-				if (litedramcontroller_multiplexer_choose_cmd_request[1]) begin
-					litedramcontroller_multiplexer_choose_cmd_grant <= 1'd1;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd_request[2]) begin
-						litedramcontroller_multiplexer_choose_cmd_grant <= 2'd2;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd_request[3]) begin
-							litedramcontroller_multiplexer_choose_cmd_grant <= 2'd3;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd_request[4]) begin
-								litedramcontroller_multiplexer_choose_cmd_grant <= 3'd4;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd_request[5]) begin
-									litedramcontroller_multiplexer_choose_cmd_grant <= 3'd5;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd_request[6]) begin
-										litedramcontroller_multiplexer_choose_cmd_grant <= 3'd6;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd_request[7]) begin
-											litedramcontroller_multiplexer_choose_cmd_grant <= 3'd7;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			1'd1: begin
-				if (litedramcontroller_multiplexer_choose_cmd_request[2]) begin
-					litedramcontroller_multiplexer_choose_cmd_grant <= 2'd2;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd_request[3]) begin
-						litedramcontroller_multiplexer_choose_cmd_grant <= 2'd3;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd_request[4]) begin
-							litedramcontroller_multiplexer_choose_cmd_grant <= 3'd4;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd_request[5]) begin
-								litedramcontroller_multiplexer_choose_cmd_grant <= 3'd5;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd_request[6]) begin
-									litedramcontroller_multiplexer_choose_cmd_grant <= 3'd6;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd_request[7]) begin
-										litedramcontroller_multiplexer_choose_cmd_grant <= 3'd7;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd_request[0]) begin
-											litedramcontroller_multiplexer_choose_cmd_grant <= 1'd0;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			2'd2: begin
-				if (litedramcontroller_multiplexer_choose_cmd_request[3]) begin
-					litedramcontroller_multiplexer_choose_cmd_grant <= 2'd3;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd_request[4]) begin
-						litedramcontroller_multiplexer_choose_cmd_grant <= 3'd4;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd_request[5]) begin
-							litedramcontroller_multiplexer_choose_cmd_grant <= 3'd5;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd_request[6]) begin
-								litedramcontroller_multiplexer_choose_cmd_grant <= 3'd6;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd_request[7]) begin
-									litedramcontroller_multiplexer_choose_cmd_grant <= 3'd7;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd_request[0]) begin
-										litedramcontroller_multiplexer_choose_cmd_grant <= 1'd0;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd_request[1]) begin
-											litedramcontroller_multiplexer_choose_cmd_grant <= 1'd1;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			2'd3: begin
-				if (litedramcontroller_multiplexer_choose_cmd_request[4]) begin
-					litedramcontroller_multiplexer_choose_cmd_grant <= 3'd4;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd_request[5]) begin
-						litedramcontroller_multiplexer_choose_cmd_grant <= 3'd5;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd_request[6]) begin
-							litedramcontroller_multiplexer_choose_cmd_grant <= 3'd6;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd_request[7]) begin
-								litedramcontroller_multiplexer_choose_cmd_grant <= 3'd7;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd_request[0]) begin
-									litedramcontroller_multiplexer_choose_cmd_grant <= 1'd0;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd_request[1]) begin
-										litedramcontroller_multiplexer_choose_cmd_grant <= 1'd1;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd_request[2]) begin
-											litedramcontroller_multiplexer_choose_cmd_grant <= 2'd2;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd4: begin
-				if (litedramcontroller_multiplexer_choose_cmd_request[5]) begin
-					litedramcontroller_multiplexer_choose_cmd_grant <= 3'd5;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd_request[6]) begin
-						litedramcontroller_multiplexer_choose_cmd_grant <= 3'd6;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd_request[7]) begin
-							litedramcontroller_multiplexer_choose_cmd_grant <= 3'd7;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd_request[0]) begin
-								litedramcontroller_multiplexer_choose_cmd_grant <= 1'd0;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd_request[1]) begin
-									litedramcontroller_multiplexer_choose_cmd_grant <= 1'd1;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd_request[2]) begin
-										litedramcontroller_multiplexer_choose_cmd_grant <= 2'd2;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd_request[3]) begin
-											litedramcontroller_multiplexer_choose_cmd_grant <= 2'd3;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd5: begin
-				if (litedramcontroller_multiplexer_choose_cmd_request[6]) begin
-					litedramcontroller_multiplexer_choose_cmd_grant <= 3'd6;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd_request[7]) begin
-						litedramcontroller_multiplexer_choose_cmd_grant <= 3'd7;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd_request[0]) begin
-							litedramcontroller_multiplexer_choose_cmd_grant <= 1'd0;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd_request[1]) begin
-								litedramcontroller_multiplexer_choose_cmd_grant <= 1'd1;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd_request[2]) begin
-									litedramcontroller_multiplexer_choose_cmd_grant <= 2'd2;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd_request[3]) begin
-										litedramcontroller_multiplexer_choose_cmd_grant <= 2'd3;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd_request[4]) begin
-											litedramcontroller_multiplexer_choose_cmd_grant <= 3'd4;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd6: begin
-				if (litedramcontroller_multiplexer_choose_cmd_request[7]) begin
-					litedramcontroller_multiplexer_choose_cmd_grant <= 3'd7;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd_request[0]) begin
-						litedramcontroller_multiplexer_choose_cmd_grant <= 1'd0;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd_request[1]) begin
-							litedramcontroller_multiplexer_choose_cmd_grant <= 1'd1;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd_request[2]) begin
-								litedramcontroller_multiplexer_choose_cmd_grant <= 2'd2;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd_request[3]) begin
-									litedramcontroller_multiplexer_choose_cmd_grant <= 2'd3;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd_request[4]) begin
-										litedramcontroller_multiplexer_choose_cmd_grant <= 3'd4;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd_request[5]) begin
-											litedramcontroller_multiplexer_choose_cmd_grant <= 3'd5;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd7: begin
-				if (litedramcontroller_multiplexer_choose_cmd_request[0]) begin
-					litedramcontroller_multiplexer_choose_cmd_grant <= 1'd0;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd_request[1]) begin
-						litedramcontroller_multiplexer_choose_cmd_grant <= 1'd1;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd_request[2]) begin
-							litedramcontroller_multiplexer_choose_cmd_grant <= 2'd2;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd_request[3]) begin
-								litedramcontroller_multiplexer_choose_cmd_grant <= 2'd3;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd_request[4]) begin
-									litedramcontroller_multiplexer_choose_cmd_grant <= 3'd4;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd_request[5]) begin
-										litedramcontroller_multiplexer_choose_cmd_grant <= 3'd5;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd_request[6]) begin
-											litedramcontroller_multiplexer_choose_cmd_grant <= 3'd6;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		endcase
-	end
-	if (litedramcontroller_multiplexer_choose_cmd2_ce) begin
-		case (litedramcontroller_multiplexer_choose_cmd2_grant)
-			1'd0: begin
-				if (litedramcontroller_multiplexer_choose_cmd2_request[1]) begin
-					litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd1;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd2_request[2]) begin
-						litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd2;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd2_request[3]) begin
-							litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd3;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd2_request[4]) begin
-								litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd4;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd2_request[5]) begin
-									litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd5;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd2_request[6]) begin
-										litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd6;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd2_request[7]) begin
-											litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd7;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			1'd1: begin
-				if (litedramcontroller_multiplexer_choose_cmd2_request[2]) begin
-					litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd2;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd2_request[3]) begin
-						litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd3;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd2_request[4]) begin
-							litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd4;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd2_request[5]) begin
-								litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd5;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd2_request[6]) begin
-									litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd6;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd2_request[7]) begin
-										litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd7;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd2_request[0]) begin
-											litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd0;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			2'd2: begin
-				if (litedramcontroller_multiplexer_choose_cmd2_request[3]) begin
-					litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd3;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd2_request[4]) begin
-						litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd4;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd2_request[5]) begin
-							litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd5;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd2_request[6]) begin
-								litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd6;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd2_request[7]) begin
-									litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd7;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd2_request[0]) begin
-										litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd0;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd2_request[1]) begin
-											litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd1;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			2'd3: begin
-				if (litedramcontroller_multiplexer_choose_cmd2_request[4]) begin
-					litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd4;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd2_request[5]) begin
-						litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd5;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd2_request[6]) begin
-							litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd6;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd2_request[7]) begin
-								litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd7;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd2_request[0]) begin
-									litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd0;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd2_request[1]) begin
-										litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd1;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd2_request[2]) begin
-											litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd2;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd4: begin
-				if (litedramcontroller_multiplexer_choose_cmd2_request[5]) begin
-					litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd5;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd2_request[6]) begin
-						litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd6;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd2_request[7]) begin
-							litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd7;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd2_request[0]) begin
-								litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd0;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd2_request[1]) begin
-									litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd1;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd2_request[2]) begin
-										litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd2;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd2_request[3]) begin
-											litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd3;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd5: begin
-				if (litedramcontroller_multiplexer_choose_cmd2_request[6]) begin
-					litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd6;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd2_request[7]) begin
-						litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd7;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd2_request[0]) begin
-							litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd0;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd2_request[1]) begin
-								litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd1;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd2_request[2]) begin
-									litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd2;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd2_request[3]) begin
-										litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd3;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd2_request[4]) begin
-											litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd4;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd6: begin
-				if (litedramcontroller_multiplexer_choose_cmd2_request[7]) begin
-					litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd7;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd2_request[0]) begin
-						litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd0;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd2_request[1]) begin
-							litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd1;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd2_request[2]) begin
-								litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd2;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd2_request[3]) begin
-									litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd3;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd2_request[4]) begin
-										litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd4;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd2_request[5]) begin
-											litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd5;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd7: begin
-				if (litedramcontroller_multiplexer_choose_cmd2_request[0]) begin
-					litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd0;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd2_request[1]) begin
-						litedramcontroller_multiplexer_choose_cmd2_grant <= 1'd1;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd2_request[2]) begin
-							litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd2;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd2_request[3]) begin
-								litedramcontroller_multiplexer_choose_cmd2_grant <= 2'd3;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd2_request[4]) begin
-									litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd4;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd2_request[5]) begin
-										litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd5;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd2_request[6]) begin
-											litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd6;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		endcase
-	end
-	if (litedramcontroller_multiplexer_choose_cmd3_ce) begin
-		case (litedramcontroller_multiplexer_choose_cmd3_grant)
-			1'd0: begin
-				if (litedramcontroller_multiplexer_choose_cmd3_request[1]) begin
-					litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd1;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd3_request[2]) begin
-						litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd2;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd3_request[3]) begin
-							litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd3;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd3_request[4]) begin
-								litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd4;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd3_request[5]) begin
-									litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd5;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd3_request[6]) begin
-										litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd6;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd3_request[7]) begin
-											litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd7;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			1'd1: begin
-				if (litedramcontroller_multiplexer_choose_cmd3_request[2]) begin
-					litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd2;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd3_request[3]) begin
-						litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd3;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd3_request[4]) begin
-							litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd4;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd3_request[5]) begin
-								litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd5;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd3_request[6]) begin
-									litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd6;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd3_request[7]) begin
-										litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd7;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd3_request[0]) begin
-											litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd0;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			2'd2: begin
-				if (litedramcontroller_multiplexer_choose_cmd3_request[3]) begin
-					litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd3;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd3_request[4]) begin
-						litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd4;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd3_request[5]) begin
-							litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd5;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd3_request[6]) begin
-								litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd6;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd3_request[7]) begin
-									litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd7;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd3_request[0]) begin
-										litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd0;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd3_request[1]) begin
-											litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd1;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			2'd3: begin
-				if (litedramcontroller_multiplexer_choose_cmd3_request[4]) begin
-					litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd4;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd3_request[5]) begin
-						litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd5;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd3_request[6]) begin
-							litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd6;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd3_request[7]) begin
-								litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd7;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd3_request[0]) begin
-									litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd0;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd3_request[1]) begin
-										litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd1;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd3_request[2]) begin
-											litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd2;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd4: begin
-				if (litedramcontroller_multiplexer_choose_cmd3_request[5]) begin
-					litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd5;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd3_request[6]) begin
-						litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd6;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd3_request[7]) begin
-							litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd7;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd3_request[0]) begin
-								litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd0;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd3_request[1]) begin
-									litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd1;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd3_request[2]) begin
-										litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd2;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd3_request[3]) begin
-											litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd3;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd5: begin
-				if (litedramcontroller_multiplexer_choose_cmd3_request[6]) begin
-					litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd6;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd3_request[7]) begin
-						litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd7;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd3_request[0]) begin
-							litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd0;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd3_request[1]) begin
-								litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd1;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd3_request[2]) begin
-									litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd2;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd3_request[3]) begin
-										litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd3;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd3_request[4]) begin
-											litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd4;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd6: begin
-				if (litedramcontroller_multiplexer_choose_cmd3_request[7]) begin
-					litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd7;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd3_request[0]) begin
-						litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd0;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd3_request[1]) begin
-							litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd1;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd3_request[2]) begin
-								litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd2;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd3_request[3]) begin
-									litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd3;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd3_request[4]) begin
-										litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd4;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd3_request[5]) begin
-											litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd5;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-			3'd7: begin
-				if (litedramcontroller_multiplexer_choose_cmd3_request[0]) begin
-					litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd0;
-				end else begin
-					if (litedramcontroller_multiplexer_choose_cmd3_request[1]) begin
-						litedramcontroller_multiplexer_choose_cmd3_grant <= 1'd1;
-					end else begin
-						if (litedramcontroller_multiplexer_choose_cmd3_request[2]) begin
-							litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd2;
-						end else begin
-							if (litedramcontroller_multiplexer_choose_cmd3_request[3]) begin
-								litedramcontroller_multiplexer_choose_cmd3_grant <= 2'd3;
-							end else begin
-								if (litedramcontroller_multiplexer_choose_cmd3_request[4]) begin
-									litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd4;
-								end else begin
-									if (litedramcontroller_multiplexer_choose_cmd3_request[5]) begin
-										litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd5;
-									end else begin
-										if (litedramcontroller_multiplexer_choose_cmd3_request[6]) begin
-											litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd6;
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		endcase
-	end
 	if (litedramcontroller_multiplexer_choose_req_ce) begin
 		case (litedramcontroller_multiplexer_choose_req_grant)
 			1'd0: begin
@@ -18877,9 +16645,6 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine7_trascon3_ready <= 1'd0;
 		litedramcontroller_tmrbankmachine7_trascon3_count <= 3'd0;
 		litedramcontroller_multiplexer_choose_cmd_int_grant <= 3'd0;
-		litedramcontroller_multiplexer_choose_cmd_grant <= 3'd0;
-		litedramcontroller_multiplexer_choose_cmd2_grant <= 3'd0;
-		litedramcontroller_multiplexer_choose_cmd3_grant <= 3'd0;
 		litedramcontroller_multiplexer_choose_req_grant <= 3'd0;
 		litedramcontroller_multiplexer_choose_req2_grant <= 3'd0;
 		litedramcontroller_multiplexer_choose_req3_grant <= 3'd0;
