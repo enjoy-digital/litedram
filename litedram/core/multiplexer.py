@@ -682,12 +682,12 @@ class TMRMultiplexer(Module, AutoCSR):
         
         for i, TMRrequest in enumerate(TMRrequests):
             choose_cmd_sink = stream.Endpoint(cmd_request_rw_layout(a, ba))
-            vote_TMR(self, choose_cmd_sink, choose_cmd_int.requests[i], choose_cmd_int2.requests[i], choose_cmd_int3.requests[i], master=False)
-            self.comb += TMRrequest.connect(choose_cmd_sink, choose_req_int.requests[i])
+            #vote_TMR(self, choose_cmd_sink, choose_cmd_int.requests[i], choose_cmd_int2.requests[i], choose_cmd_int3.requests[i], master=False)
+            self.comb += TMRrequest.connect(choose_cmd_int.requests[i], choose_cmd_int2.requests[i], choose_cmd_int3.requests[i], choose_req_int.requests[i])
             
         choose_cmd_source = stream.Endpoint(cmd_request_rw_layout(a, ba))
         #vote_TMR(self, choose_cmd_source, choose_cmd_int.cmd, choose_cmd_int2.cmd, choose_cmd_int3.cmd)
-        self.comb += [choose_cmd_int2.cmd.ready.eq(choose_cmd_int.cmd.ready), choose_cmd_int3.cmd.ready.eq(choose_cmd_int.cmd.ready)]
+        #self.comb += [choose_cmd_int2.cmd.ready.eq(choose_cmd_int.cmd.ready), choose_cmd_int3.cmd.ready.eq(choose_cmd_int.cmd.ready)]
         
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
