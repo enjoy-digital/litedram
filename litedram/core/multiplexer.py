@@ -686,7 +686,8 @@ class TMRMultiplexer(Module, AutoCSR):
             self.comb += TMRrequest.connect(choose_cmd_sink, choose_req_int.requests[i])
             
         choose_cmd_source = stream.Endpoint(cmd_request_rw_layout(a, ba))
-        vote_TMR(self, choose_cmd_source, choose_cmd_int.cmd, choose_cmd_int2.cmd, choose_cmd_int3.cmd)
+        #vote_TMR(self, choose_cmd_source, choose_cmd_int.cmd, choose_cmd_int2.cmd, choose_cmd_int3.cmd)
+        self.comb += [choose_cmd_int2.cmd.ready.eq(choose_cmd_int.cmd.ready), choose_cmd_int3.cmd.ready.eq(choose_cmd_int.cmd.ready)]
         
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
@@ -715,7 +716,7 @@ class TMRMultiplexer(Module, AutoCSR):
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
-        commands = [nop, choose_cmd_source, choose_req_int.cmd, refreshCmd]
+        commands = [nop, choose_cmd_int.cmd, choose_req_int.cmd, refreshCmd]
         
         steerer = _Steerer(commands, dfi)
         
