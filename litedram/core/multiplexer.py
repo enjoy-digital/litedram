@@ -729,7 +729,7 @@ class TMRMultiplexer(Module, AutoCSR):
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
-        commands = [nop, choose_cmd_source, choose_req_int.cmd, refreshCmd]
+        commands = [nop, choose_cmd_int.cmd, choose_req_int.cmd, refreshCmd]
         
         steerer = _Steerer(commands, dfi)
         
