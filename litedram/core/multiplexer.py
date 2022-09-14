@@ -690,6 +690,18 @@ class TMRMultiplexer(Module, AutoCSR):
         vote_TMR(self, choose_cmd_source, choose_cmd_int.cmd, choose_cmd_int2.cmd, choose_cmd_int3.cmd)
         #self.comb += [choose_cmd_int2.cmd.ready.eq(choose_cmd_int.cmd.ready), choose_cmd_int3.cmd.ready.eq(choose_cmd_int.cmd.ready)]
         
+        def choose_cmd_accept():
+            return choose_cmd_source.valid & choose_cmd_source.ready
+
+        def choose_cmd_activate():
+            return choose_cmd_source.ras & ~choose_cmd_source.cas & ~choose_cmd_source.we
+
+        def choose_cmd_write():
+            return choose_cmd_source.is_write
+
+        def choose_cmd_read():
+            return choose_cmd_source.is_read
+        
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
             choose_cmd_int = choose_req_int
@@ -725,13 +737,13 @@ class TMRMultiplexer(Module, AutoCSR):
 
         # tRRD timing (Row to Row delay) -----------------------------------------------------------
         self.submodules.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
-        self.comb += trrdcon.valid.eq(choose_cmd_int.accept() & choose_cmd_int.activate())
+        self.comb += trrdcon.valid.eq(choose_cmd_accept() & choose_cmd_activate())
 
         self.submodules.trrdcon2 = trrdcon2 = tXXDController(settings.timing.tRRD)
-        self.comb += trrdcon2.valid.eq(choose_cmd_int.accept() & choose_cmd_int.activate())
+        self.comb += trrdcon2.valid.eq(choose_cmd_accept() & choose_cmd_activate())
 
         self.submodules.trrdcon3 = trrdcon3 = tXXDController(settings.timing.tRRD)
-        self.comb += trrdcon3.valid.eq(choose_cmd_int.accept() & choose_cmd_int.activate())
+        self.comb += trrdcon3.valid.eq(choose_cmd_accept() & choose_cmd_activate())
 
         trrdSig = Cat(trrdcon.ready, trrdcon2.ready, trrdcon3.ready)
         trrdVote = TMRInput(trrdSig)
