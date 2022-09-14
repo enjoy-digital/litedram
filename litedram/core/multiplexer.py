@@ -683,12 +683,11 @@ class TMRMultiplexer(Module, AutoCSR):
         for i, TMRrequest in enumerate(TMRrequests):
             choose_cmd_sink = stream.Endpoint(cmd_request_rw_layout(a, ba))
             vote_TMR(self, choose_cmd_sink, choose_cmd_int.requests[i], choose_cmd_int2.requests[i], choose_cmd_int3.requests[i], master=False)
-            #self.comb += TMRrequest.connect(choose_cmd_int.requests[i], choose_cmd_int2.requests[i], choose_cmd_int3.requests[i], choose_req_int.requests[i])
             self.comb += TMRrequest.connect(choose_cmd_sink, choose_req_int.requests[i])
-            self.comb += [choose_cmd_int2.requests[i].ready.eq(choose_cmd_int.requests[i].ready), choose_cmd_int3.requests[i].ready.eq(choose_cmd_int.requests[i].ready)]
+            #self.comb += [choose_cmd_int2.requests[i].ready.eq(choose_cmd_int.requests[i].ready), choose_cmd_int3.requests[i].ready.eq(choose_cmd_int.requests[i].ready)]
             
         choose_cmd_source = stream.Endpoint(cmd_request_rw_layout(a, ba))
-        #vote_TMR(self, choose_cmd_source, choose_cmd_int.cmd, choose_cmd_int2.cmd, choose_cmd_int3.cmd)
+        vote_TMR(self, choose_cmd_source, choose_cmd_int.cmd, choose_cmd_int2.cmd, choose_cmd_int3.cmd)
         #self.comb += [choose_cmd_int2.cmd.ready.eq(choose_cmd_int.cmd.ready), choose_cmd_int3.cmd.ready.eq(choose_cmd_int.cmd.ready)]
         
         if settings.phy.nphases == 1:
@@ -718,7 +717,7 @@ class TMRMultiplexer(Module, AutoCSR):
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
-        commands = [nop, choose_cmd_int.cmd, choose_req_int.cmd, refreshCmd]
+        commands = [nop, choose_cmd_source, choose_req_int.cmd, refreshCmd]
         
         steerer = _Steerer(commands, dfi)
         
@@ -861,7 +860,9 @@ class TMRMultiplexer(Module, AutoCSR):
                 choose_req_int.cmd.ready.eq(cas_allowed & (~choose_req_int.activate() | ras_allowed))
             ).Else(
                 choose_cmd_int.want_activates.eq(ras_allowed),
-                choose_cmd_int.cmd.ready.eq(~choose_cmd_int.activate() | ras_allowed),
+                choose_cmd_int2.want_activates.eq(ras_allowed),
+                choose_cmd_int3.want_activates.eq(ras_allowed),
+                choose_cmd_source.ready.eq(~choose_cmd_int.activate() | ras_allowed),
                 choose_req_int.cmd.ready.eq(cas_allowed)
             ),
             steerer_sel(steerer, access="read"),
@@ -882,7 +883,9 @@ class TMRMultiplexer(Module, AutoCSR):
                 choose_req_int.cmd.ready.eq(cas_allowed & (~choose_req_int.activate() | ras_allowed))
             ).Else(
                 choose_cmd_int.want_activates.eq(ras_allowed),
-                choose_cmd_int.cmd.ready.eq(~choose_cmd_int.activate() | ras_allowed),
+                choose_cmd_int2.want_activates.eq(ras_allowed),
+                choose_cmd_int3.want_activates.eq(ras_allowed),
+                choose_cmd_source.ready.eq(~choose_cmd_int.activate() | ras_allowed),
                 choose_req_int.cmd.ready.eq(cas_allowed)
             ),
             steerer_sel(steerer, access="write"),
