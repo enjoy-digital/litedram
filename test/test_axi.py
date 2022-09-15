@@ -192,7 +192,7 @@ class TestAXI(unittest.TestCase):
                             self.reads_last_errors += 1
 
         # DUT
-        axi_port  = LiteDRAMAXIPort(32, 32, 8)
+        axi_port  = LiteDRAMAXIPort(data_width=32, address_width=32, id_width=8)
         dram_port = LiteDRAMNativePort("both", 32, 32)
         dut       = LiteDRAMAXI2Native(axi_port, dram_port, with_read_modify_write=True)
         mem       = DRAMMemory(32, 1024)

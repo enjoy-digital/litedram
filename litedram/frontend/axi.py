@@ -30,8 +30,7 @@ from litex.soc.interconnect.axi import *
 
 # LiteDRAMAXIPort ----------------------------------------------------------------------------------
 
-class LiteDRAMAXIPort(AXIInterface):
-    pass
+class LiteDRAMAXIPort(AXIInterface): pass
 
 # LiteDRAMAXI2NativeW ------------------------------------------------------------------------------
 
@@ -49,16 +48,16 @@ class LiteDRAMAXI2NativeW(Module):
         ashift = log2_int(port.data_width//8)
 
         # Burst to Beat ----------------------------------------------------------------------------
-        aw_buffer = stream.Buffer(ax_description(axi.address_width, axi.id_width))
+        aw        =  AXIStreamInterface(layout=ax_description(axi.address_width), id_width=axi.id_width)
+        aw_buffer = stream.Buffer(aw.description)
         self.submodules += aw_buffer
         self.comb += axi.aw.connect(aw_buffer.sink)
-        aw = stream.Endpoint(ax_description(axi.address_width, axi.id_width))
         aw_burst2beat = AXIBurst2Beat(aw_buffer.source, aw)
         self.submodules.aw_burst2beat = aw_burst2beat
 
         # Write Buffer -----------------------------------------------------------------------------
-        w_buffer = stream.SyncFIFO(w_description(axi.data_width, axi.id_width),
-            buffer_depth, buffered=True)
+        w = AXIStreamInterface(layout=w_description(axi.data_width), id_width=axi.id_width)
+        w_buffer = stream.SyncFIFO(w.description, depth=buffer_depth, buffered=True)
         self.submodules.w_buffer = w_buffer
 
         # Write ID Buffer & Response ---------------------------------------------------------------
@@ -76,7 +75,8 @@ class LiteDRAMAXI2NativeW(Module):
                 resp_buffer.sink.id.eq(id_buffer.source.id),
                 id_buffer.source.ready.eq(1)
             ),
-            resp_buffer.source.connect(axi.b)
+            resp_buffer.source.connect(axi.b, omit={"id"}), # FIXME: Avoid manual id connection.
+            axi.b.id.eq(resp_buffer.source.id),             # FIXME: Avoid manual id connection.
         ]
 
         # Write Buffer reservation ------------------------------------------------------------------
@@ -119,7 +119,7 @@ class LiteDRAMAXI2NativeW(Module):
         axi_w_connect = Signal(reset=1)
         self.comb += [
             If(axi_w_connect, axi.w.connect(w_buffer.sink)),
-            w_buffer.source.connect(port.wdata, omit={"strb", "id"}),
+            w_buffer.source.connect(port.wdata, omit={"strb", "id", "dest", "user"}),
             port.wdata.we.eq(w_buffer.source.strb)
         ]
 
@@ -231,15 +231,16 @@ class LiteDRAMAXI2NativeR(Module):
         ashift = log2_int(port.data_width//8)
 
         # Burst to Beat ----------------------------------------------------------------------------
-        ar_buffer = stream.Buffer(ax_description(axi.address_width, axi.id_width))
+        ar        =  AXIStreamInterface(layout=ax_description(axi.address_width), id_width=axi.id_width)
+        ar_buffer = stream.Buffer(ar.description)
         self.submodules += ar_buffer
         self.comb += axi.ar.connect(ar_buffer.sink)
-        ar = stream.Endpoint(ax_description(axi.address_width, axi.id_width))
         ar_burst2beat = AXIBurst2Beat(ar_buffer.source, ar)
         self.submodules.ar_burst2beat = ar_burst2beat
 
         # Read buffer ------------------------------------------------------------------------------
-        r_buffer = stream.SyncFIFO(r_description(axi.data_width, axi.id_width), buffer_depth, buffered=True)
+        r = AXIStreamInterface(layout=r_description(axi.data_width), id_width=axi.id_width)
+        r_buffer = stream.SyncFIFO(r.description, depth=buffer_depth, buffered=True)
         self.submodules.r_buffer = r_buffer
 
         # Read Buffer reservation ------------------------------------------------------------------
