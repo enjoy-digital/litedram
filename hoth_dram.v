@@ -3434,7 +3434,7 @@ reg litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_payload_is_cmd = 1'
 reg litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_payload_is_read = 1'd0;
 reg litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_payload_is_write = 1'd0;
 wire litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid;
-reg litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready = 1'd0;
+wire litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready;
 wire [13:0] litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_a;
 wire [2:0] litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_ba;
 reg litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_cas;
@@ -3548,7 +3548,7 @@ reg litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_payload_is_cmd = 1'
 reg litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_payload_is_read = 1'd0;
 reg litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_payload_is_write = 1'd0;
 wire litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid;
-reg litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready = 1'd0;
+wire litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready;
 wire [13:0] litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_a;
 wire [2:0] litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_ba;
 reg litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_cas;
@@ -10230,6 +10230,8 @@ assign litedramcontroller_multiplexer_choose_req_int_endpoint7_payload_we = lite
 assign litedramcontroller_multiplexer_choose_req_int_endpoint7_payload_is_cmd = litedramcontroller_multiplexer_endpoint7_payload_is_cmd;
 assign litedramcontroller_multiplexer_choose_req_int_endpoint7_payload_is_read = litedramcontroller_multiplexer_endpoint7_payload_is_read;
 assign litedramcontroller_multiplexer_choose_req_int_endpoint7_payload_is_write = litedramcontroller_multiplexer_endpoint7_payload_is_write;
+assign litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready = litedramcontroller_multiplexer_choose_cmd_int_cmd_ready;
+assign litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready = litedramcontroller_multiplexer_choose_cmd_int_cmd_ready;
 assign litedramcontroller_multiplexer_trrdcon_valid = ((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & ((litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_we)));
 assign litedramcontroller_multiplexer_trrdcon2_valid = ((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & ((litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_we)));
 assign litedramcontroller_multiplexer_trrdcon3_valid = ((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & ((litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_we)));
@@ -10680,7 +10682,6 @@ reg dummy_d_166;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_endpoint0_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint0_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint0_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 1'd0))) begin
 		litedramcontroller_multiplexer_choose_cmd_int2_endpoint0_ready <= 1'd1;
 	end
@@ -10694,7 +10695,6 @@ reg dummy_d_167;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_endpoint1_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint1_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint1_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 1'd1))) begin
 		litedramcontroller_multiplexer_choose_cmd_int2_endpoint1_ready <= 1'd1;
 	end
@@ -10708,7 +10708,6 @@ reg dummy_d_168;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_endpoint2_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint2_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint2_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 2'd2))) begin
 		litedramcontroller_multiplexer_choose_cmd_int2_endpoint2_ready <= 1'd1;
 	end
@@ -10722,7 +10721,6 @@ reg dummy_d_169;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_endpoint3_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint3_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint3_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 2'd3))) begin
 		litedramcontroller_multiplexer_choose_cmd_int2_endpoint3_ready <= 1'd1;
 	end
@@ -10736,7 +10734,6 @@ reg dummy_d_170;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_endpoint4_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint4_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint4_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd4))) begin
 		litedramcontroller_multiplexer_choose_cmd_int2_endpoint4_ready <= 1'd1;
 	end
@@ -10750,7 +10747,6 @@ reg dummy_d_171;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_endpoint5_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint5_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint5_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd5))) begin
 		litedramcontroller_multiplexer_choose_cmd_int2_endpoint5_ready <= 1'd1;
 	end
@@ -10764,7 +10760,6 @@ reg dummy_d_172;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint6_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd6))) begin
 		litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_ready <= 1'd1;
 	end
@@ -10778,7 +10773,6 @@ reg dummy_d_173;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint7_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd7))) begin
 		litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_ready <= 1'd1;
 	end
@@ -10857,7 +10851,6 @@ reg dummy_d_178;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_endpoint0_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint0_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint0_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 1'd0))) begin
 		litedramcontroller_multiplexer_choose_cmd_int3_endpoint0_ready <= 1'd1;
 	end
@@ -10871,7 +10864,6 @@ reg dummy_d_179;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_endpoint1_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint1_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint1_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 1'd1))) begin
 		litedramcontroller_multiplexer_choose_cmd_int3_endpoint1_ready <= 1'd1;
 	end
@@ -10885,7 +10877,6 @@ reg dummy_d_180;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_endpoint2_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint2_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint2_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 2'd2))) begin
 		litedramcontroller_multiplexer_choose_cmd_int3_endpoint2_ready <= 1'd1;
 	end
@@ -10899,7 +10890,6 @@ reg dummy_d_181;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_endpoint3_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint3_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint3_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 2'd3))) begin
 		litedramcontroller_multiplexer_choose_cmd_int3_endpoint3_ready <= 1'd1;
 	end
@@ -10913,7 +10903,6 @@ reg dummy_d_182;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_endpoint4_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint4_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint4_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd4))) begin
 		litedramcontroller_multiplexer_choose_cmd_int3_endpoint4_ready <= 1'd1;
 	end
@@ -10927,7 +10916,6 @@ reg dummy_d_183;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_endpoint5_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint5_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint5_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd5))) begin
 		litedramcontroller_multiplexer_choose_cmd_int3_endpoint5_ready <= 1'd1;
 	end
@@ -10941,7 +10929,6 @@ reg dummy_d_184;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint6_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd6))) begin
 		litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_ready <= 1'd1;
 	end
@@ -10955,7 +10942,6 @@ reg dummy_d_185;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_ready <= 1'd0;
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_ready <= litedramcontroller_multiplexer_choose_cmd_int_endpoint7_ready;
 	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd7))) begin
 		litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_ready <= 1'd1;
 	end
