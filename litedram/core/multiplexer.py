@@ -679,16 +679,21 @@ class TMRMultiplexer(Module, AutoCSR):
         self.submodules.choose_cmd_int3 = choose_cmd_int3 = _CommandChooserInt(len(TMRrequests), a, ba)
         
         self.submodules.choose_req_int = choose_req_int = _CommandChooserInt(len(TMRrequests), a, ba)
+        self.submodules.choose_req_int2 = choose_req_int2 = _CommandChooserInt(len(TMRrequests), a, ba)
+        self.submodules.choose_req_int3 = choose_req_int3 = _CommandChooserInt(len(TMRrequests), a, ba)
         
         for i, TMRrequest in enumerate(TMRrequests):
-            #choose_cmd_sink = stream.Endpoint(cmd_request_rw_layout(a, ba))
-            #vote_TMR(self, choose_cmd_sink, choose_cmd_int.requests[i], choose_cmd_int2.requests[i], choose_cmd_int3.requests[i], master=False)
-            self.comb += TMRrequest.connect(choose_cmd_int.requests[i], choose_cmd_int2.requests[i], choose_cmd_int3.requests[i], choose_req_int.requests[i])
-            #self.comb += [choose_cmd_int2.requests[i].ready.eq(choose_cmd_int.requests[i].ready), choose_cmd_int3.requests[i].ready.eq(choose_cmd_int.requests[i].ready)]
+            self.comb += TMRrequest.connect(choose_cmd_int.requests[i], choose_cmd_int2.requests[i], choose_cmd_int3.requests[i], 
+                                            choose_req_int.requests[i])
+            #self.comb += TMRrequest.connect(choose_cmd_int.requests[i], choose_cmd_int2.requests[i], choose_cmd_int3.requests[i], 
+            #                                choose_req_int.requests[i], choose_req_int2.requests[i], choose_req_int3.requests[i])
          
         choose_cmd_source = stream.Endpoint(cmd_request_rw_layout(a, ba))
         vote_TMR(self, choose_cmd_source, choose_cmd_int.cmd, choose_cmd_int2.cmd, choose_cmd_int3.cmd)
         #self.comb += [choose_cmd_int2.cmd.ready.eq(choose_cmd_int.cmd.ready), choose_cmd_int3.cmd.ready.eq(choose_cmd_int.cmd.ready)]
+        
+        choose_req_source = stream.Endpoint(cmd_request_rw_layout(a, ba))
+        #vote_TMR(self, choose_req_source, choose_req_int.cmd, choose_req_int2.cmd, choose_req_int3.cmd)
         
         def choose_cmd_accept():
             return choose_cmd_source.valid & choose_cmd_source.ready
@@ -701,6 +706,18 @@ class TMRMultiplexer(Module, AutoCSR):
 
         def choose_cmd_read():
             return choose_cmd_source.is_read
+            
+        def choose_req_accept():
+            return choose_req_source.valid & choose_req_source.ready
+
+        def choose_req_activate():
+            return choose_req_source.ras & ~choose_req_source.cas & ~choose_req_source.we
+
+        def choose_req_write():
+            return choose_req_source.is_write
+
+        def choose_req_read():
+            return choose_req_source.is_read
         
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
@@ -729,7 +746,7 @@ class TMRMultiplexer(Module, AutoCSR):
         nop = Record(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
-        commands = [nop, choose_cmd_int.cmd, choose_req_int.cmd, refreshCmd]
+        commands = [nop, choose_cmd_source, choose_req_int.cmd, refreshCmd]
         
         steerer = _Steerer(commands, dfi)
         
