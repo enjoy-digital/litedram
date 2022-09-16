@@ -747,15 +747,20 @@ class TMRMultiplexer(Module, AutoCSR):
         self.submodules += TMRInput(refresher.TMRcmd.is_write, refreshCmd.is_write)
 
         # Command steering -------------------------------------------------------------------------
-        nop = Record(cmd_request_layout(settings.geom.addressbits,
+        nop = stream.Endpoint(cmd_request_layout(settings.geom.addressbits,
                                         log2_int(len(bank_machines))))
         # nop must be 1st
         commands = [nop, choose_cmd_source, choose_req_source, refreshCmd]
         
-        steerer = _Steerer(commands, dfi)
+        #steerer = _Steerer(commands, dfi)
         steerer_int = _SteererInt(a, ba, settings.phy.nranks, settings.phy.dfi_databits, settings.phy.nphases)
         
-        self.submodules += steerer
+        for i, command in enumerate(commands):
+            self.comb += command.connect(steerer_int.commands[i])
+            
+        self.comb += steerer_int.dfi.connect(dfi)
+        
+        self.submodules += steerer_int
 
         # tRRD timing (Row to Row delay) -----------------------------------------------------------
         self.submodules.trrdcon = trrdcon = tXXDController(settings.timing.tRRD)
@@ -901,7 +906,7 @@ class TMRMultiplexer(Module, AutoCSR):
                 choose_cmd_source.ready.eq(~choose_cmd_activate() | ras_allowed),
                 choose_req_source.ready.eq(cas_allowed)
             ),
-            steerer_sel(steerer, access="read"),
+            steerer_sel(steerer_int, access="read"),
             If(write_available,
                 # TODO: switch only after several cycles of ~read_available?
                 If(~read_available | max_read_time,
@@ -926,7 +931,7 @@ class TMRMultiplexer(Module, AutoCSR):
                 choose_cmd_source.ready.eq(~choose_cmd_activate() | ras_allowed),
                 choose_req_source.ready.eq(cas_allowed)
             ),
-            steerer_sel(steerer, access="write"),
+            steerer_sel(steerer_int, access="write"),
             If(read_available,
                 If(~write_available | max_write_time,
                     NextState("WTR")
@@ -937,7 +942,7 @@ class TMRMultiplexer(Module, AutoCSR):
             )
         )
         fsm.act("REFRESH",
-            steerer.sel[0].eq(STEER_REFRESH),
+            steerer_int.sel[0].eq(STEER_REFRESH),
             refreshCmd.ready.eq(1),
             If(refreshCmd.last,
                 NextState("READ")
