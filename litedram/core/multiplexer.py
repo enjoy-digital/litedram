@@ -22,6 +22,8 @@ from litex.soc.interconnect.csr import AutoCSR
 from litedram.common import *
 from litedram.core.bandwidth import Bandwidth
 
+from litedram.phy import dfi
+
 # _CommandChooser ----------------------------------------------------------------------------------
 
 class _CommandChooser(Module):
@@ -303,8 +305,11 @@ class _SteererInt(Module):
         select given source.
     """
     def __init__(self, a, ba, nranks, databits, nphases):        
+        ncmd = 4
+        nph = nphases
+        
         self.sel = [Signal(max=ncmd) for i in range(nph)]
-        self.commands = [stream.Endpoint(cmd_request_rw_layout(a, ba)) for n in range(4)]
+        self.commands = commands = [stream.Endpoint(cmd_request_rw_layout(a, ba)) for n in range(4)]
         self.dfi = dfi.Interface(a, ba, nranks, databits, nphases)
 
         # # #
@@ -315,7 +320,7 @@ class _SteererInt(Module):
             else:
                 return cmd.valid & cmd.ready & getattr(cmd, attr)
 
-        for i, (phase, sel) in enumerate(zip(dfi.phases, self.sel)):
+        for i, (phase, sel) in enumerate(zip(self.dfi.phases, self.sel)):
             rankbits = log2_int(nranks)
             
             if hasattr(phase, "reset_n"):
@@ -748,6 +753,7 @@ class TMRMultiplexer(Module, AutoCSR):
         commands = [nop, choose_cmd_source, choose_req_source, refreshCmd]
         
         steerer = _Steerer(commands, dfi)
+        steerer_int = _SteererInt(a, ba, settings.phy.nranks, settings.phy.dfi_databits, settings.phy.nphases)
         
         self.submodules += steerer
 
