@@ -684,11 +684,11 @@ class TMRMultiplexer(Module, AutoCSR):
             choose_cmd_sink = stream.Endpoint(cmd_request_rw_layout(a, ba))
             vote_TMR(self, choose_cmd_sink, choose_cmd_int.requests[i], choose_cmd_int2.requests[i], choose_cmd_int3.requests[i], master=False)
             self.comb += TMRrequest.connect(choose_cmd_sink, choose_req_int.requests[i])
-            #self.comb += [choose_cmd_int2.requests[i].ready.eq(choose_cmd_int.requests[i].ready), choose_cmd_int3.requests[i].ready.eq(choose_cmd_int.requests[i].ready)]
+            self.comb += [choose_cmd_int2.requests[i].ready.eq(choose_cmd_int.requests[i].ready), choose_cmd_int3.requests[i].ready.eq(choose_cmd_int.requests[i].ready)]
          
         choose_cmd_source = stream.Endpoint(cmd_request_rw_layout(a, ba))
-        vote_TMR(self, choose_cmd_source, choose_cmd_int.cmd, choose_cmd_int2.cmd, choose_cmd_int3.cmd)
-        self.comb += [choose_cmd_int2.cmd.ready.eq(choose_cmd_int.cmd.ready), choose_cmd_int3.cmd.ready.eq(choose_cmd_int.cmd.ready)]
+        #vote_TMR(self, choose_cmd_source, choose_cmd_int.cmd, choose_cmd_int2.cmd, choose_cmd_int3.cmd)
+        #self.comb += [choose_cmd_int2.cmd.ready.eq(choose_cmd_int.cmd.ready), choose_cmd_int3.cmd.ready.eq(choose_cmd_int.cmd.ready)]
         
         def choose_cmd_accept():
             return choose_cmd_source.valid & choose_cmd_source.ready
