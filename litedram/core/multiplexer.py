@@ -758,7 +758,9 @@ class TMRMultiplexer(Module, AutoCSR):
         #for i, command in enumerate(commands):
         #    self.comb += command.connect(steerer_int.commands[i])
         
-        self.comb += [choose_cmd_source.connect(steerer_int.commands[1]), choose_req_source.connect(steerer_int.commands[2]), refreshCmd.connect(steerer_int.commands[3])]
+        self.comb += [choose_cmd_source.connect(steerer_int.commands[1], omit={'ready'}), 
+                      choose_req_source.connect(steerer_int.commands[2], omit={'ready'}),
+                      refreshCmd.connect(steerer_int.commands[3], omit={'ready'})]
         
         self.comb += steerer_int.dfi.connect(dfi)
         

@@ -11538,9 +11538,6 @@ always @(*) begin
 	litedramcontroller_multiplexer_en0 <= 1'd0;
 	litedramcontroller_multiplexer_en1 <= 1'd0;
 	tmrmultiplexer_next_state <= 4'd0;
-	litedramcontroller_multiplexer_choose_cmd_source_ready <= litedramcontroller_multiplexer_steererint_endpoint1_ready;
-	litedramcontroller_multiplexer_choose_req_source_ready <= litedramcontroller_multiplexer_steererint_endpoint2_ready;
-	litedramcontroller_multiplexer_refreshCmd_ready <= litedramcontroller_multiplexer_steererint_endpoint3_ready;
 	tmrmultiplexer_next_state <= tmrmultiplexer_state;
 	case (tmrmultiplexer_state)
 		1'd1: begin
