@@ -754,6 +754,8 @@ class TMRMultiplexer(Module, AutoCSR):
         
         #steerer = _Steerer(commands, dfi)
         steerer_int = _SteererInt(a, ba, settings.phy.nranks, settings.phy.dfi_databits, settings.phy.nphases)
+        steerer_int2 = _SteererInt(a, ba, settings.phy.nranks, settings.phy.dfi_databits, settings.phy.nphases)
+        steerer_int3 = _SteererInt(a, ba, settings.phy.nranks, settings.phy.dfi_databits, settings.phy.nphases)
         
         #for i, command in enumerate(commands):
         #    self.comb += command.connect(steerer_int.commands[i])
@@ -764,6 +766,20 @@ class TMRMultiplexer(Module, AutoCSR):
                       steerer_int.commands[2].ready.eq(choose_req_source.ready),
                       refreshCmd.connect(steerer_int.commands[3], omit={'ready'}),
                       steerer_int.commands[3].ready.eq(refreshCmd.ready)]
+                      
+        self.comb += [choose_cmd_source.connect(steerer_int2.commands[1], omit={'ready'}),
+                      steerer_int2.commands[1].ready.eq(choose_cmd_source.ready),
+                      choose_req_source.connect(steerer_int2.commands[2], omit={'ready'}),
+                      steerer_int2.commands[2].ready.eq(choose_req_source.ready),
+                      refreshCmd.connect(steerer_int2.commands[3], omit={'ready'}),
+                      steerer_int2.commands[3].ready.eq(refreshCmd.ready)]
+                      
+        self.comb += [choose_cmd_source.connect(steerer_int3.commands[1], omit={'ready'}),
+                      steerer_int3.commands[1].ready.eq(choose_cmd_source.ready),
+                      choose_req_source.connect(steerer_int3.commands[2], omit={'ready'}),
+                      steerer_int3.commands[2].ready.eq(choose_req_source.ready),
+                      refreshCmd.connect(steerer_int3.commands[3], omit={'ready'}),
+                      steerer_int3.commands[3].ready.eq(refreshCmd.ready)]
         
         self.comb += steerer_int.dfi.connect(dfi)
         
@@ -914,6 +930,8 @@ class TMRMultiplexer(Module, AutoCSR):
                 choose_req_source.ready.eq(cas_allowed)
             ),
             steerer_sel(steerer_int, access="read"),
+            steerer_sel(steerer_int2, access="read"),
+            steerer_sel(steerer_int3, access="read"),
             If(write_available,
                 # TODO: switch only after several cycles of ~read_available?
                 If(~read_available | max_read_time,
@@ -939,6 +957,8 @@ class TMRMultiplexer(Module, AutoCSR):
                 choose_req_source.ready.eq(cas_allowed)
             ),
             steerer_sel(steerer_int, access="write"),
+            steerer_sel(steerer_int2, access="write"),
+            steerer_sel(steerer_int3, access="write"),
             If(read_available,
                 If(~write_available | max_write_time,
                     NextState("WTR")
@@ -950,6 +970,8 @@ class TMRMultiplexer(Module, AutoCSR):
         )
         fsm.act("REFRESH",
             steerer_int.sel[0].eq(STEER_REFRESH),
+            steerer_int2.sel[0].eq(STEER_REFRESH),
+            steerer_int3.sel[0].eq(STEER_REFRESH),
             refreshCmd.ready.eq(1),
             If(refreshCmd.last,
                 NextState("READ")
