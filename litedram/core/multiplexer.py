@@ -781,8 +781,10 @@ class TMRMultiplexer(Module, AutoCSR):
                       refreshCmd.connect(steerer_int3.commands[3], omit={'ready'}),
                       steerer_int3.commands[3].ready.eq(refreshCmd.ready)]
         
-        self.comb += steerer_int.dfi.connect(dfi)
+        vote_TMR(self, dfi, steerer_int.dfi, steerer_int2.dfi, steerer_int3.dfi, master=True)
         
+        #self.comb += [steerer_int.dfi.connect(dfi1),
+                        
         self.submodules += steerer_int
 
         # tRRD timing (Row to Row delay) -----------------------------------------------------------
