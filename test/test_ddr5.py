@@ -73,10 +73,12 @@ class DDR5Tests(unittest.TestCase):
         self.ca_latency:       str = self.xs + '0' * self.NPHASES + '0' * self.NPHASES * self.cmd_latency
         self.cs_n_latency:     str = self.xs + '0' * self.NPHASES + '1' * self.NPHASES * self.cmd_latency
 
-        self.dqs_t_rd_latency: str = self.xs * 2 + (self.read_latency - 2 - 1) * self.xs + 'x' * (self.NPHASES - 1) * 2
-        self.dq_rd_latency:    str = self.xs * 2 + (self.read_latency - 2) * self.zeros  + '0' * (self.NPHASES - 1) * 2
-        self.dqs_t_wr_latency: str = self.xs * 2 + (self.cmd_latency + self.write_latency - 1) * self.xs + 'x' * (self.NPHASES - 1) * 2
-        self.dq_wr_latency:    str = self.xs * 2 + (self.cmd_latency + self.write_latency) * self.zeros  + 'x' * (self.NPHASES - 1) * 2
+        # Read latency is 1 sys_clk shorter in relity, cmd has no bitslip while dq has
+        self.dqs_t_rd_latency: str = self.xs * 2 + (self.read_latency - 3 - 1) * self.xs + 'x' * (self.NPHASES - 1) * 2
+        self.dq_rd_latency:    str = self.xs * 2 + (self.read_latency - 3) * self.zeros  + '0' * (self.NPHASES - 1) * 2
+        # Write latency is 1 sys_clk longer in reality, cmd has no bitslip while dq and dqs have, this force 1 extra sys_clk cycle
+        self.dqs_t_wr_latency: str = self.xs * 2 + (self.cmd_latency + self.write_latency) * self.xs + 'x' * (self.NPHASES - 1) * 2
+        self.dq_wr_latency:    str = self.xs * 2 + (self.cmd_latency + self.write_latency + 1) * self.zeros  + 'x' * (self.NPHASES - 1) * 2
 
     @staticmethod
     def process_ca(ca: str) -> int:
@@ -445,7 +447,7 @@ class DDR5Tests(unittest.TestCase):
         # Test that rddata_valid is set with correct delay
         dfi_sequence = [
             {0: dict(rddata_en=1)},  # command is issued by MC (appears on next cycle)
-            *[{p: dict(rddata_valid=0) for p in range(self.NPHASES)} for _ in range(self.read_latency)],  # nothing is sent during read latency
+            *[{p: dict(rddata_valid=0) for p in range(self.NPHASES)} for _ in range(self.read_latency - 1)],  # nothing is sent during read latency
             {p: dict(rddata_valid=1) for p in range(self.NPHASES)},
             {},
         ]
@@ -495,6 +497,7 @@ class DDR5Tests(unittest.TestCase):
         dfi_sequence = [
             {},  # wait 1 sysclk cycle
             *[{} for _ in range(Deserializer.LATENCY-1)],
+            {},  # bitslip delay
             *expected_data,
             {},
         ]
@@ -512,17 +515,10 @@ class DDR5Tests(unittest.TestCase):
         # Test whole READ command sequence simulating DRAM response and verifying read_latency from MC perspective
 
         data_to_read = {
-            0: dict(rddata=0x1122),
-            1: dict(rddata=0x3344),
-            2: dict(rddata=0x5566),
-            3: dict(rddata=0x7788),
-        }
-
-        dfi_data_valid = {
-            0: dict(rddata_valid=1),
-            1: dict(rddata_valid=1),
-            2: dict(rddata_valid=1),
-            3: dict(rddata_valid=1),
+            0: dict(rddata=0x1122, rddata_valid=1),
+            1: dict(rddata=0x3344, rddata_valid=1),
+            2: dict(rddata=0x5566, rddata_valid=1),
+            3: dict(rddata=0x7788, rddata_valid=1),
         }
 
         read_0 = dict(cs_n=0, address=self.process_ca('10111 0 00000 000'))  # RD p0
@@ -534,7 +530,6 @@ class DDR5Tests(unittest.TestCase):
             },
             *[{} for _ in range(self.read_latency - 1)],
             data_to_read,
-            dfi_data_valid,
             {},
             {},
             {},
