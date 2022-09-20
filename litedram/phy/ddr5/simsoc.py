@@ -115,9 +115,9 @@ class SimSoC(SoCCore):
 
         # DDR5 -----------------------------------------------------------------------------------
         if dq_dqs_ratio == 8:
-            sdram_module = litedram_modules.MT60B2G8HB48B(sys_clk_freq, "1:4")
+            sdram_module = litedram_modules.DDR5SimX8(sys_clk_freq, "1:4")
         elif dq_dqs_ratio == 4:
-            sdram_module = litedram_modules.M329R8GA0BB0(sys_clk_freq, "1:4")
+            sdram_module = litedram_modules.DDR5SimX4(sys_clk_freq, "1:4")
             if masked_write:
                 masked_write = False
                 print("Masked Write is unsupported for x4 device (JESD79-5A, section 4.8.1)")
@@ -176,6 +176,12 @@ class SimSoC(SoCCore):
         timings = {"tCK": (1e9 / sys_clk_freq) / nphases}
         for name in _speedgrade_timings + _technology_timings:
             timings[name] = sdram_module.get(name)
+
+            if name in ("tRFC", "tREFI"):
+                timings[name] = {
+                    refresh_mode: sdram_module.get(name, refresh_mode)
+                    for refresh_mode in ("1x", "2x")
+                }
 
         self.submodules.dfi_timings_checker = DFITimingsChecker(
             dfi          = self.ddrphy.dfi,
@@ -363,6 +369,7 @@ def main():
         trace_start = int(args.trace_start),
         trace_end   = int(args.trace_end),
         pre_run_callback = pre_run_callback,
+        jobs="$(nproc)", # so CI doesn't get killed by OOM
     )
     builder.build(run=not args.no_run, **build_kwargs)
 

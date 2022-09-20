@@ -157,8 +157,8 @@ class DDR3SPDData:
             # Due to limited tck accuracy of 1ps, calculations may yield higher
             # frequency than in reality (e.g. for DDR3-1866: tck=1.071 ns ->
             # -> f=1867.4 MHz, while real is f=1866.6(6) MHz).
-            max_error = 2
-            if abs(freq_mhz - f) < max_error:
+            max_error = 0.005
+            if abs(freq_mhz - f) / f < max_error:
                 return f
         raise ValueError("Transfer rate = {:.2f} does not correspond to any speedgrade"
                          .format(freq_mhz))
@@ -271,6 +271,87 @@ class DDR4SPDData(DDR3SPDData):
             "default": speedgrade_timings,
         }
 
+
+class DDR5SPDData(DDR4SPDData):
+    memtype = "DDR5"
+    _speedgrades = list(range(3200, 6400 + 1, 400))
+
+    def get_geometry(self, data):
+        bankgroupbits = {
+            0b000: 0,
+            0b001: 1,
+            0b010: 2,
+            0b011: 3,
+        }[_read_field(data[7], nbits=3, shift=5)]
+        bankbits = {
+            0b000: 0,
+            0b001: 1,
+            0b010: 2,
+        }[_read_field(data[7], nbits=3, shift=0)]
+        rowbits = {
+            0b00000: 16,
+            0b00001: 17,
+            0b00010: 18,
+        }[_read_field(data[5], nbits=5, shift=0)]
+        colbits = {
+            0b000: 10,
+            0b001: 11,
+        }[_read_field(data[5], nbits=3, shift=5)]
+
+        self.ngroups = 2**bankgroupbits
+        self.ngroupbanks = 2**bankbits
+        self.nbanks = self.ngroups * self.ngroupbanks
+        self.nrows = 2**rowbits
+        self.ncols = 2**colbits
+
+    def init_timebase(self, data):
+        # not needed in DDR5
+        pass
+
+    def get_timings(self, data):
+        b = data
+
+        self.trefi = {"1x": 32e6/8192, "2x": (32e6/8192)/2}
+
+        tckavg_min = _word(b[21], b[20]) / 1000
+        trcd_min   = _word(b[33], b[32]) / 1000
+        trp_min    = _word(b[35], b[34]) / 1000
+        tras_min   = _word(b[37], b[36]) / 1000
+        twr_min    = _word(b[41], b[40]) / 1000
+        self.trfc = {
+            "1x": (None, _word(b[43], b[42])),
+            "2x": (None, _word(b[45], b[44])),
+        }
+
+        trrd_l_min = _word(b[71], b[70]) / 1000
+        tccd_l_min = _word(b[77], b[76]) / 1000
+        tfaw_min   = _word(b[83], b[82]) / 1000
+        twtr_l_min = _word(b[86], b[85]) / 1000
+
+        technology_timings = _TechnologyTimings(
+            tREFI = self.trefi,
+            tWTR  = (b[87], twtr_l_min),
+            tCCD  = (b[78], tccd_l_min),
+            tRRD  = (b[72], trrd_l_min),
+            tZQCS = None,
+        )
+        speedgrade_timings = _SpeedgradeTimings(
+            tRP  = trp_min,
+            tRCD = trcd_min,
+            tWR  = twr_min,
+            tRFC = self.trfc,
+            tFAW = (b[84], tfaw_min),
+            tRAS = tras_min,
+        )
+
+        self.speedgrade = str(self.speedgrade_freq(tckavg_min))
+        self.technology_timings = technology_timings
+        self.speedgrade_timings = {
+            self.speedgrade: speedgrade_timings,
+            "default": speedgrade_timings,
+        }
+
+
 def parse_spd_hexdump(filename):
     """Parse data dumped using the `spdread` command in LiteX BIOS
 
@@ -321,9 +402,9 @@ class SDRAMModule:
             rowbits  = log2_int(self.nrows),
             colbits  = log2_int(self.ncols),
         )
-        assert not (self.memtype != "DDR4" and fine_refresh_mode != None)
+        assert self.memtype in ("DDR4", "DDR5") or fine_refresh_mode == None
         assert fine_refresh_mode in [None, "1x", "2x", "4x"]
-        if (fine_refresh_mode is None) and (self.memtype == "DDR4"):
+        if (fine_refresh_mode is None) and (self.memtype in ("DDR4", "DDR5")):
             fine_refresh_mode = "1x"
         self.timing_settings = TimingSettings(
             tRP   = self.ck_ns_to_cycles(self.get("tRP")),
@@ -383,6 +464,10 @@ class SDRAMModule:
     def ns_to_cycles(self, t, margin=True):
         clk_period_ns = 1e9/self.clk_freq
         t += self.margin if margin else 0
+
+        if self.memtype == "DDR5":
+            t *= 0.997
+
         return ceil(t/clk_period_ns)
 
     def ck_to_cycles(self, c):
@@ -409,6 +494,7 @@ class SDRAMModule:
         spd_cls = {
             0x0b: DDR3SPDData,
             0x0c: DDR4SPDData,
+            0x12: DDR5SPDData,
         }[spd_data[2]]
         spd = spd_cls(spd_data)
 
@@ -430,6 +516,7 @@ class SDRAMModule:
             "DDR2":  2,
             "DDR3":  4,
             "DDR4":  4,
+            "DDR5":  4,
         }[spd.memtype]
         rate = "1:{}".format(nphases)
 
@@ -1163,46 +1250,56 @@ class MT53E256M16D1(SDRAMModule):
     speedgrade_timings["default"] = speedgrade_timings["1866"]
 
 # DDR5 -------------------------------------------------------------------------------------------
+class DDR5Module(SDRAMModule):                     memtype = "DDR5"
+class DDR5RegisteredModule(SDRAMRegisteredModule): memtype = "DDR5"
 
-class MT60B2G8HB48B(SDRAMModule):
-    memtype = "DDR5"
-
-    nbanks = 32
-    nrows = 65536
-    ncols = 1024
-
-    # TODO: These data below is taken from the LPDDR4 module. It needs to be changed and verified
-
-    # TODO: find a way to select if we need masked writes
-    tccd = {"write": (32, 20)}
-
-    # TODO: tZQCS - performing ZQC during runtime will require modifying Refresher, as ZQC has to be done in 2 phases
-    # 1. ZQCAL START is issued 2. ZQCAL LATCH updates the values, the time START->LATCH tZQCAL=1us, so we cannot block
-    # the controller during this time, after ZQCAL LATCH we have to wait tZQLAT=max(8ck, 30ns)
-    technology_timings = _TechnologyTimings(tREFI=32e6/8192, tWTR=(16, 10), tCCD=tccd["write"], tRRD=(8, 5), tZQCS=(30, 8))
-    speedgrade_timings = {
-        "1866": _SpeedgradeTimings(tRP=15.00, tRCD=15.00, tWR=(48, 30), tRFC=260, tFAW=40, tRAS=32),  # TODO: tRAS_max
-    }
-    speedgrade_timings["default"] = speedgrade_timings["1866"]
-
-
-class M329R8GA0BB0(SDRAMModule):
-    memtype = "DDR5"
-
-    nbanks = 32
-    nrows = 2 ** 16
-    ncols = 2 ** 11
-
-    # TODO: These data below is taken from the MT60B2G8HB48B module. It needs to be changed and verified
-
-    # TODO: find a way to select if we need masked writes
-    tccd = {"write": (32, 20)}
+class MT60B2G8HB48B(DDR5Module):
+    #geometry
+    ngroupbanks = 4
+    ngroups     = 8
+    nbanks      = ngroups * ngroupbanks
+    nrows       = 2 ** 16
+    ncols       = 2 ** 10
+    # timings
+    trefi = {"1x": 32e6/8192, "2x": (32e6/8192)/2}
+    trfc  = {"1x": 295, "2x": 160}
 
     # TODO: tZQCS - performing ZQC during runtime will require modifying Refresher, as ZQC has to be done in 2 phases
     # 1. ZQCAL START is issued 2. ZQCAL LATCH updates the values, the time START->LATCH tZQCAL=1us, so we cannot block
     # the controller during this time, after ZQCAL LATCH we have to wait tZQLAT=max(8ck, 30ns)
-    technology_timings = _TechnologyTimings(tREFI=32e6/8192, tWTR=(16, 10), tCCD=tccd["write"], tRRD=(8, 5), tZQCS=(30, 8))
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(16, 10), tCCD=(32, 20), tRRD=(8, 5), tZQCS=None)
     speedgrade_timings = {
-        "1866": _SpeedgradeTimings(tRP=15.00, tRCD=15.00, tWR=(48, 30), tRFC=260, tFAW=40, tRAS=32),  # TODO: tRAS_max
+        "4800": _SpeedgradeTimings(tRP=16.666, tRCD=16.666, tWR=30, tRFC=trfc, tFAW=(32, 13.333), tRAS=32),  # TODO: tRAS_max
     }
-    speedgrade_timings["default"] = speedgrade_timings["1866"]
+    speedgrade_timings["default"] = speedgrade_timings["4800"]
+
+
+class M329R8GA0BB0(DDR5RegisteredModule):
+    #geometry
+    ngroupbanks = 4
+    ngroups     = 8
+    nbanks      = ngroups * ngroupbanks
+    nrows       = 2 ** 18
+    ncols       = 2 ** 11
+    # timings
+    trefi = {"1x": 32e6/8192, "2x": (32e6/8192)/2}
+    trfc  = {"1x": 295, "2x": 160}
+
+    # TODO: tZQCS - performing ZQC during runtime will require modifying Refresher, as ZQC has to be done in 2 phases
+    # 1. ZQCAL START is issued 2. ZQCAL LATCH updates the values, the time START->LATCH tZQCAL=1us, so we cannot block
+    # the controller during this time, after ZQCAL LATCH we have to wait tZQLAT=max(8ck, 30ns)
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(16, 10), tCCD=(32, 20), tRRD=(8, 5), tZQCS=None)
+    speedgrade_timings = {
+        "4800": _SpeedgradeTimings(tRP=16, tRCD=16, tWR=30, tRFC=trfc, tFAW=(32, 13.333), tRAS=32),  # TODO: tRAS_max
+    }
+    speedgrade_timings["default"] = speedgrade_timings["4800"]
+
+
+class DDR5SimX8(MT60B2G8HB48B):
+    # modified so simulation uses less memory in CI
+    nrows       = 2 ** 14
+
+
+class DDR5SimX4(M329R8GA0BB0):
+    # modified so simulation uses less memory in CI
+    nrows       = 2 ** 14
