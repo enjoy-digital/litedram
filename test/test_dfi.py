@@ -9,6 +9,7 @@ import unittest
 from collections import defaultdict
 
 from migen import *
+from migen.fhdl import verilog
 
 from litex.build.sim import gtkwave as gtkw
 
@@ -39,10 +40,13 @@ class TestPHYRateConverter(unittest.TestCase):
                 ratio=ratio, serdes_reset_cnt=-1, **converter_kwargs)
             self.dfi = self.converter.dfi
 
-    def dfi_latency(self, ratio, reset_n=True):
+    def dfi_latency(self, ratio, reset_n=True, alert_n=True):
         latency_clkdiv = Serializer.LATENCY
         latency_clk = ratio * latency_clkdiv
         nop = {p: (dict(reset_n=0) if reset_n else {}) for p in range(4)}  # reset_n will have wrong value until driven
+        if alert_n:
+            for p in nop.values():
+                p["alert_n"] = 0
         return [nop] * latency_clk
 
     def run_test(self, dut, dfi_sys, dfi_expected, dfi_input=None, **kwargs):
@@ -367,7 +371,7 @@ class TestPHYRateConverter(unittest.TestCase):
             {1: read},
         ]
         dfi_input = [  # sys2x
-            *self.dfi_latency(ratio=4, reset_n=False),
+            *self.dfi_latency(ratio=4, reset_n=False, alert_n=False),
             {}, # 0
             {},
             {},
@@ -469,7 +473,7 @@ class TestPHYRateConverter(unittest.TestCase):
                     {1: read},
                 ]
                 dfi_input = [  # sys2x
-                    *self.dfi_latency(ratio=4, reset_n=False),
+                    *self.dfi_latency(ratio=4, reset_n=False, alert_n=False),
                     {}, # 0
                     {},
                     {},

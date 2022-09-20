@@ -53,6 +53,12 @@ class PhaseInjector(Module, AutoCSR):
         ]
         self.sync += If(phase.rddata_valid, self._rddata.status.eq(phase.rddata))
 
+# CommandsInjector ------------------------------------------------------------------------------
+
+class CmdInjector(Module, AutoCSR):
+    def __init__(self, phases):
+        pass
+
 # CSInjector ------------------------------------------------------------------------------------
 
 class ConstInjector(Module, AutoCSR):
@@ -83,7 +89,8 @@ class NOPInjector(Module, AutoCSR):
 # DFIInjector --------------------------------------------------------------------------------------
 
 class DFIInjector(Module, AutoCSR):
-    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1, memtype=None, strobes=None):
+    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1,
+                 memtype=None, strobes=None, with_sub_channels=False):
         self.slave   = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.master  = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         csr1_dfi     = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
@@ -92,9 +99,12 @@ class DFIInjector(Module, AutoCSR):
         self.ext_dfi     = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.ext_dfi_sel = Signal()
 
+        prefixes = [""] if not with_sub_channels else ["A_", "B_"]
+
         if memtype == "DDR5":
-            csr2_dfi     = dfi.Interface(14, 1, nranks, databits, nphases)
-            csr3_dfi     = dfi.Interface(14, 1, nranks, databits, nphases)
+            csr2_dfi     = dfi.Interface(14, 1, nranks, databits, nphases, with_sub_channels)
+            csr3_dfi     = dfi.Interface(14, 1, nranks, databits, nphases, with_sub_channels)
+            csr4_dfi     = dfi.Interface(14, 1, nranks, databits, nphases, with_sub_channels)
             ddr5_dfi     = dfi.Interface(14, 1, nranks, databits, nphases)
 
             masked_writes  = False
@@ -104,17 +114,23 @@ class DFIInjector(Module, AutoCSR):
             self.submodules += adapters
 
         if memtype == "DDR5":
-            self.master = dfi.Interface(14, 1, nranks, databits, nphases)
+            self.master = dfi.Interface(14, 1, nranks, databits, nphases, with_sub_channels)
 
         extra_fields = []
         if memtype == "DDR5":
+            values = [("``0b0``",   "Pass through adapters signals")]
+            values += [("``0b1``",   "DDR5 special signalling")]
             extra_fields = [
-                CSRField("ddr5", size=2, values=[
-                    ("``0b0``", "Pass through adapters signals"),
-                    ("``0b1``", "Const Injector"),
-                    ("``0b10``", "NOP Injector"),
-                ], reset=0b0)
+                CSRField("ddr5", size=1, values=values, reset=0b0)
             ]
+            for prefix in prefixes:
+                extra_fields.append(
+                    CSRField(prefix+"control", size=2, values=[
+                        ("``0b1``",  prefix+"Const Injector"),
+                        ("``0b10``", prefix+"NOP Injector"),
+                        ("``0b11``", prefix+"Cmd Injector"),
+                    ], reset=0b0)
+                )
 
         self._control = CSRStorage(fields=[
             CSRField("sel",     size=1, values=[
@@ -129,10 +145,6 @@ class DFIInjector(Module, AutoCSR):
 
         for n, phase in enumerate(csr1_dfi.phases):
             setattr(self.submodules, "pi" + str(n), PhaseInjector(phase))
-        if memtype == "DDR5":
-            self.submodules.constinjector   = ConstInjector(csr2_dfi.phases)
-            self.submodules.nopinjector     = NOPInjector(csr3_dfi.phases)
-
         # # #
 
         self.comb += [
@@ -157,15 +169,9 @@ class DFIInjector(Module, AutoCSR):
         self.comb += [phase.reset_n.eq(self._control.fields.reset_n) for phase in csr1_dfi.phases if hasattr(phase, "reset_n")]
 
         if memtype == "DDR5":
-            for i in range(nranks):
-                self.comb += [phase.cke[i].eq(self._control.fields.cke) for phase in csr2_dfi.phases]
-                self.comb += [phase.odt[i].eq(self._control.fields.odt) for phase in csr2_dfi.phases if hasattr(phase, "odt")]
-
-                self.comb += [phase.cke[i].eq(self._control.fields.cke) for phase in csr3_dfi.phases]
-                self.comb += [phase.odt[i].eq(self._control.fields.odt) for phase in csr3_dfi.phases if hasattr(phase, "odt")]
-
-            self.comb += [phase.reset_n.eq(self._control.fields.reset_n) for phase in csr2_dfi.phases if hasattr(phase, "reset_n")]
-            self.comb += [phase.reset_n.eq(self._control.fields.reset_n) for phase in csr3_dfi.phases if hasattr(phase, "reset_n")]
+            for i, prefix in enumerate(prefixes):
+                setattr(self.submodules, prefix.lower()+"constinjector", ConstInjector(csr2_dfi.get_subchannel(prefix)))
+                setattr(self.submodules, prefix.lower()+"nopinjector", NOPInjector(csr3_dfi.get_subchannel(prefix)))
 
             for ddr5_phase, inter_phase in zip(ddr5_dfi.phases, self.intermediate.phases):
                 self.comb += [
@@ -193,9 +199,9 @@ class DFIInjector(Module, AutoCSR):
                     phase     = ddr5_dfi.phases[phase_num]
                     self.comb += [
                         If(adapter.valid,
-                            phase.address.eq(phase.address | adapter.ca[j]),
-                            phase.cs_n.eq(phase.cs_n & adapter.cs_n[j]),
-                            phase.act_n.eq(phase.act_n & adapter.act_n[j]),
+                            phase.address.eq(Cat(phase.address | adapter.ca[j], phase.address | adapter.ca[j])),
+                            phase.cs_n.eq(Cat(phase.cs_n & adapter.cs_n[j], phase.cs_n & adapter.cs_n[j])),
+                            phase.act_n.eq(Cat(phase.act_n & adapter.act_n[j], phase.act_n & adapter.act_n[j])),
                         ),
                         phase.cke.eq(phase.cke | adapter.cke[j]),
                         phase.odt.eq(phase.odt | adapter.odt[j]),
@@ -203,20 +209,31 @@ class DFIInjector(Module, AutoCSR):
                         phase.mode_2n.eq(phase.mode_2n | adapter.mode_2n[j])
                     ]
 
+            if with_sub_channels:
+                ddr5_dfi.create_sub_channels()
+                ddr5_dfi.remove_common_signals()
+
             self.comb += [
                 Case(self._control.fields.ddr5, {
                     # Pass through.
                     # -------------
                     0: ddr5_dfi.connect(self.master),
-                    # Const Injector.
+                    # DDR5 injectors
                     # ---------------
-                    1: csr2_dfi.connect(self.master),
-                    # NOP Injector.
-                    # -------------
-                    2: csr3_dfi.connect(self.master),
-                    # Make Verilator happy :)
-                    # -----------------------
-                    3: (),
+                    1: [
+                        Case(getattr(self._control.fields, prefix+"control"), {
+                            1: [cp.connect(mp) for cp, mp in zip(csr2_dfi.get_subchannel(prefix), self.master.get_subchannel(prefix))],
+                            2: [cp.connect(mp) for cp, mp in zip(csr3_dfi.get_subchannel(prefix), self.master.get_subchannel(prefix))],
+                            3: [cp.connect(mp) for cp, mp in zip(csr4_dfi.get_subchannel(prefix), self.master.get_subchannel(prefix))],
+                            0: ()
+                        }) for prefix in prefixes
+                    ] + [
+                        phase.cke[i].eq(self._control.fields.cke) for phase in self.master.phases for i in range(nranks)
+                    ] + [
+                        phase.odt[i].eq(self._control.fields.odt) for phase in self.master.phases for i in range(nranks) if hasattr(phase, "odt")
+                    ] + [
+                        phase.reset_n.eq(self._control.fields.reset_n) for phase in self.master.phases if hasattr(phase, "reset_n")
+                    ]
                 })
             ]
         else:

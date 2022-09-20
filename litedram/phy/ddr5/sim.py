@@ -52,7 +52,7 @@ class DDR5Sim(Module, AutoCSR):
     log_level : str
         SimLogger initial logging level (formatted for parsing with `log_level_getter`).
     """
-    def __init__(self, pads, *, sys_clk_freq, cl, cwl, log_level, geom_settings):
+    def __init__(self, pads, *, sys_clk_freq, cl, cwl, log_level, geom_settings, prefix=""):
         log_level = log_level_getter(log_level)
 
         bl_max    = 16 # We only support BL8 and BL16, there is no support for BL32
@@ -79,6 +79,7 @@ class DDR5Sim(Module, AutoCSR):
             log_level     = log_level("cmd"),
             geom_settings = geom_settings,
             bl_max        = bl_max,
+            prefix        = prefix,
         )
         self.submodules.cmd = ClockDomainsRenamer(cd_cmd)(cmd)
 
@@ -93,6 +94,7 @@ class DDR5Sim(Module, AutoCSR):
             log_level     = log_level("data"),
             geom_settings = geom_settings,
             bl_max        = bl_max,
+            prefix        = prefix,
         )
         self.submodules.data = ClockDomainsRenamer(cd_dq_wr)(data)
 
@@ -108,7 +110,7 @@ class CommandsSim(Module, AutoCSR):
 
     Command simulator should work in the clock domain of `pads.clk_p` (SDR).
     """
-    def __init__(self, pads, data_cdc, *, clk_freq, log_level, geom_settings, bl_max):
+    def __init__(self, pads, data_cdc, *, clk_freq, log_level, geom_settings, bl_max, prefix):
         self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
         self.log.add_csrs()
 
@@ -125,8 +127,8 @@ class CommandsSim(Module, AutoCSR):
         self.submodules += self.data, self.data_en
 
         # CS_n/CA shift registers
-        cs_n = TappedDelayLine(pads.cs_n, ntaps=2)
-        ca = TappedDelayLine(pads.ca, ntaps=2)
+        cs_n = TappedDelayLine(getattr(pads, prefix+'cs_n'), ntaps=2)
+        ca = TappedDelayLine(getattr(pads, prefix+'ca'), ntaps=2)
         self.submodules += cs_n, ca
 
         self.cs_n_low   = Signal(14)
@@ -139,14 +141,14 @@ class CommandsSim(Module, AutoCSR):
 
         cmds_enabled = Signal()
         cmd_handlers = OrderedDict(
-            MRW  = self.mrw_handler(),
-            REF  = self.refresh_handler(),
-            ACT  = self.activate_handler(),
-            PRE  = self.precharge_handler(),
-            RD   = self.read_handler(),
-            MPC  = self.mpc_handler(),
-            WR   = self.write_handler(),
-            NOP  = self.nop_handler(),
+            MRW  = self.mrw_handler(prefix),
+            REF  = self.refresh_handler(prefix),
+            ACT  = self.activate_handler(prefix),
+            PRE  = self.precharge_handler(prefix),
+            RD   = self.read_handler(prefix),
+            MPC  = self.mpc_handler(prefix),
+            WR   = self.write_handler(prefix),
+            NOP  = self.nop_handler(prefix),
         )
 
         self.comb += [
@@ -161,10 +163,10 @@ class CommandsSim(Module, AutoCSR):
                 )
             ),
             If(self.handle_2_tick_cmd & ~reduce(or_, cmd_handlers.values()),
-                self.log.error("Unexpected command: cs_n_low=0b%14b cs_n_high=0b%14b", self.cs_n_low, self.cs_n_high)
+                self.log.error(prefix+"Unexpected command: cs_n_low=0b%14b cs_n_high=0b%14b", self.cs_n_low, self.cs_n_high)
             ),
             If(self.handle_1_tick_cmd & ~reduce(or_, cmd_handlers.values()),
-                self.log.error("Unexpected command: cs_n_low=0b%14b", self.cs_n_low)
+                self.log.error(prefix+"Unexpected command: cs_n_low=0b%14b", self.cs_n_low)
             ),
         ]
         self.sync += [If(self.handle_1_tick_cmd,
@@ -197,16 +199,16 @@ class CommandsSim(Module, AutoCSR):
 
         self.comb += [
             self.tpw_reset.trigger.eq(~pads.reset_n),
-            self.tinit2.trigger.eq(~pads.cs_n),
+            self.tinit2.trigger.eq(~getattr(pads, prefix+'cs_n')),
             If(~delayed(self, pads.reset_n) & pads.reset_n,
-                self.log.info("RESET released"),
+                self.log.info(prefix+"RESET released"),
                 If(~self.tinit2.ready,
-                    self.log.error("tINIT2 violated: RESET deasserted too fast")
+                    self.log.error(prefix+"tINIT2 violated: RESET deasserted too fast")
                 ),
             ),
             self.tcksrx.trigger.eq(tcksrx_triggered[0]),
             If(delayed(self, pads.reset_n) & ~pads.reset_n,
-                self.log.info("RESET asserted"),
+                self.log.info(prefix+"RESET asserted"),
             ),
         ]
 
@@ -214,7 +216,7 @@ class CommandsSim(Module, AutoCSR):
         self.comb += [
             If(self.tpw_reset.ready_p,
                 fsm.reset.eq(1),
-                self.log.info("FSM reset")
+                self.log.info(prefix+"FSM reset")
             )
         ]
         fsm.act("Reset",
@@ -224,53 +226,53 @@ class CommandsSim(Module, AutoCSR):
             )
         )
         fsm.act("Initialization",
-            If(~delayed(self, pads.cs_n) & pads.cs_n,
-                self.log.info("CS released"),
+            If(~delayed(self, getattr(pads, prefix+'cs_n')) & getattr(pads, prefix+'cs_n'),
+                self.log.info(prefix+"CS released"),
                 If(~self.tinit3.ready,
-                    self.log.error("tINIT3 violated: CS_n deasserted too fast"),
+                    self.log.error(prefix+"tINIT3 violated: CS_n deasserted too fast"),
                 ).Else(
                     self.tinit4.trigger.eq(1),
-                    self.log.info("Tinit4 triggered"),
+                    self.log.info(prefix+"Tinit4 triggered"),
                     NextState("CMOS_Registration")
                 ),
-            ).Elif(pads.cs_n,
-                self.log.error("tINIT3 violated: CS_n deasserted too fast"),
+            ).Elif(getattr(pads, prefix+'cs_n'),
+                self.log.error(prefix+"tINIT3 violated: CS_n deasserted too fast"),
             ),
         )
         fsm.act("CMOS_Registration",
-            If(delayed(self, pads.cs_n) & ~pads.cs_n,
-                self.log.info("CMOS registration ending"),
+            If(delayed(self, getattr(pads, prefix+'cs_n')) & ~getattr(pads, prefix+'cs_n'),
+                self.log.info(prefix+"CMOS registration ending"),
                 If(~self.tcksrx.ready,
-                    self.log.error("tCKSRX violated: CS_n asserted too fast"),
+                    self.log.error(prefix+"tCKSRX violated: CS_n asserted too fast"),
                 ).Elif(~self.tinit4.ready,
-                    self.log.error("tINIT4 violated: CS_n asserted too fast"),
+                    self.log.error(prefix+"tINIT4 violated: CS_n asserted too fast"),
                 ).Else(
                     self.tinit5.trigger.eq(1),
                     NextState("EXIT-PD")
                 ),
-            ).Elif(~reduce(and_, pads.ca),
-                self.log.error("CMD bus must be held high")
+            ).Elif(~reduce(and_, getattr(pads, prefix+'ca')),
+                self.log.error(prefix+"CMD bus must be held high")
             ),
         )
         fsm.act("EXIT-PD",
-            If(pads.ca[:5] != 0b11111 | pads.cs_n,
-                self.log.error("Incorrect exit sequence"),
+            If(getattr(pads, prefix+'ca')[:5] != 0b11111 | getattr(pads, prefix+'cs_n'),
+                self.log.error(prefix+"Incorrect exit sequence"),
             ),
             If(self.tinit5.ready_p,
-                self.log.info("Reset sequence finished"),
+                self.log.info(prefix+"Reset sequence finished"),
                 NextState("MRW")  # Te
             )
         )
         fsm.act("MRW",
             cmds_enabled.eq(1),
             If(self.handle_2_tick_cmd & ~cmd_handlers["MRW"] & ~cmd_handlers["MPC"] & ~self.handled_1_tick_cmd,
-                self.log.warn("Only MRW/MRR commands expected before ZQ calibration"),
+                self.log.warn(prefix+"Only MRW/MRR commands expected before ZQ calibration"),
                 self.log.warn(" ".join("{}=%d".format(cmd) for cmd in cmd_handlers.keys()), *cmd_handlers.values()),
-                self.log.warn("Unexpected command: cs_n_low=0b%14b cs_n_high=0b%14b", self.cs_n_low, self.cs_n_high)
+                self.log.warn(prefix+"Unexpected command: cs_n_low=0b%14b cs_n_high=0b%14b", self.cs_n_low, self.cs_n_high)
             ),
             If(cmd_handlers["MPC"],
                 If(self.mpc_op != MPC.ZQC_START,
-                    self.log.error("ZQC-START expected, got op=0b%07b", self.mpc_op)
+                    self.log.error(prefix+"ZQC-START expected, got op=0b%07b", self.mpc_op)
                 ).Else(
                     NextState("ZQC")  # Tf
                 )
@@ -281,10 +283,10 @@ class CommandsSim(Module, AutoCSR):
             cmds_enabled.eq(1),
             If(self.handle_2_tick_cmd,
                 If(~(cmd_handlers["MPC"] & (self.mpc_op == MPC.ZQC_LATCH)),
-                    self.log.error("Expected ZQC-LATCH")
+                    self.log.error(prefix+"Expected ZQC-LATCH")
                 ).Else(
                     If(~self.tzqcal.ready,
-                        self.log.warn("tZQCAL violated")
+                        self.log.warn(prefix+"tZQCAL violated")
                     ),
                     NextState("NORMAL")  # Tg
                 )
@@ -294,7 +296,7 @@ class CommandsSim(Module, AutoCSR):
             cmds_enabled.eq(1),
             self.tzqlat.trigger.eq(1),
             If(self.handle_2_tick_cmd & ~self.tzqlat.ready,
-                self.log.warn("tZQLAT violated")
+                self.log.warn(prefix+"tZQLAT violated")
             ),
         )
 
@@ -304,7 +306,7 @@ class CommandsSim(Module, AutoCSR):
         self.comb += If(prev_state != fsm.state,
             Case(prev_state, {
                 state: Case(fsm.state, {
-                    next_state: self.log.info(f"FSM: {state_name} -> {next_state_name}")
+                    next_state: self.log.info(prefix+f"FSM: {state_name} -> {next_state_name}")
                     for next_state, next_state_name in fsm.decoding.items()
                 } | {
                     "default": self.log.error(f"FSM: {state_name=} undefined next state")
@@ -328,13 +330,13 @@ class CommandsSim(Module, AutoCSR):
             )
         return matched
 
-    def mrw_handler(self):
+    def mrw_handler(self, prefix):
         ma  = Signal(8)
         op  = Signal(8)
         return self.cmd_one_step("MRW",
             cond = self.cs_n_low[:5] == 0b00101,
             comb = [
-                self.log.info("MRW: MR[%d] = 0x%02x", ma, op),
+                self.log.info(prefix+"MRW: MR[%d] = 0x%02x", ma, op),
                 op.eq(self.cs_n_high[:8]),
                 ma.eq(self.cs_n_low[5:13]),
                 NextValue(self.mode_regs[ma], op),
@@ -342,36 +344,36 @@ class CommandsSim(Module, AutoCSR):
             handle_cmd = self.handle_2_tick_cmd,
         )
 
-    def nop_handler(self):
+    def nop_handler(self, prefix):
         ma  = Signal(8)
         op  = Signal(8)
         return self.cmd_one_step("NOP",
             cond = self.cs_n_low[:5] == 0b11111,
             comb = [
-                self.log.info("NOP"),
+                self.log.info(prefix+"NOP"),
             ],
             handle_cmd = self.handle_1_tick_cmd | self.handle_2_tick_cmd,
         )
 
-    def refresh_handler(self):
+    def refresh_handler(self, prefix):
         bank = Signal(2)
         return self.cmd_one_step("REFRESH",
             cond = self.cs_n_low[:5] == 0b10011,
             comb = [
                 If(~self.cs_n_low[10],
-                    self.log.info("REF: all banks"),
+                    self.log.info(prefix+"REF: all banks"),
                     If(reduce(or_, self.active_banks),
-                        self.log.error("Not all banks precharged during REFRESH")
+                        self.log.error(prefix+"Not all banks precharged during REFRESH")
                     )
                 ).Else(
-                    self.log.info("REF: bank = %d", bank),
+                    self.log.info(prefix+"REF: bank = %d", bank),
                     bank.eq(self.cs_n_low[6:8]),
                 )
             ],
             handle_cmd = self.handle_2_tick_cmd,
         )
 
-    def activate_handler(self):
+    def activate_handler(self, prefix):
         bank = Signal(5)
         row  = Signal(18)
         return self.cmd_one_step("ACTIVATE",
@@ -379,9 +381,9 @@ class CommandsSim(Module, AutoCSR):
             comb = [
                 bank.eq(self.cs_n_low[6:11]),
                 row.eq(Cat(self.cs_n_low[2:6], self.cs_n_high)),
-                self.log.info("ACT: bank=%d row=%d", bank, row),
+                self.log.info(prefix+"ACT: bank=%d row=%d", bank, row),
                 If(self.active_banks[bank],
-                   self.log.error("ACT on already active bank: bank=%d row=%d", bank, row)
+                   self.log.error(prefix+"ACT on already active bank: bank=%d row=%d", bank, row)
                 ),
             ],
             sync = [
@@ -391,15 +393,15 @@ class CommandsSim(Module, AutoCSR):
             handle_cmd = self.handle_2_tick_cmd,
         )
 
-    def precharge_handler(self):
+    def precharge_handler(self, prefix):
         bank = Signal(2)
         return self.cmd_one_step("PRECHARGE",
             cond = self.cs_n_low[:5] == 0b01011,
             comb = [
                 If(~self.cs_n_low[10],
-                    self.log.info("PRE: all banks"),
+                    self.log.info(prefix+"PRE: all banks"),
                 ).Else(
-                    self.log.info("PRE: bank = %d", bank),
+                    self.log.info(prefix+"PRE: bank = %d", bank),
                     bank.eq(self.cs_n_low[6:8]),
                 ),
             ],
@@ -409,16 +411,16 @@ class CommandsSim(Module, AutoCSR):
                 ).Else(
                     self.active_banks[bank].eq(0),
                     If(~self.active_banks[bank],
-                        self.log.warn("PRE on inactive bank: bank=%d", bank)
+                        self.log.warn(prefix+"PRE on inactive bank: bank=%d", bank)
                     ),
                 ),
             ],
             handle_cmd = self.handle_2_tick_cmd,
         )
 
-    def mpc_handler(self):
-        cases = {value: self.log.info(f"MPC: {name}") for name, value in MPC.__members__.items()}
-        cases["default"] = self.log.error("Invalid MPC op=0b%08b", self.mpc_op)
+    def mpc_handler(self, prefix):
+        cases = {value: self.log.info(prefix+f"MPC: {name}") for name, value in MPC.__members__.items()}
+        cases["default"] = self.log.error(prefix+"Invalid MPC op=0b%08b", self.mpc_op)
         return self.cmd_one_step("MPC",
             cond = self.cs_n_low[:5] == 0b01111,
             comb = [
@@ -428,7 +430,7 @@ class CommandsSim(Module, AutoCSR):
             handle_cmd = self.handle_2_tick_cmd,
         )
 
-    def read_handler(self):
+    def read_handler(self, prefix):
         bank     = Signal(5)
         row      = Signal(18)
         col      = Signal(11)
@@ -443,7 +445,7 @@ class CommandsSim(Module, AutoCSR):
                         0:  bl_width.eq(8),
                         1:  bl_width.eq(8),
                         "default": [
-                            self.log.error("Model does not support burst length of 32, setting BL 16", bank, row, col),
+                            self.log.error(prefix+"Model does not support burst length of 32, setting BL 16", bank, row, col),
                             bl_width.eq(16),
                         ],
                    }),
@@ -454,7 +456,7 @@ class CommandsSim(Module, AutoCSR):
                 row.eq(self.active_rows[bank]),
                 col.eq(Cat(Replicate(0, 2), self.cs_n_high[:9])),
                 auto_precharge.eq(~self.cs_n_high[10]),
-                self.log.info("READ: bank=%d row=%d, col=%d", bank, row, col),
+                self.log.info(prefix+"READ: bank=%d row=%d, col=%d", bank, row, col),
 
                 If(self.active_banks[bank],
                     [
@@ -467,21 +469,21 @@ class CommandsSim(Module, AutoCSR):
                         self.data.sink.col.eq(col),
                         self.data.sink.bl_width.eq(bl_width),
                         If(~self.data.sink.ready,
-                           self.log.error("Simulator data FIFO overflow")
+                           self.log.error(prefix+"Simulator data FIFO overflow")
                         ),
                     ],
                 ).Else(
-                    self.log.error("READ command on inactive bank: bank=%d row=%d col=%d", bank, row, col),
+                    self.log.error(prefix+"READ command on inactive bank: bank=%d row=%d col=%d", bank, row, col),
                 ),
                 If(auto_precharge,
-                    self.log.info("AUTO-PRECHARGE: bank=%d row=%d", bank, row),
+                    self.log.info(prefix+"AUTO-PRECHARGE: bank=%d row=%d", bank, row),
                     NextValue(self.active_banks[bank], 0),
                 ),
             ],
             handle_cmd = self.handle_2_tick_cmd,
         )
 
-    def write_handler(self):
+    def write_handler(self, prefix):
         bank     = Signal(5)
         row      = Signal(18)
         col      = Signal(11)
@@ -496,7 +498,7 @@ class CommandsSim(Module, AutoCSR):
                         0:  bl_width.eq(8),
                         1:  bl_width.eq(8),
                         "default": [
-                            self.log.error("Model does not support burst length of 32, setting BL 16", bank, row, col),
+                            self.log.error(prefix+"Model does not support burst length of 32, setting BL 16", bank, row, col),
                             bl_width.eq(16),
                         ],
                    }),
@@ -507,7 +509,7 @@ class CommandsSim(Module, AutoCSR):
                 row.eq(self.active_rows[bank]),
                 col.eq(Cat(Replicate(0, 3), self.cs_n_high[1:9])),
                 auto_precharge.eq(~self.cs_n_high[10]),
-                self.log.info("WRITE: bank=%d row=%d, col=%d", bank, row, col),
+                self.log.info(prefix+"WRITE: bank=%d row=%d, col=%d", bank, row, col),
 
                 If(self.active_banks[bank],
                     [
@@ -521,14 +523,14 @@ class CommandsSim(Module, AutoCSR):
                         self.data.sink.col.eq(col),
                         self.data.sink.bl_width.eq(bl_width),
                         If(~self.data.sink.ready,
-                           self.log.error("Simulator data FIFO overflow")
-                         ),
+                           self.log.error(prefix+"Simulator data FIFO overflow")
+                        ),
                     ],
                 ).Else(
-                    self.log.error("WRITE command on inactive bank: bank=%d row=%d col=%d", bank, row, col)
+                    self.log.error(prefix+"WRITE command on inactive bank: bank=%d row=%d col=%d", bank, row, col)
                 ),
                 If(auto_precharge,
-                    self.log.info("AUTO-PRECHARGE: bank=%d row=%d", bank, row),
+                    self.log.info(prefix+"AUTO-PRECHARGE: bank=%d row=%d", bank, row),
                     NextValue(self.active_banks[bank], 0),
                 ),
             ],
@@ -545,7 +547,7 @@ class DataSim(Module, AutoCSR):
 
     This module runs with DDR clocks (simulation clocks with double the frequency of `pads.clk_p`).
     """
-    def __init__(self, pads, cmds_sim, *, cd_dq_wr, cd_dq_rd, cd_dqs_wr, cd_dqs_rd, cl, cwl, clk_freq, log_level, geom_settings, bl_max):
+    def __init__(self, pads, cmds_sim, *, cd_dq_wr, cd_dq_rd, cd_dqs_wr, cd_dqs_rd, cl, cwl, clk_freq, log_level, geom_settings, bl_max, prefix):
         self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
         self.log.add_csrs()
 
@@ -553,7 +555,7 @@ class DataSim(Module, AutoCSR):
         # Per-bank memory
         nrows = 2 ** geom_settings.rowbits
         ncols = 2 ** geom_settings.colbits
-        mems = [Memory(len(pads.dq), depth=nrows * ncols) for _ in range(nbanks)]
+        mems = [Memory(len(getattr(pads, prefix+'dq')), depth=nrows * ncols) for _ in range(nbanks)]
         ports = [mem.get_port(write_capable=True, we_granularity=8, async_read=True) for mem in mems]
         self.specials += mems + ports
         ports = Array(ports)
@@ -565,15 +567,18 @@ class DataSim(Module, AutoCSR):
         bl_width = Signal(bl_max.bit_length())
 
         dq_kwargs = dict(bank=bank, row=row, col=col, bl_max=bl_max, nrows=nrows, ncols=ncols,
-            log_level=log_level, clk_freq=clk_freq)
-        dqs_kwargs = dict(bl_max=bl_max, log_level=log_level, clk_freq=clk_freq)
+            log_level=log_level, clk_freq=clk_freq, prefix=prefix)
+        dqs_kwargs = dict(bl_max=bl_max, log_level=log_level, clk_freq=clk_freq, prefix=prefix)
 
-        self.submodules.dq_wr = ClockDomainsRenamer(cd_dq_wr)(DQWrite(dq=pads.dq, dmi=pads.dm_n,
-                                                              bl_width=bl_width, ports=ports, **dq_kwargs))
-        self.submodules.dq_rd = ClockDomainsRenamer(cd_dq_rd)(DQRead(dq=pads.dq_i, bl_width=bl_width,
-                                                               ports=ports, **dq_kwargs)) # Acording to JEDEC DQS and DQ for reads are edge alligned
-        self.submodules.dqs_wr = ClockDomainsRenamer(cd_dqs_wr)(DQSWrite(dqs=pads.dqs_t, bl_width=bl_width, **dqs_kwargs))
-        self.submodules.dqs_rd = ClockDomainsRenamer(cd_dqs_rd)(DQSRead(dqs_t=pads.dqs_t_i, dqs_c=pads.dqs_c_i, bl_width=bl_width, **dqs_kwargs))
+        self.submodules.dq_wr = ClockDomainsRenamer(cd_dq_wr)(DQWrite(dq=getattr(pads, prefix+'dq'),dmi=getattr(pads, prefix+'dm_n'),
+                                                                      bl_width=bl_width, ports=ports, **dq_kwargs))
+        self.submodules.dq_rd = ClockDomainsRenamer(cd_dq_rd)(DQRead(dq=getattr(pads, prefix+'dq_i'),
+                                                                     bl_width=bl_width, ports=ports, **dq_kwargs)) # Acording to JEDEC DQS and DQ for reads are edge alligned
+        self.submodules.dqs_wr = ClockDomainsRenamer(cd_dqs_wr)(DQSWrite(dqs=getattr(pads, prefix+'dqs_t'),
+                                                                         bl_width=bl_width, **dqs_kwargs))
+        self.submodules.dqs_rd = ClockDomainsRenamer(cd_dqs_rd)(DQSRead(dqs_t=getattr(pads, prefix+'dqs_t_i'),
+                                                                        dqs_c=getattr(pads, prefix+'dqs_c_i'),
+                                                                        bl_width=bl_width, **dqs_kwargs))
 
         write        = Signal()
         masked       = Signal()
@@ -593,13 +598,13 @@ class DataSim(Module, AutoCSR):
 
         self.comb += [
             Case(cmds_sim.mode_regs[8][3:5] , {
-                0: self.log.error("Write Preamble 0b00 is reserved"),
+                0: self.log.error(prefix+"Write Preamble 0b00 is reserved"),
                 1: wr_preamble_width.eq(4), # nCLK * 2 as we are working with 2*dram freq
                 2: wr_preamble_width.eq(6), #
                 3: wr_preamble_width.eq(8), #
             }),
             Case(cmds_sim.mode_regs[8][3:5] , {
-                0: self.log.error("Write Preamble 0b00 is reserved"),
+                0: self.log.error(prefix+"Write Preamble 0b00 is reserved"),
                 1: wr_preamble.eq(0b0100),
                 2: wr_preamble.eq(0b010000),
                 3: wr_preamble.eq(0b01010000),
@@ -641,9 +646,9 @@ class DataSim(Module, AutoCSR):
         self.comb += [
             If(cmds_sim.data.source.ready,
                 If(cmds_sim.data.source.we,
-                    self.log.info("Write Sync: bl_width=%d", bl_width),
+                    self.log.info(prefix+"Write Sync: bl_width=%d", bl_width),
                 ).Else(
-                    self.log.info("Read Sync: bl_width=%d", bl_width),
+                    self.log.info(prefix+"Read Sync: bl_width=%d", bl_width),
                 ),
             ),
         ]
@@ -697,7 +702,7 @@ class DQBurst(DataBurst):
         ]
 
 class DQWrite(DQBurst):
-    def __init__(self, *, dq, dmi, ports, nrows, ncols, bank, row, col, **kwargs):
+    def __init__(self, *, dq, dmi, ports, nrows, ncols, bank, row, col, prefix, **kwargs):
         super().__init__(nrows=nrows, ncols=ncols, row=row, col=col, **kwargs)
 
         assert len(dmi) == len(ports[0].we), "port.we should have the same width as the DMI line"
@@ -715,11 +720,11 @@ class DQWrite(DQBurst):
                 ports[bank].adr.eq(self.addr),
                 ports[bank].dat_w.eq(dq),
                 NextValue(self.burst_counter, 1),
-                self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%02x, dm=0x%01b",
+                self.log.debug(prefix+"WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%02x, dm=0x%01b",
                     self.burst_counter, bank, row, self.col_burst, dq, dmi, once=False),
             ],
             ops = [
-                self.log.debug("WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%02x, dm=0x%01b",
+                self.log.debug(prefix+"WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%02x, dm=0x%01b",
                     self.burst_counter, bank, row, self.col_burst, dq, dmi, once=False),
                 If(masked,
                     ports[bank].we.eq(~dmi),  # DMI high masks the beat
@@ -732,10 +737,10 @@ class DQWrite(DQBurst):
         )
 
 class DQRead(DQBurst):
-    def __init__(self, *, dq, ports, nrows, ncols, bank, row, col, **kwargs):
+    def __init__(self, *, dq, ports, nrows, ncols, bank, row, col, prefix, **kwargs):
         super().__init__(nrows=nrows, ncols=ncols, row=row, col=col, **kwargs)
         self.add_fsm([
-            self.log.debug("READ[%d]: bank=%d, row=%d, col=%d, dq=0x%02x",
+            self.log.debug(prefix+"READ[%d]: bank=%d, row=%d, col=%d, dq=0x%02x",
                 self.burst_counter, bank, row, self.col_burst, dq, once=False),
             ports[bank].we.eq(0),
             ports[bank].adr.eq(self.addr),
@@ -743,7 +748,7 @@ class DQRead(DQBurst):
         ])
 
 class DQSWrite(DataBurst):
-    def __init__(self, *, dqs, **kwargs):
+    def __init__(self, *, dqs, prefix, **kwargs):
         super().__init__(**kwargs)
         dqs0       = Signal()
         postamble0 = Signal()
@@ -760,7 +765,7 @@ class DQSWrite(DataBurst):
         self.add_fsm([
             dqs0.eq(dqs[0]),
             If(dqs[0] != self.burst_counter[0],
-                self.log.warn("Wrong DQS=%d for cycle=%d", dqs0, self.burst_counter, once=False)
+                self.log.warn(prefix+"Wrong DQS=%d for cycle=%d", dqs0, self.burst_counter, once=False)
             ),
         ])
 
@@ -778,7 +783,7 @@ class DQSWrite(DataBurst):
             postamble0.eq(self.postamble[post_counter]),
             If(~self.fsm.ongoing("BURST") &
                dqs[0] != self.postamble[post_counter],
-                self.log.error("Incorrect DQS postamble on bit=%d, expected:%d, got:%d",
+                self.log.error(prefix+"Incorrect DQS postamble on bit=%d, expected:%d, got:%d",
                                 post_counter, postamble0, post_dqs0),
                 Finish()
             ),
@@ -805,7 +810,7 @@ class DQSWrite(DataBurst):
             If(~self.fsm.ongoing("BURST") &
                ~self.post.ongoing("POSTCOUNT") &
                dqs[0] != self.preamble[pre_counter],
-                self.log.error("Incorrect DQS preamble on bit=%d, expected:%d, got:%d",
+                self.log.error(prefix+"Incorrect DQS preamble on bit=%d, expected:%d, got:%d",
                                 pre_counter, preamble0, pre_dqs0),
                 Finish()
             ),
@@ -817,7 +822,7 @@ class DQSWrite(DataBurst):
         )
 
 class DQSRead(DataBurst):
-    def __init__(self, *, dqs_t, dqs_c, **kwargs):
+    def __init__(self, *, dqs_t, dqs_c, prefix, **kwargs):
         super().__init__(**kwargs)
         dqs0 = Signal()
         self.add_fsm([
