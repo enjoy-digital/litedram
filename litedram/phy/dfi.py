@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 from migen import *
+from migen.fhdl.structure import _Slice
 from migen.genlib.record import *
 from migen.genlib.cdc import PulseSynchronizer
 
@@ -13,56 +14,144 @@ from litedram.common import PhySettings
 from litedram.phy.utils import Serializer, Deserializer
 
 
-def phase_cmd_description(addressbits, bankbits, nranks):
-    return [
-        ("address", addressbits, DIR_M_TO_S),
-        ("bank",       bankbits, DIR_M_TO_S),
-        ("cas_n",             1, DIR_M_TO_S),
-        ("cs_n",         nranks, DIR_M_TO_S),
-        ("ras_n",             1, DIR_M_TO_S),
-        ("we_n",              1, DIR_M_TO_S),
+def phase_cmd_description(addressbits, bankbits, nranks, with_sub_channels=False):
+    common = [
         ("cke",          nranks, DIR_M_TO_S),
-        ("odt",          nranks, DIR_M_TO_S),
         ("reset_n",           1, DIR_M_TO_S),
-        ("act_n",             1, DIR_M_TO_S),
-        ("mode_2n",           1, DIR_M_TO_S)
+        ("mode_2n",           1, DIR_M_TO_S),
+        ("alert_n",           1, DIR_S_TO_M),
     ]
+    prefixes = [""] if not with_sub_channels else ["A_", "B_"]
+    temp = []
+    for prefix in prefixes:
+        temp.append((prefix, [
+            ("address", addressbits, DIR_M_TO_S),
+            ("bank",       bankbits, DIR_M_TO_S),
+            ("cas_n",             1, DIR_M_TO_S),
+            ("cs_n",         nranks, DIR_M_TO_S),
+            ("ras_n",             1, DIR_M_TO_S),
+            ("act_n",             1, DIR_M_TO_S),
+            ("odt",               1, DIR_M_TO_S),
+            ("we_n",              1, DIR_M_TO_S),
+        ]))
+    sub_channels = temp[0][1] if not with_sub_channels else temp
+    return common + sub_channels
 
 
-def phase_wrdata_description(databits):
-    return [
-        ("wrdata",         databits, DIR_M_TO_S),
-        ("wrdata_en",             1, DIR_M_TO_S),
-        ("wrdata_mask", databits//8, DIR_M_TO_S)
-    ]
+def phase_wrdata_description(databits, with_sub_channels=False):
+    prefixes = [""] if not with_sub_channels else ["A_", "B_"]
+    _l = len(prefixes)
+    temp = []
+    for prefix in prefixes:
+        temp.append((prefix, [
+            ("wrdata",     databits//_l, DIR_M_TO_S),
+            ("wrdata_en",             1, DIR_M_TO_S),
+            ("wrdata_mask", databits//8, DIR_M_TO_S)]))
+    return temp[0][1] if not with_sub_channels else temp
 
 
-def phase_rddata_description(databits):
-    return [
-        ("rddata_en",           1, DIR_M_TO_S),
-        ("rddata",       databits, DIR_S_TO_M),
-        ("rddata_valid",        1, DIR_S_TO_M)
-    ]
+def phase_rddata_description(databits, with_sub_channels=False):
+    prefixes = [""] if not with_sub_channels else ["A_", "B_"]
+    _l = len(prefixes)
+    temp = []
+    for prefix in prefixes:
+        temp.append((prefix, [
+            ("rddata_en",           1, DIR_M_TO_S),
+            ("rddata",   databits//_l, DIR_S_TO_M),
+            ("rddata_valid",        1, DIR_S_TO_M)]))
+    return temp[0][1] if not with_sub_channels else temp
 
 
-def phase_description(addressbits, bankbits, nranks, databits):
-    r = phase_cmd_description(addressbits, bankbits, nranks)
-    r += phase_wrdata_description(databits)
-    r += phase_rddata_description(databits)
+def fixup(layout):
+    fixed_up = []
+    common = []
+    sub_A = []
+    sub_B = []
+    for signal in layout:
+        if signal[0] == "A_":
+            sub_A.extend(signal[1])
+        elif signal[0] == "B_":
+            sub_B.extend(signal[1])
+        else:
+            common.append(signal)
+    return common + [("A_", sub_A)] + [("B_", sub_B)]
+
+
+def phase_description(addressbits, bankbits, nranks, databits, with_sub_channels=False):
+    r = phase_cmd_description(addressbits, bankbits, nranks, with_sub_channels)
+    r += phase_wrdata_description(databits, with_sub_channels)
+    r += phase_rddata_description(databits, with_sub_channels)
+    if with_sub_channels:
+        r = fixup(r)
     return r
 
 
+# Slightly modified migen method, now with support for Slices
+def custom_connect(self, *slaves, keep=None, omit=None):
+    if keep is None:
+        _keep = set([f[0] for f in self.layout])
+    elif isinstance(keep, list):
+        _keep = set(keep)
+    else:
+        _keep = keep
+    if omit is None:
+        _omit = set()
+    elif isinstance(omit, list):
+        _omit = set(omit)
+    else:
+        _omit = omit
+
+    _keep = _keep - _omit
+
+    r = []
+    for f in self.layout:
+        field = f[0]
+        self_e = getattr(self, field)
+        if isinstance(self_e, Signal):
+            if field in _keep:
+                direction = f[2]
+                if direction == DIR_M_TO_S:
+                    r += [getattr(slave, field).eq(self_e) for slave in slaves]
+                elif direction == DIR_S_TO_M:
+                    r.append(self_e.eq(reduce(or_, [getattr(slave, field) for slave in slaves])))
+                else:
+                    raise TypeError
+        elif isinstance(self_e, _Slice):
+            if field in _keep:
+                direction = f[2]
+                if direction == DIR_M_TO_S:
+                    r += [getattr(slave, field).eq(self_e) for slave in slaves]
+                elif direction == DIR_S_TO_M:
+                    r.append(self_e.eq(reduce(or_, [getattr(slave, field) for slave in slaves])))
+                else:
+                    raise TypeError
+        else:
+            for slave in slaves:
+                r += self_e.connect(getattr(slave, field), keep=keep, omit=omit)
+    return r
+
+
+Record.connect = custom_connect
+
+
 class Interface(Record):
-    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
-        layout = [("p"+str(i), phase_description(addressbits, bankbits, nranks, databits)) for i in range(nphases)]
+    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1, with_sub_channels=False):
+        self.with_sub_channels = with_sub_channels
+        self.databits = databits
+        layout = [("p"+str(i), phase_description(addressbits, bankbits, nranks, databits, with_sub_channels)) for i in range(nphases)]
         Record.__init__(self, layout)
         self.phases = [getattr(self, "p"+str(i)) for i in range(nphases)]
+        prefixes = [""] if not with_sub_channels else ["A_", "B_"]
+        if not with_sub_channels:
+            for p in self.phases:
+                setattr(p, "", p)
         for p in self.phases:
-            p.cas_n.reset = 1
-            p.cs_n.reset = (2**nranks-1)
-            p.ras_n.reset = 1
-            p.we_n.reset = 1
-            p.act_n.reset = 1
+            for prefix in prefixes:
+                getattr(p, prefix).cas_n.reset = 1
+                getattr(p, prefix).cs_n.reset = (2**nranks-1)
+                getattr(p, prefix).ras_n.reset = 1
+                getattr(p, prefix).we_n.reset = 1
+                getattr(p, prefix).act_n.reset = 1
             p.mode_2n.reset = 0
 
     # Returns pairs (DFI-mandated signal name, Migen signal object)
@@ -81,6 +170,76 @@ class Interface(Record):
                         suffix = ""
                     r.append(("dfi_" + field + suffix, getattr(phase, field)))
         return r
+
+    def create_sub_channels(self):
+        if self.with_sub_channels:
+            return
+        prefixes = ["A_", "B_"]
+        self.with_sub_channels = True
+        cmd_ = ["address", "bank", "cas_n", "cs_n", "ras_n", "act_n", "odt", "we_n"]
+        wrdata_ = ["wrdata", "wrdata_mask"]
+        rddata_ = ["rddata", "rddata_valid"]
+        nranks = len(self.phases[0].cs_n)
+        databits = self.databits
+        sub_channel_sig = [
+            ("address",  14, DIR_M_TO_S),
+            ("bank",      1, DIR_M_TO_S),
+            ("cas_n",     1, DIR_M_TO_S),
+            ("cs_n", nranks, DIR_M_TO_S),
+            ("ras_n",     1, DIR_M_TO_S),
+            ("act_n",     1, DIR_M_TO_S),
+            ("odt",       1, DIR_M_TO_S),
+            ("we_n",      1, DIR_M_TO_S),
+            ("wrdata",       databits//2, DIR_M_TO_S),
+            ("wrdata_en",              1, DIR_M_TO_S),
+            ("wrdata_mask", databits//16, DIR_M_TO_S),
+            ("rddata_en",              1, DIR_M_TO_S),
+            ("rddata",       databits//2, DIR_S_TO_M),
+            ("rddata_valid",           1, DIR_S_TO_M)
+        ]
+        for p in self.phases:
+            for i, prefix in enumerate(prefixes):
+                r = Record(sub_channel_sig)
+                p.layout.append((prefix, sub_channel_sig))
+                setattr(p, prefix, r)
+                for cmd in cmd_:
+                    setattr(r, cmd, getattr(p, cmd))
+                setattr(r, 'wrdata_en', getattr(p, 'wrdata_en'))
+                setattr(r, 'wrdata', getattr(p, 'wrdata')[i*databits//2:(i+1)*databits//2])
+                setattr(r, 'wrdata_mask', getattr(p, 'wrdata_mask')[i*databits//16:(i+1)*databits//16])
+                setattr(r, 'rddata_en', getattr(p, 'rddata_en'))
+                setattr(r, 'rddata', getattr(p, 'rddata')[i*databits//2:(i+1)*databits//2])
+                setattr(r, 'rddata_valid', getattr(p, 'rddata_valid'))
+
+    def remove_common_signals(self):
+        cmd_ = ["address", "bank", "cas_n", "cs_n", "ras_n", "act_n", "odt", "we_n"]
+        wrdata_ = ["wrdata", "wrdata_mask", "wrdata_en"]
+        rddata_ = ["rddata", "rddata_valid", "rddata_en"]
+        new_layout = []
+        for phase, signals in self.layout:
+            temp = []
+            for signal in signals:
+                 if signal[0] not in cmd_ + wrdata_ + rddata_:
+                    temp.append(signal)
+            new_layout.append((phase, temp))
+        self.layout = new_layout
+
+        for phase in self.phases:
+            for sig in cmd_ + wrdata_ + rddata_:
+                delattr(phase, sig)
+            new_layout = []
+            for signal in phase.layout:
+                if signal[0] not in cmd_ + wrdata_ + rddata_:
+                    new_layout.append(signal)
+            phase.layout = new_layout
+
+    def get_subchannel(self, prefix):
+        if prefix == "" and not self.with_sub_channels:
+            return self.phases
+        if prefix == "":
+            raise Exception("DFI interfaces already converted to one with subchannels")
+        self.create_sub_channels()
+        return [getattr(phase, prefix) for phase in self.phases]
 
 
 class Interconnect(Module):

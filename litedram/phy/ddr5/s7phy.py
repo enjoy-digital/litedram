@@ -13,11 +13,11 @@ from litedram.common import *
 from litedram.phy.dfi import *
 
 from litedram.phy.utils import delayed, Latency
-from litedram.phy.ddr5.basephy import DoubleRateDDR5PHY
+from litedram.phy.ddr5.basephy import DDR5PHY
 
 from litedram.phy.s7common import S7Common
 
-class S7DDR5PHY(DoubleRateDDR5PHY, S7Common):
+class S7DDR5PHY(DDR5PHY, S7Common):
     def __init__(self, pads, *, iodelay_clk_freq, with_odelay, **kwargs):
         self.iodelay_clk_freq = iodelay_clk_freq
 

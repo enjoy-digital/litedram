@@ -230,6 +230,7 @@ class PhySettings(Settings):
             write_dq_dqs_training: bool = False,
             write_latency_calibration: bool = False,
             read_leveling: bool = False,
+            with_sub_channels: bool = False,
         ):
         if strobes is None:
             strobes = databits // 8

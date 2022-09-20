@@ -863,36 +863,74 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
         fmax = 200e6
         return int(math.ceil(sec * fmax))
 
-    init_sequence = [
-        # Perform "Reset Initialization with Stable Power"
-        # We assume that loading the bistream will take at least tINIT1 (200us)
-        # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
-        ("Assert reset", 0x0000, 0, "DFII_CONTROL_ODT", ck(1e-6)),  # ??
-        ("Assert CS */\n"
-         "\tsdram_dfii_constinjector_command_write(0x1);\n"
-         "\t/*^UberHack",
-         0x0000,
-         0,
-         "DFII_CONTROL_CONSTINJECTOR",
-         ck(10e-9)),
-        ("Release reset",
-         0x0000,
-         0,
-         "DFII_CONTROL_CONSTINJECTOR|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
-         ck(4e-3)),
-        ("Release CS */\n"
-         "\tsdram_dfii_constinjector_command_write(0x7FFE);\n"
-         "\t/*^UberHack",
-         0x0000,
-         0,
-         "DFII_CONTROL_CONSTINJECTOR|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
-         ck(2e-6)),
-        ("NOPs", 0x0000, 0, "DFII_CONTROL_NOPINJECTOR|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N", 1),
-        ("Return Control", 0x0000, 0, "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N", 1),
-        *[cmd_mr(ma) for ma in sorted(mr.keys())],
-        ("ZQ Calibration start", MPC.ZQC_START, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
-        ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
-    ]
+    if not phy_settings.with_sub_channels:
+        init_sequence = [
+            # Perform "Reset Initialization with Stable Power"
+            # We assume that loading the bistream will take at least tINIT1 (200us)
+            # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
+            ("Assert reset", 0x0000, 0, "DFII_CONTROL_ODT", ck(1e-6)),  # ??
+            ("Assert CS */\n"
+             "\tsdram_dfii_constinjector_command_write(0x1);\n"
+             "\t/*^UberHack",
+             0x0000,
+             0,
+             "DFII_CONTROL_DDR5|DFII_CONTROL_CONSTINJECTOR",
+             ck(10e-9)),
+            ("Release reset",
+             0x0000,
+             0,
+             "DFII_CONTROL_DDR5|DFII_CONTROL_CONSTINJECTOR|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
+             ck(4e-3)),
+            ("Release CS */\n"
+             "\tsdram_dfii_constinjector_command_write(0x7FFE);\n"
+             "\t/*^UberHack",
+             0x0000,
+             0,
+             "DFII_CONTROL_DDR5|DFII_CONTROL_CONSTINJECTOR|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
+             ck(2e-6)),
+            ("NOPs", 0x0000, 0, "DFII_CONTROL_DDR5|DFII_CONTROL_NOPINJECTOR|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N", 1),
+            ("Return Control", 0x0000, 0, "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N", 1),
+            *[cmd_mr(ma) for ma in sorted(mr.keys())],
+            ("ZQ Calibration start", MPC.ZQC_START, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
+            ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
+        ]
+    else:
+        init_sequence = [
+            # Perform "Reset Initialization with Stable Power"
+            # We assume that loading the bistream will take at least tINIT1 (200us)
+            # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
+            ("Assert reset", 0x0000, 0, "DFII_CONTROL_ODT", ck(1e-6)),  # ??
+            ("Assert CS */\n"
+             "\tsdram_dfii_a_constinjector_command_write(0x1);\n"
+             "\tsdram_dfii_b_constinjector_command_write(0x1);\n"
+             "\t/*^UberHack",
+             0x0000,
+             0,
+             "DFII_CONTROL_DDR5|DFII_CONTROL_A_CONSTINJECTOR|DFII_CONTROL_B_CONSTINJECTOR",
+             ck(10e-9)),
+            ("Release reset",
+             0x0000,
+             0,
+             "DFII_CONTROL_DDR5|DFII_CONTROL_A_CONSTINJECTOR|DFII_CONTROL_B_CONSTINJECTOR|"
+             "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
+             ck(4e-3)),
+            ("Release CS */\n"
+             "\tsdram_dfii_a_constinjector_command_write(0x7FFE);\n"
+             "\tsdram_dfii_b_constinjector_command_write(0x7FFE);\n"
+             "\t/*^UberHack",
+             0x0000,
+             0,
+             "DFII_CONTROL_DDR5|DFII_CONTROL_A_CONSTINJECTOR|DFII_CONTROL_B_CONSTINJECTOR|"
+             "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
+             ck(2e-6)),
+            ("NOPs", 0x0000, 0,
+             "DFII_CONTROL_DDR5|DFII_CONTROL_A_NOPINJECTOR|DFII_CONTROL_B_NOPINJECTOR|"
+             "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N", 1),
+            ("Return Control", 0x0000, 0, "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N", 1),
+            *[cmd_mr(ma) for ma in sorted(mr.keys())],
+            ("ZQ Calibration start", MPC.ZQC_START, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
+            ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
+        ]
 
     return init_sequence, mr
 
@@ -987,8 +1025,18 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     r.define("DFII_CONTROL_ODT",     "0x04")
     r.define("DFII_CONTROL_RESET_N", "0x08")
     if phy_settings.memtype is "DDR5":
-        r.define("DFII_CONTROL_CONSTINJECTOR", "0x10")
-        r.define("DFII_CONTROL_NOPINJECTOR", "0x20")
+        r.define("DFII_CONTROL_DDR5", "0x10")
+        if not phy_settings.with_sub_channels:
+            r.define("DFII_CONTROL_CONSTINJECTOR", "0x20")
+            r.define("DFII_CONTROL_NOPINJECTOR", "0x40")
+            r.define("DFII_CONTROL_CMDINJECTOR", "0x60")
+        else:
+            r.define("DFII_CONTROL_A_CONSTINJECTOR", "0x20")
+            r.define("DFII_CONTROL_A_NOPINJECTOR", "0x40")
+            r.define("DFII_CONTROL_A_CMDINJECTOR", "0x60")
+            r.define("DFII_CONTROL_B_CONSTINJECTOR", "0x80")
+            r.define("DFII_CONTROL_B_NOPINJECTOR", "0x100")
+            r.define("DFII_CONTROL_B_CMDINJECTOR", "0x180")
     r.newline()
 
     r.define("DFII_COMMAND_CS",     "0x01")
