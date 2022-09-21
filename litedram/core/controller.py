@@ -84,7 +84,9 @@ class LiteDRAMController(Module, AutoCSR):
         
         self._log_buffer = CSRStatus(32, name='log_buffer')
         
-        self.sync += [If(self._log_buffer.we, self._log_buffer.status.eq(self._log_buffer.status+1))]
+        self.sync += [If(self._log_buffer.we, 
+                         If(self._log_buffer.status < 20, self._log_buffer.status.eq(self._log_buffer.status+1)
+                         ).Else(self._log_buffer.status.eq(0)))]
 
         # # #
         

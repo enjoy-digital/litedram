@@ -16973,7 +16973,11 @@ always @(posedge sys_clk) begin
 		dfii_pi_mod3_phaseinjector3_status <= dfii_pi_mod3_inti_p3_rddata;
 	end
 	if (litedramcontroller_we) begin
-		litedramcontroller_status <= (litedramcontroller_status + 1'd1);
+		if ((litedramcontroller_status < 5'd20)) begin
+			litedramcontroller_status <= (litedramcontroller_status + 1'd1);
+		end else begin
+			litedramcontroller_status <= 1'd0;
+		end
 	end
 	litedramcontroller_refresher_cmd_valid <= litedramcontroller_refresher_tmrrefresher_control0;
 	litedramcontroller_refresher_cmd_last <= litedramcontroller_refresher_tmrrefresher_control1;
