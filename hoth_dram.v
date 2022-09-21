@@ -17026,9 +17026,6 @@ always @(posedge sys_clk) begin
 	if (litedramcontroller_syncfifo_writable) begin
 		litedramcontroller_syncfifo_we <= 1'd1;
 		litedramcontroller_num <= (litedramcontroller_num + 1'd1);
-	end else begin
-		litedramcontroller_syncfifo_we <= 1'd0;
-		litedramcontroller_num <= litedramcontroller_num;
 	end
 	if (((litedramcontroller_syncfifo_we & litedramcontroller_syncfifo_writable) & (~litedramcontroller_replace))) begin
 		if ((litedramcontroller_produce == 4'd9)) begin

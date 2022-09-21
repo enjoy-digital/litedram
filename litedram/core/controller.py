@@ -96,8 +96,7 @@ class LiteDRAMController(Module, AutoCSR):
         # Put ascending numbers in FIFO
         num = Signal(32)
         self.comb += [log_fifo.din.eq(num), log_fifo.replace.eq(0)]
-        self.sync += [If(log_fifo.writable, log_fifo.we.eq(1), num.eq(num+1))
-                        .Else(log_fifo.we.eq(0), num.eq(num))]
+        self.sync += [If(log_fifo.writable, log_fifo.we.eq(1), num.eq(num+1))]
         
         #self.sync += [If(self._log_buffer.we, 
         #                 If(self._log_buffer.status < 20, self._log_buffer.status.eq(self._log_buffer.status+1)
