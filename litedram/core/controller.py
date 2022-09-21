@@ -15,6 +15,8 @@ from litedram.core.refresher import Refresher, TMRRefresher
 from litedram.core.bankmachine import BankMachine, TMRBankMachine
 from litedram.core.multiplexer import Multiplexer, TMRMultiplexer
 
+from litex.soc.interconnect.csr import *
+
 # Settings -----------------------------------------------------------------------------------------
 
 class ControllerSettings(Settings):
@@ -77,6 +79,10 @@ class LiteDRAMController(Module):
             nphases     = phy_settings.nphases)
             
         self.TMRdfi = TMRRecord(self.dfi)
+        
+        # Logging Buffer CSR -----------------------------------------------------------------------
+        
+        self.log_buffer = CSRStatus(16)
 
         # # #
         
