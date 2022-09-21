@@ -1046,7 +1046,7 @@ wire [23:0] litedramcontroller_TMRdfi_p3_wrdata_mask;
 wire [2:0] litedramcontroller_TMRdfi_p3_rddata_en;
 wire [191:0] litedramcontroller_TMRdfi_p3_rddata;
 wire [2:0] litedramcontroller_TMRdfi_p3_rddata_valid;
-reg litedramcontroller_status = 1'd0;
+reg [31:0] litedramcontroller_status = 32'd0;
 reg litedramcontroller_we = 1'd0;
 wire [63:0] litedramcontroller_control0;
 wire litedramcontroller_control1;
@@ -20538,7 +20538,7 @@ always @(posedge sys_clk) begin
 		dfii_pi_mod3_phaseinjector1_status <= 64'd0;
 		dfii_pi_mod3_phaseinjector2_status <= 64'd0;
 		dfii_pi_mod3_phaseinjector3_status <= 64'd0;
-		litedramcontroller_status <= 1'd0;
+		litedramcontroller_status <= 32'd0;
 		litedramcontroller_refresher_cmd_valid <= 1'd0;
 		litedramcontroller_refresher_cmd_payload_a <= 14'd0;
 		litedramcontroller_refresher_cmd_payload_ba <= 3'd0;

@@ -82,7 +82,7 @@ class LiteDRAMController(Module, AutoCSR):
         
         # Logging Buffer CSR -----------------------------------------------------------------------
         
-        self._log_buffer = CSRStatus(name='log_buffer')
+        self._log_buffer = CSRStatus(32, name='log_buffer')
         
         self.sync += [If(self._log_buffer.we, self._log_buffer.status.eq(self._log_buffer.status+1))]
 
