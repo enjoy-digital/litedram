@@ -82,7 +82,7 @@ class LiteDRAMController(Module):
         
         # Logging Buffer CSR -----------------------------------------------------------------------
         
-        self.log_buffer = CSRStatus(name='log_buffer')
+        self._log_buffer = CSRStatus(name='log_buffer')
 
         # # #
         
