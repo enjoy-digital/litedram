@@ -91,13 +91,13 @@ class LiteDRAMController(Module, AutoCSR):
         
         # CSR reads from FIFO if message is available
         self.sync += [If(log_csr.we & log_fifo.readable, log_csr.status.eq(log_fifo.dout), log_fifo.re.eq(1))
-                        .Else(log_csr.status.eq(0))]
+                        .Else(If(log_csr.we, log_csr.status.eq(0)))]
                         
         # Put ascending numbers in FIFO
-        num = Signal(32, reset=0)
-        self.comb += [log_fifo.din.eq(num)]
+        num = Signal(32)
+        self.comb += [log_fifo.din.eq(num), log_fifo.replace.eq(0)]
         self.sync += [If(log_fifo.writable, log_fifo.we.eq(1), num.eq(num+1))
-                        .Else(log_fifo.we.eq(0))]
+                        .Else(log_fifo.we.eq(0), num.eq(num))]
         
         #self.sync += [If(self._log_buffer.we, 
         #                 If(self._log_buffer.status < 20, self._log_buffer.status.eq(self._log_buffer.status+1)

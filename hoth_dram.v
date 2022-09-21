@@ -1055,7 +1055,7 @@ wire litedramcontroller_syncfifo_readable;
 wire [31:0] litedramcontroller_syncfifo_din;
 wire [31:0] litedramcontroller_syncfifo_dout;
 reg [3:0] litedramcontroller_level = 4'd0;
-reg litedramcontroller_replace = 1'd0;
+wire litedramcontroller_replace;
 reg [3:0] litedramcontroller_produce = 4'd0;
 reg [3:0] litedramcontroller_consume = 4'd0;
 reg [3:0] litedramcontroller_wrport_adr;
@@ -7213,6 +7213,7 @@ assign dfii_inti_inti_p3_wrdata_mask = dfii_control110;
 assign dfii_control111 = (((slice_proxy330[0] & slice_proxy331[1]) | (slice_proxy332[1] & slice_proxy333[2])) | (slice_proxy334[0] & slice_proxy335[2]));
 assign dfii_inti_inti_p3_rddata_en = dfii_control111;
 assign litedramcontroller_syncfifo_din = litedramcontroller_num;
+assign litedramcontroller_replace = 1'd0;
 assign litedramcontroller_tmrbankmachine0_TMRreq_valid = litedramcontroller_TMRinterface_bank0_valid;
 assign litedramcontroller_TMRinterface_bank0_ready = litedramcontroller_tmrbankmachine0_TMRreq_ready;
 assign litedramcontroller_tmrbankmachine0_TMRreq_we = litedramcontroller_TMRinterface_bank0_we;
@@ -17017,13 +17018,16 @@ always @(posedge sys_clk) begin
 		litedramcontroller_status <= litedramcontroller_syncfifo_dout;
 		litedramcontroller_syncfifo_re <= 1'd1;
 	end else begin
-		litedramcontroller_status <= 1'd0;
+		if (litedramcontroller_we) begin
+			litedramcontroller_status <= 1'd0;
+		end
 	end
 	if (litedramcontroller_syncfifo_writable) begin
 		litedramcontroller_syncfifo_we <= 1'd1;
 		litedramcontroller_num <= (litedramcontroller_num + 1'd1);
 	end else begin
 		litedramcontroller_syncfifo_we <= 1'd0;
+		litedramcontroller_num <= litedramcontroller_num;
 	end
 	if (((litedramcontroller_syncfifo_we & litedramcontroller_syncfifo_writable) & (~litedramcontroller_replace))) begin
 		if ((litedramcontroller_produce == 4'd9)) begin
