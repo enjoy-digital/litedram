@@ -1046,8 +1046,15 @@ wire [23:0] litedramcontroller_TMRdfi_p3_wrdata_mask;
 wire [2:0] litedramcontroller_TMRdfi_p3_rddata_en;
 wire [191:0] litedramcontroller_TMRdfi_p3_rddata;
 wire [2:0] litedramcontroller_TMRdfi_p3_rddata_valid;
-reg [31:0] litedramcontroller_status = 32'd0;
-reg litedramcontroller_we = 1'd0;
+reg [31:0] litedramcontroller_log_csr_status = 32'd0;
+reg litedramcontroller_log_csr_we = 1'd0;
+reg litedramcontroller_log_fifo_we = 1'd0;
+reg litedramcontroller_log_fifo_writable = 1'd0;
+reg litedramcontroller_log_fifo_re = 1'd0;
+reg litedramcontroller_log_fifo_readable = 1'd0;
+wire [31:0] litedramcontroller_log_fifo_din;
+reg [31:0] litedramcontroller_log_fifo_dout = 32'd0;
+reg [31:0] litedramcontroller_num = 32'd0;
 wire [63:0] litedramcontroller_control0;
 wire litedramcontroller_control1;
 wire [63:0] litedramcontroller_control2;
@@ -7194,6 +7201,7 @@ assign dfii_control110 = (((slice_proxy324[7:0] & slice_proxy325[15:8]) | (slice
 assign dfii_inti_inti_p3_wrdata_mask = dfii_control110;
 assign dfii_control111 = (((slice_proxy330[0] & slice_proxy331[1]) | (slice_proxy332[1] & slice_proxy333[2])) | (slice_proxy334[0] & slice_proxy335[2]));
 assign dfii_inti_inti_p3_rddata_en = dfii_control111;
+assign litedramcontroller_log_fifo_din = litedramcontroller_num;
 assign litedramcontroller_tmrbankmachine0_TMRreq_valid = litedramcontroller_TMRinterface_bank0_valid;
 assign litedramcontroller_TMRinterface_bank0_ready = litedramcontroller_tmrbankmachine0_TMRreq_ready;
 assign litedramcontroller_tmrbankmachine0_TMRreq_we = litedramcontroller_TMRinterface_bank0_we;
@@ -16972,12 +16980,15 @@ always @(posedge sys_clk) begin
 	if (dfii_pi_mod3_inti_p3_rddata_valid) begin
 		dfii_pi_mod3_phaseinjector3_status <= dfii_pi_mod3_inti_p3_rddata;
 	end
-	if (litedramcontroller_we) begin
-		if ((litedramcontroller_status < 5'd20)) begin
-			litedramcontroller_status <= (litedramcontroller_status + 1'd1);
-		end else begin
-			litedramcontroller_status <= 1'd0;
-		end
+	if ((litedramcontroller_log_csr_we & litedramcontroller_log_fifo_readable)) begin
+		litedramcontroller_log_csr_status <= litedramcontroller_log_fifo_dout;
+		litedramcontroller_log_fifo_re <= 1'd1;
+	end else begin
+		litedramcontroller_log_csr_status <= 1'd0;
+	end
+	if (litedramcontroller_log_fifo_writable) begin
+		litedramcontroller_log_fifo_we <= 1'd1;
+		litedramcontroller_num <= (litedramcontroller_num + 1'd1);
 	end
 	litedramcontroller_refresher_cmd_valid <= litedramcontroller_refresher_tmrrefresher_control0;
 	litedramcontroller_refresher_cmd_last <= litedramcontroller_refresher_tmrrefresher_control1;
@@ -20542,7 +20553,10 @@ always @(posedge sys_clk) begin
 		dfii_pi_mod3_phaseinjector1_status <= 64'd0;
 		dfii_pi_mod3_phaseinjector2_status <= 64'd0;
 		dfii_pi_mod3_phaseinjector3_status <= 64'd0;
-		litedramcontroller_status <= 32'd0;
+		litedramcontroller_log_csr_status <= 32'd0;
+		litedramcontroller_log_fifo_we <= 1'd0;
+		litedramcontroller_log_fifo_re <= 1'd0;
+		litedramcontroller_num <= 32'd0;
 		litedramcontroller_refresher_cmd_valid <= 1'd0;
 		litedramcontroller_refresher_cmd_payload_a <= 14'd0;
 		litedramcontroller_refresher_cmd_payload_ba <= 3'd0;

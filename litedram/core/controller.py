@@ -9,6 +9,8 @@
 
 from migen import *
 
+from migen.genlib.fifo import *
+
 from litedram.common import *
 from litedram.phy import dfi
 from litedram.core.refresher import Refresher, TMRRefresher
@@ -82,11 +84,22 @@ class LiteDRAMController(Module, AutoCSR):
         
         # Logging Buffer CSR -----------------------------------------------------------------------
         
-        self._log_buffer = CSRStatus(32, name='log_buffer')
+        self._log_csr = log_csr = CSRStatus(32, name='log_buffer')
         
-        self.sync += [If(self._log_buffer.we, 
-                         If(self._log_buffer.status < 20, self._log_buffer.status.eq(self._log_buffer.status+1)
-                         ).Else(self._log_buffer.status.eq(0)))]
+        log_fifo = SyncFIFO(32, 10)
+        
+        # CSR reads from FIFO if message is available
+        self.sync += [If(log_csr.we & log_fifo.readable, log_csr.status.eq(log_fifo.dout), log_fifo.re.eq(1))
+                        .Else(log_csr.status.eq(0))]
+                        
+        # Put ascending numbers in FIFO
+        num = Signal(32, reset=0)
+        self.comb += [log_fifo.din.eq(num)]
+        self.sync += [If(log_fifo.writable, log_fifo.we.eq(1), num.eq(num+1))]
+        
+        #self.sync += [If(self._log_buffer.we, 
+        #                 If(self._log_buffer.status < 20, self._log_buffer.status.eq(self._log_buffer.status+1)
+        #                 ).Else(self._log_buffer.status.eq(0)))]
 
         # # #
         
