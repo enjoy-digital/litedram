@@ -21,6 +21,7 @@ class PhaseInjector(Module, AutoCSR):
         self._baddress      = CSRStorage(len(phase.bank),    reset_less=True, write_from_dev=True)
         self._wrdata        = CSRStorage(len(phase.wrdata),  reset_less=True, write_from_dev=True)
         self._rddata        = CSRStatus(len(phase.rddata))
+        self._test          = CSRStatus()
 
         # # #
 
