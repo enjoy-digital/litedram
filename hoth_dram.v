@@ -17021,6 +17021,7 @@ always @(posedge sys_clk) begin
 		if (litedramcontroller_we) begin
 			litedramcontroller_status <= 1'd0;
 		end
+		litedramcontroller_syncfifo_re <= 1'd0;
 	end
 	if (litedramcontroller_syncfifo_writable) begin
 		litedramcontroller_syncfifo_we <= 1'd1;
