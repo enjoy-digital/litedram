@@ -1046,6 +1046,8 @@ wire [23:0] litedramcontroller_TMRdfi_p3_wrdata_mask;
 wire [2:0] litedramcontroller_TMRdfi_p3_rddata_en;
 wire [191:0] litedramcontroller_TMRdfi_p3_rddata;
 wire [2:0] litedramcontroller_TMRdfi_p3_rddata_valid;
+reg litedramcontroller_status = 1'd0;
+reg litedramcontroller_we = 1'd0;
 wire [63:0] litedramcontroller_control0;
 wire litedramcontroller_control1;
 wire [63:0] litedramcontroller_control2;
@@ -16970,6 +16972,9 @@ always @(posedge sys_clk) begin
 	if (dfii_pi_mod3_inti_p3_rddata_valid) begin
 		dfii_pi_mod3_phaseinjector3_status <= dfii_pi_mod3_inti_p3_rddata;
 	end
+	if (litedramcontroller_we) begin
+		litedramcontroller_status <= (litedramcontroller_status + 1'd1);
+	end
 	litedramcontroller_refresher_cmd_valid <= litedramcontroller_refresher_tmrrefresher_control0;
 	litedramcontroller_refresher_cmd_last <= litedramcontroller_refresher_tmrrefresher_control1;
 	litedramcontroller_refresher_cmd_first <= litedramcontroller_refresher_tmrrefresher_control2;
@@ -20533,6 +20538,7 @@ always @(posedge sys_clk) begin
 		dfii_pi_mod3_phaseinjector1_status <= 64'd0;
 		dfii_pi_mod3_phaseinjector2_status <= 64'd0;
 		dfii_pi_mod3_phaseinjector3_status <= 64'd0;
+		litedramcontroller_status <= 1'd0;
 		litedramcontroller_refresher_cmd_valid <= 1'd0;
 		litedramcontroller_refresher_cmd_payload_a <= 14'd0;
 		litedramcontroller_refresher_cmd_payload_ba <= 3'd0;
