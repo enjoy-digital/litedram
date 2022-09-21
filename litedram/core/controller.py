@@ -47,7 +47,7 @@ class ControllerSettings(Settings):
 
 # Controller ---------------------------------------------------------------------------------------
 
-class LiteDRAMController(Module):
+class LiteDRAMController(Module, AutoCSR):
     def __init__(self, phy_settings, geom_settings, timing_settings, clk_freq,
         controller_settings=ControllerSettings()):
         if phy_settings.memtype == "SDR":
