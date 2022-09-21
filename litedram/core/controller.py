@@ -117,5 +117,5 @@ class LiteDRAMController(Module):
             interface     = interface,
             TMRinterface  = TMRinterface)
 
-    def get_csrs(self):
-        return self.multiplexer.get_csrs()
+    #def get_csrs(self):
+    #    return self.multiplexer.get_csrs()
