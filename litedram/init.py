@@ -1176,8 +1176,18 @@ def get_sdram_phy_py_header(phy_settings, timing_settings):
     r += "dfii_control_odt     = 0x04\n"
     r += "dfii_control_reset_n = 0x08\n"
     if phy_settings.memtype == "DDR5":
-        r += "dfii_control_constinjector = 0x10\n"
-        r += "dfii_control_nopinjector   = 0x20\n"
+        r += "dfii_control_ddr5    = 0x10\n"
+        if not phy_settings.with_sub_channels:
+            r += "dfii_control_constinjector = 0x20\n"
+            r += "dfii_control_nopinjector   = 0x40\n"
+            r += "dfii_control_cmdinjector   = 0x60\n"
+        else:
+            r += "dfii_control_a_constinjector = 0x20\n"
+            r += "dfii_control_a_nopinjector   = 0x40\n"
+            r += "dfii_control_a_cmdinjector   = 0x60\n"
+            r += "dfii_control_b_constinjector = 0x80\n"
+            r += "dfii_control_b_nopinjector   = 0x100\n"
+            r += "dfii_control_b_cmdinjector   = 0x180\n"
     r += "\n"
     r += "dfii_command_cs     = 0x01\n"
     r += "dfii_command_we     = 0x02\n"

@@ -674,11 +674,11 @@ class VerilatorDDR5Tests(unittest.TestCase):
 
     def test_ddr5_sim_dq_dqs_ratio_4(self):
         # Test simulation with regular delays, intermediate serialization stage,
-        # refresh and no L2 cache (masked write must work)
+        # refresh and with L2 cache (masked write doesn't work for x4)
         self.run_test([
             "--finish-after-memtest", "--log-level", "warn",
             "--output-dir", "build/test_ddr5_sim_dq_dqs_ratio_4",
-            "--l2-size", "0",
+            "--l2-size", "32",
             "--dq-dqs-ratio", "4",
         ])
 
@@ -694,7 +694,7 @@ class VerilatorDDR5Tests(unittest.TestCase):
 
     def test_ddr5_sim_dq_dqs_ratio_4_with_sub_channels(self):
         # Test simulation with regular delays, intermediate serialization stage,
-        # refresh and no L2 cache (masked write must work)
+        # refresh and with L2 cache (masked write doesn't work for x4)
         self.run_test([
             "--finish-after-memtest", "--log-level", "warn",
             "--output-dir", "build/test_ddr5_sim_dq_dqs_ratio_4_with_sub_channels",
@@ -709,7 +709,7 @@ class VerilatorDDR5Tests(unittest.TestCase):
         self.run_test([
             "--finish-after-memtest", "--log-level", "warn",
             "--output-dir", "build/test_ddr5_sim_dq_dqs_ratio_8_with_sub_channels",
-            "--l2-size", "32",
+            "--l2-size", "0",
             "--dq-dqs-ratio", "8",
             "--with-sub-channels",
         ])
