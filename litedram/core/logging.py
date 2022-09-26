@@ -19,5 +19,5 @@ class LoggingSystem(Module):
         self.comb += [log_fifo.din.eq(num), log_fifo.replace.eq(0), log_fifo.we.eq(log_fifo.writable)]
         self.sync += [If(log_fifo.we, num.eq(num+1))]
         
-    def do_finalize(self):
-        pass
+    #def do_finalize(self):
+    #    pass
