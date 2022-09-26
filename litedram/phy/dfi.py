@@ -46,7 +46,7 @@ def phase_wrdata_description(databits, with_sub_channels=False):
         temp.append((prefix, [
             ("wrdata",     databits//_l, DIR_M_TO_S),
             ("wrdata_en",             1, DIR_M_TO_S),
-            ("wrdata_mask", databits//8, DIR_M_TO_S)]))
+            ("wrdata_mask", databits//8 if not with_sub_channels else databits//16, DIR_M_TO_S)]))
     return temp[0][1] if not with_sub_channels else temp
 
 

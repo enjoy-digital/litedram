@@ -63,6 +63,8 @@ class DDR5Tests(unittest.TestCase):
         self.cmd_latency:   int = self.phy.settings.cmd_latency
         self.read_latency:  int = self.phy.settings.read_latency
         self.write_latency: int = self.phy.settings.write_latency
+        read_latency_in_cycles = self.NPHASES * (self.read_latency - Deserializer.LATENCY - 1) # read latency has to account for bitslips after dq deser
+        write_latency_in_cycles = self.NPHASES * self.phy.settings.write_latency + 6
 
         # 0s, 1s and Xs for 1 sys_clk in `*_ddr` clock domain
         self.zeros: str = '0' * self.NPHASES * 2
@@ -70,15 +72,18 @@ class DDR5Tests(unittest.TestCase):
         self.xs:    str = 'x' * self.NPHASES * 2
 
         # latencies to use in pad checkers
-        self.ca_latency:       str = self.xs + '0' * self.NPHASES + '0' * self.NPHASES * self.cmd_latency
-        self.cs_n_latency:     str = self.xs + '0' * self.NPHASES + '1' * self.NPHASES * self.cmd_latency
+        # Extra '0' for unaligned ddr clk and cs clk
+        self.ca_latency:       str = self.xs + '0' * 6 + '0' + '0' * (self.NPHASES * (Serializer.LATENCY - 1)) + '0' * self.NPHASES
+        self.cs_n_latency:     str = self.xs + '0' * 6 + '0' + '0' * (self.NPHASES * (Serializer.LATENCY - 1)) + '1' * self.NPHASES
 
         # Read latency is 1 sys_clk shorter in relity, cmd has no bitslip while dq has
-        self.dqs_t_rd_latency: str = self.xs * 2 + (self.read_latency - 3 - 1) * self.xs + 'x' * (self.NPHASES - 1) * 2
-        self.dq_rd_latency:    str = self.xs * 2 + (self.read_latency - 3) * self.zeros  + '0' * (self.NPHASES - 1) * 2
+        # -2 preamble
+        self.dqs_t_rd_latency: str = self.xs * 2 + (self.rdphase + read_latency_in_cycles) * 'xx'
+        self.dq_rd_latency:    str = self.xs * 2 + (self.rdphase + read_latency_in_cycles + 2) * 'xx'
         # Write latency is 1 sys_clk longer in reality, cmd has no bitslip while dq and dqs have, this force 1 extra sys_clk cycle
-        self.dqs_t_wr_latency: str = self.xs * 2 + (self.cmd_latency + self.write_latency) * self.xs + 'x' * (self.NPHASES - 1) * 2
-        self.dq_wr_latency:    str = self.xs * 2 + (self.cmd_latency + self.write_latency + 1) * self.zeros  + 'x' * (self.NPHASES - 1) * 2
+        # preamble is 2 ddr clocks long
+        self.dqs_t_wr_latency: str = self.xs * 2 + (self.wrphase + self.cmd_latency + write_latency_in_cycles + (4 - 2)) * 'xx'
+        self.dq_wr_latency:    str = self.xs * 2 + (self.wrphase + self.cmd_latency + write_latency_in_cycles + 4) * 'xx'
 
     @staticmethod
     def process_ca(ca: str) -> int:
@@ -160,7 +165,7 @@ class DDR5Tests(unittest.TestCase):
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
             ],
             pad_checkers = {"sys4x_90_ddr": {
-                'ck_t': self.xs * 3 + '10101010' * (self.cmd_latency),
+                'ck_t': self.xs * 4 + '10101010' * (self.cmd_latency),
             }},
             vcd_name="ddr5_clk.vcd"
         )
@@ -362,7 +367,7 @@ class DDR5Tests(unittest.TestCase):
             ],
             pad_checkers = {
                 "sys4x_90_ddr": {
-                    "dqs_t0": self.dqs_t_wr_latency + 'xxxx0010' + '10101010'+ '0xxxxxxx',
+                    "dqs_t0": self.dqs_t_wr_latency + '0010' + '10101010'+ '0xxxxxxx',
                 },
                 "sys4x_ddr": {
                     "dq0":  self.dq_wr_latency + '10101010' + self.zeros,
@@ -431,8 +436,8 @@ class DDR5Tests(unittest.TestCase):
                     "ca12": self.ca_latency   + "00000000" + self.zeros,
                     "ca13": self.ca_latency   + "00000000" + self.zeros,
                 },
-                "sys4x_90_ddr": { #                    preamble                              postamble
-                    "dqs_t0": self.dqs_t_wr_latency + 'xxxx0010' + '10101010' + '10101010' + '0xxxxxxx',
+                "sys4x_90_ddr": { #                    preamble                           postamble
+                    "dqs_t0": self.dqs_t_wr_latency + '0010' + '10101010' + '10101010' + '0xxxxxxx',
                 },
                 "sys4x_ddr": {
                     f'dq{i}': self.dq_wr_latency +
@@ -472,12 +477,10 @@ class DDR5Tests(unittest.TestCase):
 
         expected_data = [
             {
-                1: dict(rddata=0x1122),
-                2: dict(rddata=0x3344),
-                3: dict(rddata=0x5566),
-            },
-            {
-                0: dict(rddata=0x7788),
+                0: dict(rddata=0x1122),
+                1: dict(rddata=0x3344),
+                2: dict(rddata=0x5566),
+                3: dict(rddata=0x7788),
             }
         ]
 
@@ -496,7 +499,7 @@ class DDR5Tests(unittest.TestCase):
 
         dfi_sequence = [
             {},  # wait 1 sysclk cycle
-            *[{} for _ in range(Deserializer.LATENCY-1)],
+            *[{} for _ in range(Deserializer.LATENCY - 1)],
             {},  # bitslip delay
             *expected_data,
             {},
@@ -624,7 +627,7 @@ class DDR5Tests(unittest.TestCase):
                     "ca13": self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
                 },
                 "sys4x_90_ddr": { #                    preamble                  postamble
-                    "dqs_t0": self.dqs_t_rd_latency + 'xxxx0010' + '10101010' + '10xxxxxx',
+                    "dqs_t0": self.dqs_t_rd_latency + '0010' + '10101010' + '10xxxxxx',
                 } | {
                     f'dq{i}': self.dq_rd_latency + self.dq_pattern(i, data_to_read, "rddata") + self.zeros
                     for i in range(self.DATABITS)

@@ -215,6 +215,52 @@ class CommandsPipeline(Module):
             self.comb += self.ca[bit].eq(reduce(or_, ca_per_adapter[bit]))
 
 
+class SimpleCDC(Module):
+   def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, name=None):
+        assert i_dw == o_dw*2, (i_dw, o_dw)
+
+        sd_clk = getattr(self.sync, clk)
+        sd_clkdiv = getattr(self.sync, clkdiv)
+
+        if i is None: i = Signal(i_dw)
+        if o is None: o = Signal(o_dw)
+        reset_n = Signal(name='{}_reset_n'.format(name) if name is not None else None)
+        w_cnt = Signal(name='{}_w_cnt'.format(name) if name is not None else None)
+        r_ready = Signal(name='{}_r_ready'.format(name) if name is not None else None)
+        r_row_cnt = Signal(name='{}_r_row_cnt'.format(name) if name is not None else None)
+        r_col_cnt = Signal(name='{}_r_col_cnt'.format(name) if name is not None else None)
+        self.i_d = i_d = Array([Signal.like(i), Signal.like(i)], name='{}_i_d'.format(name) if name is not None else None)
+
+        sd_clkdiv += [
+            reset_n.eq(1),
+            If(w_cnt,
+                w_cnt.eq(0),
+            ).Else(
+                w_cnt.eq(1),
+            ),
+            i_d[w_cnt].eq(i),
+        ]
+
+        sd_clk += [
+            If(reset_n,
+                r_ready.eq(1),
+            ),
+            If(r_ready,
+                If(r_col_cnt,
+                    r_row_cnt.eq(r_row_cnt + 1),
+                ),
+                r_col_cnt.eq(r_col_cnt + 1),
+            )
+        ]
+
+        self.o_array = o_array = Array([
+            Array([i_d[0][0:o_dw], i_d[0][o_dw:]]),
+            Array([i_d[1][0:o_dw], i_d[1][o_dw:]])
+        ])
+
+        self.comb += If(r_ready, o.eq(o_array[r_row_cnt][r_col_cnt]))
+
+
 class Serializer(Module):
     """Serialize given input signal
 
@@ -228,7 +274,7 @@ class Serializer(Module):
 
     LATENCY = 1
 
-    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None, aligned=False):
+    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None, aligned=False, xilinx=False):
         assert i_dw > o_dw, (i_dw, o_dw)
         assert i_dw % o_dw == 0, (i_dw, o_dw)
         ratio = i_dw // o_dw
@@ -246,26 +292,48 @@ class Serializer(Module):
 
         if reset_cnt < 0:
             reset_cnt = ratio + reset_cnt
-        reset_cnt *= 2
 
-        self.i_d = i_d = Array([Signal.like(i), Signal.like(i)])
+        if not xilinx:
 
-        # Serial part
-        cnt = Signal(max=2*ratio, reset=reset_cnt, name='{}_cnt'.format(name) if name is not None else None)
-        sd_clk += If(
-            reset | cnt == 2*ratio - 1,
-            cnt.eq(0),
-        ).Elif(cnt == 2*ratio - 2,
-            cnt.eq(1),
-        ).Else(
-            cnt.eq(cnt + 2)
-        )
+            reset_cnt *= 2
 
-        # Parallel part
-        sd_clkdiv += i_d[~cnt[0]].eq(i) if not aligned else i_d[cnt[0]].eq(i)
+            self.i_d = i_d = Array([Signal.like(i), Signal.like(i)])
 
-        self.i_array = i_array = Array([i_d[n%2][n//2*o_dw:(n//2+1)*o_dw] for n in range(2 * ratio)])
-        self.comb += self.o.eq(i_array[cnt])
+            # Serial part
+            self.cnt = cnt = Signal(max=2*ratio, reset=reset_cnt, name='{}_cnt'.format(name) if name is not None else None)
+            sd_clk += If(
+                reset | cnt == 2*ratio - 1,
+                 cnt.eq(0),
+            ).Elif(cnt == 2*ratio - 2,
+                cnt.eq(1),
+            ).Else(
+                cnt.eq(cnt + 2)
+            )
+            # Parallel part
+            sd_clkdiv += i_d[~cnt[0]].eq(i) if not aligned else i_d[cnt[0]].eq(i)
+
+            self.i_array = i_array = Array([i_d[n%2][n//2*o_dw:(n//2+1)*o_dw] for n in range(2 * ratio)])
+        else:
+            self.i_d = i_d = Signal.like(i)
+
+            if aligned:
+                t = Signal.like(i)
+                sd_clkdiv += t.eq(i)
+                i = t
+
+             # Serial part
+            self.cnt = cnt = Signal(max=ratio, reset=reset_cnt, name='{}_cnt'.format(name) if name is not None else None)
+            sd_clk += If(
+                reset | cnt == ratio - 1,
+                cnt.eq(0),
+                i_d.eq(i),
+             ).Else(
+                cnt.eq(cnt + 1)
+             )
+
+            self.i_array = i_array = Array([i_d[n*o_dw:(n+1)*o_dw] for n in range(ratio)])
+
+        self.comb += self.o.eq(i_array[self.cnt])
 
 
 class Deserializer(Module):
@@ -281,7 +349,7 @@ class Deserializer(Module):
     """
     LATENCY = 2
 
-    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None, aligned=False):
+    def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, reset=None, reset_cnt=-1, name=None, aligned=False, xilinx=False):
         assert i_dw < o_dw, (i_dw, o_dw)
         assert o_dw % i_dw == 0, (i_dw, o_dw)
         ratio = o_dw // i_dw
