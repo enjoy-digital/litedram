@@ -3,7 +3,7 @@ from migen.genlib.fifo import *
 
 from litex.soc.interconnect.csr import *
 
-class LoggingSystem(Module):
+class LoggingSystem(Module, AutoCSR):
     def __init__(self):
         self._log_csr = log_csr = CSRStatus(32, name='log_buffer')
         
