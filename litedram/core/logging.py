@@ -25,10 +25,11 @@ class LoggingSystem(Module, AutoCSR):
         
         # Driver always requesting log
         self.comb += [arbiter.request[0].eq(1), arbiter.request[1].eq(0), arbiter.ce.eq(log_fifo.writable)]
-        self.comb += [log_fifo.we.eq(log_fifo.writable & arbiter.grant)]
+        self.comb += [log_fifo.we.eq(log_fifo.writable)]
         
         num = Signal(32)
-        self.sync += [If(arbiter.grant == 1, num.eq(num+1), log_fifo.din.eq(num))]
+        self.comb += [If(arbiter.grant == 0, log_fifo.din.eq(num))]
+        self.sync += [If(arbiter.grant == 0, num.eq(num+1))]
         
     #def do_finalize(self):
     #    pass
