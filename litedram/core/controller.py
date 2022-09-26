@@ -85,7 +85,7 @@ class LiteDRAMController(Module, AutoCSR):
         
         # Logging Buffer CSR -----------------------------------------------------------------------
         
-        self.submodules += LoggingSystem()
+        self.submodules.logger = LoggingSystem()
 
         # # #
         
