@@ -7212,9 +7212,6 @@ assign dfii_control110 = (((slice_proxy324[7:0] & slice_proxy325[15:8]) | (slice
 assign dfii_inti_inti_p3_wrdata_mask = dfii_control110;
 assign dfii_control111 = (((slice_proxy330[0] & slice_proxy331[1]) | (slice_proxy332[1] & slice_proxy333[2])) | (slice_proxy334[0] & slice_proxy335[2]));
 assign dfii_inti_inti_p3_rddata_en = dfii_control111;
-assign litedramcontroller_syncfifo_din = litedramcontroller_num;
-assign litedramcontroller_replace = 1'd0;
-assign litedramcontroller_syncfifo_we = litedramcontroller_syncfifo_writable;
 assign litedramcontroller_tmrbankmachine0_TMRreq_valid = litedramcontroller_TMRinterface_bank0_valid;
 assign litedramcontroller_TMRinterface_bank0_ready = litedramcontroller_tmrbankmachine0_TMRreq_ready;
 assign litedramcontroller_tmrbankmachine0_TMRreq_we = litedramcontroller_TMRinterface_bank0_we;
@@ -7271,6 +7268,9 @@ assign litedramcontroller_tmrbankmachine7_TMRreq_addr = litedramcontroller_TMRin
 assign litedramcontroller_TMRinterface_bank7_lock = litedramcontroller_tmrbankmachine7_TMRreq_lock;
 assign litedramcontroller_TMRinterface_bank7_wdata_ready = litedramcontroller_tmrbankmachine7_TMRreq_wdata_ready;
 assign litedramcontroller_TMRinterface_bank7_rdata_valid = litedramcontroller_tmrbankmachine7_TMRreq_rdata_valid;
+assign litedramcontroller_syncfifo_din = litedramcontroller_num;
+assign litedramcontroller_replace = 1'd0;
+assign litedramcontroller_syncfifo_we = litedramcontroller_syncfifo_writable;
 
 // synthesis translate_off
 reg dummy_d_37;
