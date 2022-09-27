@@ -803,6 +803,8 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
     cl = phy_settings.cl
     bl = 8
 
+    dq_dqs_ratio = phy_settings.databits // phy_settings.strobes
+
     mr = {}
     mr[0] = reg([
         (0, 2, {16: 0b00,
@@ -823,7 +825,11 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
     mr[2] = reg([
         (1, 1, 0b0),  # write leveling disabled
     ])
-    mr[5] = reg([(5, 1, 0b1)]) # DM enabled
+    mr[5] = reg([(5, 1, {
+            4:  0b0,
+            8:  0b1,
+            16: 0b1,
+        }[dq_dqs_ratio])])
     mr[6] = reg([(0, 8, 0b00000000)])
     mr[8] = reg([
         (0, 3, 0b000),
@@ -1093,6 +1099,9 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     if phy_settings.is_rdimm:
         assert phy_settings.memtype == "DDR4"
         r.define("SDRAM_PHY_DDR4_RDIMM")
+    if phy_settings.memtype == "DDR5":
+        if phy_settings.with_sub_channels:
+            r.define("SDRAM_PHY_SUBCHANNELS")
 
     r.newline()
 
@@ -1130,8 +1139,6 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
         r.define("DDRX_MR_WRLVL_ADDRESS", 2)
         r.define("DDRX_MR_WRLVL_RESET", mr[2])
         r.define("DDRX_MR_WRLVL_BIT", 7)
-        if phy_settings.with_sub_channels:
-            r.define("SRAM_PHY_SUBCHANNELS")
         r.newline()
     elif phy_settings.memtype in ["LPDDR5"]:
         # Write leveling enabled by MR18[6]

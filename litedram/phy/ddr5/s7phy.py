@@ -22,14 +22,13 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                  with_per_dq_idelay=False, with_sub_channels=False, **kwargs):
         self.iodelay_clk_freq = iodelay_clk_freq
 
-        with_sub_channels = kwargs.get("with_sub_channels", False)
-
         # DoubleRateDDR5PHY outputs half-width signals (comparing to DDR5PHY) in sys2x domain.
         # This allows us to use 8:1 DDR OSERDESE2/ISERDESE2 to (de-)serialize the data.
         super().__init__(pads,
-            ser_latency = Latency(sys2x=1),  # OSERDESE2 4:1 DDR (2 full-rate clocks)
-            des_latency = Latency(sys=2),  # ISERDESE2 NETWORKING
-            phytype     = self.__class__.__name__,
+            ser_latency       = Latency(sys2x=1),  # OSERDESE2 4:1 DDR (2 full-rate clocks)
+            des_latency       = Latency(sys=2),  # ISERDESE2 NETWORKING
+            phytype           = self.__class__.__name__,
+            with_sub_channels = with_sub_channels,
             **kwargs
         )
 
@@ -46,10 +45,10 @@ class S7DDR5PHY(DDR5PHY, S7Common):
         assert iodelay_clk_freq in [200e6, 300e6, 400e6]
         iodelay_tap_average = 1 / (2*32 * iodelay_clk_freq)
         half_sys4x_taps = math.floor(self.tck / (4 * iodelay_tap_average))
-        assert half_sys8x_taps < 32, "Exceeded ODELAYE2 max value: {} >= 32".format(half_sys8x_taps)
+        assert half_sys4x_taps < 32, "Exceeded ODELAYE2 max value: {} >= 32".format(half_sys4x_taps)
 
         # Registers --------------------------------------------------------------------------------
-        self._half_sys8x_taps = CSRStorage(5, reset=half_sys8x_taps)
+        self._half_sys8x_taps = CSRStorage(5, reset=half_sys4x_taps)
 
         # delay control
         self._rdly_dq_rst  = CSR()
@@ -118,11 +117,11 @@ class S7DDR5PHY(DDR5PHY, S7Common):
             if hasattr(self.pads, const):
                 self.comb += getattr(self.pads, const).eq(0)
 
-        for cmd in ["reset_n", "alert_n"]:
+        for cmd in ["reset_n"]:
             cmd_i = getattr(self.out, cmd)
             cmd_o = getattr(self.pads, cmd)
             cmd_ser = Signal()
-            self.oserdese2_sdr(din=cmd_i, dout=cmd_ser if with_odelay else cmd_o, clk="sys4x")
+            self.oserdese2_ddr(din=cmd_i, dout=cmd_ser if with_odelay else cmd_o, clk="sys4x")
             if with_odelay:
                 self.odelaye2(din=cmd_ser, dout=cmd_o, rst=cdly_rst, inc=cdly_inc)
 
@@ -162,7 +161,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 self.oserdese2_ddr(
                     din     = dqs_din,
                     **(dict(dout_fb=dqs_ser) if with_odelay else dict(dout=dqs_dly)),
-                    tin     = ~oe_delay_dqs(getattr(self.out, prefix+"dqs_t_oe")),
+                    tin     = ~oe_delay_dqs(getattr(self.out, prefix+"dqs_oe")),
                     tout    = dqs_t,
                     clk     = "sys4x" if with_odelay else "sys4x_90",
                 )
