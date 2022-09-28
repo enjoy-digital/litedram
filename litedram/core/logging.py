@@ -18,14 +18,12 @@ class LoggingSystem(Module, AutoCSR):
         
         # CSR reads from FIFO if message is available
         self.sync += [If(log_csr.we & log_fifo.readable, log_csr.status.eq(log_fifo.dout), log_fifo.re.eq(1))
-                        .Else(If(log_csr.we, log_csr.status.eq(0)), log_fifo.re.eq(0))]
+                        .Else(If(log_csr.we, log_csr.status.eq(-1)), log_fifo.re.eq(0))]
         
     def get_log_port(self):
         message = Signal(32)
         ready = Signal()
         request = Signal()
-        
-        self.comb += ready.eq(1)
         
         self.messages.append(message)
         self.readys.append(ready)
@@ -42,4 +40,6 @@ class LoggingSystem(Module, AutoCSR):
                         arbiter.ce.eq(self.log_fifo.writable),                                              #Arbitrate if fifo is writable
                         self.log_fifo.we.eq(self.log_fifo.writable & Array(self.requests)[arbiter.grant]),  #Write if writable and request available
                         arbiter.request.eq(Cat(self.requests))]                                             #Map requests to arbiter requests
-                        #Cat(self.readys).eq(arbiter.grant)]                                                 #Map grants to readys  
+                        
+        for i, ready in enumerate(self.readys):
+            self.comb += ready.eq(arbiter.grant[i])

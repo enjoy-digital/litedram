@@ -7277,11 +7277,11 @@ assign litedramcontroller_TMRinterface_bank7_lock = litedramcontroller_tmrbankma
 assign litedramcontroller_TMRinterface_bank7_wdata_ready = litedramcontroller_tmrbankmachine7_TMRreq_wdata_ready;
 assign litedramcontroller_TMRinterface_bank7_rdata_valid = litedramcontroller_tmrbankmachine7_TMRreq_rdata_valid;
 assign litedramcontroller_replace = 1'd0;
-assign litedramcontroller_ready = 1'd1;
 assign litedramcontroller_syncfifo_din = rhs_array_muxed0;
 assign ce = litedramcontroller_syncfifo_writable;
 assign litedramcontroller_syncfifo_we = (litedramcontroller_syncfifo_writable & rhs_array_muxed1);
 assign request = {litedramcontroller_request};
+assign litedramcontroller_ready = grant;
 
 // synthesis translate_off
 reg dummy_d_37;
@@ -17065,7 +17065,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_syncfifo_re <= 1'd1;
 	end else begin
 		if (litedramcontroller_we) begin
-			litedramcontroller_status <= 1'd0;
+			litedramcontroller_status <= 1'sd1;
 		end
 		litedramcontroller_syncfifo_re <= 1'd0;
 	end
