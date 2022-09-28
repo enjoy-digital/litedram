@@ -42,4 +42,4 @@ class LoggingSystem(Module, AutoCSR):
                         arbiter.request.eq(Cat(self.requests))]                                             #Map requests to arbiter requests
                         
         for i, ready in enumerate(self.readys):
-            self.comb += ready.eq(arbiter.grant == i)
+            self.comb += ready.eq((arbiter.grant == i) & self.log_fifo.writable)
