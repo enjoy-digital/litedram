@@ -7281,7 +7281,7 @@ assign litedramcontroller_syncfifo_din = rhs_array_muxed0;
 assign ce = litedramcontroller_syncfifo_writable;
 assign litedramcontroller_syncfifo_we = (litedramcontroller_syncfifo_writable & rhs_array_muxed1);
 assign request = {litedramcontroller_request};
-assign litedramcontroller_ready = grant;
+assign litedramcontroller_ready = (grant == 1'd0);
 
 // synthesis translate_off
 reg dummy_d_37;
