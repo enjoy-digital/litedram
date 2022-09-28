@@ -103,6 +103,7 @@ class LiteDRAMController(Module, AutoCSR):
 
         # Bank Machines ----------------------------------------------------------------------------
         bank_machines = []
+        print(nranks*nbanks)
         for n in range(nranks*nbanks):
             bank_machine = TMRBankMachine(n,
                 address_width = interface.address_width,
