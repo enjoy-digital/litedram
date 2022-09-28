@@ -1067,7 +1067,7 @@ wire [3:0] litedramcontroller_rdport_adr;
 wire [31:0] litedramcontroller_rdport_dat_r;
 reg [31:0] litedramcontroller_message = 32'd0;
 wire litedramcontroller_ready;
-reg litedramcontroller_request = 1'd0;
+wire litedramcontroller_request;
 wire [63:0] litedramcontroller_control0;
 wire litedramcontroller_control1;
 wire [63:0] litedramcontroller_control2;
@@ -7218,6 +7218,7 @@ assign dfii_control110 = (((slice_proxy324[7:0] & slice_proxy325[15:8]) | (slice
 assign dfii_inti_inti_p3_wrdata_mask = dfii_control110;
 assign dfii_control111 = (((slice_proxy330[0] & slice_proxy331[1]) | (slice_proxy332[1] & slice_proxy333[2])) | (slice_proxy334[0] & slice_proxy335[2]));
 assign dfii_inti_inti_p3_rddata_en = dfii_control111;
+assign litedramcontroller_request = 1'd1;
 assign litedramcontroller_tmrbankmachine0_TMRreq_valid = litedramcontroller_TMRinterface_bank0_valid;
 assign litedramcontroller_TMRinterface_bank0_ready = litedramcontroller_tmrbankmachine0_TMRreq_ready;
 assign litedramcontroller_tmrbankmachine0_TMRreq_we = litedramcontroller_TMRinterface_bank0_we;
@@ -17040,6 +17041,9 @@ always @(posedge sys_clk) begin
 	if (dfii_pi_mod3_inti_p3_rddata_valid) begin
 		dfii_pi_mod3_phaseinjector3_status <= dfii_pi_mod3_inti_p3_rddata;
 	end
+	if (litedramcontroller_ready) begin
+		litedramcontroller_message <= (litedramcontroller_message + 1'd1);
+	end
 	if ((litedramcontroller_we & litedramcontroller_syncfifo_readable)) begin
 		litedramcontroller_status <= litedramcontroller_syncfifo_dout;
 		litedramcontroller_syncfifo_re <= 1'd1;
@@ -20640,6 +20644,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_level <= 4'd0;
 		litedramcontroller_produce <= 4'd0;
 		litedramcontroller_consume <= 4'd0;
+		litedramcontroller_message <= 32'd0;
 		litedramcontroller_refresher_cmd_valid <= 1'd0;
 		litedramcontroller_refresher_cmd_payload_a <= 14'd0;
 		litedramcontroller_refresher_cmd_payload_ba <= 3'd0;

@@ -87,6 +87,9 @@ class LiteDRAMController(Module, AutoCSR):
         
         self.submodules.logger = logger = LoggingSystem()
         message, ready, req = logger.get_log_port()
+        
+        self.comb += [req.eq(1)]
+        self.sync += [If(ready, message.eq(message+1))]
 
         # # #
         

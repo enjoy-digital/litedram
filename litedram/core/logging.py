@@ -36,8 +36,8 @@ class LoggingSystem(Module, AutoCSR):
         arbiter = roundrobin.RoundRobin(len(self.messages), roundrobin.SP_CE)
         self.submodules += arbiter
         
-        self.comb += [self.log_fifo.din.eq(Array(self.messages)[arbiter.grant]),         #Map arbiter grant to data in
-                        arbiter.ce.eq(self.log_fifo.writable),                           #Arbitrate if fifo is writable
-                        self.log_fifo.we.eq(self.log_fifo.writable & reduce(or_, self.requests)),  #Write if writable and request available
-                        arbiter.request.eq(Cat(self.requests)),                   #Map requests to arbiter requests
-                        Cat(self.readys).eq(arbiter.grant)]                             #Map grants to readys  
+        self.comb += [self.log_fifo.din.eq(Array(self.messages)[arbiter.grant]),                    #Map arbiter grant to data in
+                        arbiter.ce.eq(self.log_fifo.writable),                                      #Arbitrate if fifo is writable
+                        self.log_fifo.we.eq(self.log_fifo.writable & reduce(or_, self.requests)),   #Write if writable and request available
+                        arbiter.request.eq(Cat(self.requests)),                                     #Map requests to arbiter requests
+                        Cat(self.readys).eq(arbiter.grant)]                                         #Map grants to readys  
