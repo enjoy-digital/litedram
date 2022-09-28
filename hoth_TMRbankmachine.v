@@ -46,6 +46,11 @@ reg cmd_payload_is_read;
 reg cmd_payload_is_write;
 wire tmrinput_control0;
 reg auto_precharge;
+wire [15:0] log_n;
+reg [15:0] log_num = 16'd0;
+wire [31:0] loggingsystem_message;
+reg loggingsystem_ready = 1'd0;
+wire loggingsystem_request;
 wire tmrinput_control1;
 wire tmrinput_control2;
 wire [20:0] tmrinput_control3;
@@ -300,6 +305,9 @@ reg dummy_s;
 initial dummy_s <= 1'd0;
 // synthesis translate_on
 
+assign log_n = 1'd0;
+assign loggingsystem_message = {log_num, log_n};
+assign loggingsystem_request = 1'd1;
 assign cmd_buffer_lookahead_sink_valid = req_valid;
 assign cmd_buffer_lookahead_sink_payload_we = req_we;
 assign cmd_buffer_lookahead_sink_payload_addr = req_addr;
@@ -679,6 +687,9 @@ assign slice_proxy52 = {trascon3_ready, trascon2_ready, trascon_ready};
 assign slice_proxy53 = {trascon3_ready, trascon2_ready, trascon_ready};
 
 always @(posedge sys_clk) begin
+	if (loggingsystem_ready) begin
+		log_num <= (log_num + 1'd1);
+	end
 	if (row_close) begin
 		row_opened <= 1'd0;
 	end else begin
@@ -890,6 +901,7 @@ always @(posedge sys_clk) begin
 	end
 	state <= next_state;
 	if (sys_rst) begin
+		log_num <= 16'd0;
 		cmd_buffer_lookahead_level <= 4'd0;
 		cmd_buffer_lookahead_produce <= 3'd0;
 		cmd_buffer_lookahead_consume <= 3'd0;

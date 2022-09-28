@@ -1065,9 +1065,6 @@ wire [31:0] litedramcontroller_wrport_dat_w;
 wire litedramcontroller_do_read;
 wire [3:0] litedramcontroller_rdport_adr;
 wire [31:0] litedramcontroller_rdport_dat_r;
-reg [31:0] litedramcontroller_message = 32'd0;
-wire litedramcontroller_ready;
-wire litedramcontroller_request;
 wire [63:0] litedramcontroller_control0;
 wire litedramcontroller_control1;
 wire [63:0] litedramcontroller_control2;
@@ -1227,6 +1224,11 @@ wire [2:0] litedramcontroller_tmrbankmachine0_TMRcmd_payload_is_read;
 wire [2:0] litedramcontroller_tmrbankmachine0_TMRcmd_payload_is_write;
 wire litedramcontroller_tmrbankmachine0_tmrinput_control0;
 reg litedramcontroller_tmrbankmachine0_auto_precharge;
+wire [15:0] litedramcontroller_tmrbankmachine0_log_n;
+reg [15:0] litedramcontroller_tmrbankmachine0_log_num = 16'd0;
+wire [31:0] litedramcontroller_tmrbankmachine0_loggingsystem_message;
+wire litedramcontroller_tmrbankmachine0_loggingsystem_ready;
+wire litedramcontroller_tmrbankmachine0_loggingsystem_request;
 wire litedramcontroller_tmrbankmachine0_tmrinput_control1;
 wire litedramcontroller_tmrbankmachine0_tmrinput_control2;
 wire [20:0] litedramcontroller_tmrbankmachine0_tmrinput_control3;
@@ -1461,6 +1463,11 @@ wire [2:0] litedramcontroller_tmrbankmachine1_TMRcmd_payload_is_read;
 wire [2:0] litedramcontroller_tmrbankmachine1_TMRcmd_payload_is_write;
 wire litedramcontroller_tmrbankmachine1_tmrinput_control0;
 reg litedramcontroller_tmrbankmachine1_auto_precharge;
+wire [15:0] litedramcontroller_tmrbankmachine1_log_n;
+reg [15:0] litedramcontroller_tmrbankmachine1_log_num = 16'd0;
+wire [31:0] litedramcontroller_tmrbankmachine1_loggingsystem_message;
+wire litedramcontroller_tmrbankmachine1_loggingsystem_ready;
+wire litedramcontroller_tmrbankmachine1_loggingsystem_request;
 wire litedramcontroller_tmrbankmachine1_tmrinput_control1;
 wire litedramcontroller_tmrbankmachine1_tmrinput_control2;
 wire [20:0] litedramcontroller_tmrbankmachine1_tmrinput_control3;
@@ -1695,6 +1702,11 @@ wire [2:0] litedramcontroller_tmrbankmachine2_TMRcmd_payload_is_read;
 wire [2:0] litedramcontroller_tmrbankmachine2_TMRcmd_payload_is_write;
 wire litedramcontroller_tmrbankmachine2_tmrinput_control0;
 reg litedramcontroller_tmrbankmachine2_auto_precharge;
+wire [15:0] litedramcontroller_tmrbankmachine2_log_n;
+reg [15:0] litedramcontroller_tmrbankmachine2_log_num = 16'd0;
+wire [31:0] litedramcontroller_tmrbankmachine2_loggingsystem_message;
+wire litedramcontroller_tmrbankmachine2_loggingsystem_ready;
+wire litedramcontroller_tmrbankmachine2_loggingsystem_request;
 wire litedramcontroller_tmrbankmachine2_tmrinput_control1;
 wire litedramcontroller_tmrbankmachine2_tmrinput_control2;
 wire [20:0] litedramcontroller_tmrbankmachine2_tmrinput_control3;
@@ -1929,6 +1941,11 @@ wire [2:0] litedramcontroller_tmrbankmachine3_TMRcmd_payload_is_read;
 wire [2:0] litedramcontroller_tmrbankmachine3_TMRcmd_payload_is_write;
 wire litedramcontroller_tmrbankmachine3_tmrinput_control0;
 reg litedramcontroller_tmrbankmachine3_auto_precharge;
+wire [15:0] litedramcontroller_tmrbankmachine3_log_n;
+reg [15:0] litedramcontroller_tmrbankmachine3_log_num = 16'd0;
+wire [31:0] litedramcontroller_tmrbankmachine3_loggingsystem_message;
+wire litedramcontroller_tmrbankmachine3_loggingsystem_ready;
+wire litedramcontroller_tmrbankmachine3_loggingsystem_request;
 wire litedramcontroller_tmrbankmachine3_tmrinput_control1;
 wire litedramcontroller_tmrbankmachine3_tmrinput_control2;
 wire [20:0] litedramcontroller_tmrbankmachine3_tmrinput_control3;
@@ -2163,6 +2180,11 @@ wire [2:0] litedramcontroller_tmrbankmachine4_TMRcmd_payload_is_read;
 wire [2:0] litedramcontroller_tmrbankmachine4_TMRcmd_payload_is_write;
 wire litedramcontroller_tmrbankmachine4_tmrinput_control0;
 reg litedramcontroller_tmrbankmachine4_auto_precharge;
+wire [15:0] litedramcontroller_tmrbankmachine4_log_n;
+reg [15:0] litedramcontroller_tmrbankmachine4_log_num = 16'd0;
+wire [31:0] litedramcontroller_tmrbankmachine4_loggingsystem_message;
+wire litedramcontroller_tmrbankmachine4_loggingsystem_ready;
+wire litedramcontroller_tmrbankmachine4_loggingsystem_request;
 wire litedramcontroller_tmrbankmachine4_tmrinput_control1;
 wire litedramcontroller_tmrbankmachine4_tmrinput_control2;
 wire [20:0] litedramcontroller_tmrbankmachine4_tmrinput_control3;
@@ -2397,6 +2419,11 @@ wire [2:0] litedramcontroller_tmrbankmachine5_TMRcmd_payload_is_read;
 wire [2:0] litedramcontroller_tmrbankmachine5_TMRcmd_payload_is_write;
 wire litedramcontroller_tmrbankmachine5_tmrinput_control0;
 reg litedramcontroller_tmrbankmachine5_auto_precharge;
+wire [15:0] litedramcontroller_tmrbankmachine5_log_n;
+reg [15:0] litedramcontroller_tmrbankmachine5_log_num = 16'd0;
+wire [31:0] litedramcontroller_tmrbankmachine5_loggingsystem_message;
+wire litedramcontroller_tmrbankmachine5_loggingsystem_ready;
+wire litedramcontroller_tmrbankmachine5_loggingsystem_request;
 wire litedramcontroller_tmrbankmachine5_tmrinput_control1;
 wire litedramcontroller_tmrbankmachine5_tmrinput_control2;
 wire [20:0] litedramcontroller_tmrbankmachine5_tmrinput_control3;
@@ -2631,6 +2658,11 @@ wire [2:0] litedramcontroller_tmrbankmachine6_TMRcmd_payload_is_read;
 wire [2:0] litedramcontroller_tmrbankmachine6_TMRcmd_payload_is_write;
 wire litedramcontroller_tmrbankmachine6_tmrinput_control0;
 reg litedramcontroller_tmrbankmachine6_auto_precharge;
+wire [15:0] litedramcontroller_tmrbankmachine6_log_n;
+reg [15:0] litedramcontroller_tmrbankmachine6_log_num = 16'd0;
+wire [31:0] litedramcontroller_tmrbankmachine6_loggingsystem_message;
+wire litedramcontroller_tmrbankmachine6_loggingsystem_ready;
+wire litedramcontroller_tmrbankmachine6_loggingsystem_request;
 wire litedramcontroller_tmrbankmachine6_tmrinput_control1;
 wire litedramcontroller_tmrbankmachine6_tmrinput_control2;
 wire [20:0] litedramcontroller_tmrbankmachine6_tmrinput_control3;
@@ -2865,6 +2897,11 @@ wire [2:0] litedramcontroller_tmrbankmachine7_TMRcmd_payload_is_read;
 wire [2:0] litedramcontroller_tmrbankmachine7_TMRcmd_payload_is_write;
 wire litedramcontroller_tmrbankmachine7_tmrinput_control0;
 reg litedramcontroller_tmrbankmachine7_auto_precharge;
+wire [15:0] litedramcontroller_tmrbankmachine7_log_n;
+reg [15:0] litedramcontroller_tmrbankmachine7_log_num = 16'd0;
+wire [31:0] litedramcontroller_tmrbankmachine7_loggingsystem_message;
+wire litedramcontroller_tmrbankmachine7_loggingsystem_ready;
+wire litedramcontroller_tmrbankmachine7_loggingsystem_request;
 wire litedramcontroller_tmrbankmachine7_tmrinput_control1;
 wire litedramcontroller_tmrbankmachine7_tmrinput_control2;
 wire [20:0] litedramcontroller_tmrbankmachine7_tmrinput_control3;
@@ -4335,8 +4372,8 @@ wire rdata_valid;
 wire [255:0] rdata_payload_data;
 wire [2:0] TMRrdata_valid;
 wire [767:0] TMRrdata_payload_data;
-wire request;
-wire grant;
+wire [7:0] request;
+reg [2:0] grant = 3'd0;
 wire ce;
 reg [1:0] tmrrefresher_state = 2'd0;
 reg [1:0] tmrrefresher_next_state;
@@ -7219,7 +7256,6 @@ assign dfii_control110 = (((slice_proxy324[7:0] & slice_proxy325[15:8]) | (slice
 assign dfii_inti_inti_p3_wrdata_mask = dfii_control110;
 assign dfii_control111 = (((slice_proxy330[0] & slice_proxy331[1]) | (slice_proxy332[1] & slice_proxy333[2])) | (slice_proxy334[0] & slice_proxy335[2]));
 assign dfii_inti_inti_p3_rddata_en = dfii_control111;
-assign litedramcontroller_request = 1'd1;
 assign litedramcontroller_tmrbankmachine0_TMRreq_valid = litedramcontroller_TMRinterface_bank0_valid;
 assign litedramcontroller_TMRinterface_bank0_ready = litedramcontroller_tmrbankmachine0_TMRreq_ready;
 assign litedramcontroller_tmrbankmachine0_TMRreq_we = litedramcontroller_TMRinterface_bank0_we;
@@ -7280,8 +7316,15 @@ assign litedramcontroller_replace = 1'd0;
 assign litedramcontroller_syncfifo_din = rhs_array_muxed0;
 assign ce = litedramcontroller_syncfifo_writable;
 assign litedramcontroller_syncfifo_we = (litedramcontroller_syncfifo_writable & rhs_array_muxed1);
-assign request = {litedramcontroller_request};
-assign litedramcontroller_ready = ((grant == 1'd0) & litedramcontroller_syncfifo_writable);
+assign request = {litedramcontroller_tmrbankmachine7_loggingsystem_request, litedramcontroller_tmrbankmachine6_loggingsystem_request, litedramcontroller_tmrbankmachine5_loggingsystem_request, litedramcontroller_tmrbankmachine4_loggingsystem_request, litedramcontroller_tmrbankmachine3_loggingsystem_request, litedramcontroller_tmrbankmachine2_loggingsystem_request, litedramcontroller_tmrbankmachine1_loggingsystem_request, litedramcontroller_tmrbankmachine0_loggingsystem_request};
+assign litedramcontroller_tmrbankmachine0_loggingsystem_ready = ((grant == 1'd0) & litedramcontroller_syncfifo_writable);
+assign litedramcontroller_tmrbankmachine1_loggingsystem_ready = ((grant == 1'd1) & litedramcontroller_syncfifo_writable);
+assign litedramcontroller_tmrbankmachine2_loggingsystem_ready = ((grant == 2'd2) & litedramcontroller_syncfifo_writable);
+assign litedramcontroller_tmrbankmachine3_loggingsystem_ready = ((grant == 2'd3) & litedramcontroller_syncfifo_writable);
+assign litedramcontroller_tmrbankmachine4_loggingsystem_ready = ((grant == 3'd4) & litedramcontroller_syncfifo_writable);
+assign litedramcontroller_tmrbankmachine5_loggingsystem_ready = ((grant == 3'd5) & litedramcontroller_syncfifo_writable);
+assign litedramcontroller_tmrbankmachine6_loggingsystem_ready = ((grant == 3'd6) & litedramcontroller_syncfifo_writable);
+assign litedramcontroller_tmrbankmachine7_loggingsystem_ready = ((grant == 3'd7) & litedramcontroller_syncfifo_writable);
 
 // synthesis translate_off
 reg dummy_d_37;
@@ -7304,7 +7347,6 @@ assign litedramcontroller_rdport_adr = litedramcontroller_consume;
 assign litedramcontroller_syncfifo_dout = litedramcontroller_rdport_dat_r;
 assign litedramcontroller_syncfifo_writable = (litedramcontroller_level != 4'd10);
 assign litedramcontroller_syncfifo_readable = (litedramcontroller_level != 1'd0);
-assign grant = 1'd0;
 assign litedramcontroller_TMRdfi_p0_address = {3{litedramcontroller_dfi_p0_address}};
 assign litedramcontroller_TMRdfi_p0_bank = {3{litedramcontroller_dfi_p0_bank}};
 assign litedramcontroller_TMRdfi_p0_cas_n = {3{litedramcontroller_dfi_p0_cas_n}};
@@ -7476,6 +7518,9 @@ always @(*) begin
 	dummy_d_38 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine0_log_n = 1'd0;
+assign litedramcontroller_tmrbankmachine0_loggingsystem_message = {litedramcontroller_tmrbankmachine0_log_num, litedramcontroller_tmrbankmachine0_log_n};
+assign litedramcontroller_tmrbankmachine0_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine0_req_valid;
 assign litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine0_req_we;
 assign litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine0_req_addr;
@@ -7799,6 +7844,9 @@ always @(*) begin
 	dummy_d_44 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine1_log_n = 1'd1;
+assign litedramcontroller_tmrbankmachine1_loggingsystem_message = {litedramcontroller_tmrbankmachine1_log_num, litedramcontroller_tmrbankmachine1_log_n};
+assign litedramcontroller_tmrbankmachine1_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine1_req_valid;
 assign litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine1_req_we;
 assign litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine1_req_addr;
@@ -8122,6 +8170,9 @@ always @(*) begin
 	dummy_d_50 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine2_log_n = 2'd2;
+assign litedramcontroller_tmrbankmachine2_loggingsystem_message = {litedramcontroller_tmrbankmachine2_log_num, litedramcontroller_tmrbankmachine2_log_n};
+assign litedramcontroller_tmrbankmachine2_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine2_req_valid;
 assign litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine2_req_we;
 assign litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine2_req_addr;
@@ -8445,6 +8496,9 @@ always @(*) begin
 	dummy_d_56 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine3_log_n = 2'd3;
+assign litedramcontroller_tmrbankmachine3_loggingsystem_message = {litedramcontroller_tmrbankmachine3_log_num, litedramcontroller_tmrbankmachine3_log_n};
+assign litedramcontroller_tmrbankmachine3_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine3_req_valid;
 assign litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine3_req_we;
 assign litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine3_req_addr;
@@ -8768,6 +8822,9 @@ always @(*) begin
 	dummy_d_62 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine4_log_n = 3'd4;
+assign litedramcontroller_tmrbankmachine4_loggingsystem_message = {litedramcontroller_tmrbankmachine4_log_num, litedramcontroller_tmrbankmachine4_log_n};
+assign litedramcontroller_tmrbankmachine4_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine4_req_valid;
 assign litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine4_req_we;
 assign litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine4_req_addr;
@@ -9091,6 +9148,9 @@ always @(*) begin
 	dummy_d_68 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine5_log_n = 3'd5;
+assign litedramcontroller_tmrbankmachine5_loggingsystem_message = {litedramcontroller_tmrbankmachine5_log_num, litedramcontroller_tmrbankmachine5_log_n};
+assign litedramcontroller_tmrbankmachine5_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine5_req_valid;
 assign litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine5_req_we;
 assign litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine5_req_addr;
@@ -9414,6 +9474,9 @@ always @(*) begin
 	dummy_d_74 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine6_log_n = 3'd6;
+assign litedramcontroller_tmrbankmachine6_loggingsystem_message = {litedramcontroller_tmrbankmachine6_log_num, litedramcontroller_tmrbankmachine6_log_n};
+assign litedramcontroller_tmrbankmachine6_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine6_req_valid;
 assign litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine6_req_we;
 assign litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine6_req_addr;
@@ -9737,6 +9800,9 @@ always @(*) begin
 	dummy_d_80 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine7_log_n = 3'd7;
+assign litedramcontroller_tmrbankmachine7_loggingsystem_message = {litedramcontroller_tmrbankmachine7_log_num, litedramcontroller_tmrbankmachine7_log_n};
+assign litedramcontroller_tmrbankmachine7_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine7_req_valid;
 assign litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine7_req_we;
 assign litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine7_req_addr;
@@ -14020,8 +14086,29 @@ reg dummy_d_171;
 always @(*) begin
 	rhs_array_muxed0 <= 32'd0;
 	case (grant)
+		1'd0: begin
+			rhs_array_muxed0 <= litedramcontroller_tmrbankmachine0_loggingsystem_message;
+		end
+		1'd1: begin
+			rhs_array_muxed0 <= litedramcontroller_tmrbankmachine1_loggingsystem_message;
+		end
+		2'd2: begin
+			rhs_array_muxed0 <= litedramcontroller_tmrbankmachine2_loggingsystem_message;
+		end
+		2'd3: begin
+			rhs_array_muxed0 <= litedramcontroller_tmrbankmachine3_loggingsystem_message;
+		end
+		3'd4: begin
+			rhs_array_muxed0 <= litedramcontroller_tmrbankmachine4_loggingsystem_message;
+		end
+		3'd5: begin
+			rhs_array_muxed0 <= litedramcontroller_tmrbankmachine5_loggingsystem_message;
+		end
+		3'd6: begin
+			rhs_array_muxed0 <= litedramcontroller_tmrbankmachine6_loggingsystem_message;
+		end
 		default: begin
-			rhs_array_muxed0 <= litedramcontroller_message;
+			rhs_array_muxed0 <= litedramcontroller_tmrbankmachine7_loggingsystem_message;
 		end
 	endcase
 // synthesis translate_off
@@ -14035,8 +14122,29 @@ reg dummy_d_172;
 always @(*) begin
 	rhs_array_muxed1 <= 1'd0;
 	case (grant)
+		1'd0: begin
+			rhs_array_muxed1 <= litedramcontroller_tmrbankmachine0_loggingsystem_request;
+		end
+		1'd1: begin
+			rhs_array_muxed1 <= litedramcontroller_tmrbankmachine1_loggingsystem_request;
+		end
+		2'd2: begin
+			rhs_array_muxed1 <= litedramcontroller_tmrbankmachine2_loggingsystem_request;
+		end
+		2'd3: begin
+			rhs_array_muxed1 <= litedramcontroller_tmrbankmachine3_loggingsystem_request;
+		end
+		3'd4: begin
+			rhs_array_muxed1 <= litedramcontroller_tmrbankmachine4_loggingsystem_request;
+		end
+		3'd5: begin
+			rhs_array_muxed1 <= litedramcontroller_tmrbankmachine5_loggingsystem_request;
+		end
+		3'd6: begin
+			rhs_array_muxed1 <= litedramcontroller_tmrbankmachine6_loggingsystem_request;
+		end
 		default: begin
-			rhs_array_muxed1 <= litedramcontroller_request;
+			rhs_array_muxed1 <= litedramcontroller_tmrbankmachine7_loggingsystem_request;
 		end
 	endcase
 // synthesis translate_off
@@ -17057,9 +17165,6 @@ always @(posedge sys_clk) begin
 	if (dfii_pi_mod3_inti_p3_rddata_valid) begin
 		dfii_pi_mod3_phaseinjector3_status <= dfii_pi_mod3_inti_p3_rddata;
 	end
-	if (litedramcontroller_ready) begin
-		litedramcontroller_message <= (litedramcontroller_message + 1'd1);
-	end
 	if ((litedramcontroller_we & litedramcontroller_syncfifo_readable)) begin
 		litedramcontroller_status <= litedramcontroller_syncfifo_dout;
 		litedramcontroller_syncfifo_re <= 1'd1;
@@ -17091,6 +17196,242 @@ always @(posedge sys_clk) begin
 		if (litedramcontroller_do_read) begin
 			litedramcontroller_level <= (litedramcontroller_level - 1'd1);
 		end
+	end
+	if (ce) begin
+		case (grant)
+			1'd0: begin
+				if (request[1]) begin
+					grant <= 1'd1;
+				end else begin
+					if (request[2]) begin
+						grant <= 2'd2;
+					end else begin
+						if (request[3]) begin
+							grant <= 2'd3;
+						end else begin
+							if (request[4]) begin
+								grant <= 3'd4;
+							end else begin
+								if (request[5]) begin
+									grant <= 3'd5;
+								end else begin
+									if (request[6]) begin
+										grant <= 3'd6;
+									end else begin
+										if (request[7]) begin
+											grant <= 3'd7;
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			1'd1: begin
+				if (request[2]) begin
+					grant <= 2'd2;
+				end else begin
+					if (request[3]) begin
+						grant <= 2'd3;
+					end else begin
+						if (request[4]) begin
+							grant <= 3'd4;
+						end else begin
+							if (request[5]) begin
+								grant <= 3'd5;
+							end else begin
+								if (request[6]) begin
+									grant <= 3'd6;
+								end else begin
+									if (request[7]) begin
+										grant <= 3'd7;
+									end else begin
+										if (request[0]) begin
+											grant <= 1'd0;
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			2'd2: begin
+				if (request[3]) begin
+					grant <= 2'd3;
+				end else begin
+					if (request[4]) begin
+						grant <= 3'd4;
+					end else begin
+						if (request[5]) begin
+							grant <= 3'd5;
+						end else begin
+							if (request[6]) begin
+								grant <= 3'd6;
+							end else begin
+								if (request[7]) begin
+									grant <= 3'd7;
+								end else begin
+									if (request[0]) begin
+										grant <= 1'd0;
+									end else begin
+										if (request[1]) begin
+											grant <= 1'd1;
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			2'd3: begin
+				if (request[4]) begin
+					grant <= 3'd4;
+				end else begin
+					if (request[5]) begin
+						grant <= 3'd5;
+					end else begin
+						if (request[6]) begin
+							grant <= 3'd6;
+						end else begin
+							if (request[7]) begin
+								grant <= 3'd7;
+							end else begin
+								if (request[0]) begin
+									grant <= 1'd0;
+								end else begin
+									if (request[1]) begin
+										grant <= 1'd1;
+									end else begin
+										if (request[2]) begin
+											grant <= 2'd2;
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			3'd4: begin
+				if (request[5]) begin
+					grant <= 3'd5;
+				end else begin
+					if (request[6]) begin
+						grant <= 3'd6;
+					end else begin
+						if (request[7]) begin
+							grant <= 3'd7;
+						end else begin
+							if (request[0]) begin
+								grant <= 1'd0;
+							end else begin
+								if (request[1]) begin
+									grant <= 1'd1;
+								end else begin
+									if (request[2]) begin
+										grant <= 2'd2;
+									end else begin
+										if (request[3]) begin
+											grant <= 2'd3;
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			3'd5: begin
+				if (request[6]) begin
+					grant <= 3'd6;
+				end else begin
+					if (request[7]) begin
+						grant <= 3'd7;
+					end else begin
+						if (request[0]) begin
+							grant <= 1'd0;
+						end else begin
+							if (request[1]) begin
+								grant <= 1'd1;
+							end else begin
+								if (request[2]) begin
+									grant <= 2'd2;
+								end else begin
+									if (request[3]) begin
+										grant <= 2'd3;
+									end else begin
+										if (request[4]) begin
+											grant <= 3'd4;
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			3'd6: begin
+				if (request[7]) begin
+					grant <= 3'd7;
+				end else begin
+					if (request[0]) begin
+						grant <= 1'd0;
+					end else begin
+						if (request[1]) begin
+							grant <= 1'd1;
+						end else begin
+							if (request[2]) begin
+								grant <= 2'd2;
+							end else begin
+								if (request[3]) begin
+									grant <= 2'd3;
+								end else begin
+									if (request[4]) begin
+										grant <= 3'd4;
+									end else begin
+										if (request[5]) begin
+											grant <= 3'd5;
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			3'd7: begin
+				if (request[0]) begin
+					grant <= 1'd0;
+				end else begin
+					if (request[1]) begin
+						grant <= 1'd1;
+					end else begin
+						if (request[2]) begin
+							grant <= 2'd2;
+						end else begin
+							if (request[3]) begin
+								grant <= 2'd3;
+							end else begin
+								if (request[4]) begin
+									grant <= 3'd4;
+								end else begin
+									if (request[5]) begin
+										grant <= 3'd5;
+									end else begin
+										if (request[6]) begin
+											grant <= 3'd6;
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		endcase
 	end
 	litedramcontroller_refresher_cmd_valid <= litedramcontroller_refresher_tmrrefresher_control0;
 	litedramcontroller_refresher_cmd_last <= litedramcontroller_refresher_tmrrefresher_control1;
@@ -17329,6 +17670,9 @@ always @(posedge sys_clk) begin
 		end
 	end
 	tmrrefresher_state <= tmrrefresher_next_state;
+	if (litedramcontroller_tmrbankmachine0_loggingsystem_ready) begin
+		litedramcontroller_tmrbankmachine0_log_num <= (litedramcontroller_tmrbankmachine0_log_num + 1'd1);
+	end
 	if (litedramcontroller_tmrbankmachine0_row_close) begin
 		litedramcontroller_tmrbankmachine0_row_opened <= 1'd0;
 	end else begin
@@ -17539,6 +17883,9 @@ always @(posedge sys_clk) begin
 		end
 	end
 	tmrbankmachine0_state <= tmrbankmachine0_next_state;
+	if (litedramcontroller_tmrbankmachine1_loggingsystem_ready) begin
+		litedramcontroller_tmrbankmachine1_log_num <= (litedramcontroller_tmrbankmachine1_log_num + 1'd1);
+	end
 	if (litedramcontroller_tmrbankmachine1_row_close) begin
 		litedramcontroller_tmrbankmachine1_row_opened <= 1'd0;
 	end else begin
@@ -17749,6 +18096,9 @@ always @(posedge sys_clk) begin
 		end
 	end
 	tmrbankmachine1_state <= tmrbankmachine1_next_state;
+	if (litedramcontroller_tmrbankmachine2_loggingsystem_ready) begin
+		litedramcontroller_tmrbankmachine2_log_num <= (litedramcontroller_tmrbankmachine2_log_num + 1'd1);
+	end
 	if (litedramcontroller_tmrbankmachine2_row_close) begin
 		litedramcontroller_tmrbankmachine2_row_opened <= 1'd0;
 	end else begin
@@ -17959,6 +18309,9 @@ always @(posedge sys_clk) begin
 		end
 	end
 	tmrbankmachine2_state <= tmrbankmachine2_next_state;
+	if (litedramcontroller_tmrbankmachine3_loggingsystem_ready) begin
+		litedramcontroller_tmrbankmachine3_log_num <= (litedramcontroller_tmrbankmachine3_log_num + 1'd1);
+	end
 	if (litedramcontroller_tmrbankmachine3_row_close) begin
 		litedramcontroller_tmrbankmachine3_row_opened <= 1'd0;
 	end else begin
@@ -18169,6 +18522,9 @@ always @(posedge sys_clk) begin
 		end
 	end
 	tmrbankmachine3_state <= tmrbankmachine3_next_state;
+	if (litedramcontroller_tmrbankmachine4_loggingsystem_ready) begin
+		litedramcontroller_tmrbankmachine4_log_num <= (litedramcontroller_tmrbankmachine4_log_num + 1'd1);
+	end
 	if (litedramcontroller_tmrbankmachine4_row_close) begin
 		litedramcontroller_tmrbankmachine4_row_opened <= 1'd0;
 	end else begin
@@ -18379,6 +18735,9 @@ always @(posedge sys_clk) begin
 		end
 	end
 	tmrbankmachine4_state <= tmrbankmachine4_next_state;
+	if (litedramcontroller_tmrbankmachine5_loggingsystem_ready) begin
+		litedramcontroller_tmrbankmachine5_log_num <= (litedramcontroller_tmrbankmachine5_log_num + 1'd1);
+	end
 	if (litedramcontroller_tmrbankmachine5_row_close) begin
 		litedramcontroller_tmrbankmachine5_row_opened <= 1'd0;
 	end else begin
@@ -18589,6 +18948,9 @@ always @(posedge sys_clk) begin
 		end
 	end
 	tmrbankmachine5_state <= tmrbankmachine5_next_state;
+	if (litedramcontroller_tmrbankmachine6_loggingsystem_ready) begin
+		litedramcontroller_tmrbankmachine6_log_num <= (litedramcontroller_tmrbankmachine6_log_num + 1'd1);
+	end
 	if (litedramcontroller_tmrbankmachine6_row_close) begin
 		litedramcontroller_tmrbankmachine6_row_opened <= 1'd0;
 	end else begin
@@ -18799,6 +19161,9 @@ always @(posedge sys_clk) begin
 		end
 	end
 	tmrbankmachine6_state <= tmrbankmachine6_next_state;
+	if (litedramcontroller_tmrbankmachine7_loggingsystem_ready) begin
+		litedramcontroller_tmrbankmachine7_log_num <= (litedramcontroller_tmrbankmachine7_log_num + 1'd1);
+	end
 	if (litedramcontroller_tmrbankmachine7_row_close) begin
 		litedramcontroller_tmrbankmachine7_row_opened <= 1'd0;
 	end else begin
@@ -20660,7 +21025,6 @@ always @(posedge sys_clk) begin
 		litedramcontroller_level <= 4'd0;
 		litedramcontroller_produce <= 4'd0;
 		litedramcontroller_consume <= 4'd0;
-		litedramcontroller_message <= 32'd0;
 		litedramcontroller_refresher_cmd_valid <= 1'd0;
 		litedramcontroller_refresher_cmd_payload_a <= 14'd0;
 		litedramcontroller_refresher_cmd_payload_ba <= 3'd0;
@@ -20709,6 +21073,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_refresher_zqcs_timer_count1 <= 27'd124999999;
 		litedramcontroller_refresher_zqcs_executer_done <= 1'd0;
 		litedramcontroller_refresher_zqcs_executer_counter <= 5'd0;
+		litedramcontroller_tmrbankmachine0_log_num <= 16'd0;
 		litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_level <= 4'd0;
 		litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_produce <= 3'd0;
 		litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_consume <= 3'd0;
@@ -20747,6 +21112,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine0_trascon2_count <= 3'd0;
 		litedramcontroller_tmrbankmachine0_trascon3_ready <= 1'd0;
 		litedramcontroller_tmrbankmachine0_trascon3_count <= 3'd0;
+		litedramcontroller_tmrbankmachine1_log_num <= 16'd0;
 		litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_level <= 4'd0;
 		litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_produce <= 3'd0;
 		litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_consume <= 3'd0;
@@ -20785,6 +21151,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine1_trascon2_count <= 3'd0;
 		litedramcontroller_tmrbankmachine1_trascon3_ready <= 1'd0;
 		litedramcontroller_tmrbankmachine1_trascon3_count <= 3'd0;
+		litedramcontroller_tmrbankmachine2_log_num <= 16'd0;
 		litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_level <= 4'd0;
 		litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_produce <= 3'd0;
 		litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_consume <= 3'd0;
@@ -20823,6 +21190,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine2_trascon2_count <= 3'd0;
 		litedramcontroller_tmrbankmachine2_trascon3_ready <= 1'd0;
 		litedramcontroller_tmrbankmachine2_trascon3_count <= 3'd0;
+		litedramcontroller_tmrbankmachine3_log_num <= 16'd0;
 		litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_level <= 4'd0;
 		litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_produce <= 3'd0;
 		litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_consume <= 3'd0;
@@ -20861,6 +21229,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine3_trascon2_count <= 3'd0;
 		litedramcontroller_tmrbankmachine3_trascon3_ready <= 1'd0;
 		litedramcontroller_tmrbankmachine3_trascon3_count <= 3'd0;
+		litedramcontroller_tmrbankmachine4_log_num <= 16'd0;
 		litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_level <= 4'd0;
 		litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_produce <= 3'd0;
 		litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_consume <= 3'd0;
@@ -20899,6 +21268,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine4_trascon2_count <= 3'd0;
 		litedramcontroller_tmrbankmachine4_trascon3_ready <= 1'd0;
 		litedramcontroller_tmrbankmachine4_trascon3_count <= 3'd0;
+		litedramcontroller_tmrbankmachine5_log_num <= 16'd0;
 		litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_level <= 4'd0;
 		litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_produce <= 3'd0;
 		litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_consume <= 3'd0;
@@ -20937,6 +21307,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine5_trascon2_count <= 3'd0;
 		litedramcontroller_tmrbankmachine5_trascon3_ready <= 1'd0;
 		litedramcontroller_tmrbankmachine5_trascon3_count <= 3'd0;
+		litedramcontroller_tmrbankmachine6_log_num <= 16'd0;
 		litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_level <= 4'd0;
 		litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_produce <= 3'd0;
 		litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_consume <= 3'd0;
@@ -20975,6 +21346,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine6_trascon2_count <= 3'd0;
 		litedramcontroller_tmrbankmachine6_trascon3_ready <= 1'd0;
 		litedramcontroller_tmrbankmachine6_trascon3_count <= 3'd0;
+		litedramcontroller_tmrbankmachine7_log_num <= 16'd0;
 		litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_level <= 4'd0;
 		litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_produce <= 3'd0;
 		litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_consume <= 3'd0;
@@ -21077,6 +21449,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_multiplexer_twtrcon3_count <= 3'd0;
 		litedramcontroller_multiplexer_time0 <= 5'd0;
 		litedramcontroller_multiplexer_time1 <= 4'd0;
+		grant <= 3'd0;
 		tmrrefresher_state <= 2'd0;
 		tmrbankmachine0_state <= 4'd0;
 		tmrbankmachine1_state <= 4'd0;

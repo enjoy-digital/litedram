@@ -263,7 +263,7 @@ class BankMachine(Module):
 # TMRBankMachine -----------------------------------------------------------------------------------
         
 class TMRBankMachine(Module):
-    def __init__(self, n, address_width, address_align, nranks, settings, TMRreq):
+    def __init__(self, n, address_width, address_align, nranks, settings, TMRreq, logger):
         self.req = req = Record(cmd_layout(address_width))
         self.TMRreq = TMRreq = TMRRecord(req)
         self.refresh_req = refresh_req = Signal()
@@ -290,6 +290,20 @@ class TMRBankMachine(Module):
         # # #
 
         auto_precharge = Signal()
+        
+        # Log Ascending Number ---------------------------------------------------------------------
+        
+        log_n = Signal(16)
+        log_num = Signal(16)
+        
+        self.comb += log_n.eq(n)
+        
+        log_message = Cat(log_n, log_num)
+        
+        message, ready, request = logger.get_log_port()
+        
+        self.comb += [message.eq(log_message), request.eq(1)]
+        self.sync += [If(ready, log_num.eq(log_num+1))]
         
         # TMR Setup --------------------------------------------------------------------------------
         

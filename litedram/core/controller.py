@@ -86,10 +86,10 @@ class LiteDRAMController(Module, AutoCSR):
         # Logging Buffer CSR -----------------------------------------------------------------------
         
         self.submodules.logger = logger = LoggingSystem()
-        message, ready, req = logger.get_log_port()
+        #message, ready, req = logger.get_log_port()
         
-        self.comb += [req.eq(1)]
-        self.sync += [If(ready, message.eq(message+1))]
+        #self.comb += [req.eq(1)]
+        #self.sync += [If(ready, message.eq(message+1))]
 
         # # #
         
@@ -109,7 +109,8 @@ class LiteDRAMController(Module, AutoCSR):
                 address_align = address_align,
                 nranks        = nranks,
                 settings      = self.settings,
-                TMRreq        = getattr(TMRinterface, "bank"+str(n)))
+                TMRreq        = getattr(TMRinterface, "bank"+str(n)),
+                logger        = logger)
             bank_machines.append(bank_machine)
             self.submodules += bank_machine
             #self.comb += getattr(interface, "bank"+str(n)).connect(bank_machine.req)
