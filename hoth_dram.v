@@ -7519,7 +7519,7 @@ always @(*) begin
 // synthesis translate_on
 end
 assign litedramcontroller_tmrbankmachine0_log_n = 1'd0;
-assign litedramcontroller_tmrbankmachine0_loggingsystem_message = {litedramcontroller_tmrbankmachine0_log_num, litedramcontroller_tmrbankmachine0_log_n};
+assign litedramcontroller_tmrbankmachine0_loggingsystem_message = {litedramcontroller_tmrbankmachine0_log_n, litedramcontroller_tmrbankmachine0_log_num};
 assign litedramcontroller_tmrbankmachine0_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine0_req_valid;
 assign litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine0_req_we;
@@ -7845,7 +7845,7 @@ always @(*) begin
 // synthesis translate_on
 end
 assign litedramcontroller_tmrbankmachine1_log_n = 1'd1;
-assign litedramcontroller_tmrbankmachine1_loggingsystem_message = {litedramcontroller_tmrbankmachine1_log_num, litedramcontroller_tmrbankmachine1_log_n};
+assign litedramcontroller_tmrbankmachine1_loggingsystem_message = {litedramcontroller_tmrbankmachine1_log_n, litedramcontroller_tmrbankmachine1_log_num};
 assign litedramcontroller_tmrbankmachine1_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine1_req_valid;
 assign litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine1_req_we;
@@ -8171,7 +8171,7 @@ always @(*) begin
 // synthesis translate_on
 end
 assign litedramcontroller_tmrbankmachine2_log_n = 2'd2;
-assign litedramcontroller_tmrbankmachine2_loggingsystem_message = {litedramcontroller_tmrbankmachine2_log_num, litedramcontroller_tmrbankmachine2_log_n};
+assign litedramcontroller_tmrbankmachine2_loggingsystem_message = {litedramcontroller_tmrbankmachine2_log_n, litedramcontroller_tmrbankmachine2_log_num};
 assign litedramcontroller_tmrbankmachine2_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine2_req_valid;
 assign litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine2_req_we;
@@ -8497,7 +8497,7 @@ always @(*) begin
 // synthesis translate_on
 end
 assign litedramcontroller_tmrbankmachine3_log_n = 2'd3;
-assign litedramcontroller_tmrbankmachine3_loggingsystem_message = {litedramcontroller_tmrbankmachine3_log_num, litedramcontroller_tmrbankmachine3_log_n};
+assign litedramcontroller_tmrbankmachine3_loggingsystem_message = {litedramcontroller_tmrbankmachine3_log_n, litedramcontroller_tmrbankmachine3_log_num};
 assign litedramcontroller_tmrbankmachine3_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine3_req_valid;
 assign litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine3_req_we;
@@ -8823,7 +8823,7 @@ always @(*) begin
 // synthesis translate_on
 end
 assign litedramcontroller_tmrbankmachine4_log_n = 3'd4;
-assign litedramcontroller_tmrbankmachine4_loggingsystem_message = {litedramcontroller_tmrbankmachine4_log_num, litedramcontroller_tmrbankmachine4_log_n};
+assign litedramcontroller_tmrbankmachine4_loggingsystem_message = {litedramcontroller_tmrbankmachine4_log_n, litedramcontroller_tmrbankmachine4_log_num};
 assign litedramcontroller_tmrbankmachine4_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine4_req_valid;
 assign litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine4_req_we;
@@ -9149,7 +9149,7 @@ always @(*) begin
 // synthesis translate_on
 end
 assign litedramcontroller_tmrbankmachine5_log_n = 3'd5;
-assign litedramcontroller_tmrbankmachine5_loggingsystem_message = {litedramcontroller_tmrbankmachine5_log_num, litedramcontroller_tmrbankmachine5_log_n};
+assign litedramcontroller_tmrbankmachine5_loggingsystem_message = {litedramcontroller_tmrbankmachine5_log_n, litedramcontroller_tmrbankmachine5_log_num};
 assign litedramcontroller_tmrbankmachine5_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine5_req_valid;
 assign litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine5_req_we;
@@ -9475,7 +9475,7 @@ always @(*) begin
 // synthesis translate_on
 end
 assign litedramcontroller_tmrbankmachine6_log_n = 3'd6;
-assign litedramcontroller_tmrbankmachine6_loggingsystem_message = {litedramcontroller_tmrbankmachine6_log_num, litedramcontroller_tmrbankmachine6_log_n};
+assign litedramcontroller_tmrbankmachine6_loggingsystem_message = {litedramcontroller_tmrbankmachine6_log_n, litedramcontroller_tmrbankmachine6_log_num};
 assign litedramcontroller_tmrbankmachine6_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine6_req_valid;
 assign litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine6_req_we;
@@ -9801,7 +9801,7 @@ always @(*) begin
 // synthesis translate_on
 end
 assign litedramcontroller_tmrbankmachine7_log_n = 3'd7;
-assign litedramcontroller_tmrbankmachine7_loggingsystem_message = {litedramcontroller_tmrbankmachine7_log_num, litedramcontroller_tmrbankmachine7_log_n};
+assign litedramcontroller_tmrbankmachine7_loggingsystem_message = {litedramcontroller_tmrbankmachine7_log_n, litedramcontroller_tmrbankmachine7_log_num};
 assign litedramcontroller_tmrbankmachine7_loggingsystem_request = 1'd1;
 assign litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine7_req_valid;
 assign litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine7_req_we;

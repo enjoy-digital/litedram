@@ -298,7 +298,7 @@ class TMRBankMachine(Module):
         
         self.comb += log_n.eq(n)
         
-        log_message = Cat(log_n, log_num)
+        log_message = Cat(log_num, log_n)
         
         message, ready, request = logger.get_log_port()
         

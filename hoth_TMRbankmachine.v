@@ -306,7 +306,7 @@ initial dummy_s <= 1'd0;
 // synthesis translate_on
 
 assign log_n = 1'd0;
-assign loggingsystem_message = {log_num, log_n};
+assign loggingsystem_message = {log_n, log_num};
 assign loggingsystem_request = 1'd1;
 assign cmd_buffer_lookahead_sink_valid = req_valid;
 assign cmd_buffer_lookahead_sink_payload_we = req_we;
