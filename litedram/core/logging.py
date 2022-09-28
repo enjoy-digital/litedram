@@ -6,30 +6,38 @@ from litex.soc.interconnect.csr import *
 
 class LoggingSystem(Module, AutoCSR):
     def __init__(self):
+        self.messages = []
+        self.readys = []
+        self.requests = []
+    
         self._log_csr = log_csr = CSRStatus(32, name='log_buffer')
         
-        log_fifo = SyncFIFO(32, 10)
+        self.log_fifo = log_fifo = SyncFIFO(32, 10)
         self.submodules += log_fifo
         self.comb += [log_fifo.replace.eq(0)]
         
         # CSR reads from FIFO if message is available
         self.sync += [If(log_csr.we & log_fifo.readable, log_csr.status.eq(log_fifo.dout), log_fifo.re.eq(1))
                         .Else(If(log_csr.we, log_csr.status.eq(0)), log_fifo.re.eq(0))]
-                        
         
-        # Arbiter (single ascending # port)
-        arbiter = roundrobin.RoundRobin(2, roundrobin.SP_CE)
+    def get_log_port(self):
+        message = Signal(32)
+        ready = Signal()
+        request = Signal()
+        
+        self.messages.append(message)
+        self.readys.append(ready)
+        self.requests.append(request)
+        
+        return message, ready, request
+        
+    def do_finalize(self):
+        #Create Arbiter
+        arbiter = roundrobin.RoundRobin(len(self.messages), roundrobin.SP_CE)
         self.submodules += arbiter
         
-        # Request, grant, & ce
-        
-        # Driver always requesting log
-        self.comb += [arbiter.request[0].eq(1), arbiter.request[1].eq(0), arbiter.ce.eq(log_fifo.writable)]
-        self.comb += [log_fifo.we.eq(log_fifo.writable)]
-        
-        num = Signal(32)
-        self.comb += [If(arbiter.grant == 0, log_fifo.din.eq(num))]
-        self.sync += [If(arbiter.grant == 0, num.eq(num+1))]
-        
-    #def do_finalize(self):
-    #    pass
+        self.comb += [self.log_fifo.din.eq(Array(self.messages)[arbiter.grant]),         #Map arbiter grant to data in
+                        arbiter.ce.eq(self.log_fifo.writable),                           #Arbitrate if fifo is writable
+                        self.log_fifo.we.eq(self.log_fifo.writable & reduce(or_, self.requests)),  #Write if writable and request available
+                        arbiter.request.eq(Cat(self.requests)),                   #Map requests to arbiter requests
+                        Cat(self.readys).eq(arbiter.grant)]                             #Map grants to readys  
