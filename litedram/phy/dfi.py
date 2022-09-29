@@ -31,7 +31,7 @@ def phase_cmd_description(addressbits, bankbits, nranks, with_sub_channels=False
             ("cs_n",         nranks, DIR_M_TO_S),
             ("ras_n",             1, DIR_M_TO_S),
             ("act_n",             1, DIR_M_TO_S),
-            ("odt",               1, DIR_M_TO_S),
+            ("odt",          nranks, DIR_M_TO_S),
             ("we_n",              1, DIR_M_TO_S),
         ]))
     sub_channels = temp[0][1] if not with_sub_channels else temp
@@ -188,7 +188,7 @@ class Interface(Record):
             ("cs_n", nranks, DIR_M_TO_S),
             ("ras_n",     1, DIR_M_TO_S),
             ("act_n",     1, DIR_M_TO_S),
-            ("odt",       1, DIR_M_TO_S),
+            ("odt",  nranks, DIR_M_TO_S),
             ("we_n",      1, DIR_M_TO_S),
             ("wrdata",       databits//2, DIR_M_TO_S),
             ("wrdata_en",              1, DIR_M_TO_S),
