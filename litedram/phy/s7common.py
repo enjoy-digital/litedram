@@ -65,9 +65,39 @@ class S7Common(Module):
 
         self.specials += Instance("ODELAYE2", **params)
 
-    def oserdese2_ddr(self, *, din, clk, dout=None, dout_fb=None, tin=None, tout=None, clkdiv="sys2x"):
+    def oserdese2_ddr_with_tri(self, *, din, clk, tin, tout, dout=None, dout_fb=None, clkdiv="sys2x"):
         data_width = len(din)
-        assert data_width == 8, (data_width, din)
+        assert data_width == 4, (data_width, din)
+        assert not ((dout is None) and (dout_fb is None)), "Output to OQ (-> IOB) and/or to OFB (-> ISERDESE2/ODELAYE2)"
+
+        dout = Signal() if dout is None else dout
+        dout_fb = Signal() if dout_fb is None else dout_fb
+
+        params = dict(
+            p_SERDES_MODE    = "MASTER",
+            p_DATA_WIDTH     = 4,
+            p_TRISTATE_WIDTH = 4,
+            p_DATA_RATE_OQ   = "DDR",
+            p_DATA_RATE_TQ   = "DDR",
+            i_RST    = ResetSignal() | self._rst.storage,
+            i_CLK    = ClockSignal(clk),
+            i_CLKDIV = ClockSignal(clkdiv),
+            o_TQ     = tout,
+            o_OQ     = dout,
+            o_OFB    = dout_fb,
+            i_OCE    = 1,
+            i_TCE    = 1,
+        )
+
+        for i in range(data_width):
+            params[f"i_D{i+1}"] = din[i]
+            params[f"i_T{i+1}"] = tin[i]
+
+        self.specials += Instance("OSERDESE2", **params)
+
+    def oserdese2_ddr(self, *, din, clk, dout=None, dout_fb=None, tin=None, tout=None, clkdiv="sys2x", invert_clk=False):
+        data_width = len(din)
+        assert data_width in [4, 8], (data_width, din)
         assert not ((tin is None) ^ (tout is None)), "When using tristate specify both `tin` and `tout`"
         assert not ((dout is None) and (dout_fb is None)), "Output to OQ (-> IOB) and/or to OFB (-> ISERDESE2/ODELAYE2)"
 
@@ -102,8 +132,8 @@ class S7Common(Module):
         din = kwargs["din"]
         data_width = len(din)
         assert data_width in [1, 2, 4]
-        ratio = 8 // data_width
-        din_ddr = Signal(8)
+        ratio = 2
+        din_ddr = Signal(2*data_width)
         kwargs["din"] = din_ddr
         self.comb += din_ddr.eq(Cat(*[Replicate(bit, ratio) for bit in din]))
         self.oserdese2_ddr(**kwargs)

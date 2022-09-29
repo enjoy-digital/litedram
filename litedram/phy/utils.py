@@ -216,7 +216,7 @@ class CommandsPipeline(Module):
 
 
 class SimpleCDC(Module):
-   def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, name=None):
+   def __init__(self, clkdiv, clk, i_dw, o_dw, i=None, o=None, name=None, register=False):
         assert i_dw == o_dw*2, (i_dw, o_dw)
 
         sd_clk = getattr(self.sync, clk)
@@ -224,7 +224,10 @@ class SimpleCDC(Module):
 
         if i is None: i = Signal(i_dw)
         if o is None: o = Signal(o_dw)
+        self.i = i
+        self.o = o
         reset_n = Signal(name='{}_reset_n'.format(name) if name is not None else None)
+        reset_n.attr.add("keep")
         w_cnt = Signal(name='{}_w_cnt'.format(name) if name is not None else None)
         r_ready = Signal(name='{}_r_ready'.format(name) if name is not None else None)
         r_row_cnt = Signal(name='{}_r_row_cnt'.format(name) if name is not None else None)
@@ -258,7 +261,11 @@ class SimpleCDC(Module):
             Array([i_d[1][0:o_dw], i_d[1][o_dw:]])
         ])
 
-        self.comb += If(r_ready, o.eq(o_array[r_row_cnt][r_col_cnt]))
+        if not register:
+            self.comb += If(r_ready, o.eq(o_array[r_row_cnt][r_col_cnt]))
+        else:
+            self.LATENCY=4
+            sd_clk += If(r_ready, o.eq(o_array[r_row_cnt][r_col_cnt]))
 
 
 class Serializer(Module):

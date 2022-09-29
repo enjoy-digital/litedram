@@ -12,7 +12,7 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
-from litedram.phy.utils import delayed, Latency
+from litedram.phy.utils import delayed, Latency, SimpleCDC
 from litedram.phy.ddr5.basephy import DDR5PHY
 
 from litedram.phy.s7common import S7Common
@@ -22,38 +22,9 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                  with_per_dq_idelay=False, with_sub_channels=False, **kwargs):
         self.iodelay_clk_freq = iodelay_clk_freq
 
-        # DoubleRateDDR5PHY outputs half-width signals (comparing to DDR5PHY) in sys2x domain.
-        # This allows us to use 8:1 DDR OSERDESE2/ISERDESE2 to (de-)serialize the data.
-        super().__init__(pads,
-            ser_latency       = Latency(sys2x=1),  # OSERDESE2 4:1 DDR (2 full-rate clocks)
-            des_latency       = Latency(sys=2),  # ISERDESE2 NETWORKING
-            phytype           = self.__class__.__name__,
-            with_sub_channels = with_sub_channels,
-            **kwargs
-        )
-
-        self.settings.delays = 32
-        self.settings.write_leveling = True
-        self.settings.write_latency_calibration = True
-        self.settings.write_dq_dqs_training = True
-        self.settings.read_leveling = True
-
-        # delay control
-        self._rdly_dq_rst  = CSR()
-        self._rdly_dq_inc  = CSR()
-        self._rdly_dqs_rst = CSR()
-        self._rdly_dqs_inc = CSR()
-        if with_odelay:
-            self._cdly_rst     = CSR()
-            self._cdly_inc     = CSR()
-            self._wdly_dq_rst  = CSR()
-            self._wdly_dq_inc  = CSR()
-            self._wdly_dqs_rst = CSR()
-            self._wdly_dqs_inc = CSR()
-
         def cdc(i):
             o = Signal()
-            psync = PulseSynchronizer("sys", "sys2x")
+            psync = PulseSynchronizer("sys", "sys2x_unbuf")
             self.submodules += psync
             self.comb += [
                 psync.i.eq(i),
@@ -61,190 +32,361 @@ class S7DDR5PHY(DDR5PHY, S7Common):
             ]
             return o
 
-        rdly_dq_rst  = cdc(self._rdly_dq_rst.re)
-        rdly_dq_inc  = cdc(self._rdly_dq_inc.re)
-        rdly_dqs_rst = cdc(self._rdly_dqs_rst.re)
-        rdly_dqs_inc = cdc(self._rdly_dqs_inc.re)
-        if with_odelay:
-            cdly_rst     = cdc(self._cdly_rst.re) | self._rst.storage
-            cdly_inc     = cdc(self._cdly_inc.re)
-            wdly_dq_rst  = cdc(self._wdly_dq_rst.re)
-            wdly_dq_inc  = cdc(self._wdly_dq_inc.re)
-            wdly_dqs_rst = cdc(self._wdly_dqs_rst.re)
-            wdly_dqs_inc = cdc(self._wdly_dqs_inc.re)
 
-        # In theory we should only need to delay by 2 cycles, but sometimes it happened that
-        # DQ/DMI were transmitted incomplete due to OE being asserted too late/released too
-        # early. For this reason we add OE margin extending it 1 cycle before and 1 after.
-        # For DQS we already have margin so there should be no need for this.
-        def oe_delay_data(oe):
-            oe_d = Signal()
-            delay = TappedDelayLine(oe, 3)
-            self.submodules += ClockDomainsRenamer("sys2x")(delay)
-            self.comb += oe_d.eq(reduce(or_, delay.taps))
-            return oe_d
+        # DoubleRateDDR5PHY outputs half-width signals (comparing to DDR5PHY) in sys2x domain.
+        # This allows us to use 8:1 DDR OSERDESE2/ISERDESE2 to (de-)serialize the data.
+        super().__init__(pads,
+            ser_latency       = Latency(sys2x=1),  # OSERDESE2 4:1 DDR (2 full-rate clocks)
+            des_latency       = Latency(sys=2),  # ISERDESE2 NETWORKING
+            phytype           = self.__class__.__name__,
+            with_sub_channels = with_sub_channels,
+            csr_cdc           = cdc,
+            with_odelay       = with_odelay,
+            rd_extra_delay    = Latency(sys2x=3),
+            **kwargs
+        )
 
-        def oe_delay_dqs(oe):
-            delay = TappedDelayLine(oe, 2)
-            self.submodules += ClockDomainsRenamer("sys2x")(delay)
-            return delay.output
+        _l = self._l
+
+        self.settings.delays = 32
+        self.settings.write_leveling = True
+        self.settings.write_latency_calibration = True
+        self.settings.write_dq_dqs_training = True
+        self.settings.read_leveling = True
 
         # Serialization ----------------------------------------------------------------------------
+
+        ddr     = dict(clkdiv="sys2x_unbuf", clk="sys4x_unbuf")
+        ddr_90  = dict(clkdiv="sys2x_unbuf", clk="sys4x_90_unbuf")
+        cmd     = dict(clkdiv="sys2x_unbuf", clk="sys4x_90_unbuf")
+        cs      = dict(clkdiv="sys2x_unbuf", clk="sys4x_180_unbuf")
 
         # Clock
         clk_dly = Signal()
         clk_ser = Signal()
-        # Invert clk to have it phase shifted in relation to CS_n/CA, because we serialize it with DDR,
-        # rising edge will then be in the middle of a data bit.
-        self.oserdese2_ddr(din=~self.out.ck_t, dout=clk_ser if with_odelay else clk_dly, clk="sys4x")
-        if with_odelay:
-            self.odelaye2(din=clk_ser, dout=clk_dly, rst=cdly_rst, inc=cdly_inc)
+
+        ck_t = self.out.ck_t
+        cdc_ck_t = Signal(len(ck_t)//2)
+        simple_cdc = SimpleCDC(
+            clkdiv="sys", clk="sys2x_unbuf",
+            i_dw=len(ck_t), o_dw=len(cdc_ck_t),
+            i=ck_t, o=cdc_ck_t,
+            name=f"ck_t",
+            register=True,
+        )
+        self.submodules += simple_cdc
+
+        # Every other signal should be realligned to clock.
+        self.oserdese2_ddr(din=cdc_ck_t, dout=clk_dly, **ddr)
         self.obufds(din=clk_dly, dout=self.pads.ck_t, dout_b=self.pads.ck_c)
 
         for const in ["mir", "cai", "ca_odt"]:
             if hasattr(self.pads, const):
                 self.comb += getattr(self.pads, const).eq(0)
 
-        for cmd in ["reset_n"]:
-            cmd_i = getattr(self.out, cmd)
-            cmd_o = getattr(self.pads, cmd)
-            cmd_ser = Signal()
-            self.oserdese2_ddr(din=cmd_i, dout=cmd_ser if with_odelay else cmd_o, clk="sys4x")
-            if with_odelay:
-                self.odelaye2(din=cmd_ser, dout=cmd_o, rst=cdly_rst, inc=cdly_inc)
+        reset_n = self.out.reset_n
+        cdc_reset_n = Signal(len(reset_n)//2)
+        simple_cdc = SimpleCDC(
+            clkdiv="sys", clk="sys2x_unbuf",
+            i_dw=len(reset_n), o_dw=len(cdc_reset_n),
+            i=reset_n, o=cdc_reset_n,
+            name=f"reset_n",
+            register=True,
+        )
+        self.submodules += simple_cdc
+        reset_n_o = getattr(self.pads, 'reset_n')
+        self.oserdese2_ddr(din=cdc_reset_n, dout=reset_n_o, **ddr)
+
+        self.iserdese2_ddr(din=self.pads.alert_n, dout=self.out.alert_n, **ddr_90)
 
         prefixes = [""] if not with_sub_channels else ["A_", "B_"]
         for prefix in prefixes:
             # Commands
             nranks = len(getattr(self.pads, prefix+"cs_n"))
             cs_n_ser = Signal(nranks)
-            for bit in range(nranks):
+            for it, (basephy_cs, pad) in enumerate(zip(getattr(self.out, prefix+'cs_n'), getattr(self.pads, prefix+'cs_n'))):
+                delay_out_cs = Signal.like(basephy_cs)
+                self.sync += delay_out_cs.eq(basephy_cs)
+                cdc_out_cs = Signal(len(delay_out_cs)//2)
+                simple_cdc = SimpleCDC(
+                    clkdiv="sys", clk="sys2x_unbuf",
+                    i_dw=len(delay_out_cs), o_dw=len(cdc_out_cs),
+                    i=delay_out_cs, o=cdc_out_cs,
+                    name=f"{prefix}cs_n_{it}",
+                    register=True,
+                )
+                self.submodules += simple_cdc
+                cs_n_ser = Signal()
+                self.oserdese2_sdr(
+                    din=cdc_out_cs,
+                    **(dict(dout_fb=cs_n_ser) if with_odelay else dict(dout=pad)),
+                    **cs,
+                )
                 if with_odelay:
-                    self.oserdese2_sdr(din=getattr(self.out, prefix+"cs_n")[bit], dout=cs_n_ser[bit], clk="sys4x")
-                    self.odelaye2(din=cs_n_ser[bit], dout=getattr(self.pads, prefix+"cs_n")[bit], rst=cdly_rst, inc=cdly_inc)
-                else:
-                    self.oserdese2_sdr(din=getattr(self.out, prefix+"cs_n")[bit], dout=getattr(self.pads, prefix+"cs_n")[bit], clk="sys4x")
-            for bit in range(len(getattr(self.pads, prefix+"ca"))):
+                    self.odelaye2(
+                        din=cs_n_ser,
+                        dout=pad,
+                        rst=_l[prefix+'csdly_rst'],
+                        inc=_l[prefix+'csdly_inc'],
+                        clk="sys2x_unbuf",
+                    )
+
+            for it, (basephy_ca, pad) in enumerate(zip(getattr(self.out, prefix+'ca'), getattr(self.pads, prefix+'ca'))):
+                delay_ca = Signal()
+                out_ca = Signal.like(basephy_ca)
+                self.sync += delay_ca.eq(basephy_ca[-1])
+                self.sync += out_ca.eq(Cat(delay_ca, basephy_ca[0:-1]))
+                cdc_out_ca = Signal(len(out_ca)//2)
+                simple_cdc = SimpleCDC(
+                    clkdiv="sys", clk="sys2x_unbuf",
+                    i_dw=len(out_ca), o_dw=len(cdc_out_ca),
+                    i=out_ca, o=cdc_out_ca,
+                    name=f"{prefix}ca_{it}",
+                    register=True,
+                )
+                self.submodules += simple_cdc
                 ca_ser = Signal()
+                self.oserdese2_ddr(
+                    din=cdc_out_ca,
+                    **(dict(dout_fb=ca_ser) if with_odelay else dict(dout=pad)),
+                    **cmd,
+                )
                 if with_odelay:
-                    self.oserdese2_ddr(din=getattr(self.out, prefix+"ca")[bit], dout=ca_ser, clk="sys4x")
-                    self.odelaye2(din=ca_ser, dout=getattr(self.pads, prefix+"ca")[bit], rst=cdly_rst, inc=cdly_inc)
-                else:
-                    self.oserdese2_sdr(din=getattr(self.out, prefix+"ca")[bit], dout=getattr(self.pads, prefix+"ca")[bit], clk="sys4x")
+                    self.odelaye2(
+                        din=ca_ser,
+                        dout=pad,
+                        rst=self.get_rst(it, _l[prefix+'cadly_rst'], prefix),
+                        inc=self.get_inc(it, _l[prefix+'cadly_inc'], prefix),
+                        clk="sys2x_unbuf",
+                    )
+
+            if hasattr(self.pads, prefix+'par'):
+                basephy_par = getattr(self.out, prefix+'par')
+                pad = getattr(self.pads, prefix+'par')
+
+                delay_par = Signal()
+                out_par = Signal.like(basephy_par)
+                self.sync += delay_par.eq(basephy_par[-1])
+                self.sync += out_par.eq(Cat(delay_par, basephy_par[0:-1]))
+                cdc_out_par = Signal(len(basephy_par)//2)
+                simple_cdc = SimpleCDC(
+                    clkdiv="sys", clk="sys2x_unbuf",
+                    i_dw=len(out_par), o_dw=len(cdc_out_par),
+                    i=out_par, o=cdc_out_par,
+                    name=f"{prefix}par_{it}",
+                    register=True,
+                )
+                self.submodules += simple_cdc
+                par_ser = Signal()
+                self.oserdese2_ddr(
+                    din=cdc_out_par,
+                    **(dict(dout_fb=par_ser) if with_odelay else dict(dout=pad)),
+                    **cmd,
+                )
+                if with_odelay:
+                    self.odelaye2(
+                        din=par_ser,
+                        dout=pad,
+                        rst=_l[prefix+'pardly_rst'],
+                        inc=_l[prefix+'pardly_inc'],
+                        clk="sys2x_unbuf",
+                    )
 
             # DQS
-            for byte in range(self.databits//8):
-                # DQS
-                dqs_t     = Signal()
+            strobes = len(pads.dqs_t) if hasattr(pads, "dqs_t") else len(pads.A_dqs_t)
+            for it in range(strobes):
+                dqs_t_o = getattr(self.out, prefix+'dqs_t_o')[it]
+                cdc_dqs_t_o = Signal(len(dqs_t_o)//2)
+                simple_cdc = SimpleCDC(
+                    clkdiv="sys", clk="sys2x_unbuf",
+                    i_dw=len(dqs_t_o), o_dw=len(cdc_dqs_t_o),
+                    i=dqs_t_o, o=cdc_dqs_t_o,
+                    name=f"{prefix}dqs_t_o_{it}",
+                    register=True,
+                )
+                self.submodules += simple_cdc
+
+                out_dqs_oe = getattr(self.out, prefix+'dqs_oe')[it]
+                cdc_out_dqs_oe = Signal(len(out_dqs_oe)//2)
+                simple_cdc = SimpleCDC(
+                    clkdiv="sys", clk="sys2x_unbuf",
+                    i_dw=len(out_dqs_oe), o_dw=len(cdc_out_dqs_oe),
+                    i=out_dqs_oe, o=cdc_out_dqs_oe,
+                    name=f"{prefix}dqs_t_oe",
+                    register=True,
+                )
+                self.submodules += simple_cdc
+
                 dqs_ser   = Signal()
                 dqs_dly   = Signal()
                 dqs_i     = Signal()
                 dqs_i_dly = Signal()
-                # need to delay DQS if clocks are not phase aligned
-                dqs_din = getattr(self.out, prefix+"dqs_t_o")[byte]
-                if not with_odelay:
-                    dqs_din_d = Signal.like(dqs_din)
-                    self.sync.sys2x += dqs_din_d.eq(dqs_din)
-                    dqs_din = dqs_din_d
-                self.oserdese2_ddr(
-                    din     = dqs_din,
-                    **(dict(dout_fb=dqs_ser) if with_odelay else dict(dout=dqs_dly)),
-                    tin     = ~oe_delay_dqs(getattr(self.out, prefix+"dqs_oe")),
+                dqs_t     = Signal()
+
+                self.oserdese2_ddr_with_tri(
+                    din     = cdc_dqs_t_o,
+                    **(dict(dout_fb = dqs_ser) if with_odelay else dict(dout = dqs_dly)),
+                    tin     = out_dqs_oe,
                     tout    = dqs_t,
-                    clk     = "sys4x" if with_odelay else "sys4x_90",
+                    **ddr,
                 )
                 if with_odelay:
                     self.odelaye2(
                         din  = dqs_ser,
                         dout = dqs_dly,
-                        rst  = self.get_rst(byte, wdly_dqs_rst),
-                        inc  = self.get_inc(byte, wdly_dqs_inc),
-                        init = half_sys8x_taps,  # shifts by 90 degrees
+                        rst  = self.get_rst(it, _l[prefix+'wdly_dqs_rst'], prefix),
+                        inc  = self.get_inc(it, _l[prefix+'wdly_dqs_inc'], prefix),
+                        clk="sys2x_unbuf",
                     )
+
                 self.iobufds(
                     din      = dqs_dly,
                     dout     = dqs_i,
                     tin      = dqs_t,
-                    dinout   = getattr(self.pads, prefix+"dqs_t")[byte],
-                    dinout_b = getattr(self.pads, prefix+"dqs_c")[byte],
+                    dinout   = getattr(self.pads, prefix+"dqs_t")[it],
+                    dinout_b = getattr(self.pads, prefix+"dqs_c")[it],
                 )
                 self.idelaye2(
                     din  = dqs_i,
                     dout = dqs_i_dly,
-                    rst  = self.get_rst(byte, rdly_dqs_rst),
-                    inc  = self.get_inc(byte, rdly_dqs_inc),
+                    rst  = self.get_rst(it, _l[prefix+'rdly_dqs_rst'], prefix),
+                    inc  = self.get_inc(it, _l[prefix+'rdly_dqs_inc'], prefix),
+                    clk="sys2x_unbuf",
                 )
                 self.iserdese2_ddr(
-                    din  = dqs_i_dly,
-                    dout = getattr(self.out, prefix+"dqs_t_i")[byte],
-                    clk  = "sys4x",
+                    din    = dqs_i_dly,
+                    dout   = getattr(self.out, prefix+"dqs_t_i")[it],
+                    clk    = "sys4x_unbuf",
+                    clkdiv = "sys"
                 )
 
             # DQ
-            for bit in range(self.databits):
+            modules = self.databits // strobes
+            dq_oe = {}
+            for it in range(self.databits):
+                basephy_dq = getattr(self.out, prefix+'dq_o')[it]
+                delay_dq = Signal.like(basephy_dq)
+                out_dq = Signal.like(basephy_dq)
+                self.sync += delay_dq.eq(basephy_dq[1:])
+                self.comb += out_dq.eq(Cat(delay_dq[:-1], basephy_dq[0]))
+                cdc_out_dq = Signal(len(out_dq)//2)
+                simple_cdc = SimpleCDC(
+                    clkdiv="sys", clk="sys2x_unbuf",
+                    i_dw=len(out_dq), o_dw=len(cdc_out_dq),
+                    i=out_dq, o=cdc_out_dq,
+                    name=f"{prefix}dq_o_{it}",
+                    register=True,
+                )
+                self.submodules += simple_cdc
+
+                if it//modules not in dq_oe:
+                    basephy_dq_oe = getattr(self.out, prefix+'dq_oe')[it//modules]
+                    delay_dq_oe = Signal.like(basephy_dq_oe)
+                    out_dq_oe = Signal.like(basephy_dq_oe)
+                    self.sync += delay_dq_oe.eq(basephy_dq_oe[1:])
+                    self.comb += out_dq_oe.eq(Cat(delay_dq_oe[:-1], basephy_dq_oe[0]))
+                    cdc_out_dq_oe = Signal(len(out_dq_oe)//2)
+                    simple_cdc = SimpleCDC(
+                        clkdiv="sys", clk="sys2x_unbuf",
+                        i_dw=len(out_dq_oe), o_dw=len(cdc_out_dq_oe),
+                        i=out_dq_oe, o=cdc_out_dq_oe,
+                        name=f"{prefix}dq_oe{it//modules}",
+                        register=True,
+                    )
+                    self.submodules += simple_cdc
+                    dq_oe[it//modules] = cdc_out_dq_oe
+
                 dq_t     = Signal()
                 dq_ser   = Signal()
                 dq_dly   = Signal()
                 dq_i     = Signal()
                 dq_i_dly = Signal()
-                self.oserdese2_ddr(
-                    din     = getattr(self.out, prefix+"dq_o")[bit],
+
+                self.oserdese2_ddr_with_tri(
+                    din     = cdc_out_dq,
                     **(dict(dout_fb=dq_ser) if with_odelay else dict(dout=dq_dly)),
-                    tin     = ~oe_delay_data(getattr(self.out, prefix+"dq_oe")),
+                    tin     = dq_oe[it//modules],
                     tout    = dq_t,
-                    clk     = "sys4x",
+                    **ddr_90,
                 )
                 if with_odelay:
                     self.odelaye2(
                         din  = dq_ser,
                         dout = dq_dly,
-                        rst  = self.get_rst(bit//8, wdly_dq_rst),
-                        inc  = self.get_inc(bit//8, wdly_dq_inc),
+                        rst  = self.get_rst(it, _l[prefix+'wdly_dq_rst'], prefix),
+                        inc  = self.get_inc(it, _l[prefix+'wdly_dq_inc'], prefix),
+                        clk="sys2x_unbuf",
                     )
                 self.iobuf(
                     din    = dq_dly,
                     dout   = dq_i,
-                    dinout = getattr(self.pads, prefix+"dq")[bit],
+                    dinout = getattr(self.pads, prefix+"dq")[it],
                     tin    = dq_t
                 )
+
+                basephy_dq_i =  getattr(self.out, prefix+'dq_i')[it]
+                in_dq = Signal.like(basephy_dq_i)
+                delay_dq_i = Signal(2)
+
                 self.idelaye2(
                     din  = dq_i,
                     dout = dq_i_dly,
-                    rst  = self.get_rst(bit//8, rdly_dq_rst),
-                    inc  = self.get_inc(bit//8, rdly_dq_inc)
+                    rst  = self.get_rst(it, _l[prefix+'rdly_dq_rst'], prefix),
+                    inc  = self.get_inc(it, _l[prefix+'rdly_dq_inc'], prefix),
+                    clk="sys2x_unbuf",
                 )
                 self.iserdese2_ddr(
                     din  = dq_i_dly,
-                    dout = getattr(self.out, prefix+"dq_i")[bit],
-                    clk  = "sys4x"
+                    dout = in_dq,
+                    clk    = "sys4x_unbuf",
+                    clkdiv = "sys"
                 )
+                self.sync += delay_dq_i.eq(in_dq[-2:])
+                self.comb += basephy_dq_i.eq(Cat(delay_dq_i, in_dq[:-2]))
 
-        # DMI
-        if hasattr(pads, "dm"):
-            for byte in range(self.databits//8):
-                dmi_t   = Signal()
-                dmi_ser = Signal()
-                dmi_dly = Signal()
-                self.oserdese2_ddr(
-                    din     = self.out.dmi_o[byte],
-                    **(dict(dout_fb=dmi_ser) if with_odelay else dict(dout=dmi_dly)),
-                    tin     = ~oe_delay_data(self.out.dmi_oe),
-                    tout    = dmi_t,
-                    clk     = "sys4x",
-                )
-                if with_odelay:
-                    self.odelaye2(
-                        din  = dmi_ser,
-                        dout = dmi_dly,
-                        rst  = self.get_rst(byte, wdly_dq_rst),
-                        inc  = self.get_inc(byte, wdly_dq_inc),
+            # DMI
+            if hasattr(pads, "dm_n"):
+                for it in range(strobes):
+                    basephy_dm = getattr(self.out, prefix+'dm_n_o')[it]
+                    delay_dm = Signal.like(basephy_dm)
+                    out_dm = Signal.like(basephy_dm)
+                    self.sync += delay_dm.eq(basephy_dm[1:])
+                    self.comb += out_dm.eq(Cat(delay_dm[:-1], basephy_dm[0]))
+                    cdc_out_dm = Signal(len(out_dm)//2)
+                    simple_cdc = SimpleCDC(
+                        clkdiv="sys", clk="sys2x_unbuf",
+                        i_dw=len(out_dm), o_dw=len(cdc_out_dm),
+                        i=out_dm, o=cdc_out_dm,
+                        name=f"{prefix}dm_o_{it}",
+                        register=True,
                     )
-                self.iobuf(
-                    din    = dmi_dly,
-                    dout   = Signal(),
-                    tin    = dmi_t,
-                    dinout = self.pads.dmi[byte],
-                )
+                    self.submodules += simple_cdc
+
+                    dmi_t   = Signal()
+                    dmi_ser = Signal()
+                    dmi_dly = Signal()
+                    self.oserdese2_ddr_with_tri(
+                        din     = cdc_out_dm,
+                        **(dict(dout_fb=dmi_ser) if with_odelay else dict(dout=dmi_dly)),
+                        tin     = dq_oe[it],
+                        tout    = dmi_t,
+                        clk     = "sys4x",
+                    )
+                    if with_odelay:
+                        self.odelaye2(
+                            din  = dmi_ser,
+                            dout = dmi_dly,
+                            rst  = self.get_rst(it, _l[preifx+'wdly_dq_rst'], prefix),
+                            inc  = self.get_inc(it, _l[prefix+'wdly_dq_inc'], prefix),
+                            clk="sys2x_unbuf",
+                        )
+                    self.iobuf(
+                        din    = dmi_dly,
+                        dout   = Signal(),
+                        tin    = dmi_t,
+                        dinout = getattr(self.pads, prefix+'dmi')[it],
+                    )
+
 
 # PHY variants -------------------------------------------------------------------------------------
 
