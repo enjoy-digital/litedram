@@ -24,7 +24,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
 
         def cdc(i):
             o = Signal()
-            psync = PulseSynchronizer("sys", "sys2x_unbuf")
+            psync = PulseSynchronizer("sys", "sys2x")
             self.submodules += psync
             self.comb += [
                 psync.i.eq(i),
@@ -68,7 +68,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
         ck_t = self.out.ck_t
         cdc_ck_t = Signal(len(ck_t)//2)
         simple_cdc = SimpleCDC(
-            clkdiv="sys", clk="sys2x_unbuf",
+            clkdiv="sys", clk="sys2x",
             i_dw=len(ck_t), o_dw=len(cdc_ck_t),
             i=ck_t, o=cdc_ck_t,
             name=f"ck_t",
@@ -87,7 +87,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
         reset_n = self.out.reset_n
         cdc_reset_n = Signal(len(reset_n)//2)
         simple_cdc = SimpleCDC(
-            clkdiv="sys", clk="sys2x_unbuf",
+            clkdiv="sys", clk="sys2x",
             i_dw=len(reset_n), o_dw=len(cdc_reset_n),
             i=reset_n, o=cdc_reset_n,
             name=f"reset_n",
@@ -109,7 +109,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 self.sync += delay_out_cs.eq(basephy_cs)
                 cdc_out_cs = Signal(len(delay_out_cs)//2)
                 simple_cdc = SimpleCDC(
-                    clkdiv="sys", clk="sys2x_unbuf",
+                    clkdiv="sys", clk="sys2x",
                     i_dw=len(delay_out_cs), o_dw=len(cdc_out_cs),
                     i=delay_out_cs, o=cdc_out_cs,
                     name=f"{prefix}cs_n_{it}",
@@ -138,7 +138,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 self.sync += out_ca.eq(Cat(delay_ca, basephy_ca[0:-1]))
                 cdc_out_ca = Signal(len(out_ca)//2)
                 simple_cdc = SimpleCDC(
-                    clkdiv="sys", clk="sys2x_unbuf",
+                    clkdiv="sys", clk="sys2x",
                     i_dw=len(out_ca), o_dw=len(cdc_out_ca),
                     i=out_ca, o=cdc_out_ca,
                     name=f"{prefix}ca_{it}",
@@ -155,8 +155,8 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                     self.odelaye2(
                         din=ca_ser,
                         dout=pad,
-                        rst=self.get_rst(it, _l[prefix+'cadly_rst'], prefix),
-                        inc=self.get_inc(it, _l[prefix+'cadly_inc'], prefix),
+                        rst=self.get_rst(it, _l[prefix+'cadly_rst'], prefix, "sys2x"),
+                        inc=self.get_inc(it, _l[prefix+'cadly_inc'], prefix, "sys2x"),
                         clk="sys2x_unbuf",
                     )
 
@@ -170,7 +170,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 self.sync += out_par.eq(Cat(delay_par, basephy_par[0:-1]))
                 cdc_out_par = Signal(len(basephy_par)//2)
                 simple_cdc = SimpleCDC(
-                    clkdiv="sys", clk="sys2x_unbuf",
+                    clkdiv="sys", clk="sys2x",
                     i_dw=len(out_par), o_dw=len(cdc_out_par),
                     i=out_par, o=cdc_out_par,
                     name=f"{prefix}par_{it}",
@@ -198,7 +198,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 dqs_t_o = getattr(self.out, prefix+'dqs_t_o')[it]
                 cdc_dqs_t_o = Signal(len(dqs_t_o)//2)
                 simple_cdc = SimpleCDC(
-                    clkdiv="sys", clk="sys2x_unbuf",
+                    clkdiv="sys", clk="sys2x",
                     i_dw=len(dqs_t_o), o_dw=len(cdc_dqs_t_o),
                     i=dqs_t_o, o=cdc_dqs_t_o,
                     name=f"{prefix}dqs_t_o_{it}",
@@ -209,7 +209,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 out_dqs_oe = getattr(self.out, prefix+'dqs_oe')[it]
                 cdc_out_dqs_oe = Signal(len(out_dqs_oe)//2)
                 simple_cdc = SimpleCDC(
-                    clkdiv="sys", clk="sys2x_unbuf",
+                    clkdiv="sys", clk="sys2x",
                     i_dw=len(out_dqs_oe), o_dw=len(cdc_out_dqs_oe),
                     i=out_dqs_oe, o=cdc_out_dqs_oe,
                     name=f"{prefix}dqs_t_oe",
@@ -234,8 +234,8 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                     self.odelaye2(
                         din  = dqs_ser,
                         dout = dqs_dly,
-                        rst  = self.get_rst(it, _l[prefix+'wdly_dqs_rst'], prefix),
-                        inc  = self.get_inc(it, _l[prefix+'wdly_dqs_inc'], prefix),
+                        rst  = self.get_rst(it, _l[prefix+'wdly_dqs_rst'], prefix, "sys2x"),
+                        inc  = self.get_inc(it, _l[prefix+'wdly_dqs_inc'], prefix, "sys2x"),
                         clk="sys2x_unbuf",
                     )
 
@@ -249,8 +249,8 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 self.idelaye2(
                     din  = dqs_i,
                     dout = dqs_i_dly,
-                    rst  = self.get_rst(it, _l[prefix+'rdly_dqs_rst'], prefix),
-                    inc  = self.get_inc(it, _l[prefix+'rdly_dqs_inc'], prefix),
+                    rst  = self.get_rst(it, _l[prefix+'rdly_dqs_rst'], prefix, "sys2x"),
+                    inc  = self.get_inc(it, _l[prefix+'rdly_dqs_inc'], prefix, "sys2x"),
                     clk="sys2x_unbuf",
                 )
                 self.iserdese2_ddr(
@@ -271,7 +271,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 self.comb += out_dq.eq(Cat(delay_dq[:-1], basephy_dq[0]))
                 cdc_out_dq = Signal(len(out_dq)//2)
                 simple_cdc = SimpleCDC(
-                    clkdiv="sys", clk="sys2x_unbuf",
+                    clkdiv="sys", clk="sys2x",
                     i_dw=len(out_dq), o_dw=len(cdc_out_dq),
                     i=out_dq, o=cdc_out_dq,
                     name=f"{prefix}dq_o_{it}",
@@ -287,7 +287,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                     self.comb += out_dq_oe.eq(Cat(delay_dq_oe[:-1], basephy_dq_oe[0]))
                     cdc_out_dq_oe = Signal(len(out_dq_oe)//2)
                     simple_cdc = SimpleCDC(
-                        clkdiv="sys", clk="sys2x_unbuf",
+                        clkdiv="sys", clk="sys2x",
                         i_dw=len(out_dq_oe), o_dw=len(cdc_out_dq_oe),
                         i=out_dq_oe, o=cdc_out_dq_oe,
                         name=f"{prefix}dq_oe{it//modules}",
@@ -313,8 +313,8 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                     self.odelaye2(
                         din  = dq_ser,
                         dout = dq_dly,
-                        rst  = self.get_rst(it, _l[prefix+'wdly_dq_rst'], prefix),
-                        inc  = self.get_inc(it, _l[prefix+'wdly_dq_inc'], prefix),
+                        rst  = self.get_rst(it, _l[prefix+'wdly_dq_rst'], prefix, "sys2x"),
+                        inc  = self.get_inc(it, _l[prefix+'wdly_dq_inc'], prefix, "sys2x"),
                         clk="sys2x_unbuf",
                     )
                 self.iobuf(
@@ -331,8 +331,8 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 self.idelaye2(
                     din  = dq_i,
                     dout = dq_i_dly,
-                    rst  = self.get_rst(it, _l[prefix+'rdly_dq_rst'], prefix),
-                    inc  = self.get_inc(it, _l[prefix+'rdly_dq_inc'], prefix),
+                    rst  = self.get_rst(it, _l[prefix+'rdly_dq_rst'], prefix, "sys2x"),
+                    inc  = self.get_inc(it, _l[prefix+'rdly_dq_inc'], prefix, "sys2x"),
                     clk="sys2x_unbuf",
                 )
                 self.iserdese2_ddr(
@@ -354,7 +354,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                     self.comb += out_dm.eq(Cat(delay_dm[:-1], basephy_dm[0]))
                     cdc_out_dm = Signal(len(out_dm)//2)
                     simple_cdc = SimpleCDC(
-                        clkdiv="sys", clk="sys2x_unbuf",
+                        clkdiv="sys", clk="sys2x",
                         i_dw=len(out_dm), o_dw=len(cdc_out_dm),
                         i=out_dm, o=cdc_out_dm,
                         name=f"{prefix}dm_o_{it}",
@@ -376,8 +376,8 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                         self.odelaye2(
                             din  = dmi_ser,
                             dout = dmi_dly,
-                            rst  = self.get_rst(it, _l[preifx+'wdly_dq_rst'], prefix),
-                            inc  = self.get_inc(it, _l[prefix+'wdly_dq_inc'], prefix),
+                            rst  = self.get_rst(it, _l[preifx+'wdly_dq_rst'], prefix, "sys2x"),
+                            inc  = self.get_inc(it, _l[prefix+'wdly_dq_inc'], prefix, "sys2x"),
                             clk="sys2x_unbuf",
                         )
                     self.iobuf(
