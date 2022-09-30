@@ -1054,16 +1054,16 @@ reg litedramcontroller_syncfifo_re = 1'd0;
 wire litedramcontroller_syncfifo_readable;
 wire [31:0] litedramcontroller_syncfifo_din;
 wire [31:0] litedramcontroller_syncfifo_dout;
-reg [6:0] litedramcontroller_level = 7'd0;
+reg [1:0] litedramcontroller_level = 2'd0;
 wire litedramcontroller_replace;
-reg [6:0] litedramcontroller_produce = 7'd0;
-reg [6:0] litedramcontroller_consume = 7'd0;
-reg [6:0] litedramcontroller_wrport_adr;
+reg litedramcontroller_produce = 1'd0;
+reg litedramcontroller_consume = 1'd0;
+reg litedramcontroller_wrport_adr;
 wire [31:0] litedramcontroller_wrport_dat_r;
 wire litedramcontroller_wrport_we;
 wire [31:0] litedramcontroller_wrport_dat_w;
 wire litedramcontroller_do_read;
-wire [6:0] litedramcontroller_rdport_adr;
+wire litedramcontroller_rdport_adr;
 wire [31:0] litedramcontroller_rdport_dat_r;
 wire [63:0] litedramcontroller_control0;
 wire litedramcontroller_control1;
@@ -7362,7 +7362,7 @@ assign litedramcontroller_tmrbankmachine7_loggingsystem_ready = ((grant == 3'd7)
 reg dummy_d_37;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_wrport_adr <= 7'd0;
+	litedramcontroller_wrport_adr <= 1'd0;
 	if (litedramcontroller_replace) begin
 		litedramcontroller_wrport_adr <= (litedramcontroller_produce - 1'd1);
 	end else begin
@@ -7377,7 +7377,7 @@ assign litedramcontroller_wrport_we = (litedramcontroller_syncfifo_we & (litedra
 assign litedramcontroller_do_read = (litedramcontroller_syncfifo_readable & litedramcontroller_syncfifo_re);
 assign litedramcontroller_rdport_adr = litedramcontroller_consume;
 assign litedramcontroller_syncfifo_dout = litedramcontroller_rdport_dat_r;
-assign litedramcontroller_syncfifo_writable = (litedramcontroller_level != 7'd100);
+assign litedramcontroller_syncfifo_writable = (litedramcontroller_level != 2'd2);
 assign litedramcontroller_syncfifo_readable = (litedramcontroller_level != 1'd0);
 assign litedramcontroller_TMRdfi_p0_address = {3{litedramcontroller_dfi_p0_address}};
 assign litedramcontroller_TMRdfi_p0_bank = {3{litedramcontroller_dfi_p0_bank}};
@@ -17343,18 +17343,10 @@ always @(posedge sys_clk) begin
 		litedramcontroller_syncfifo_re <= 1'd0;
 	end
 	if (((litedramcontroller_syncfifo_we & litedramcontroller_syncfifo_writable) & (~litedramcontroller_replace))) begin
-		if ((litedramcontroller_produce == 7'd99)) begin
-			litedramcontroller_produce <= 1'd0;
-		end else begin
-			litedramcontroller_produce <= (litedramcontroller_produce + 1'd1);
-		end
+		litedramcontroller_produce <= (litedramcontroller_produce + 1'd1);
 	end
 	if (litedramcontroller_do_read) begin
-		if ((litedramcontroller_consume == 7'd99)) begin
-			litedramcontroller_consume <= 1'd0;
-		end else begin
-			litedramcontroller_consume <= (litedramcontroller_consume + 1'd1);
-		end
+		litedramcontroller_consume <= (litedramcontroller_consume + 1'd1);
 	end
 	if (((litedramcontroller_syncfifo_we & litedramcontroller_syncfifo_writable) & (~litedramcontroller_replace))) begin
 		if ((~litedramcontroller_do_read)) begin
@@ -21302,9 +21294,9 @@ always @(posedge sys_clk) begin
 		dfii_pi_mod3_phaseinjector3_status <= 64'd0;
 		litedramcontroller_status <= 32'd0;
 		litedramcontroller_syncfifo_re <= 1'd0;
-		litedramcontroller_level <= 7'd0;
-		litedramcontroller_produce <= 7'd0;
-		litedramcontroller_consume <= 7'd0;
+		litedramcontroller_level <= 2'd0;
+		litedramcontroller_produce <= 1'd0;
+		litedramcontroller_consume <= 1'd0;
 		litedramcontroller_refresher_cmd_valid <= 1'd0;
 		litedramcontroller_refresher_cmd_payload_a <= 14'd0;
 		litedramcontroller_refresher_cmd_payload_ba <= 3'd0;
@@ -21778,7 +21770,7 @@ always @(posedge sys_clk) begin
 	end
 end
 
-reg [31:0] storage[0:99];
+reg [31:0] storage[0:1];
 reg [31:0] memdat;
 always @(posedge sys_clk) begin
 	if (litedramcontroller_wrport_we)

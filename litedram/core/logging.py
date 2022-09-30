@@ -12,7 +12,7 @@ class LoggingSystem(Module, AutoCSR):
     
         self._log_csr = log_csr = CSRStatus(32, name='log_buffer')
         
-        self.log_fifo = log_fifo = SyncFIFO(32, 100)
+        self.log_fifo = log_fifo = SyncFIFO(32, 2)
         self.submodules += log_fifo
         self.comb += [log_fifo.replace.eq(0)]
         
