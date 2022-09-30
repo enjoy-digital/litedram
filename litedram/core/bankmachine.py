@@ -296,14 +296,33 @@ class TMRBankMachine(Module):
         log_n = Signal(16)
         log_num = Signal(16)
         
+        log_valid = Signal()
+        log_ready = Signal()
+        
         self.comb += log_n.eq(n)
         
         log_message = Cat(log_num, log_n)
         
         message, ready, request = logger.get_log_port()
         
-        self.comb += [message.eq(log_message), request.eq(1)]
-        self.sync += [If(ready, log_num.eq(log_num+1))]
+        # Connect log message
+        self.comb += [message.eq(log_message)]
+        
+        # Valid message - 0, Ready message - 1
+        self.comb += [If(log_valid, log_num.eq(0)).Elif(log_ready, log_num.eq(1))]
+        
+        # Request when waiting for any log message
+        self.comb += request.eq(log_valid | log_ready)
+        
+        # Stop requesting message after sending
+        self.sync += [If(ready, If(log_valid, log_valid.eq(0)).Elif(log_ready, log_ready.eq(0)))]
+        
+        # Log valid or ready when rising edge
+        valid_edge = Signal()
+        ready_edge = Signal()
+        self.sync += [valid_edge.eq(cmd.valid), ready_edge.eq(cmd.ready)]
+        self.sync += [If(cmd.valid & ~valid_edge & ~log_valid, log_valid.eq(1)), 
+                      If(cmd.ready & ~ready_edge & ~log_ready, log_ready.eq(1))]
         
         # TMR Setup --------------------------------------------------------------------------------
         
@@ -476,7 +495,7 @@ class TMRBankMachine(Module):
         # generate auto precharge when current and next cmds are to different rows
         if settings.with_auto_precharge:
             self.comb += \
-                If(lookValidVote.control & bufValidVote.control, # Vote valid
+                If(lookValidVote.control & bufValidVote.control,
                     If(slicer.row(lookAddrVote.control) !=
                        slicer.row(bufAddrVote.control),
                         auto_precharge.eq(row_close == 0)
@@ -489,11 +508,11 @@ class TMRBankMachine(Module):
         fsm.act("REGULAR",
             If(refresh_req,
                 NextState("REFRESH")
-            ).Elif(bufValidVote.control, #Vote valid
+            ).Elif(bufValidVote.control,
                 If(row_opened,
                     If(row_hit,
                         cmd.valid.eq(1),
-                        If(bufWeVote.control, #Vote we
+                        If(bufWeVote.control,
                             req.wdata_ready.eq(cmd.ready),
                             cmd.is_write.eq(1),
                             cmd.we.eq(1),
