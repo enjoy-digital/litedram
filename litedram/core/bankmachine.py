@@ -274,6 +274,10 @@ class TMRBankMachine(Module):
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
         self.TMRcmd = TMRcmd = TMRRecord(cmd)
         
+        print(a)
+        print(ba)
+        print("bits????")
+        
         self.submodules += TMROutput(cmd.valid, TMRcmd.valid)
         self.submodules += TMROutput(cmd.last, TMRcmd.last)
         self.submodules += TMROutput(cmd.first, TMRcmd.first)
@@ -295,13 +299,14 @@ class TMRBankMachine(Module):
         
         log_n = Signal(8)
         log_num = Signal(8)
+        log_addr = Signal(32)
         
         log_valid = Signal()
         log_ready = Signal()
         
         self.comb += log_n.eq(n)
         
-        log_message = Cat(cmd.a, log_num, log_n)
+        log_message = Cat(log_addr, log_num, log_n)
         
         message, ready, request = logger.get_log_port()
         
@@ -403,6 +408,8 @@ class TMRBankMachine(Module):
         bufAddrSig = Cat(cmd_buffer.source.addr, cmd_buffer2.source.addr, cmd_buffer3.source.addr)
         bufAddrVote = TMRInput(bufAddrSig)
         self.submodules += bufAddrVote
+        
+        self.comb += log_addr.eq(bufAddrVote.control)
         
         #Vote lookahead valid
         lookValidSig = Cat(cmd_buffer_lookahead.source.valid, cmd_buffer_lookahead2.source.valid, cmd_buffer_lookahead3.source.valid)

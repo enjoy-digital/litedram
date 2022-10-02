@@ -48,6 +48,7 @@ wire tmrinput_control0;
 reg auto_precharge;
 wire [7:0] log_n;
 reg [7:0] log_num;
+wire [31:0] log_addr;
 reg log_valid = 1'd0;
 reg log_ready = 1'd0;
 wire [47:0] loggingsystem_message;
@@ -310,7 +311,7 @@ initial dummy_s <= 1'd0;
 // synthesis translate_on
 
 assign log_n = 1'd0;
-assign loggingsystem_message = {log_n, log_num, cmd_payload_a};
+assign loggingsystem_message = {log_n, log_num, log_addr};
 
 // synthesis translate_off
 reg dummy_d;
@@ -360,6 +361,7 @@ assign cmd_buffer3_sink_payload_we = cmd_buffer_lookahead3_source_payload_we;
 assign cmd_buffer3_sink_payload_addr = cmd_buffer_lookahead3_source_payload_addr;
 assign cmd_buffer3_source_ready = (req_wdata_ready | req_rdata_valid);
 assign req_ready = ((cmd_buffer_lookahead_sink_ready & cmd_buffer_lookahead2_sink_ready) & cmd_buffer_lookahead3_sink_ready);
+assign log_addr = bufAddrVote_control;
 assign row_hit = (row == bufAddrVote_control[20:7]);
 assign cmd_payload_ba = 1'd0;
 
