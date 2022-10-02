@@ -405,7 +405,11 @@ class TMRBankMachine(Module):
         bufAddrVote = TMRInput(bufAddrSig)
         self.submodules += bufAddrVote
         
-        self.comb += log_addr[:21].eq(bufAddrVote.control)
+        sig_n = Signal(3)
+        self.comb += sig_n.eq(n)
+        self.comb += [log_addr[7:10].eq(sig_n), 
+                      log_addr[:7].eq(bufAddrVote.control[:7]),
+                      log_addr[10:24].eq(bufAddrVote.control[10:])]
         
         #Vote lookahead valid
         lookValidSig = Cat(cmd_buffer_lookahead.source.valid, cmd_buffer_lookahead2.source.valid, cmd_buffer_lookahead3.source.valid)
