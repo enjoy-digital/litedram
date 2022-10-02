@@ -361,7 +361,7 @@ assign cmd_buffer3_sink_payload_we = cmd_buffer_lookahead3_source_payload_we;
 assign cmd_buffer3_sink_payload_addr = cmd_buffer_lookahead3_source_payload_addr;
 assign cmd_buffer3_source_ready = (req_wdata_ready | req_rdata_valid);
 assign req_ready = ((cmd_buffer_lookahead_sink_ready & cmd_buffer_lookahead2_sink_ready) & cmd_buffer_lookahead3_sink_ready);
-assign log_addr = bufAddrVote_control;
+assign log_addr[20:0] = bufAddrVote_control;
 assign row_hit = (row == bufAddrVote_control[20:7]);
 assign cmd_payload_ba = 1'd0;
 
