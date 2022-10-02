@@ -454,6 +454,7 @@ class LiteDRAMNativePort(Settings):
 
     def get_row_column_address(self, bank_bits, rca_bits, cba_shift):
         cba_upper = cba_shift + bank_bits
+        print(len(self.cmd.addr))
         if cba_shift < rca_bits:
             if cba_shift:
                 return Cat(self.cmd.addr[:cba_shift], self.cmd.addr[cba_upper:])
