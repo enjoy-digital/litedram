@@ -46,11 +46,11 @@ reg cmd_payload_is_read;
 reg cmd_payload_is_write;
 wire tmrinput_control0;
 reg auto_precharge;
-wire [15:0] log_n;
-reg [15:0] log_num;
+wire [7:0] log_n;
+reg [7:0] log_num;
 reg log_valid = 1'd0;
 reg log_ready = 1'd0;
-wire [31:0] loggingsystem_message;
+wire [47:0] loggingsystem_message;
 reg loggingsystem_ready = 1'd0;
 wire loggingsystem_request;
 reg valid_edge = 1'd0;
@@ -310,13 +310,13 @@ initial dummy_s <= 1'd0;
 // synthesis translate_on
 
 assign log_n = 1'd0;
-assign loggingsystem_message = {log_n, log_num};
+assign loggingsystem_message = {log_n, log_num, cmd_payload_a};
 
 // synthesis translate_off
 reg dummy_d;
 // synthesis translate_on
 always @(*) begin
-	log_num <= 16'd0;
+	log_num <= 8'd0;
 	if (log_valid) begin
 		log_num <= 1'd0;
 	end else begin

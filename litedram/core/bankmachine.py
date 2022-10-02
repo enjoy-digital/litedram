@@ -293,15 +293,15 @@ class TMRBankMachine(Module):
         
         # Log Ascending Number ---------------------------------------------------------------------
         
-        log_n = Signal(16)
-        log_num = Signal(16)
+        log_n = Signal(8)
+        log_num = Signal(8)
         
         log_valid = Signal()
         log_ready = Signal()
         
         self.comb += log_n.eq(n)
         
-        log_message = Cat(log_num, log_n)
+        log_message = Cat(cmd.a, log_num, log_n)
         
         message, ready, request = logger.get_log_port()
         

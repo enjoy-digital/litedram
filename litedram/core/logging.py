@@ -10,9 +10,9 @@ class LoggingSystem(Module, AutoCSR):
         self.readys = []
         self.requests = []
     
-        self._log_csr = log_csr = CSRStatus(32, name='log_buffer')
+        self._log_csr = log_csr = CSRStatus(48, name='log_buffer')
         
-        self.log_fifo = log_fifo = SyncFIFO(32, 50)
+        self.log_fifo = log_fifo = SyncFIFO(48, 50)
         self.submodules += log_fifo
         self.comb += [log_fifo.replace.eq(0)]
         
@@ -21,7 +21,7 @@ class LoggingSystem(Module, AutoCSR):
                         .Else(If(log_csr.we, log_csr.status.eq(-1)), log_fifo.re.eq(0))]
         
     def get_log_port(self):
-        message = Signal(32)
+        message = Signal(48)
         ready = Signal()
         request = Signal()
         
