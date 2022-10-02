@@ -338,6 +338,7 @@ class TMRBankMachine(Module):
         buf_vote = Record(cmd_layout(address_width))
         
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
+        print(len(req.addr))
         
         # Buffer 1
         cmd_buffer_lookahead = stream.SyncFIFO(
