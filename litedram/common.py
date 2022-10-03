@@ -437,6 +437,7 @@ class LiteDRAMNativePort(Settings):
         self.TMRlock = self.TMRlockMod.TMR
 
         print("Port address width: " + str(address_width))
+        print("Data width: " + str(data_width))
         self.cmd   = stream.Endpoint(cmd_description(address_width))
         self.TMRcmd = TMRRecord(self.cmd)
         self.wdata = stream.Endpoint(wdata_description(data_width))
