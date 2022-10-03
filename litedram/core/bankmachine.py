@@ -274,6 +274,10 @@ class TMRBankMachine(Module):
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
         self.TMRcmd = TMRcmd = TMRRecord(cmd)
         
+        print("Address align: " + str(address_align))
+        print("a: " + str(a))
+        print("ba: " + str(ba))
+        
         self.submodules += TMROutput(cmd.valid, TMRcmd.valid)
         self.submodules += TMROutput(cmd.last, TMRcmd.last)
         self.submodules += TMROutput(cmd.first, TMRcmd.first)
@@ -407,9 +411,9 @@ class TMRBankMachine(Module):
         
         sig_n = Signal(3)
         self.comb += sig_n.eq(n)
-        self.comb += [log_addr[7:10].eq(sig_n), 
-                      log_addr[:7].eq(bufAddrVote.control[:7]),
-                      log_addr[10:24].eq(bufAddrVote.control[7:])]
+        self.comb += [log_addr[10:13].eq(sig_n), 
+                      log_addr[3:10].eq(bufAddrVote.control[:7]),
+                      log_addr[13:].eq(bufAddrVote.control[7:])]
         
         #Vote lookahead valid
         lookValidSig = Cat(cmd_buffer_lookahead.source.valid, cmd_buffer_lookahead2.source.valid, cmd_buffer_lookahead3.source.valid)
@@ -427,6 +431,7 @@ class TMRBankMachine(Module):
         self.submodules += bufWeVote
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
+        print("col bits: " + str(settings.geom.colbits))
 
         # Row tracking -----------------------------------------------------------------------------
         row        = Signal(settings.geom.rowbits)
