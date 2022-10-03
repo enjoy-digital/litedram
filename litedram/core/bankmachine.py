@@ -16,6 +16,9 @@ from litex.soc.interconnect import stream
 from litedram.common import *
 from litedram.core.multiplexer import *
 
+from functools import reduce
+from operator import or_, and_
+
 # AddressSlicer ------------------------------------------------------------------------------------
 
 class _AddressSlicer:
@@ -301,8 +304,18 @@ class TMRBankMachine(Module):
         log_num = Signal(8)
         log_addr = Signal(32)
         
+        log_sigs = []
+        log_codes = []
+        
         log_valid = Signal()
+        valid_code = 0
+        log_sigs.append(log_valid)
+        log_codes.append(valid_code)
+        
         log_ready = Signal()
+        ready_code = 1
+        log_sigs.append(log_ready)
+        log_codes.append(ready_code)
         
         self.comb += log_n.eq(n)
         
@@ -314,13 +327,32 @@ class TMRBankMachine(Module):
         self.comb += [message.eq(log_message)]
         
         # Valid message - 0, Ready message - 1
-        self.comb += [If(log_valid, log_num.eq(0)).Elif(log_ready, log_num.eq(1))]
+        #self.comb += [If(log_valid, log_num.eq(0)).Elif(log_ready, log_num.eq(1))]
+        
+        # Send message based on priority
+        statement = None
+        for log_sig, log_code in zip(log_sigs, log_codes):
+            if statement is not None:
+                statement = statement.Elif(log_sig, log_num.eq(log_code))
+            else:
+                statement = If(log_sig, log_num.eq(log_code))
+        self.comb += statement
+            
+        # Confirm messages based on priority
+        statement = None
+        for log_sig, log_code in zip(log_sigs, log_codes):
+            if statement is not None:
+                statement = statement.Elif(log_sig, log_sig.eq(0))
+            else:
+                statement = If(log_sig, log_sig.eq(0))
+        self.sync += If(ready, statement)
+                
         
         # Request when waiting for any log message
-        self.comb += request.eq(log_valid | log_ready)
+        self.comb += request.eq(reduce(or_, log_sigs))
         
         # Stop requesting message after sending
-        self.sync += [If(ready, If(log_valid, log_valid.eq(0)).Elif(log_ready, log_ready.eq(0)))]
+        #self.sync += [If(ready, If(log_valid, log_valid.eq(0)).Elif(log_ready, log_ready.eq(0)))]
         
         # Log valid or ready when rising edge
         valid_edge = Signal()
