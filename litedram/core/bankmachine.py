@@ -413,7 +413,8 @@ class TMRBankMachine(Module):
         self.comb += sig_n.eq(n)
         self.comb += [log_addr[12:15].eq(sig_n), 
                       log_addr[5:12].eq(bufAddrVote.control[:7]),
-                      log_addr[15:].eq(bufAddrVote.control[7:])]
+                      log_addr[15:].eq(bufAddrVote.control[7:]),
+                      log_addr[30].eq(1)]
         
         #Vote lookahead valid
         lookValidSig = Cat(cmd_buffer_lookahead.source.valid, cmd_buffer_lookahead2.source.valid, cmd_buffer_lookahead3.source.valid)

@@ -7627,6 +7627,7 @@ always @(*) begin
 	litedramcontroller_tmrbankmachine0_log_addr[14:12] <= litedramcontroller_tmrbankmachine0_sig_n;
 	litedramcontroller_tmrbankmachine0_log_addr[11:5] <= litedramcontroller_tmrbankmachine0_bufAddrVote_control[6:0];
 	litedramcontroller_tmrbankmachine0_log_addr[31:15] <= litedramcontroller_tmrbankmachine0_bufAddrVote_control[20:7];
+	litedramcontroller_tmrbankmachine0_log_addr[30] <= 1'd1;
 // synthesis translate_off
 	dummy_d_40 <= dummy_s;
 // synthesis translate_on
@@ -7984,6 +7985,7 @@ always @(*) begin
 	litedramcontroller_tmrbankmachine1_log_addr[14:12] <= litedramcontroller_tmrbankmachine1_sig_n;
 	litedramcontroller_tmrbankmachine1_log_addr[11:5] <= litedramcontroller_tmrbankmachine1_bufAddrVote_control[6:0];
 	litedramcontroller_tmrbankmachine1_log_addr[31:15] <= litedramcontroller_tmrbankmachine1_bufAddrVote_control[20:7];
+	litedramcontroller_tmrbankmachine1_log_addr[30] <= 1'd1;
 // synthesis translate_off
 	dummy_d_48 <= dummy_s;
 // synthesis translate_on
@@ -8341,6 +8343,7 @@ always @(*) begin
 	litedramcontroller_tmrbankmachine2_log_addr[14:12] <= litedramcontroller_tmrbankmachine2_sig_n;
 	litedramcontroller_tmrbankmachine2_log_addr[11:5] <= litedramcontroller_tmrbankmachine2_bufAddrVote_control[6:0];
 	litedramcontroller_tmrbankmachine2_log_addr[31:15] <= litedramcontroller_tmrbankmachine2_bufAddrVote_control[20:7];
+	litedramcontroller_tmrbankmachine2_log_addr[30] <= 1'd1;
 // synthesis translate_off
 	dummy_d_56 <= dummy_s;
 // synthesis translate_on
@@ -8698,6 +8701,7 @@ always @(*) begin
 	litedramcontroller_tmrbankmachine3_log_addr[14:12] <= litedramcontroller_tmrbankmachine3_sig_n;
 	litedramcontroller_tmrbankmachine3_log_addr[11:5] <= litedramcontroller_tmrbankmachine3_bufAddrVote_control[6:0];
 	litedramcontroller_tmrbankmachine3_log_addr[31:15] <= litedramcontroller_tmrbankmachine3_bufAddrVote_control[20:7];
+	litedramcontroller_tmrbankmachine3_log_addr[30] <= 1'd1;
 // synthesis translate_off
 	dummy_d_64 <= dummy_s;
 // synthesis translate_on
@@ -9055,6 +9059,7 @@ always @(*) begin
 	litedramcontroller_tmrbankmachine4_log_addr[14:12] <= litedramcontroller_tmrbankmachine4_sig_n;
 	litedramcontroller_tmrbankmachine4_log_addr[11:5] <= litedramcontroller_tmrbankmachine4_bufAddrVote_control[6:0];
 	litedramcontroller_tmrbankmachine4_log_addr[31:15] <= litedramcontroller_tmrbankmachine4_bufAddrVote_control[20:7];
+	litedramcontroller_tmrbankmachine4_log_addr[30] <= 1'd1;
 // synthesis translate_off
 	dummy_d_72 <= dummy_s;
 // synthesis translate_on
@@ -9412,6 +9417,7 @@ always @(*) begin
 	litedramcontroller_tmrbankmachine5_log_addr[14:12] <= litedramcontroller_tmrbankmachine5_sig_n;
 	litedramcontroller_tmrbankmachine5_log_addr[11:5] <= litedramcontroller_tmrbankmachine5_bufAddrVote_control[6:0];
 	litedramcontroller_tmrbankmachine5_log_addr[31:15] <= litedramcontroller_tmrbankmachine5_bufAddrVote_control[20:7];
+	litedramcontroller_tmrbankmachine5_log_addr[30] <= 1'd1;
 // synthesis translate_off
 	dummy_d_80 <= dummy_s;
 // synthesis translate_on
@@ -9769,6 +9775,7 @@ always @(*) begin
 	litedramcontroller_tmrbankmachine6_log_addr[14:12] <= litedramcontroller_tmrbankmachine6_sig_n;
 	litedramcontroller_tmrbankmachine6_log_addr[11:5] <= litedramcontroller_tmrbankmachine6_bufAddrVote_control[6:0];
 	litedramcontroller_tmrbankmachine6_log_addr[31:15] <= litedramcontroller_tmrbankmachine6_bufAddrVote_control[20:7];
+	litedramcontroller_tmrbankmachine6_log_addr[30] <= 1'd1;
 // synthesis translate_off
 	dummy_d_88 <= dummy_s;
 // synthesis translate_on
@@ -10126,6 +10133,7 @@ always @(*) begin
 	litedramcontroller_tmrbankmachine7_log_addr[14:12] <= litedramcontroller_tmrbankmachine7_sig_n;
 	litedramcontroller_tmrbankmachine7_log_addr[11:5] <= litedramcontroller_tmrbankmachine7_bufAddrVote_control[6:0];
 	litedramcontroller_tmrbankmachine7_log_addr[31:15] <= litedramcontroller_tmrbankmachine7_bufAddrVote_control[20:7];
+	litedramcontroller_tmrbankmachine7_log_addr[30] <= 1'd1;
 // synthesis translate_off
 	dummy_d_96 <= dummy_s;
 // synthesis translate_on
