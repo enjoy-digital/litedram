@@ -317,6 +317,18 @@ class TMRBankMachine(Module):
         log_sigs.append(log_ready)
         log_codes.append(ready_code)
         
+        def make_log_sig(code):
+            log_sig = Signal()
+            log_sigs.append(log_sig)
+            log_codes.append(code)
+            return log_sig
+            
+        log_regular = make_log_sig(2)
+        log_activate = make_log_sig(3)
+        log_precharge = make_log_sig(4)
+        log_autoprecharge = make_log_sig(5)
+        log_refresh = make_log_sig(6)
+        
         self.comb += log_n.eq(n)
         
         log_message = Cat(log_addr, log_num, log_n)
@@ -549,8 +561,20 @@ class TMRBankMachine(Module):
 
         # Control and command generation FSM -------------------------------------------------------
         # Note: tRRD, tFAW, tCCD, tWTR timings are enforced by the multiplexer
+        fsm_state = Signal(max=5)
+        fsm_state_edge = Signal(max=5)
+        self.sync += fsm_state_edge.eq(fsm_state)
+        
+        self.sync += [If(fsm_state != fsm_state_edge,
+                        If(fsm_state == 0, log_regular.eq(1)),
+                        If(fsm_state == 1, log_precharge.eq(1)),
+                        If(fsm_state == 2, log_autoprecharge.eq(1)),
+                        If(fsm_state == 3, log_activate.eq(1)),
+                        If(fsm_state == 4, log_refresh.eq(1)))]
+        
         self.submodules.fsm = fsm = FSM()
         fsm.act("REGULAR",
+            fsm_state.eq(0),
             If(refresh_req,
                 NextState("REFRESH")
             ).Elif(bufValidVote.control,
@@ -578,6 +602,7 @@ class TMRBankMachine(Module):
             )
         )
         fsm.act("PRECHARGE",
+            fsm_state.eq(1),
             # Note: we are presenting the column address, A10 is always low
             If(twtpVote.control & trasVote.control,
                 cmd.valid.eq(1),
@@ -591,12 +616,14 @@ class TMRBankMachine(Module):
             row_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
+            fsm_state.eq(2),
             If(twtpVote.control & trasVote.control,
                 NextState("TRP")
             ),
             row_close.eq(1)
         )
         fsm.act("ACTIVATE",
+            fsm_state.eq(3),
             If(trcVote.control,
                 row_col_n_addr_sel.eq(1),
                 row_open.eq(1),
@@ -609,6 +636,7 @@ class TMRBankMachine(Module):
             )
         )
         fsm.act("REFRESH",
+            fsm_state.eq(4),
             If(twtpVote.control,
                 refresh_gnt.eq(1),
             ),

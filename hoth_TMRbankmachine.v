@@ -51,6 +51,11 @@ reg [7:0] log_num;
 reg [31:0] log_addr;
 reg log_valid = 1'd0;
 reg log_ready = 1'd0;
+reg log_regular_log_sig = 1'd0;
+reg log_activate_log_sig = 1'd0;
+reg log_precharge_log_sig = 1'd0;
+reg log_autoprecharge_log_sig = 1'd0;
+reg log_refresh_log_sig = 1'd0;
 wire [47:0] loggingsystem_message;
 reg loggingsystem_ready = 1'd0;
 wire loggingsystem_request;
@@ -249,6 +254,8 @@ wire trascon3_valid;
 (* no_retiming = "true" *) reg trascon3_ready = 1'd0;
 reg [2:0] trascon3_count = 3'd0;
 wire trasVote_control;
+reg [2:0] fsm_state;
+reg [2:0] fsm_state_edge = 3'd0;
 reg [3:0] state = 4'd0;
 reg [3:0] next_state;
 wire [2:0] slice_proxy0;
@@ -324,13 +331,33 @@ always @(*) begin
 	end else begin
 		if (log_ready) begin
 			log_num <= 1'd1;
+		end else begin
+			if (log_regular_log_sig) begin
+				log_num <= 2'd2;
+			end else begin
+				if (log_activate_log_sig) begin
+					log_num <= 2'd3;
+				end else begin
+					if (log_precharge_log_sig) begin
+						log_num <= 3'd4;
+					end else begin
+						if (log_autoprecharge_log_sig) begin
+							log_num <= 3'd5;
+						end else begin
+							if (log_refresh_log_sig) begin
+								log_num <= 3'd6;
+							end
+						end
+					end
+				end
+			end
 		end
 	end
 // synthesis translate_off
 	dummy_d <= dummy_s;
 // synthesis translate_on
 end
-assign loggingsystem_request = (log_valid | log_ready);
+assign loggingsystem_request = ((((((log_valid | log_ready) | log_regular_log_sig) | log_activate_log_sig) | log_precharge_log_sig) | log_autoprecharge_log_sig) | log_refresh_log_sig);
 assign cmd_buffer_lookahead_sink_valid = req_valid;
 assign cmd_buffer_lookahead_sink_payload_we = req_we;
 assign cmd_buffer_lookahead_sink_payload_addr = req_addr;
@@ -580,10 +607,12 @@ always @(*) begin
 	row_open <= 1'd0;
 	row_close <= 1'd0;
 	row_col_n_addr_sel <= 1'd0;
+	fsm_state <= 3'd0;
 	next_state <= 4'd0;
 	next_state <= state;
 	case (state)
 		1'd1: begin
+			fsm_state <= 1'd1;
 			if ((twtpVote_control & trasVote_control)) begin
 				cmd_valid <= 1'd1;
 				if (cmd_ready) begin
@@ -596,12 +625,14 @@ always @(*) begin
 			row_close <= 1'd1;
 		end
 		2'd2: begin
+			fsm_state <= 2'd2;
 			if ((twtpVote_control & trasVote_control)) begin
 				next_state <= 3'd5;
 			end
 			row_close <= 1'd1;
 		end
 		2'd3: begin
+			fsm_state <= 2'd3;
 			if (trcVote_control) begin
 				row_col_n_addr_sel <= 1'd1;
 				row_open <= 1'd1;
@@ -614,6 +645,7 @@ always @(*) begin
 			end
 		end
 		3'd4: begin
+			fsm_state <= 3'd4;
 			if (twtpVote_control) begin
 				refresh_gnt <= 1'd1;
 			end
@@ -636,6 +668,7 @@ always @(*) begin
 			next_state <= 1'd0;
 		end
 		default: begin
+			fsm_state <= 1'd0;
 			if (refresh_req) begin
 				next_state <= 3'd4;
 			end else begin
@@ -731,6 +764,26 @@ always @(posedge sys_clk) begin
 		end else begin
 			if (log_ready) begin
 				log_ready <= 1'd0;
+			end else begin
+				if (log_regular_log_sig) begin
+					log_regular_log_sig <= 1'd0;
+				end else begin
+					if (log_activate_log_sig) begin
+						log_activate_log_sig <= 1'd0;
+					end else begin
+						if (log_precharge_log_sig) begin
+							log_precharge_log_sig <= 1'd0;
+						end else begin
+							if (log_autoprecharge_log_sig) begin
+								log_autoprecharge_log_sig <= 1'd0;
+							end else begin
+								if (log_refresh_log_sig) begin
+									log_refresh_log_sig <= 1'd0;
+								end
+							end
+						end
+					end
+				end
 			end
 		end
 	end
@@ -748,6 +801,24 @@ always @(posedge sys_clk) begin
 		if (row_open) begin
 			row_opened <= 1'd1;
 			row <= bufAddrVote_control[20:7];
+		end
+	end
+	fsm_state_edge <= fsm_state;
+	if ((fsm_state != fsm_state_edge)) begin
+		if ((fsm_state == 1'd0)) begin
+			log_regular_log_sig <= 1'd1;
+		end
+		if ((fsm_state == 1'd1)) begin
+			log_precharge_log_sig <= 1'd1;
+		end
+		if ((fsm_state == 2'd2)) begin
+			log_autoprecharge_log_sig <= 1'd1;
+		end
+		if ((fsm_state == 2'd3)) begin
+			log_activate_log_sig <= 1'd1;
+		end
+		if ((fsm_state == 3'd4)) begin
+			log_refresh_log_sig <= 1'd1;
 		end
 	end
 	if (((cmd_buffer_lookahead_syncfifo_we & cmd_buffer_lookahead_syncfifo_writable) & (~cmd_buffer_lookahead_replace))) begin
@@ -955,6 +1026,11 @@ always @(posedge sys_clk) begin
 	if (sys_rst) begin
 		log_valid <= 1'd0;
 		log_ready <= 1'd0;
+		log_regular_log_sig <= 1'd0;
+		log_activate_log_sig <= 1'd0;
+		log_precharge_log_sig <= 1'd0;
+		log_autoprecharge_log_sig <= 1'd0;
+		log_refresh_log_sig <= 1'd0;
 		valid_edge <= 1'd0;
 		ready_edge <= 1'd0;
 		cmd_buffer_lookahead_level <= 4'd0;
@@ -995,6 +1071,7 @@ always @(posedge sys_clk) begin
 		trascon2_count <= 3'd0;
 		trascon3_ready <= 1'd0;
 		trascon3_count <= 3'd0;
+		fsm_state_edge <= 3'd0;
 		state <= 4'd0;
 	end
 end
