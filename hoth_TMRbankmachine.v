@@ -371,7 +371,7 @@ always @(*) begin
 	log_addr <= 32'd0;
 	log_addr[9:7] <= sig_n;
 	log_addr[6:0] <= bufAddrVote_control[6:0];
-	log_addr[23:10] <= bufAddrVote_control[20:10];
+	log_addr[23:10] <= bufAddrVote_control[20:7];
 // synthesis translate_off
 	dummy_d_1 <= dummy_s;
 // synthesis translate_on

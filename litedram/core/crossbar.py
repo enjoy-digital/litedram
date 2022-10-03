@@ -135,8 +135,8 @@ class LiteDRAMCrossbar(Module):
         m_ba      = [m.get_bank_address(self.bank_bits, cba_shift)for m in self.masters]
         m_rca     = [m.get_row_column_address(self.bank_bits, self.rca_bits, cba_shift) for m in self.masters]
 
-        print(cba_shift)
-        print(self.rca_bits)
+        print("cba shift: " + str(cba_shift))
+        print("rca bits: " + str(self.rca_bits))
 
         master_readys       = [0]*nmasters
         master_wdata_readys = [0]*nmasters
