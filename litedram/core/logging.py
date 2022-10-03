@@ -18,10 +18,10 @@ class LoggingSystem(Module, AutoCSR):
         
         # CSR reads from FIFO if message is available
         self.sync += [If(log_csr.we & log_fifo.readable, log_csr.status.eq(log_fifo.dout), log_fifo.re.eq(1))
-                        .Else(If(log_csr.we, log_csr.status.eq(-1)), log_fifo.re.eq(0))]
+                        .Else(If(log_csr.we, log_csr.status.eq(-1)))]
                         
         # Read into empty CSR
-        self.sync += [If((log_csr.status == -1) & log_fifo.readable, log_csr.status.eq(log_fifo.dout), log_fifo.re.eq(1))]
+        self.sync += [If((log_csr.status[:32] == -1) & log_fifo.readable, log_csr.status.eq(log_fifo.dout), log_fifo.re.eq(1))]
         
     def get_log_port(self):
         message = Signal(48)

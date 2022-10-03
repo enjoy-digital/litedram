@@ -17476,9 +17476,8 @@ always @(posedge sys_clk) begin
 		if (litedramcontroller_we) begin
 			litedramcontroller_status <= 1'sd1;
 		end
-		litedramcontroller_syncfifo_re <= 1'd0;
 	end
-	if ((($signed({1'd0, litedramcontroller_status}) == 1'sd1) & $signed({1'd0, litedramcontroller_syncfifo_readable}))) begin
+	if ((($signed({1'd0, litedramcontroller_status[31:0]}) == 1'sd1) & $signed({1'd0, litedramcontroller_syncfifo_readable}))) begin
 		litedramcontroller_status <= litedramcontroller_syncfifo_dout;
 		litedramcontroller_syncfifo_re <= 1'd1;
 	end
