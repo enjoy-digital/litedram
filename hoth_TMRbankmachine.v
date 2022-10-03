@@ -56,6 +56,8 @@ reg log_activate_log_sig = 1'd0;
 reg log_precharge_log_sig = 1'd0;
 reg log_autoprecharge_log_sig = 1'd0;
 reg log_refresh_log_sig = 1'd0;
+reg log_addr_vote_log_sig = 1'd0;
+reg log_valid_vote_log_sig = 1'd0;
 wire [47:0] loggingsystem_message;
 reg loggingsystem_ready = 1'd0;
 wire loggingsystem_request;
@@ -214,9 +216,13 @@ reg [20:0] cmd_buffer3_source_payload_addr = 21'd0;
 wire tmrinput_control4;
 wire [20:0] lookAddrVote_control;
 wire [20:0] bufAddrVote_control;
+wire bufAddr_bad_vote;
+reg bufAddr_bad_vote_edge = 1'd0;
 wire [2:0] sig_n;
 wire lookValidVote_control;
 wire bufValidVote_control;
+wire bufValid_bad_vote;
+reg bufValid_bad_vote_edge = 1'd0;
 wire bufWeVote_control;
 reg [13:0] row = 14'd0;
 reg row_opened = 1'd0;
@@ -346,6 +352,14 @@ always @(*) begin
 						end else begin
 							if (log_refresh_log_sig) begin
 								log_num <= 3'd6;
+							end else begin
+								if (log_addr_vote_log_sig) begin
+									log_num <= 3'd7;
+								end else begin
+									if (log_valid_vote_log_sig) begin
+										log_num <= 4'd8;
+									end
+								end
 							end
 						end
 					end
@@ -357,7 +371,7 @@ always @(*) begin
 	dummy_d <= dummy_s;
 // synthesis translate_on
 end
-assign loggingsystem_request = ((((((log_valid | log_ready) | log_regular_log_sig) | log_activate_log_sig) | log_precharge_log_sig) | log_autoprecharge_log_sig) | log_refresh_log_sig);
+assign loggingsystem_request = ((((((((log_valid | log_ready) | log_regular_log_sig) | log_activate_log_sig) | log_precharge_log_sig) | log_autoprecharge_log_sig) | log_refresh_log_sig) | log_addr_vote_log_sig) | log_valid_vote_log_sig);
 assign cmd_buffer_lookahead_sink_valid = req_valid;
 assign cmd_buffer_lookahead_sink_payload_we = req_we;
 assign cmd_buffer_lookahead_sink_payload_addr = req_addr;
@@ -389,6 +403,7 @@ assign cmd_buffer3_sink_payload_we = cmd_buffer_lookahead3_source_payload_we;
 assign cmd_buffer3_sink_payload_addr = cmd_buffer_lookahead3_source_payload_addr;
 assign cmd_buffer3_source_ready = (req_wdata_ready | req_rdata_valid);
 assign req_ready = ((cmd_buffer_lookahead_sink_ready & cmd_buffer_lookahead2_sink_ready) & cmd_buffer_lookahead3_sink_ready);
+assign bufAddr_bad_vote = (~(cmd_buffer_source_payload_addr == cmd_buffer2_source_payload_addr));
 assign sig_n = 1'd0;
 
 // synthesis translate_off
@@ -404,6 +419,7 @@ always @(*) begin
 	dummy_d_1 <= dummy_s;
 // synthesis translate_on
 end
+assign bufValid_bad_vote = (~(cmd_buffer_source_valid == cmd_buffer2_source_valid));
 assign row_hit = (row == bufAddrVote_control[20:7]);
 assign cmd_payload_ba = 1'd0;
 
@@ -779,6 +795,14 @@ always @(posedge sys_clk) begin
 							end else begin
 								if (log_refresh_log_sig) begin
 									log_refresh_log_sig <= 1'd0;
+								end else begin
+									if (log_addr_vote_log_sig) begin
+										log_addr_vote_log_sig <= 1'd0;
+									end else begin
+										if (log_valid_vote_log_sig) begin
+											log_valid_vote_log_sig <= 1'd0;
+										end
+									end
 								end
 							end
 						end
@@ -794,6 +818,14 @@ always @(posedge sys_clk) begin
 	end
 	if (((cmd_ready & (~ready_edge)) & (~log_ready))) begin
 		log_ready <= 1'd1;
+	end
+	bufAddr_bad_vote_edge <= bufAddr_bad_vote;
+	if ((bufAddr_bad_vote & (~bufAddr_bad_vote_edge))) begin
+		log_addr_vote_log_sig <= 1'd1;
+	end
+	bufValid_bad_vote_edge <= bufValid_bad_vote;
+	if ((bufValid_bad_vote & (~bufValid_bad_vote_edge))) begin
+		log_valid_vote_log_sig <= 1'd1;
 	end
 	if (row_close) begin
 		row_opened <= 1'd0;
@@ -1031,6 +1063,8 @@ always @(posedge sys_clk) begin
 		log_precharge_log_sig <= 1'd0;
 		log_autoprecharge_log_sig <= 1'd0;
 		log_refresh_log_sig <= 1'd0;
+		log_addr_vote_log_sig <= 1'd0;
+		log_valid_vote_log_sig <= 1'd0;
 		valid_edge <= 1'd0;
 		ready_edge <= 1'd0;
 		cmd_buffer_lookahead_level <= 4'd0;
@@ -1051,6 +1085,8 @@ always @(posedge sys_clk) begin
 		cmd_buffer3_source_valid <= 1'd0;
 		cmd_buffer3_source_payload_we <= 1'd0;
 		cmd_buffer3_source_payload_addr <= 21'd0;
+		bufAddr_bad_vote_edge <= 1'd0;
+		bufValid_bad_vote_edge <= 1'd0;
 		row <= 14'd0;
 		row_opened <= 1'd0;
 		twtpcon_ready <= 1'd0;

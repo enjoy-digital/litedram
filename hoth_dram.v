@@ -1234,6 +1234,8 @@ reg litedramcontroller_tmrbankmachine0_log_activate_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine0_log_precharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine0_log_autoprecharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine0_log_refresh_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine0_log_addr_vote_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine0_log_valid_vote_log_sig = 1'd0;
 wire [47:0] litedramcontroller_tmrbankmachine0_loggingsystem_message;
 wire litedramcontroller_tmrbankmachine0_loggingsystem_ready;
 wire litedramcontroller_tmrbankmachine0_loggingsystem_request;
@@ -1392,9 +1394,13 @@ reg [20:0] litedramcontroller_tmrbankmachine0_cmd_buffer3_source_payload_addr = 
 wire litedramcontroller_tmrbankmachine0_tmrinput_control4;
 wire [20:0] litedramcontroller_tmrbankmachine0_lookAddrVote_control;
 wire [20:0] litedramcontroller_tmrbankmachine0_bufAddrVote_control;
+wire litedramcontroller_tmrbankmachine0_bufAddr_bad_vote;
+reg litedramcontroller_tmrbankmachine0_bufAddr_bad_vote_edge = 1'd0;
 wire [2:0] litedramcontroller_tmrbankmachine0_sig_n;
 wire litedramcontroller_tmrbankmachine0_lookValidVote_control;
 wire litedramcontroller_tmrbankmachine0_bufValidVote_control;
+wire litedramcontroller_tmrbankmachine0_bufValid_bad_vote;
+reg litedramcontroller_tmrbankmachine0_bufValid_bad_vote_edge = 1'd0;
 wire litedramcontroller_tmrbankmachine0_bufWeVote_control;
 reg [13:0] litedramcontroller_tmrbankmachine0_row = 14'd0;
 reg litedramcontroller_tmrbankmachine0_row_opened = 1'd0;
@@ -1486,6 +1492,8 @@ reg litedramcontroller_tmrbankmachine1_log_activate_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine1_log_precharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine1_log_autoprecharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine1_log_refresh_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine1_log_addr_vote_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine1_log_valid_vote_log_sig = 1'd0;
 wire [47:0] litedramcontroller_tmrbankmachine1_loggingsystem_message;
 wire litedramcontroller_tmrbankmachine1_loggingsystem_ready;
 wire litedramcontroller_tmrbankmachine1_loggingsystem_request;
@@ -1644,9 +1652,13 @@ reg [20:0] litedramcontroller_tmrbankmachine1_cmd_buffer3_source_payload_addr = 
 wire litedramcontroller_tmrbankmachine1_tmrinput_control4;
 wire [20:0] litedramcontroller_tmrbankmachine1_lookAddrVote_control;
 wire [20:0] litedramcontroller_tmrbankmachine1_bufAddrVote_control;
+wire litedramcontroller_tmrbankmachine1_bufAddr_bad_vote;
+reg litedramcontroller_tmrbankmachine1_bufAddr_bad_vote_edge = 1'd0;
 wire [2:0] litedramcontroller_tmrbankmachine1_sig_n;
 wire litedramcontroller_tmrbankmachine1_lookValidVote_control;
 wire litedramcontroller_tmrbankmachine1_bufValidVote_control;
+wire litedramcontroller_tmrbankmachine1_bufValid_bad_vote;
+reg litedramcontroller_tmrbankmachine1_bufValid_bad_vote_edge = 1'd0;
 wire litedramcontroller_tmrbankmachine1_bufWeVote_control;
 reg [13:0] litedramcontroller_tmrbankmachine1_row = 14'd0;
 reg litedramcontroller_tmrbankmachine1_row_opened = 1'd0;
@@ -1738,6 +1750,8 @@ reg litedramcontroller_tmrbankmachine2_log_activate_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine2_log_precharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine2_log_autoprecharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine2_log_refresh_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine2_log_addr_vote_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine2_log_valid_vote_log_sig = 1'd0;
 wire [47:0] litedramcontroller_tmrbankmachine2_loggingsystem_message;
 wire litedramcontroller_tmrbankmachine2_loggingsystem_ready;
 wire litedramcontroller_tmrbankmachine2_loggingsystem_request;
@@ -1896,9 +1910,13 @@ reg [20:0] litedramcontroller_tmrbankmachine2_cmd_buffer3_source_payload_addr = 
 wire litedramcontroller_tmrbankmachine2_tmrinput_control4;
 wire [20:0] litedramcontroller_tmrbankmachine2_lookAddrVote_control;
 wire [20:0] litedramcontroller_tmrbankmachine2_bufAddrVote_control;
+wire litedramcontroller_tmrbankmachine2_bufAddr_bad_vote;
+reg litedramcontroller_tmrbankmachine2_bufAddr_bad_vote_edge = 1'd0;
 wire [2:0] litedramcontroller_tmrbankmachine2_sig_n;
 wire litedramcontroller_tmrbankmachine2_lookValidVote_control;
 wire litedramcontroller_tmrbankmachine2_bufValidVote_control;
+wire litedramcontroller_tmrbankmachine2_bufValid_bad_vote;
+reg litedramcontroller_tmrbankmachine2_bufValid_bad_vote_edge = 1'd0;
 wire litedramcontroller_tmrbankmachine2_bufWeVote_control;
 reg [13:0] litedramcontroller_tmrbankmachine2_row = 14'd0;
 reg litedramcontroller_tmrbankmachine2_row_opened = 1'd0;
@@ -1990,6 +2008,8 @@ reg litedramcontroller_tmrbankmachine3_log_activate_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine3_log_precharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine3_log_autoprecharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine3_log_refresh_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine3_log_addr_vote_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine3_log_valid_vote_log_sig = 1'd0;
 wire [47:0] litedramcontroller_tmrbankmachine3_loggingsystem_message;
 wire litedramcontroller_tmrbankmachine3_loggingsystem_ready;
 wire litedramcontroller_tmrbankmachine3_loggingsystem_request;
@@ -2148,9 +2168,13 @@ reg [20:0] litedramcontroller_tmrbankmachine3_cmd_buffer3_source_payload_addr = 
 wire litedramcontroller_tmrbankmachine3_tmrinput_control4;
 wire [20:0] litedramcontroller_tmrbankmachine3_lookAddrVote_control;
 wire [20:0] litedramcontroller_tmrbankmachine3_bufAddrVote_control;
+wire litedramcontroller_tmrbankmachine3_bufAddr_bad_vote;
+reg litedramcontroller_tmrbankmachine3_bufAddr_bad_vote_edge = 1'd0;
 wire [2:0] litedramcontroller_tmrbankmachine3_sig_n;
 wire litedramcontroller_tmrbankmachine3_lookValidVote_control;
 wire litedramcontroller_tmrbankmachine3_bufValidVote_control;
+wire litedramcontroller_tmrbankmachine3_bufValid_bad_vote;
+reg litedramcontroller_tmrbankmachine3_bufValid_bad_vote_edge = 1'd0;
 wire litedramcontroller_tmrbankmachine3_bufWeVote_control;
 reg [13:0] litedramcontroller_tmrbankmachine3_row = 14'd0;
 reg litedramcontroller_tmrbankmachine3_row_opened = 1'd0;
@@ -2242,6 +2266,8 @@ reg litedramcontroller_tmrbankmachine4_log_activate_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine4_log_precharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine4_log_autoprecharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine4_log_refresh_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine4_log_addr_vote_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine4_log_valid_vote_log_sig = 1'd0;
 wire [47:0] litedramcontroller_tmrbankmachine4_loggingsystem_message;
 wire litedramcontroller_tmrbankmachine4_loggingsystem_ready;
 wire litedramcontroller_tmrbankmachine4_loggingsystem_request;
@@ -2400,9 +2426,13 @@ reg [20:0] litedramcontroller_tmrbankmachine4_cmd_buffer3_source_payload_addr = 
 wire litedramcontroller_tmrbankmachine4_tmrinput_control4;
 wire [20:0] litedramcontroller_tmrbankmachine4_lookAddrVote_control;
 wire [20:0] litedramcontroller_tmrbankmachine4_bufAddrVote_control;
+wire litedramcontroller_tmrbankmachine4_bufAddr_bad_vote;
+reg litedramcontroller_tmrbankmachine4_bufAddr_bad_vote_edge = 1'd0;
 wire [2:0] litedramcontroller_tmrbankmachine4_sig_n;
 wire litedramcontroller_tmrbankmachine4_lookValidVote_control;
 wire litedramcontroller_tmrbankmachine4_bufValidVote_control;
+wire litedramcontroller_tmrbankmachine4_bufValid_bad_vote;
+reg litedramcontroller_tmrbankmachine4_bufValid_bad_vote_edge = 1'd0;
 wire litedramcontroller_tmrbankmachine4_bufWeVote_control;
 reg [13:0] litedramcontroller_tmrbankmachine4_row = 14'd0;
 reg litedramcontroller_tmrbankmachine4_row_opened = 1'd0;
@@ -2494,6 +2524,8 @@ reg litedramcontroller_tmrbankmachine5_log_activate_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine5_log_precharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine5_log_autoprecharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine5_log_refresh_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine5_log_addr_vote_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine5_log_valid_vote_log_sig = 1'd0;
 wire [47:0] litedramcontroller_tmrbankmachine5_loggingsystem_message;
 wire litedramcontroller_tmrbankmachine5_loggingsystem_ready;
 wire litedramcontroller_tmrbankmachine5_loggingsystem_request;
@@ -2652,9 +2684,13 @@ reg [20:0] litedramcontroller_tmrbankmachine5_cmd_buffer3_source_payload_addr = 
 wire litedramcontroller_tmrbankmachine5_tmrinput_control4;
 wire [20:0] litedramcontroller_tmrbankmachine5_lookAddrVote_control;
 wire [20:0] litedramcontroller_tmrbankmachine5_bufAddrVote_control;
+wire litedramcontroller_tmrbankmachine5_bufAddr_bad_vote;
+reg litedramcontroller_tmrbankmachine5_bufAddr_bad_vote_edge = 1'd0;
 wire [2:0] litedramcontroller_tmrbankmachine5_sig_n;
 wire litedramcontroller_tmrbankmachine5_lookValidVote_control;
 wire litedramcontroller_tmrbankmachine5_bufValidVote_control;
+wire litedramcontroller_tmrbankmachine5_bufValid_bad_vote;
+reg litedramcontroller_tmrbankmachine5_bufValid_bad_vote_edge = 1'd0;
 wire litedramcontroller_tmrbankmachine5_bufWeVote_control;
 reg [13:0] litedramcontroller_tmrbankmachine5_row = 14'd0;
 reg litedramcontroller_tmrbankmachine5_row_opened = 1'd0;
@@ -2746,6 +2782,8 @@ reg litedramcontroller_tmrbankmachine6_log_activate_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine6_log_precharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine6_log_autoprecharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine6_log_refresh_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine6_log_addr_vote_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine6_log_valid_vote_log_sig = 1'd0;
 wire [47:0] litedramcontroller_tmrbankmachine6_loggingsystem_message;
 wire litedramcontroller_tmrbankmachine6_loggingsystem_ready;
 wire litedramcontroller_tmrbankmachine6_loggingsystem_request;
@@ -2904,9 +2942,13 @@ reg [20:0] litedramcontroller_tmrbankmachine6_cmd_buffer3_source_payload_addr = 
 wire litedramcontroller_tmrbankmachine6_tmrinput_control4;
 wire [20:0] litedramcontroller_tmrbankmachine6_lookAddrVote_control;
 wire [20:0] litedramcontroller_tmrbankmachine6_bufAddrVote_control;
+wire litedramcontroller_tmrbankmachine6_bufAddr_bad_vote;
+reg litedramcontroller_tmrbankmachine6_bufAddr_bad_vote_edge = 1'd0;
 wire [2:0] litedramcontroller_tmrbankmachine6_sig_n;
 wire litedramcontroller_tmrbankmachine6_lookValidVote_control;
 wire litedramcontroller_tmrbankmachine6_bufValidVote_control;
+wire litedramcontroller_tmrbankmachine6_bufValid_bad_vote;
+reg litedramcontroller_tmrbankmachine6_bufValid_bad_vote_edge = 1'd0;
 wire litedramcontroller_tmrbankmachine6_bufWeVote_control;
 reg [13:0] litedramcontroller_tmrbankmachine6_row = 14'd0;
 reg litedramcontroller_tmrbankmachine6_row_opened = 1'd0;
@@ -2998,6 +3040,8 @@ reg litedramcontroller_tmrbankmachine7_log_activate_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine7_log_precharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine7_log_autoprecharge_log_sig = 1'd0;
 reg litedramcontroller_tmrbankmachine7_log_refresh_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine7_log_addr_vote_log_sig = 1'd0;
+reg litedramcontroller_tmrbankmachine7_log_valid_vote_log_sig = 1'd0;
 wire [47:0] litedramcontroller_tmrbankmachine7_loggingsystem_message;
 wire litedramcontroller_tmrbankmachine7_loggingsystem_ready;
 wire litedramcontroller_tmrbankmachine7_loggingsystem_request;
@@ -3156,9 +3200,13 @@ reg [20:0] litedramcontroller_tmrbankmachine7_cmd_buffer3_source_payload_addr = 
 wire litedramcontroller_tmrbankmachine7_tmrinput_control4;
 wire [20:0] litedramcontroller_tmrbankmachine7_lookAddrVote_control;
 wire [20:0] litedramcontroller_tmrbankmachine7_bufAddrVote_control;
+wire litedramcontroller_tmrbankmachine7_bufAddr_bad_vote;
+reg litedramcontroller_tmrbankmachine7_bufAddr_bad_vote_edge = 1'd0;
 wire [2:0] litedramcontroller_tmrbankmachine7_sig_n;
 wire litedramcontroller_tmrbankmachine7_lookValidVote_control;
 wire litedramcontroller_tmrbankmachine7_bufValidVote_control;
+wire litedramcontroller_tmrbankmachine7_bufValid_bad_vote;
+reg litedramcontroller_tmrbankmachine7_bufValid_bad_vote_edge = 1'd0;
 wire litedramcontroller_tmrbankmachine7_bufWeVote_control;
 reg [13:0] litedramcontroller_tmrbankmachine7_row = 14'd0;
 reg litedramcontroller_tmrbankmachine7_row_opened = 1'd0;
@@ -7650,6 +7698,14 @@ always @(*) begin
 						end else begin
 							if (litedramcontroller_tmrbankmachine0_log_refresh_log_sig) begin
 								litedramcontroller_tmrbankmachine0_log_num <= 3'd6;
+							end else begin
+								if (litedramcontroller_tmrbankmachine0_log_addr_vote_log_sig) begin
+									litedramcontroller_tmrbankmachine0_log_num <= 3'd7;
+								end else begin
+									if (litedramcontroller_tmrbankmachine0_log_valid_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine0_log_num <= 4'd8;
+									end
+								end
 							end
 						end
 					end
@@ -7661,7 +7717,7 @@ always @(*) begin
 	dummy_d_39 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_tmrbankmachine0_loggingsystem_request = ((((((litedramcontroller_tmrbankmachine0_log_valid | litedramcontroller_tmrbankmachine0_log_ready) | litedramcontroller_tmrbankmachine0_log_regular_log_sig) | litedramcontroller_tmrbankmachine0_log_activate_log_sig) | litedramcontroller_tmrbankmachine0_log_precharge_log_sig) | litedramcontroller_tmrbankmachine0_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine0_log_refresh_log_sig);
+assign litedramcontroller_tmrbankmachine0_loggingsystem_request = ((((((((litedramcontroller_tmrbankmachine0_log_valid | litedramcontroller_tmrbankmachine0_log_ready) | litedramcontroller_tmrbankmachine0_log_regular_log_sig) | litedramcontroller_tmrbankmachine0_log_activate_log_sig) | litedramcontroller_tmrbankmachine0_log_precharge_log_sig) | litedramcontroller_tmrbankmachine0_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine0_log_refresh_log_sig) | litedramcontroller_tmrbankmachine0_log_addr_vote_log_sig) | litedramcontroller_tmrbankmachine0_log_valid_vote_log_sig);
 assign litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine0_req_valid;
 assign litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine0_req_we;
 assign litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine0_req_addr;
@@ -7693,6 +7749,7 @@ assign litedramcontroller_tmrbankmachine0_cmd_buffer3_sink_payload_we = litedram
 assign litedramcontroller_tmrbankmachine0_cmd_buffer3_sink_payload_addr = litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead3_source_payload_addr;
 assign litedramcontroller_tmrbankmachine0_cmd_buffer3_source_ready = (litedramcontroller_tmrbankmachine0_req_wdata_ready | litedramcontroller_tmrbankmachine0_req_rdata_valid);
 assign litedramcontroller_tmrbankmachine0_req_ready = ((litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_sink_ready & litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead2_sink_ready) & litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead3_sink_ready);
+assign litedramcontroller_tmrbankmachine0_bufAddr_bad_vote = (~(litedramcontroller_tmrbankmachine0_cmd_buffer_source_payload_addr == litedramcontroller_tmrbankmachine0_cmd_buffer2_source_payload_addr));
 assign litedramcontroller_tmrbankmachine0_sig_n = 1'd0;
 
 // synthesis translate_off
@@ -7708,6 +7765,7 @@ always @(*) begin
 	dummy_d_40 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine0_bufValid_bad_vote = (~(litedramcontroller_tmrbankmachine0_cmd_buffer_source_valid == litedramcontroller_tmrbankmachine0_cmd_buffer2_source_valid));
 assign litedramcontroller_tmrbankmachine0_row_hit = (litedramcontroller_tmrbankmachine0_row == litedramcontroller_tmrbankmachine0_bufAddrVote_control[20:7]);
 assign litedramcontroller_tmrbankmachine0_cmd_payload_ba = 1'd0;
 
@@ -8034,6 +8092,14 @@ always @(*) begin
 						end else begin
 							if (litedramcontroller_tmrbankmachine1_log_refresh_log_sig) begin
 								litedramcontroller_tmrbankmachine1_log_num <= 3'd6;
+							end else begin
+								if (litedramcontroller_tmrbankmachine1_log_addr_vote_log_sig) begin
+									litedramcontroller_tmrbankmachine1_log_num <= 3'd7;
+								end else begin
+									if (litedramcontroller_tmrbankmachine1_log_valid_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine1_log_num <= 4'd8;
+									end
+								end
 							end
 						end
 					end
@@ -8045,7 +8111,7 @@ always @(*) begin
 	dummy_d_47 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_tmrbankmachine1_loggingsystem_request = ((((((litedramcontroller_tmrbankmachine1_log_valid | litedramcontroller_tmrbankmachine1_log_ready) | litedramcontroller_tmrbankmachine1_log_regular_log_sig) | litedramcontroller_tmrbankmachine1_log_activate_log_sig) | litedramcontroller_tmrbankmachine1_log_precharge_log_sig) | litedramcontroller_tmrbankmachine1_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine1_log_refresh_log_sig);
+assign litedramcontroller_tmrbankmachine1_loggingsystem_request = ((((((((litedramcontroller_tmrbankmachine1_log_valid | litedramcontroller_tmrbankmachine1_log_ready) | litedramcontroller_tmrbankmachine1_log_regular_log_sig) | litedramcontroller_tmrbankmachine1_log_activate_log_sig) | litedramcontroller_tmrbankmachine1_log_precharge_log_sig) | litedramcontroller_tmrbankmachine1_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine1_log_refresh_log_sig) | litedramcontroller_tmrbankmachine1_log_addr_vote_log_sig) | litedramcontroller_tmrbankmachine1_log_valid_vote_log_sig);
 assign litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine1_req_valid;
 assign litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine1_req_we;
 assign litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine1_req_addr;
@@ -8077,6 +8143,7 @@ assign litedramcontroller_tmrbankmachine1_cmd_buffer3_sink_payload_we = litedram
 assign litedramcontroller_tmrbankmachine1_cmd_buffer3_sink_payload_addr = litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead3_source_payload_addr;
 assign litedramcontroller_tmrbankmachine1_cmd_buffer3_source_ready = (litedramcontroller_tmrbankmachine1_req_wdata_ready | litedramcontroller_tmrbankmachine1_req_rdata_valid);
 assign litedramcontroller_tmrbankmachine1_req_ready = ((litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_sink_ready & litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead2_sink_ready) & litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead3_sink_ready);
+assign litedramcontroller_tmrbankmachine1_bufAddr_bad_vote = (~(litedramcontroller_tmrbankmachine1_cmd_buffer_source_payload_addr == litedramcontroller_tmrbankmachine1_cmd_buffer2_source_payload_addr));
 assign litedramcontroller_tmrbankmachine1_sig_n = 1'd1;
 
 // synthesis translate_off
@@ -8092,6 +8159,7 @@ always @(*) begin
 	dummy_d_48 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine1_bufValid_bad_vote = (~(litedramcontroller_tmrbankmachine1_cmd_buffer_source_valid == litedramcontroller_tmrbankmachine1_cmd_buffer2_source_valid));
 assign litedramcontroller_tmrbankmachine1_row_hit = (litedramcontroller_tmrbankmachine1_row == litedramcontroller_tmrbankmachine1_bufAddrVote_control[20:7]);
 assign litedramcontroller_tmrbankmachine1_cmd_payload_ba = 1'd1;
 
@@ -8418,6 +8486,14 @@ always @(*) begin
 						end else begin
 							if (litedramcontroller_tmrbankmachine2_log_refresh_log_sig) begin
 								litedramcontroller_tmrbankmachine2_log_num <= 3'd6;
+							end else begin
+								if (litedramcontroller_tmrbankmachine2_log_addr_vote_log_sig) begin
+									litedramcontroller_tmrbankmachine2_log_num <= 3'd7;
+								end else begin
+									if (litedramcontroller_tmrbankmachine2_log_valid_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine2_log_num <= 4'd8;
+									end
+								end
 							end
 						end
 					end
@@ -8429,7 +8505,7 @@ always @(*) begin
 	dummy_d_55 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_tmrbankmachine2_loggingsystem_request = ((((((litedramcontroller_tmrbankmachine2_log_valid | litedramcontroller_tmrbankmachine2_log_ready) | litedramcontroller_tmrbankmachine2_log_regular_log_sig) | litedramcontroller_tmrbankmachine2_log_activate_log_sig) | litedramcontroller_tmrbankmachine2_log_precharge_log_sig) | litedramcontroller_tmrbankmachine2_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine2_log_refresh_log_sig);
+assign litedramcontroller_tmrbankmachine2_loggingsystem_request = ((((((((litedramcontroller_tmrbankmachine2_log_valid | litedramcontroller_tmrbankmachine2_log_ready) | litedramcontroller_tmrbankmachine2_log_regular_log_sig) | litedramcontroller_tmrbankmachine2_log_activate_log_sig) | litedramcontroller_tmrbankmachine2_log_precharge_log_sig) | litedramcontroller_tmrbankmachine2_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine2_log_refresh_log_sig) | litedramcontroller_tmrbankmachine2_log_addr_vote_log_sig) | litedramcontroller_tmrbankmachine2_log_valid_vote_log_sig);
 assign litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine2_req_valid;
 assign litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine2_req_we;
 assign litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine2_req_addr;
@@ -8461,6 +8537,7 @@ assign litedramcontroller_tmrbankmachine2_cmd_buffer3_sink_payload_we = litedram
 assign litedramcontroller_tmrbankmachine2_cmd_buffer3_sink_payload_addr = litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead3_source_payload_addr;
 assign litedramcontroller_tmrbankmachine2_cmd_buffer3_source_ready = (litedramcontroller_tmrbankmachine2_req_wdata_ready | litedramcontroller_tmrbankmachine2_req_rdata_valid);
 assign litedramcontroller_tmrbankmachine2_req_ready = ((litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_sink_ready & litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead2_sink_ready) & litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead3_sink_ready);
+assign litedramcontroller_tmrbankmachine2_bufAddr_bad_vote = (~(litedramcontroller_tmrbankmachine2_cmd_buffer_source_payload_addr == litedramcontroller_tmrbankmachine2_cmd_buffer2_source_payload_addr));
 assign litedramcontroller_tmrbankmachine2_sig_n = 2'd2;
 
 // synthesis translate_off
@@ -8476,6 +8553,7 @@ always @(*) begin
 	dummy_d_56 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine2_bufValid_bad_vote = (~(litedramcontroller_tmrbankmachine2_cmd_buffer_source_valid == litedramcontroller_tmrbankmachine2_cmd_buffer2_source_valid));
 assign litedramcontroller_tmrbankmachine2_row_hit = (litedramcontroller_tmrbankmachine2_row == litedramcontroller_tmrbankmachine2_bufAddrVote_control[20:7]);
 assign litedramcontroller_tmrbankmachine2_cmd_payload_ba = 2'd2;
 
@@ -8802,6 +8880,14 @@ always @(*) begin
 						end else begin
 							if (litedramcontroller_tmrbankmachine3_log_refresh_log_sig) begin
 								litedramcontroller_tmrbankmachine3_log_num <= 3'd6;
+							end else begin
+								if (litedramcontroller_tmrbankmachine3_log_addr_vote_log_sig) begin
+									litedramcontroller_tmrbankmachine3_log_num <= 3'd7;
+								end else begin
+									if (litedramcontroller_tmrbankmachine3_log_valid_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine3_log_num <= 4'd8;
+									end
+								end
 							end
 						end
 					end
@@ -8813,7 +8899,7 @@ always @(*) begin
 	dummy_d_63 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_tmrbankmachine3_loggingsystem_request = ((((((litedramcontroller_tmrbankmachine3_log_valid | litedramcontroller_tmrbankmachine3_log_ready) | litedramcontroller_tmrbankmachine3_log_regular_log_sig) | litedramcontroller_tmrbankmachine3_log_activate_log_sig) | litedramcontroller_tmrbankmachine3_log_precharge_log_sig) | litedramcontroller_tmrbankmachine3_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine3_log_refresh_log_sig);
+assign litedramcontroller_tmrbankmachine3_loggingsystem_request = ((((((((litedramcontroller_tmrbankmachine3_log_valid | litedramcontroller_tmrbankmachine3_log_ready) | litedramcontroller_tmrbankmachine3_log_regular_log_sig) | litedramcontroller_tmrbankmachine3_log_activate_log_sig) | litedramcontroller_tmrbankmachine3_log_precharge_log_sig) | litedramcontroller_tmrbankmachine3_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine3_log_refresh_log_sig) | litedramcontroller_tmrbankmachine3_log_addr_vote_log_sig) | litedramcontroller_tmrbankmachine3_log_valid_vote_log_sig);
 assign litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine3_req_valid;
 assign litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine3_req_we;
 assign litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine3_req_addr;
@@ -8845,6 +8931,7 @@ assign litedramcontroller_tmrbankmachine3_cmd_buffer3_sink_payload_we = litedram
 assign litedramcontroller_tmrbankmachine3_cmd_buffer3_sink_payload_addr = litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead3_source_payload_addr;
 assign litedramcontroller_tmrbankmachine3_cmd_buffer3_source_ready = (litedramcontroller_tmrbankmachine3_req_wdata_ready | litedramcontroller_tmrbankmachine3_req_rdata_valid);
 assign litedramcontroller_tmrbankmachine3_req_ready = ((litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_sink_ready & litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead2_sink_ready) & litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead3_sink_ready);
+assign litedramcontroller_tmrbankmachine3_bufAddr_bad_vote = (~(litedramcontroller_tmrbankmachine3_cmd_buffer_source_payload_addr == litedramcontroller_tmrbankmachine3_cmd_buffer2_source_payload_addr));
 assign litedramcontroller_tmrbankmachine3_sig_n = 2'd3;
 
 // synthesis translate_off
@@ -8860,6 +8947,7 @@ always @(*) begin
 	dummy_d_64 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine3_bufValid_bad_vote = (~(litedramcontroller_tmrbankmachine3_cmd_buffer_source_valid == litedramcontroller_tmrbankmachine3_cmd_buffer2_source_valid));
 assign litedramcontroller_tmrbankmachine3_row_hit = (litedramcontroller_tmrbankmachine3_row == litedramcontroller_tmrbankmachine3_bufAddrVote_control[20:7]);
 assign litedramcontroller_tmrbankmachine3_cmd_payload_ba = 2'd3;
 
@@ -9186,6 +9274,14 @@ always @(*) begin
 						end else begin
 							if (litedramcontroller_tmrbankmachine4_log_refresh_log_sig) begin
 								litedramcontroller_tmrbankmachine4_log_num <= 3'd6;
+							end else begin
+								if (litedramcontroller_tmrbankmachine4_log_addr_vote_log_sig) begin
+									litedramcontroller_tmrbankmachine4_log_num <= 3'd7;
+								end else begin
+									if (litedramcontroller_tmrbankmachine4_log_valid_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine4_log_num <= 4'd8;
+									end
+								end
 							end
 						end
 					end
@@ -9197,7 +9293,7 @@ always @(*) begin
 	dummy_d_71 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_tmrbankmachine4_loggingsystem_request = ((((((litedramcontroller_tmrbankmachine4_log_valid | litedramcontroller_tmrbankmachine4_log_ready) | litedramcontroller_tmrbankmachine4_log_regular_log_sig) | litedramcontroller_tmrbankmachine4_log_activate_log_sig) | litedramcontroller_tmrbankmachine4_log_precharge_log_sig) | litedramcontroller_tmrbankmachine4_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine4_log_refresh_log_sig);
+assign litedramcontroller_tmrbankmachine4_loggingsystem_request = ((((((((litedramcontroller_tmrbankmachine4_log_valid | litedramcontroller_tmrbankmachine4_log_ready) | litedramcontroller_tmrbankmachine4_log_regular_log_sig) | litedramcontroller_tmrbankmachine4_log_activate_log_sig) | litedramcontroller_tmrbankmachine4_log_precharge_log_sig) | litedramcontroller_tmrbankmachine4_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine4_log_refresh_log_sig) | litedramcontroller_tmrbankmachine4_log_addr_vote_log_sig) | litedramcontroller_tmrbankmachine4_log_valid_vote_log_sig);
 assign litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine4_req_valid;
 assign litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine4_req_we;
 assign litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine4_req_addr;
@@ -9229,6 +9325,7 @@ assign litedramcontroller_tmrbankmachine4_cmd_buffer3_sink_payload_we = litedram
 assign litedramcontroller_tmrbankmachine4_cmd_buffer3_sink_payload_addr = litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead3_source_payload_addr;
 assign litedramcontroller_tmrbankmachine4_cmd_buffer3_source_ready = (litedramcontroller_tmrbankmachine4_req_wdata_ready | litedramcontroller_tmrbankmachine4_req_rdata_valid);
 assign litedramcontroller_tmrbankmachine4_req_ready = ((litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_sink_ready & litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead2_sink_ready) & litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead3_sink_ready);
+assign litedramcontroller_tmrbankmachine4_bufAddr_bad_vote = (~(litedramcontroller_tmrbankmachine4_cmd_buffer_source_payload_addr == litedramcontroller_tmrbankmachine4_cmd_buffer2_source_payload_addr));
 assign litedramcontroller_tmrbankmachine4_sig_n = 3'd4;
 
 // synthesis translate_off
@@ -9244,6 +9341,7 @@ always @(*) begin
 	dummy_d_72 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine4_bufValid_bad_vote = (~(litedramcontroller_tmrbankmachine4_cmd_buffer_source_valid == litedramcontroller_tmrbankmachine4_cmd_buffer2_source_valid));
 assign litedramcontroller_tmrbankmachine4_row_hit = (litedramcontroller_tmrbankmachine4_row == litedramcontroller_tmrbankmachine4_bufAddrVote_control[20:7]);
 assign litedramcontroller_tmrbankmachine4_cmd_payload_ba = 3'd4;
 
@@ -9570,6 +9668,14 @@ always @(*) begin
 						end else begin
 							if (litedramcontroller_tmrbankmachine5_log_refresh_log_sig) begin
 								litedramcontroller_tmrbankmachine5_log_num <= 3'd6;
+							end else begin
+								if (litedramcontroller_tmrbankmachine5_log_addr_vote_log_sig) begin
+									litedramcontroller_tmrbankmachine5_log_num <= 3'd7;
+								end else begin
+									if (litedramcontroller_tmrbankmachine5_log_valid_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine5_log_num <= 4'd8;
+									end
+								end
 							end
 						end
 					end
@@ -9581,7 +9687,7 @@ always @(*) begin
 	dummy_d_79 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_tmrbankmachine5_loggingsystem_request = ((((((litedramcontroller_tmrbankmachine5_log_valid | litedramcontroller_tmrbankmachine5_log_ready) | litedramcontroller_tmrbankmachine5_log_regular_log_sig) | litedramcontroller_tmrbankmachine5_log_activate_log_sig) | litedramcontroller_tmrbankmachine5_log_precharge_log_sig) | litedramcontroller_tmrbankmachine5_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine5_log_refresh_log_sig);
+assign litedramcontroller_tmrbankmachine5_loggingsystem_request = ((((((((litedramcontroller_tmrbankmachine5_log_valid | litedramcontroller_tmrbankmachine5_log_ready) | litedramcontroller_tmrbankmachine5_log_regular_log_sig) | litedramcontroller_tmrbankmachine5_log_activate_log_sig) | litedramcontroller_tmrbankmachine5_log_precharge_log_sig) | litedramcontroller_tmrbankmachine5_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine5_log_refresh_log_sig) | litedramcontroller_tmrbankmachine5_log_addr_vote_log_sig) | litedramcontroller_tmrbankmachine5_log_valid_vote_log_sig);
 assign litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine5_req_valid;
 assign litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine5_req_we;
 assign litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine5_req_addr;
@@ -9613,6 +9719,7 @@ assign litedramcontroller_tmrbankmachine5_cmd_buffer3_sink_payload_we = litedram
 assign litedramcontroller_tmrbankmachine5_cmd_buffer3_sink_payload_addr = litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead3_source_payload_addr;
 assign litedramcontroller_tmrbankmachine5_cmd_buffer3_source_ready = (litedramcontroller_tmrbankmachine5_req_wdata_ready | litedramcontroller_tmrbankmachine5_req_rdata_valid);
 assign litedramcontroller_tmrbankmachine5_req_ready = ((litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_sink_ready & litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead2_sink_ready) & litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead3_sink_ready);
+assign litedramcontroller_tmrbankmachine5_bufAddr_bad_vote = (~(litedramcontroller_tmrbankmachine5_cmd_buffer_source_payload_addr == litedramcontroller_tmrbankmachine5_cmd_buffer2_source_payload_addr));
 assign litedramcontroller_tmrbankmachine5_sig_n = 3'd5;
 
 // synthesis translate_off
@@ -9628,6 +9735,7 @@ always @(*) begin
 	dummy_d_80 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine5_bufValid_bad_vote = (~(litedramcontroller_tmrbankmachine5_cmd_buffer_source_valid == litedramcontroller_tmrbankmachine5_cmd_buffer2_source_valid));
 assign litedramcontroller_tmrbankmachine5_row_hit = (litedramcontroller_tmrbankmachine5_row == litedramcontroller_tmrbankmachine5_bufAddrVote_control[20:7]);
 assign litedramcontroller_tmrbankmachine5_cmd_payload_ba = 3'd5;
 
@@ -9954,6 +10062,14 @@ always @(*) begin
 						end else begin
 							if (litedramcontroller_tmrbankmachine6_log_refresh_log_sig) begin
 								litedramcontroller_tmrbankmachine6_log_num <= 3'd6;
+							end else begin
+								if (litedramcontroller_tmrbankmachine6_log_addr_vote_log_sig) begin
+									litedramcontroller_tmrbankmachine6_log_num <= 3'd7;
+								end else begin
+									if (litedramcontroller_tmrbankmachine6_log_valid_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine6_log_num <= 4'd8;
+									end
+								end
 							end
 						end
 					end
@@ -9965,7 +10081,7 @@ always @(*) begin
 	dummy_d_87 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_tmrbankmachine6_loggingsystem_request = ((((((litedramcontroller_tmrbankmachine6_log_valid | litedramcontroller_tmrbankmachine6_log_ready) | litedramcontroller_tmrbankmachine6_log_regular_log_sig) | litedramcontroller_tmrbankmachine6_log_activate_log_sig) | litedramcontroller_tmrbankmachine6_log_precharge_log_sig) | litedramcontroller_tmrbankmachine6_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine6_log_refresh_log_sig);
+assign litedramcontroller_tmrbankmachine6_loggingsystem_request = ((((((((litedramcontroller_tmrbankmachine6_log_valid | litedramcontroller_tmrbankmachine6_log_ready) | litedramcontroller_tmrbankmachine6_log_regular_log_sig) | litedramcontroller_tmrbankmachine6_log_activate_log_sig) | litedramcontroller_tmrbankmachine6_log_precharge_log_sig) | litedramcontroller_tmrbankmachine6_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine6_log_refresh_log_sig) | litedramcontroller_tmrbankmachine6_log_addr_vote_log_sig) | litedramcontroller_tmrbankmachine6_log_valid_vote_log_sig);
 assign litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine6_req_valid;
 assign litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine6_req_we;
 assign litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine6_req_addr;
@@ -9997,6 +10113,7 @@ assign litedramcontroller_tmrbankmachine6_cmd_buffer3_sink_payload_we = litedram
 assign litedramcontroller_tmrbankmachine6_cmd_buffer3_sink_payload_addr = litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead3_source_payload_addr;
 assign litedramcontroller_tmrbankmachine6_cmd_buffer3_source_ready = (litedramcontroller_tmrbankmachine6_req_wdata_ready | litedramcontroller_tmrbankmachine6_req_rdata_valid);
 assign litedramcontroller_tmrbankmachine6_req_ready = ((litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_sink_ready & litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead2_sink_ready) & litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead3_sink_ready);
+assign litedramcontroller_tmrbankmachine6_bufAddr_bad_vote = (~(litedramcontroller_tmrbankmachine6_cmd_buffer_source_payload_addr == litedramcontroller_tmrbankmachine6_cmd_buffer2_source_payload_addr));
 assign litedramcontroller_tmrbankmachine6_sig_n = 3'd6;
 
 // synthesis translate_off
@@ -10012,6 +10129,7 @@ always @(*) begin
 	dummy_d_88 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine6_bufValid_bad_vote = (~(litedramcontroller_tmrbankmachine6_cmd_buffer_source_valid == litedramcontroller_tmrbankmachine6_cmd_buffer2_source_valid));
 assign litedramcontroller_tmrbankmachine6_row_hit = (litedramcontroller_tmrbankmachine6_row == litedramcontroller_tmrbankmachine6_bufAddrVote_control[20:7]);
 assign litedramcontroller_tmrbankmachine6_cmd_payload_ba = 3'd6;
 
@@ -10338,6 +10456,14 @@ always @(*) begin
 						end else begin
 							if (litedramcontroller_tmrbankmachine7_log_refresh_log_sig) begin
 								litedramcontroller_tmrbankmachine7_log_num <= 3'd6;
+							end else begin
+								if (litedramcontroller_tmrbankmachine7_log_addr_vote_log_sig) begin
+									litedramcontroller_tmrbankmachine7_log_num <= 3'd7;
+								end else begin
+									if (litedramcontroller_tmrbankmachine7_log_valid_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine7_log_num <= 4'd8;
+									end
+								end
 							end
 						end
 					end
@@ -10349,7 +10475,7 @@ always @(*) begin
 	dummy_d_95 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_tmrbankmachine7_loggingsystem_request = ((((((litedramcontroller_tmrbankmachine7_log_valid | litedramcontroller_tmrbankmachine7_log_ready) | litedramcontroller_tmrbankmachine7_log_regular_log_sig) | litedramcontroller_tmrbankmachine7_log_activate_log_sig) | litedramcontroller_tmrbankmachine7_log_precharge_log_sig) | litedramcontroller_tmrbankmachine7_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine7_log_refresh_log_sig);
+assign litedramcontroller_tmrbankmachine7_loggingsystem_request = ((((((((litedramcontroller_tmrbankmachine7_log_valid | litedramcontroller_tmrbankmachine7_log_ready) | litedramcontroller_tmrbankmachine7_log_regular_log_sig) | litedramcontroller_tmrbankmachine7_log_activate_log_sig) | litedramcontroller_tmrbankmachine7_log_precharge_log_sig) | litedramcontroller_tmrbankmachine7_log_autoprecharge_log_sig) | litedramcontroller_tmrbankmachine7_log_refresh_log_sig) | litedramcontroller_tmrbankmachine7_log_addr_vote_log_sig) | litedramcontroller_tmrbankmachine7_log_valid_vote_log_sig);
 assign litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_sink_valid = litedramcontroller_tmrbankmachine7_req_valid;
 assign litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_we = litedramcontroller_tmrbankmachine7_req_we;
 assign litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_sink_payload_addr = litedramcontroller_tmrbankmachine7_req_addr;
@@ -10381,6 +10507,7 @@ assign litedramcontroller_tmrbankmachine7_cmd_buffer3_sink_payload_we = litedram
 assign litedramcontroller_tmrbankmachine7_cmd_buffer3_sink_payload_addr = litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead3_source_payload_addr;
 assign litedramcontroller_tmrbankmachine7_cmd_buffer3_source_ready = (litedramcontroller_tmrbankmachine7_req_wdata_ready | litedramcontroller_tmrbankmachine7_req_rdata_valid);
 assign litedramcontroller_tmrbankmachine7_req_ready = ((litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_sink_ready & litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead2_sink_ready) & litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead3_sink_ready);
+assign litedramcontroller_tmrbankmachine7_bufAddr_bad_vote = (~(litedramcontroller_tmrbankmachine7_cmd_buffer_source_payload_addr == litedramcontroller_tmrbankmachine7_cmd_buffer2_source_payload_addr));
 assign litedramcontroller_tmrbankmachine7_sig_n = 3'd7;
 
 // synthesis translate_off
@@ -10396,6 +10523,7 @@ always @(*) begin
 	dummy_d_96 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_tmrbankmachine7_bufValid_bad_vote = (~(litedramcontroller_tmrbankmachine7_cmd_buffer_source_valid == litedramcontroller_tmrbankmachine7_cmd_buffer2_source_valid));
 assign litedramcontroller_tmrbankmachine7_row_hit = (litedramcontroller_tmrbankmachine7_row == litedramcontroller_tmrbankmachine7_bufAddrVote_control[20:7]);
 assign litedramcontroller_tmrbankmachine7_cmd_payload_ba = 3'd7;
 
@@ -18263,6 +18391,14 @@ always @(posedge sys_clk) begin
 							end else begin
 								if (litedramcontroller_tmrbankmachine0_log_refresh_log_sig) begin
 									litedramcontroller_tmrbankmachine0_log_refresh_log_sig <= 1'd0;
+								end else begin
+									if (litedramcontroller_tmrbankmachine0_log_addr_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine0_log_addr_vote_log_sig <= 1'd0;
+									end else begin
+										if (litedramcontroller_tmrbankmachine0_log_valid_vote_log_sig) begin
+											litedramcontroller_tmrbankmachine0_log_valid_vote_log_sig <= 1'd0;
+										end
+									end
 								end
 							end
 						end
@@ -18278,6 +18414,14 @@ always @(posedge sys_clk) begin
 	end
 	if (((litedramcontroller_tmrbankmachine0_cmd_ready & (~litedramcontroller_tmrbankmachine0_ready_edge)) & (~litedramcontroller_tmrbankmachine0_log_ready))) begin
 		litedramcontroller_tmrbankmachine0_log_ready <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine0_bufAddr_bad_vote_edge <= litedramcontroller_tmrbankmachine0_bufAddr_bad_vote;
+	if ((litedramcontroller_tmrbankmachine0_bufAddr_bad_vote & (~litedramcontroller_tmrbankmachine0_bufAddr_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine0_log_addr_vote_log_sig <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine0_bufValid_bad_vote_edge <= litedramcontroller_tmrbankmachine0_bufValid_bad_vote;
+	if ((litedramcontroller_tmrbankmachine0_bufValid_bad_vote & (~litedramcontroller_tmrbankmachine0_bufValid_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine0_log_valid_vote_log_sig <= 1'd1;
 	end
 	if (litedramcontroller_tmrbankmachine0_row_close) begin
 		litedramcontroller_tmrbankmachine0_row_opened <= 1'd0;
@@ -18528,6 +18672,14 @@ always @(posedge sys_clk) begin
 							end else begin
 								if (litedramcontroller_tmrbankmachine1_log_refresh_log_sig) begin
 									litedramcontroller_tmrbankmachine1_log_refresh_log_sig <= 1'd0;
+								end else begin
+									if (litedramcontroller_tmrbankmachine1_log_addr_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine1_log_addr_vote_log_sig <= 1'd0;
+									end else begin
+										if (litedramcontroller_tmrbankmachine1_log_valid_vote_log_sig) begin
+											litedramcontroller_tmrbankmachine1_log_valid_vote_log_sig <= 1'd0;
+										end
+									end
 								end
 							end
 						end
@@ -18543,6 +18695,14 @@ always @(posedge sys_clk) begin
 	end
 	if (((litedramcontroller_tmrbankmachine1_cmd_ready & (~litedramcontroller_tmrbankmachine1_ready_edge)) & (~litedramcontroller_tmrbankmachine1_log_ready))) begin
 		litedramcontroller_tmrbankmachine1_log_ready <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine1_bufAddr_bad_vote_edge <= litedramcontroller_tmrbankmachine1_bufAddr_bad_vote;
+	if ((litedramcontroller_tmrbankmachine1_bufAddr_bad_vote & (~litedramcontroller_tmrbankmachine1_bufAddr_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine1_log_addr_vote_log_sig <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine1_bufValid_bad_vote_edge <= litedramcontroller_tmrbankmachine1_bufValid_bad_vote;
+	if ((litedramcontroller_tmrbankmachine1_bufValid_bad_vote & (~litedramcontroller_tmrbankmachine1_bufValid_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine1_log_valid_vote_log_sig <= 1'd1;
 	end
 	if (litedramcontroller_tmrbankmachine1_row_close) begin
 		litedramcontroller_tmrbankmachine1_row_opened <= 1'd0;
@@ -18793,6 +18953,14 @@ always @(posedge sys_clk) begin
 							end else begin
 								if (litedramcontroller_tmrbankmachine2_log_refresh_log_sig) begin
 									litedramcontroller_tmrbankmachine2_log_refresh_log_sig <= 1'd0;
+								end else begin
+									if (litedramcontroller_tmrbankmachine2_log_addr_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine2_log_addr_vote_log_sig <= 1'd0;
+									end else begin
+										if (litedramcontroller_tmrbankmachine2_log_valid_vote_log_sig) begin
+											litedramcontroller_tmrbankmachine2_log_valid_vote_log_sig <= 1'd0;
+										end
+									end
 								end
 							end
 						end
@@ -18808,6 +18976,14 @@ always @(posedge sys_clk) begin
 	end
 	if (((litedramcontroller_tmrbankmachine2_cmd_ready & (~litedramcontroller_tmrbankmachine2_ready_edge)) & (~litedramcontroller_tmrbankmachine2_log_ready))) begin
 		litedramcontroller_tmrbankmachine2_log_ready <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine2_bufAddr_bad_vote_edge <= litedramcontroller_tmrbankmachine2_bufAddr_bad_vote;
+	if ((litedramcontroller_tmrbankmachine2_bufAddr_bad_vote & (~litedramcontroller_tmrbankmachine2_bufAddr_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine2_log_addr_vote_log_sig <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine2_bufValid_bad_vote_edge <= litedramcontroller_tmrbankmachine2_bufValid_bad_vote;
+	if ((litedramcontroller_tmrbankmachine2_bufValid_bad_vote & (~litedramcontroller_tmrbankmachine2_bufValid_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine2_log_valid_vote_log_sig <= 1'd1;
 	end
 	if (litedramcontroller_tmrbankmachine2_row_close) begin
 		litedramcontroller_tmrbankmachine2_row_opened <= 1'd0;
@@ -19058,6 +19234,14 @@ always @(posedge sys_clk) begin
 							end else begin
 								if (litedramcontroller_tmrbankmachine3_log_refresh_log_sig) begin
 									litedramcontroller_tmrbankmachine3_log_refresh_log_sig <= 1'd0;
+								end else begin
+									if (litedramcontroller_tmrbankmachine3_log_addr_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine3_log_addr_vote_log_sig <= 1'd0;
+									end else begin
+										if (litedramcontroller_tmrbankmachine3_log_valid_vote_log_sig) begin
+											litedramcontroller_tmrbankmachine3_log_valid_vote_log_sig <= 1'd0;
+										end
+									end
 								end
 							end
 						end
@@ -19073,6 +19257,14 @@ always @(posedge sys_clk) begin
 	end
 	if (((litedramcontroller_tmrbankmachine3_cmd_ready & (~litedramcontroller_tmrbankmachine3_ready_edge)) & (~litedramcontroller_tmrbankmachine3_log_ready))) begin
 		litedramcontroller_tmrbankmachine3_log_ready <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine3_bufAddr_bad_vote_edge <= litedramcontroller_tmrbankmachine3_bufAddr_bad_vote;
+	if ((litedramcontroller_tmrbankmachine3_bufAddr_bad_vote & (~litedramcontroller_tmrbankmachine3_bufAddr_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine3_log_addr_vote_log_sig <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine3_bufValid_bad_vote_edge <= litedramcontroller_tmrbankmachine3_bufValid_bad_vote;
+	if ((litedramcontroller_tmrbankmachine3_bufValid_bad_vote & (~litedramcontroller_tmrbankmachine3_bufValid_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine3_log_valid_vote_log_sig <= 1'd1;
 	end
 	if (litedramcontroller_tmrbankmachine3_row_close) begin
 		litedramcontroller_tmrbankmachine3_row_opened <= 1'd0;
@@ -19323,6 +19515,14 @@ always @(posedge sys_clk) begin
 							end else begin
 								if (litedramcontroller_tmrbankmachine4_log_refresh_log_sig) begin
 									litedramcontroller_tmrbankmachine4_log_refresh_log_sig <= 1'd0;
+								end else begin
+									if (litedramcontroller_tmrbankmachine4_log_addr_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine4_log_addr_vote_log_sig <= 1'd0;
+									end else begin
+										if (litedramcontroller_tmrbankmachine4_log_valid_vote_log_sig) begin
+											litedramcontroller_tmrbankmachine4_log_valid_vote_log_sig <= 1'd0;
+										end
+									end
 								end
 							end
 						end
@@ -19338,6 +19538,14 @@ always @(posedge sys_clk) begin
 	end
 	if (((litedramcontroller_tmrbankmachine4_cmd_ready & (~litedramcontroller_tmrbankmachine4_ready_edge)) & (~litedramcontroller_tmrbankmachine4_log_ready))) begin
 		litedramcontroller_tmrbankmachine4_log_ready <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine4_bufAddr_bad_vote_edge <= litedramcontroller_tmrbankmachine4_bufAddr_bad_vote;
+	if ((litedramcontroller_tmrbankmachine4_bufAddr_bad_vote & (~litedramcontroller_tmrbankmachine4_bufAddr_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine4_log_addr_vote_log_sig <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine4_bufValid_bad_vote_edge <= litedramcontroller_tmrbankmachine4_bufValid_bad_vote;
+	if ((litedramcontroller_tmrbankmachine4_bufValid_bad_vote & (~litedramcontroller_tmrbankmachine4_bufValid_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine4_log_valid_vote_log_sig <= 1'd1;
 	end
 	if (litedramcontroller_tmrbankmachine4_row_close) begin
 		litedramcontroller_tmrbankmachine4_row_opened <= 1'd0;
@@ -19588,6 +19796,14 @@ always @(posedge sys_clk) begin
 							end else begin
 								if (litedramcontroller_tmrbankmachine5_log_refresh_log_sig) begin
 									litedramcontroller_tmrbankmachine5_log_refresh_log_sig <= 1'd0;
+								end else begin
+									if (litedramcontroller_tmrbankmachine5_log_addr_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine5_log_addr_vote_log_sig <= 1'd0;
+									end else begin
+										if (litedramcontroller_tmrbankmachine5_log_valid_vote_log_sig) begin
+											litedramcontroller_tmrbankmachine5_log_valid_vote_log_sig <= 1'd0;
+										end
+									end
 								end
 							end
 						end
@@ -19603,6 +19819,14 @@ always @(posedge sys_clk) begin
 	end
 	if (((litedramcontroller_tmrbankmachine5_cmd_ready & (~litedramcontroller_tmrbankmachine5_ready_edge)) & (~litedramcontroller_tmrbankmachine5_log_ready))) begin
 		litedramcontroller_tmrbankmachine5_log_ready <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine5_bufAddr_bad_vote_edge <= litedramcontroller_tmrbankmachine5_bufAddr_bad_vote;
+	if ((litedramcontroller_tmrbankmachine5_bufAddr_bad_vote & (~litedramcontroller_tmrbankmachine5_bufAddr_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine5_log_addr_vote_log_sig <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine5_bufValid_bad_vote_edge <= litedramcontroller_tmrbankmachine5_bufValid_bad_vote;
+	if ((litedramcontroller_tmrbankmachine5_bufValid_bad_vote & (~litedramcontroller_tmrbankmachine5_bufValid_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine5_log_valid_vote_log_sig <= 1'd1;
 	end
 	if (litedramcontroller_tmrbankmachine5_row_close) begin
 		litedramcontroller_tmrbankmachine5_row_opened <= 1'd0;
@@ -19853,6 +20077,14 @@ always @(posedge sys_clk) begin
 							end else begin
 								if (litedramcontroller_tmrbankmachine6_log_refresh_log_sig) begin
 									litedramcontroller_tmrbankmachine6_log_refresh_log_sig <= 1'd0;
+								end else begin
+									if (litedramcontroller_tmrbankmachine6_log_addr_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine6_log_addr_vote_log_sig <= 1'd0;
+									end else begin
+										if (litedramcontroller_tmrbankmachine6_log_valid_vote_log_sig) begin
+											litedramcontroller_tmrbankmachine6_log_valid_vote_log_sig <= 1'd0;
+										end
+									end
 								end
 							end
 						end
@@ -19868,6 +20100,14 @@ always @(posedge sys_clk) begin
 	end
 	if (((litedramcontroller_tmrbankmachine6_cmd_ready & (~litedramcontroller_tmrbankmachine6_ready_edge)) & (~litedramcontroller_tmrbankmachine6_log_ready))) begin
 		litedramcontroller_tmrbankmachine6_log_ready <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine6_bufAddr_bad_vote_edge <= litedramcontroller_tmrbankmachine6_bufAddr_bad_vote;
+	if ((litedramcontroller_tmrbankmachine6_bufAddr_bad_vote & (~litedramcontroller_tmrbankmachine6_bufAddr_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine6_log_addr_vote_log_sig <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine6_bufValid_bad_vote_edge <= litedramcontroller_tmrbankmachine6_bufValid_bad_vote;
+	if ((litedramcontroller_tmrbankmachine6_bufValid_bad_vote & (~litedramcontroller_tmrbankmachine6_bufValid_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine6_log_valid_vote_log_sig <= 1'd1;
 	end
 	if (litedramcontroller_tmrbankmachine6_row_close) begin
 		litedramcontroller_tmrbankmachine6_row_opened <= 1'd0;
@@ -20118,6 +20358,14 @@ always @(posedge sys_clk) begin
 							end else begin
 								if (litedramcontroller_tmrbankmachine7_log_refresh_log_sig) begin
 									litedramcontroller_tmrbankmachine7_log_refresh_log_sig <= 1'd0;
+								end else begin
+									if (litedramcontroller_tmrbankmachine7_log_addr_vote_log_sig) begin
+										litedramcontroller_tmrbankmachine7_log_addr_vote_log_sig <= 1'd0;
+									end else begin
+										if (litedramcontroller_tmrbankmachine7_log_valid_vote_log_sig) begin
+											litedramcontroller_tmrbankmachine7_log_valid_vote_log_sig <= 1'd0;
+										end
+									end
 								end
 							end
 						end
@@ -20133,6 +20381,14 @@ always @(posedge sys_clk) begin
 	end
 	if (((litedramcontroller_tmrbankmachine7_cmd_ready & (~litedramcontroller_tmrbankmachine7_ready_edge)) & (~litedramcontroller_tmrbankmachine7_log_ready))) begin
 		litedramcontroller_tmrbankmachine7_log_ready <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine7_bufAddr_bad_vote_edge <= litedramcontroller_tmrbankmachine7_bufAddr_bad_vote;
+	if ((litedramcontroller_tmrbankmachine7_bufAddr_bad_vote & (~litedramcontroller_tmrbankmachine7_bufAddr_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine7_log_addr_vote_log_sig <= 1'd1;
+	end
+	litedramcontroller_tmrbankmachine7_bufValid_bad_vote_edge <= litedramcontroller_tmrbankmachine7_bufValid_bad_vote;
+	if ((litedramcontroller_tmrbankmachine7_bufValid_bad_vote & (~litedramcontroller_tmrbankmachine7_bufValid_bad_vote_edge))) begin
+		litedramcontroller_tmrbankmachine7_log_valid_vote_log_sig <= 1'd1;
 	end
 	if (litedramcontroller_tmrbankmachine7_row_close) begin
 		litedramcontroller_tmrbankmachine7_row_opened <= 1'd0;
@@ -22068,6 +22324,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine0_log_precharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine0_log_autoprecharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine0_log_refresh_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine0_log_addr_vote_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine0_log_valid_vote_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine0_valid_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine0_ready_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine0_cmd_buffer_lookahead_level <= 4'd0;
@@ -22088,6 +22346,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine0_cmd_buffer3_source_valid <= 1'd0;
 		litedramcontroller_tmrbankmachine0_cmd_buffer3_source_payload_we <= 1'd0;
 		litedramcontroller_tmrbankmachine0_cmd_buffer3_source_payload_addr <= 21'd0;
+		litedramcontroller_tmrbankmachine0_bufAddr_bad_vote_edge <= 1'd0;
+		litedramcontroller_tmrbankmachine0_bufValid_bad_vote_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine0_row <= 14'd0;
 		litedramcontroller_tmrbankmachine0_row_opened <= 1'd0;
 		litedramcontroller_tmrbankmachine0_twtpcon_ready <= 1'd0;
@@ -22116,6 +22376,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine1_log_precharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine1_log_autoprecharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine1_log_refresh_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine1_log_addr_vote_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine1_log_valid_vote_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine1_valid_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine1_ready_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine1_cmd_buffer_lookahead_level <= 4'd0;
@@ -22136,6 +22398,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine1_cmd_buffer3_source_valid <= 1'd0;
 		litedramcontroller_tmrbankmachine1_cmd_buffer3_source_payload_we <= 1'd0;
 		litedramcontroller_tmrbankmachine1_cmd_buffer3_source_payload_addr <= 21'd0;
+		litedramcontroller_tmrbankmachine1_bufAddr_bad_vote_edge <= 1'd0;
+		litedramcontroller_tmrbankmachine1_bufValid_bad_vote_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine1_row <= 14'd0;
 		litedramcontroller_tmrbankmachine1_row_opened <= 1'd0;
 		litedramcontroller_tmrbankmachine1_twtpcon_ready <= 1'd0;
@@ -22164,6 +22428,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine2_log_precharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine2_log_autoprecharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine2_log_refresh_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine2_log_addr_vote_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine2_log_valid_vote_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine2_valid_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine2_ready_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine2_cmd_buffer_lookahead_level <= 4'd0;
@@ -22184,6 +22450,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine2_cmd_buffer3_source_valid <= 1'd0;
 		litedramcontroller_tmrbankmachine2_cmd_buffer3_source_payload_we <= 1'd0;
 		litedramcontroller_tmrbankmachine2_cmd_buffer3_source_payload_addr <= 21'd0;
+		litedramcontroller_tmrbankmachine2_bufAddr_bad_vote_edge <= 1'd0;
+		litedramcontroller_tmrbankmachine2_bufValid_bad_vote_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine2_row <= 14'd0;
 		litedramcontroller_tmrbankmachine2_row_opened <= 1'd0;
 		litedramcontroller_tmrbankmachine2_twtpcon_ready <= 1'd0;
@@ -22212,6 +22480,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine3_log_precharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine3_log_autoprecharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine3_log_refresh_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine3_log_addr_vote_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine3_log_valid_vote_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine3_valid_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine3_ready_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine3_cmd_buffer_lookahead_level <= 4'd0;
@@ -22232,6 +22502,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine3_cmd_buffer3_source_valid <= 1'd0;
 		litedramcontroller_tmrbankmachine3_cmd_buffer3_source_payload_we <= 1'd0;
 		litedramcontroller_tmrbankmachine3_cmd_buffer3_source_payload_addr <= 21'd0;
+		litedramcontroller_tmrbankmachine3_bufAddr_bad_vote_edge <= 1'd0;
+		litedramcontroller_tmrbankmachine3_bufValid_bad_vote_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine3_row <= 14'd0;
 		litedramcontroller_tmrbankmachine3_row_opened <= 1'd0;
 		litedramcontroller_tmrbankmachine3_twtpcon_ready <= 1'd0;
@@ -22260,6 +22532,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine4_log_precharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine4_log_autoprecharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine4_log_refresh_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine4_log_addr_vote_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine4_log_valid_vote_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine4_valid_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine4_ready_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine4_cmd_buffer_lookahead_level <= 4'd0;
@@ -22280,6 +22554,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine4_cmd_buffer3_source_valid <= 1'd0;
 		litedramcontroller_tmrbankmachine4_cmd_buffer3_source_payload_we <= 1'd0;
 		litedramcontroller_tmrbankmachine4_cmd_buffer3_source_payload_addr <= 21'd0;
+		litedramcontroller_tmrbankmachine4_bufAddr_bad_vote_edge <= 1'd0;
+		litedramcontroller_tmrbankmachine4_bufValid_bad_vote_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine4_row <= 14'd0;
 		litedramcontroller_tmrbankmachine4_row_opened <= 1'd0;
 		litedramcontroller_tmrbankmachine4_twtpcon_ready <= 1'd0;
@@ -22308,6 +22584,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine5_log_precharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine5_log_autoprecharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine5_log_refresh_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine5_log_addr_vote_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine5_log_valid_vote_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine5_valid_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine5_ready_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine5_cmd_buffer_lookahead_level <= 4'd0;
@@ -22328,6 +22606,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine5_cmd_buffer3_source_valid <= 1'd0;
 		litedramcontroller_tmrbankmachine5_cmd_buffer3_source_payload_we <= 1'd0;
 		litedramcontroller_tmrbankmachine5_cmd_buffer3_source_payload_addr <= 21'd0;
+		litedramcontroller_tmrbankmachine5_bufAddr_bad_vote_edge <= 1'd0;
+		litedramcontroller_tmrbankmachine5_bufValid_bad_vote_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine5_row <= 14'd0;
 		litedramcontroller_tmrbankmachine5_row_opened <= 1'd0;
 		litedramcontroller_tmrbankmachine5_twtpcon_ready <= 1'd0;
@@ -22356,6 +22636,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine6_log_precharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine6_log_autoprecharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine6_log_refresh_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine6_log_addr_vote_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine6_log_valid_vote_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine6_valid_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine6_ready_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine6_cmd_buffer_lookahead_level <= 4'd0;
@@ -22376,6 +22658,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine6_cmd_buffer3_source_valid <= 1'd0;
 		litedramcontroller_tmrbankmachine6_cmd_buffer3_source_payload_we <= 1'd0;
 		litedramcontroller_tmrbankmachine6_cmd_buffer3_source_payload_addr <= 21'd0;
+		litedramcontroller_tmrbankmachine6_bufAddr_bad_vote_edge <= 1'd0;
+		litedramcontroller_tmrbankmachine6_bufValid_bad_vote_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine6_row <= 14'd0;
 		litedramcontroller_tmrbankmachine6_row_opened <= 1'd0;
 		litedramcontroller_tmrbankmachine6_twtpcon_ready <= 1'd0;
@@ -22404,6 +22688,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine7_log_precharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine7_log_autoprecharge_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine7_log_refresh_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine7_log_addr_vote_log_sig <= 1'd0;
+		litedramcontroller_tmrbankmachine7_log_valid_vote_log_sig <= 1'd0;
 		litedramcontroller_tmrbankmachine7_valid_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine7_ready_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine7_cmd_buffer_lookahead_level <= 4'd0;
@@ -22424,6 +22710,8 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine7_cmd_buffer3_source_valid <= 1'd0;
 		litedramcontroller_tmrbankmachine7_cmd_buffer3_source_payload_we <= 1'd0;
 		litedramcontroller_tmrbankmachine7_cmd_buffer3_source_payload_addr <= 21'd0;
+		litedramcontroller_tmrbankmachine7_bufAddr_bad_vote_edge <= 1'd0;
+		litedramcontroller_tmrbankmachine7_bufValid_bad_vote_edge <= 1'd0;
 		litedramcontroller_tmrbankmachine7_row <= 14'd0;
 		litedramcontroller_tmrbankmachine7_row_opened <= 1'd0;
 		litedramcontroller_tmrbankmachine7_twtpcon_ready <= 1'd0;

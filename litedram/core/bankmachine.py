@@ -329,6 +329,9 @@ class TMRBankMachine(Module):
         log_autoprecharge = make_log_sig(5)
         log_refresh = make_log_sig(6)
         
+        log_addr_vote = make_log_sig(7)
+        log_valid_vote = make_log_sig(8)
+        
         self.comb += log_n.eq(n)
         
         log_message = Cat(log_addr, log_num, log_n)
@@ -453,6 +456,13 @@ class TMRBankMachine(Module):
         bufAddrVote = TMRInput(bufAddrSig)
         self.submodules += bufAddrVote
         
+        bufAddr_bad_vote = Signal()
+        bufAddr_bad_vote_edge = Signal()
+        self.comb += bufAddr_bad_vote.eq(~(cmd_buffer.source.addr == cmd_buffer2.source.addr == cmd_buffer3.source.addr))
+        self.sync += bufAddr_bad_vote_edge.eq(bufAddr_bad_vote)
+        
+        self.sync += If(bufAddr_bad_vote & ~bufAddr_bad_vote_edge, log_addr_vote.eq(1))
+        
         sig_n = Signal(3)
         self.comb += sig_n.eq(n)
         self.comb += [log_addr[12:15].eq(sig_n), 
@@ -469,6 +479,13 @@ class TMRBankMachine(Module):
         bufValidSig = Cat(cmd_buffer.source.valid, cmd_buffer2.source.valid, cmd_buffer3.source.valid)
         bufValidVote = TMRInput(bufValidSig)
         self.submodules += bufValidVote
+        
+        bufValid_bad_vote = Signal()
+        bufValid_bad_vote_edge = Signal()
+        self.comb += bufValid_bad_vote.eq(~(cmd_buffer.source.valid == cmd_buffer2.source.valid == cmd_buffer3.source.valid))
+        self.sync += bufValid_bad_vote_edge.eq(bufValid_bad_vote)
+        
+        self.sync += If(bufValid_bad_vote & ~bufValid_bad_vote_edge, log_valid_vote.eq(1))
         
         #Vote buffer we
         bufWeSig = Cat(cmd_buffer.source.we, cmd_buffer2.source.we, cmd_buffer3.source.we)
