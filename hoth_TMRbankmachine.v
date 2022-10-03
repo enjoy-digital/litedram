@@ -49,8 +49,8 @@ reg auto_precharge;
 wire [7:0] log_n;
 reg [7:0] log_num;
 reg [31:0] log_addr;
-reg log_valid = 1'd0;
-reg log_ready = 1'd0;
+reg log_valid_log_sig = 1'd0;
+reg log_ready_log_sig = 1'd0;
 reg log_regular_log_sig = 1'd0;
 reg log_activate_log_sig = 1'd0;
 reg log_precharge_log_sig = 1'd0;
@@ -58,6 +58,10 @@ reg log_autoprecharge_log_sig = 1'd0;
 reg log_refresh_log_sig = 1'd0;
 reg log_addr_vote_log_sig = 1'd0;
 reg log_valid_vote_log_sig = 1'd0;
+reg log_new_command_log_sig = 1'd0;
+reg log_done_command_log_sig = 1'd0;
+reg req_valid_edge = 1'd0;
+reg buffer_source_edge = 1'd0;
 wire [47:0] loggingsystem_message;
 reg loggingsystem_ready = 1'd0;
 wire loggingsystem_request;
@@ -332,10 +336,10 @@ reg dummy_d;
 // synthesis translate_on
 always @(*) begin
 	log_num <= 8'd0;
-	if (log_valid) begin
+	if (log_valid_log_sig) begin
 		log_num <= 1'd0;
 	end else begin
-		if (log_ready) begin
+		if (log_ready_log_sig) begin
 			log_num <= 1'd1;
 		end else begin
 			if (log_regular_log_sig) begin
@@ -358,6 +362,14 @@ always @(*) begin
 								end else begin
 									if (log_valid_vote_log_sig) begin
 										log_num <= 4'd8;
+									end else begin
+										if (log_new_command_log_sig) begin
+											log_num <= 4'd9;
+										end else begin
+											if (log_done_command_log_sig) begin
+												log_num <= 4'd10;
+											end
+										end
 									end
 								end
 							end
@@ -371,7 +383,7 @@ always @(*) begin
 	dummy_d <= dummy_s;
 // synthesis translate_on
 end
-assign loggingsystem_request = ((((((((log_valid | log_ready) | log_regular_log_sig) | log_activate_log_sig) | log_precharge_log_sig) | log_autoprecharge_log_sig) | log_refresh_log_sig) | log_addr_vote_log_sig) | log_valid_vote_log_sig);
+assign loggingsystem_request = ((((((((((log_valid_log_sig | log_ready_log_sig) | log_regular_log_sig) | log_activate_log_sig) | log_precharge_log_sig) | log_autoprecharge_log_sig) | log_refresh_log_sig) | log_addr_vote_log_sig) | log_valid_vote_log_sig) | log_new_command_log_sig) | log_done_command_log_sig);
 assign cmd_buffer_lookahead_sink_valid = req_valid;
 assign cmd_buffer_lookahead_sink_payload_we = req_we;
 assign cmd_buffer_lookahead_sink_payload_addr = req_addr;
@@ -774,12 +786,20 @@ assign slice_proxy52 = {trascon3_ready, trascon2_ready, trascon_ready};
 assign slice_proxy53 = {trascon3_ready, trascon2_ready, trascon_ready};
 
 always @(posedge sys_clk) begin
+	req_valid_edge <= req_valid;
+	if ((req_valid & (~req_valid_edge))) begin
+		log_new_command_log_sig <= 1'd1;
+	end
+	buffer_source_edge <= (req_wdata_ready | req_rdata_valid);
+	if (((req_wdata_ready | req_rdata_valid) & (~buffer_source_edge))) begin
+		log_done_command_log_sig <= 1'd1;
+	end
 	if (loggingsystem_ready) begin
-		if (log_valid) begin
-			log_valid <= 1'd0;
+		if (log_valid_log_sig) begin
+			log_valid_log_sig <= 1'd0;
 		end else begin
-			if (log_ready) begin
-				log_ready <= 1'd0;
+			if (log_ready_log_sig) begin
+				log_ready_log_sig <= 1'd0;
 			end else begin
 				if (log_regular_log_sig) begin
 					log_regular_log_sig <= 1'd0;
@@ -801,6 +821,14 @@ always @(posedge sys_clk) begin
 									end else begin
 										if (log_valid_vote_log_sig) begin
 											log_valid_vote_log_sig <= 1'd0;
+										end else begin
+											if (log_new_command_log_sig) begin
+												log_new_command_log_sig <= 1'd0;
+											end else begin
+												if (log_done_command_log_sig) begin
+													log_done_command_log_sig <= 1'd0;
+												end
+											end
 										end
 									end
 								end
@@ -813,11 +841,11 @@ always @(posedge sys_clk) begin
 	end
 	valid_edge <= cmd_valid;
 	ready_edge <= cmd_ready;
-	if (((cmd_valid & (~valid_edge)) & (~log_valid))) begin
-		log_valid <= 1'd1;
+	if (((cmd_valid & (~valid_edge)) & (~log_valid_log_sig))) begin
+		log_valid_log_sig <= 1'd1;
 	end
-	if (((cmd_ready & (~ready_edge)) & (~log_ready))) begin
-		log_ready <= 1'd1;
+	if (((cmd_ready & (~ready_edge)) & (~log_ready_log_sig))) begin
+		log_ready_log_sig <= 1'd1;
 	end
 	bufAddr_bad_vote_edge <= bufAddr_bad_vote;
 	if ((bufAddr_bad_vote & (~bufAddr_bad_vote_edge))) begin
@@ -1056,8 +1084,8 @@ always @(posedge sys_clk) begin
 	end
 	state <= next_state;
 	if (sys_rst) begin
-		log_valid <= 1'd0;
-		log_ready <= 1'd0;
+		log_valid_log_sig <= 1'd0;
+		log_ready_log_sig <= 1'd0;
 		log_regular_log_sig <= 1'd0;
 		log_activate_log_sig <= 1'd0;
 		log_precharge_log_sig <= 1'd0;
@@ -1065,6 +1093,10 @@ always @(posedge sys_clk) begin
 		log_refresh_log_sig <= 1'd0;
 		log_addr_vote_log_sig <= 1'd0;
 		log_valid_vote_log_sig <= 1'd0;
+		log_new_command_log_sig <= 1'd0;
+		log_done_command_log_sig <= 1'd0;
+		req_valid_edge <= 1'd0;
+		buffer_source_edge <= 1'd0;
 		valid_edge <= 1'd0;
 		ready_edge <= 1'd0;
 		cmd_buffer_lookahead_level <= 4'd0;

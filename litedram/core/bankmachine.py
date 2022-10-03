@@ -277,10 +277,6 @@ class TMRBankMachine(Module):
         self.cmd = cmd = stream.Endpoint(cmd_request_rw_layout(a, ba))
         self.TMRcmd = TMRcmd = TMRRecord(cmd)
         
-        print("Address align: " + str(address_align))
-        print("a: " + str(a))
-        print("ba: " + str(ba))
-        
         self.submodules += TMROutput(cmd.valid, TMRcmd.valid)
         self.submodules += TMROutput(cmd.last, TMRcmd.last)
         self.submodules += TMROutput(cmd.first, TMRcmd.first)
@@ -307,30 +303,38 @@ class TMRBankMachine(Module):
         log_sigs = []
         log_codes = []
         
-        log_valid = Signal()
-        valid_code = 0
-        log_sigs.append(log_valid)
-        log_codes.append(valid_code)
-        
-        log_ready = Signal()
-        ready_code = 1
-        log_sigs.append(log_ready)
-        log_codes.append(ready_code)
-        
         def make_log_sig(code):
             log_sig = Signal()
             log_sigs.append(log_sig)
             log_codes.append(code)
             return log_sig
-            
+        
+        # Control signal logs
+        log_valid = make_log_sig(0)
+        log_ready = make_log_sig(1)
+        
+        # FSM logs
         log_regular = make_log_sig(2)
         log_activate = make_log_sig(3)
         log_precharge = make_log_sig(4)
         log_autoprecharge = make_log_sig(5)
         log_refresh = make_log_sig(6)
         
+        # Vote logs
         log_addr_vote = make_log_sig(7)
         log_valid_vote = make_log_sig(8)
+        
+        # FIFO signal logs
+        log_new_command = make_log_sig(9)
+        log_done_command = make_log_sig(10)
+        
+        req_valid_edge = Signal()
+        self.sync += req_valid_edge.eq(req.valid)
+        self.sync += If(req.valid & ~req_valid_edge, log_new_command.eq(1))
+        
+        buffer_source_edge = Signal()
+        self.sync += buffer_source_edge.eq(req.wdata_ready | req.rdata_valid)
+        self.sync += If((req.wdata_ready | req.rdata_valid) & ~buffer_source_edge, log_done_command.eq(1))
         
         self.comb += log_n.eq(n)
         
