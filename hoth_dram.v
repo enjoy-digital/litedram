@@ -17478,6 +17478,10 @@ always @(posedge sys_clk) begin
 		end
 		litedramcontroller_syncfifo_re <= 1'd0;
 	end
+	if ((($signed({1'd0, litedramcontroller_status}) == 1'sd1) & $signed({1'd0, litedramcontroller_syncfifo_readable}))) begin
+		litedramcontroller_status <= litedramcontroller_syncfifo_dout;
+		litedramcontroller_syncfifo_re <= 1'd1;
+	end
 	if (((litedramcontroller_syncfifo_we & litedramcontroller_syncfifo_writable) & (~litedramcontroller_replace))) begin
 		if ((litedramcontroller_produce == 6'd49)) begin
 			litedramcontroller_produce <= 1'd0;
