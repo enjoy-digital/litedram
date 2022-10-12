@@ -394,6 +394,7 @@ class DDR5PHY(Module, AutoCSR):
             return csr_cdc(i)
 
         self._rst           = CSRStorage()
+        self._rst_cdc       = cdc(self._rst.storage)
         self._ddr_mode      = CSRStorage()
 
         self._rdphase = CSRStorage(log2_int(nphases), reset=rdphase)
@@ -405,11 +406,19 @@ class DDR5PHY(Module, AutoCSR):
 
         dq_dqs_ratio = databits // strobes
 
+        if with_odelay:
+            setattr(self, 'ckdly_rst' , CSR(name='ckdly_rst'))
+            setattr(self, 'ckdly_inc' , CSR(name='ckdly_inc'))
+            _l['ckdly_rst'] = cdc(getattr(self, 'ckdly_rst').re | self._rst.storage)
+            _l['ckdly_inc'] = cdc(getattr(self, 'ckdly_inc').re)
+
         for prefix in prefixes:
             setattr(self, prefix+'wlevel_en', CSRStorage(name=prefix+'wlevel_en'))
             setattr(self, prefix+'wlevel_strobe', CSR(name=prefix+'wlevel_strobe'))
 
             setattr(self, prefix+'dly_sel', CSRStorage(max(strobes, databits, 14, nranks), name=prefix+'dly_sel'))
+            getattr(self, prefix+'dly_sel').storage.attr.add("mr_ff")
+            getattr(self, prefix+'dly_sel').storage.attr.add("keep")
 
             if with_odelay:
                 setattr(self, prefix+'csdly_rst' , CSR(name=prefix+'csdly_rst'))
@@ -446,20 +455,20 @@ class DDR5PHY(Module, AutoCSR):
             _l[prefix+'rdly_dq_bitslip']  = cdc(getattr(self, prefix+'rdly_dq_bitslip').re)
             _l[prefix+'wlevel_strobe'] = cdc(getattr(self, prefix+'wlevel_strobe').re)
             if with_odelay:
-                _l[prefix+'csdly_rst']    = cdc(getattr(self, prefix+'csdly_rst').re) | self._rst.storage
+                _l[prefix+'csdly_rst']    = cdc(getattr(self, prefix+'csdly_rst').re | self._rst.storage)
                 _l[prefix+'csdly_inc']    = cdc(getattr(self, prefix+'csdly_inc').re)
-                _l[prefix+'cadly_rst']    = cdc(getattr(self, prefix+'cadly_rst').re) | self._rst.storage
+                _l[prefix+'cadly_rst']    = cdc(getattr(self, prefix+'cadly_rst').re | self._rst.storage)
                 _l[prefix+'cadly_inc']    = cdc(getattr(self, prefix+'cadly_inc').re)
-                _l[prefix+'pardly_rst']   = cdc(getattr(self, prefix+'pardly_rst').re) | self._rst.storage
+                _l[prefix+'pardly_rst']   = cdc(getattr(self, prefix+'pardly_rst').re | self._rst.storage)
                 _l[prefix+'pardly_inc']   = cdc(getattr(self, prefix+'pardly_inc').re)
-                _l[prefix+'wdly_dq_rst']  = cdc(getattr(self, prefix+'wdly_dq_rst').re)
+                _l[prefix+'wdly_dq_rst']  = cdc(getattr(self, prefix+'wdly_dq_rst').re | self._rst.storage)
                 _l[prefix+'wdly_dq_inc']  = cdc(getattr(self, prefix+'wdly_dq_inc').re)
-                _l[prefix+'wdly_dqs_rst'] = cdc(getattr(self, prefix+'wdly_dqs_rst').re)
+                _l[prefix+'wdly_dqs_rst'] = cdc(getattr(self, prefix+'wdly_dqs_rst').re | self._rst.storage)
                 _l[prefix+'wdly_dqs_inc'] = cdc(getattr(self, prefix+'wdly_dqs_inc').re)
 
-            _l[prefix+'wdly_dq_bitslip_rst']  = cdc(getattr(self, prefix+'wdly_dq_bitslip_rst').re)
+            _l[prefix+'wdly_dq_bitslip_rst']  = cdc(getattr(self, prefix+'wdly_dq_bitslip_rst').re | self._rst.storage)
             _l[prefix+'wdly_dq_bitslip']  = cdc(getattr(self, prefix+'wdly_dq_bitslip').re)
-            _l[prefix+'wdly_dqs_bitslip_rst']  = cdc(getattr(self, prefix+'wdly_dqs_bitslip_rst').re)
+            _l[prefix+'wdly_dqs_bitslip_rst']  = cdc(getattr(self, prefix+'wdly_dqs_bitslip_rst').re | self._rst.storage)
             _l[prefix+'wdly_dqs_bitslip']  = cdc(getattr(self, prefix+'wdly_dqs_bitslip').re)
 
         combined_data_bits = databits if not with_sub_channels else 2*databits
@@ -583,7 +592,7 @@ class DDR5PHY(Module, AutoCSR):
                 dq_oe_bitslip    = BitSlip(8,
                     i      = dq_pattern.oe,
                     rst    = self.get_rst(byte, getattr(self, prefix+'wdly_dq_bitslip_rst').re, prefix),
-                    slp    = self.get_inc(byte, getattr(self, prefix+'wdly_dq_bitslip').re),
+                    slp    = self.get_inc(byte, getattr(self, prefix+'wdly_dq_bitslip').re, prefix),
                     cycles = 1)
                 self.submodules += dq_oe_bitslip
 
@@ -669,14 +678,10 @@ class DDR5PHY(Module, AutoCSR):
         cd_clk = getattr(self.sync, clk)
         t = Signal()
         cd_clk += t.eq((getattr(self, prefix+'dly_sel').storage[byte] & rst) | self._rst.storage)
-        t.attr.add("mr_ff")
-        t.attr.add("keep")
         return t
 
     def get_inc(self, byte, inc, prefix="", clk="sys"):
         cd_clk = getattr(self.sync, clk)
         t = Signal()
         cd_clk += t.eq(getattr(self, prefix+"dly_sel").storage[byte] & inc)
-        t.attr.add("mr_ff")
-        t.attr.add("keep")
         return t

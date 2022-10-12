@@ -56,10 +56,10 @@ class S7DDR5PHY(DDR5PHY, S7Common):
 
         # Serialization ----------------------------------------------------------------------------
 
-        ddr     = dict(clkdiv="sys2x_unbuf", clk="sys4x_unbuf")
-        ddr_90  = dict(clkdiv="sys2x_unbuf", clk="sys4x_90_unbuf")
-        cmd     = dict(clkdiv="sys2x_unbuf", clk="sys4x_90_unbuf")
-        cs      = dict(clkdiv="sys2x_unbuf", clk="sys4x_180_unbuf")
+        ddr     = dict(clkdiv="sys2x", clk="sys4x_unbuf", rst_sig=self._rst_cdc)
+        ddr_90  = dict(clkdiv="sys2x", clk="sys4x_90_unbuf", rst_sig=self._rst_cdc)
+        cmd     = dict(clkdiv="sys2x", clk="sys4x_90_unbuf", rst_sig=self._rst_cdc)
+        cs      = dict(clkdiv="sys2x", clk="sys4x_180_unbuf", rst_sig=self._rst_cdc)
 
         # Clock
         clk_dly = Signal()
@@ -77,7 +77,19 @@ class S7DDR5PHY(DDR5PHY, S7Common):
         self.submodules += simple_cdc
 
         # Every other signal should be realligned to clock.
-        self.oserdese2_ddr(din=cdc_ck_t, dout=clk_dly, **ddr)
+        self.oserdese2_ddr(
+            din=cdc_ck_t,
+            **(dict(dout_fb=clk_ser) if with_odelay else dict(dout=clk_dly)),
+            **ddr,
+        )
+        if with_odelay:
+            self.odelaye2(
+                din=clk_ser,
+                dout=clk_dly,
+                rst=_l['ckdly_rst'],
+                inc=_l['ckdly_inc'],
+                clk="sys2x",
+            )
         self.obufds(din=clk_dly, dout=self.pads.ck_t, dout_b=self.pads.ck_c)
 
         for const in ["mir", "cai", "ca_odt"]:
@@ -128,7 +140,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                         dout=pad,
                         rst=_l[prefix+'csdly_rst'],
                         inc=_l[prefix+'csdly_inc'],
-                        clk="sys2x_unbuf",
+                        clk="sys2x",
                     )
 
             for it, (basephy_ca, pad) in enumerate(zip(getattr(self.out, prefix+'ca'), getattr(self.pads, prefix+'ca'))):
@@ -157,7 +169,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                         dout=pad,
                         rst=self.get_rst(it, _l[prefix+'cadly_rst'], prefix, "sys2x"),
                         inc=self.get_inc(it, _l[prefix+'cadly_inc'], prefix, "sys2x"),
-                        clk="sys2x_unbuf",
+                        clk="sys2x",
                     )
 
             if hasattr(self.pads, prefix+'par'):
@@ -189,7 +201,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                         dout=pad,
                         rst=_l[prefix+'pardly_rst'],
                         inc=_l[prefix+'pardly_inc'],
-                        clk="sys2x_unbuf",
+                        clk="sys2x",
                     )
 
             # DQS
@@ -226,7 +238,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                 self.oserdese2_ddr_with_tri(
                     din     = cdc_dqs_t_o,
                     **(dict(dout_fb = dqs_ser) if with_odelay else dict(dout = dqs_dly)),
-                    tin     = out_dqs_oe,
+                    tin     = cdc_out_dqs_oe,
                     tout    = dqs_t,
                     **ddr,
                 )
@@ -236,7 +248,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                         dout = dqs_dly,
                         rst  = self.get_rst(it, _l[prefix+'wdly_dqs_rst'], prefix, "sys2x"),
                         inc  = self.get_inc(it, _l[prefix+'wdly_dqs_inc'], prefix, "sys2x"),
-                        clk="sys2x_unbuf",
+                        clk="sys2x",
                     )
 
                 self.iobufds(
@@ -251,7 +263,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                     dout = dqs_i_dly,
                     rst  = self.get_rst(it, _l[prefix+'rdly_dqs_rst'], prefix, "sys2x"),
                     inc  = self.get_inc(it, _l[prefix+'rdly_dqs_inc'], prefix, "sys2x"),
-                    clk="sys2x_unbuf",
+                    clk="sys2x",
                 )
                 self.iserdese2_ddr(
                     din    = dqs_i_dly,
@@ -315,7 +327,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                         dout = dq_dly,
                         rst  = self.get_rst(it, _l[prefix+'wdly_dq_rst'], prefix, "sys2x"),
                         inc  = self.get_inc(it, _l[prefix+'wdly_dq_inc'], prefix, "sys2x"),
-                        clk="sys2x_unbuf",
+                        clk="sys2x",
                     )
                 self.iobuf(
                     din    = dq_dly,
@@ -333,7 +345,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                     dout = dq_i_dly,
                     rst  = self.get_rst(it, _l[prefix+'rdly_dq_rst'], prefix, "sys2x"),
                     inc  = self.get_inc(it, _l[prefix+'rdly_dq_inc'], prefix, "sys2x"),
-                    clk="sys2x_unbuf",
+                    clk="sys2x",
                 )
                 self.iserdese2_ddr(
                     din  = dq_i_dly,
@@ -378,7 +390,7 @@ class S7DDR5PHY(DDR5PHY, S7Common):
                             dout = dmi_dly,
                             rst  = self.get_rst(it, _l[preifx+'wdly_dq_rst'], prefix, "sys2x"),
                             inc  = self.get_inc(it, _l[prefix+'wdly_dq_inc'], prefix, "sys2x"),
-                            clk="sys2x_unbuf",
+                            clk="sys2x",
                         )
                     self.iobuf(
                         din    = dmi_dly,
