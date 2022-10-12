@@ -38,18 +38,6 @@ class S7DDR5PHY(DDR5PHY, S7Common):
         self.settings.write_dq_dqs_training = True
         self.settings.read_leveling = True
 
-        # Parameters -------------------------------------------------------------------------------
-        # Calculate value of taps needed to shift a signal by 90 degrees.
-        # Using iodelay_clk_freq of 300MHz/400MHz is only valid for -3 and -2/2E speed grades.
-        # Note: this should be named sys16x, but using sys8x due to a name hard-coded in BIOS
-        assert iodelay_clk_freq in [200e6, 300e6, 400e6]
-        iodelay_tap_average = 1 / (2*32 * iodelay_clk_freq)
-        half_sys4x_taps = math.floor(self.tck / (4 * iodelay_tap_average))
-        assert half_sys4x_taps < 32, "Exceeded ODELAYE2 max value: {} >= 32".format(half_sys4x_taps)
-
-        # Registers --------------------------------------------------------------------------------
-        self._half_sys8x_taps = CSRStorage(5, reset=half_sys4x_taps)
-
         # delay control
         self._rdly_dq_rst  = CSR()
         self._rdly_dq_inc  = CSR()

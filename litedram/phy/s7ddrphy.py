@@ -400,11 +400,11 @@ class S7DDRPHY(Module, AutoCSR):
         self.comb += dq_oe_delay.input.eq(dqs_preamble | dq_oe | dqs_postamble)
 
         for i in range(databits):
-            __temp = Signal()
+            __dq_sel = Signal()
             if with_per_dq_idelay:
-                self.comb += __temp.eq(self._dq_dly_sel.storage[i%dq_dqs_ratio])
+                self.comb += __dq_sel.eq(self._dq_dly_sel.storage[i%dq_dqs_ratio])
             else:
-                self.comb += __temp.eq(1)
+                self.comb += __dq_sel.eq(1)
             dq_o_nodelay = Signal()
             dq_o_delayed = Signal()
             dq_i_nodelay = Signal()
@@ -413,8 +413,8 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_data    = Signal(8)
             dq_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
-                rst    = (self._dly_sel.storage[i//dq_dqs_ratio] & __temp & wdly_dq_bitslip_rst) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//dq_dqs_ratio] & __temp & wdly_dq_bitslip,
+                rst    = (self._dly_sel.storage[i//dq_dqs_ratio] & __dq_sel & wdly_dq_bitslip_rst) | self._rst.storage,
+                slp    = self._dly_sel.storage[i//dq_dqs_ratio] & __dq_sel & wdly_dq_bitslip,
                 cycles = 1)
             self.submodules += dq_o_bitslip
             self.specials += Instance("OSERDESE2",
@@ -434,8 +434,8 @@ class S7DDRPHY(Module, AutoCSR):
                 o_OQ     = dq_o_nodelay,
             )
             dq_i_bitslip = BitSlip(8,
-                rst    = (self._dly_sel.storage[i//dq_dqs_ratio] & __temp & rdly_dq_bitslip_rst) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//dq_dqs_ratio] & __temp & rdly_dq_bitslip,
+                rst    = (self._dly_sel.storage[i//dq_dqs_ratio] & __dq_sel & rdly_dq_bitslip_rst) | self._rst.storage,
+                slp    = self._dly_sel.storage[i//dq_dqs_ratio] & __dq_sel & rdly_dq_bitslip,
                 cycles = 1)
             self.submodules += dq_i_bitslip
             self.specials += Instance("ISERDESE2",
@@ -484,10 +484,10 @@ class S7DDRPHY(Module, AutoCSR):
                 p_IDELAY_TYPE           = "VARIABLE",
                 p_IDELAY_VALUE          = 0,
                 i_C        = ClockSignal("sys"),
-                i_LD       = (self._dly_sel.storage[i//dq_dqs_ratio] & __temp & rdly_dq_rst) |
+                i_LD       = (self._dly_sel.storage[i//dq_dqs_ratio] & __dq_sel & rdly_dq_rst) |
                               self._rst.storage,
                 i_LDPIPEEN = 0,
-                i_CE       = self._dly_sel.storage[i//dq_dqs_ratio] & __temp & rdly_dq_inc,
+                i_CE       = self._dly_sel.storage[i//dq_dqs_ratio] & __dq_sel & rdly_dq_inc,
                 i_INC      = 1,
                 i_IDATAIN  = dq_i_nodelay,
                 o_DATAOUT  = dq_i_delayed
