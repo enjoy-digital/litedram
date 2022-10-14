@@ -3278,6 +3278,17 @@ reg [2:0] litedramcontroller_tmrbankmachine7_trascon3_count = 3'd0;
 wire litedramcontroller_tmrbankmachine7_trasVote_control;
 reg [2:0] litedramcontroller_tmrbankmachine7_fsm_state;
 reg [2:0] litedramcontroller_tmrbankmachine7_fsm_state_edge = 3'd0;
+wire [7:0] litedramcontroller_multiplexer_log_n;
+reg [7:0] litedramcontroller_multiplexer_log_val;
+wire [31:0] litedramcontroller_multiplexer_log_info;
+reg litedramcontroller_multiplexer_fsm_state;
+reg litedramcontroller_multiplexer_fsm_state_edge = 1'd0;
+wire [47:0] litedramcontroller_multiplexer_loggingsystem_message;
+wire litedramcontroller_multiplexer_loggingsystem_ready;
+wire litedramcontroller_multiplexer_loggingsystem_request;
+reg litedramcontroller_multiplexer_log_read = 1'd0;
+reg litedramcontroller_multiplexer_log_write = 1'd0;
+reg litedramcontroller_multiplexer_log_refresh = 1'd0;
 wire litedramcontroller_multiplexer_ras_allowed;
 wire litedramcontroller_multiplexer_cas_allowed;
 wire [1:0] litedramcontroller_multiplexer_rdcmdphase;
@@ -4556,8 +4567,8 @@ wire rdata_valid;
 wire [255:0] rdata_payload_data;
 wire [2:0] TMRrdata_valid;
 wire [767:0] TMRrdata_payload_data;
-wire [7:0] request;
-reg [2:0] grant = 3'd0;
+wire [8:0] request;
+reg [3:0] grant = 4'd0;
 wire ce;
 reg [1:0] tmrrefresher_state = 2'd0;
 reg [1:0] tmrrefresher_next_state;
@@ -7500,7 +7511,7 @@ assign litedramcontroller_replace = 1'd0;
 assign litedramcontroller_syncfifo_din = rhs_array_muxed0;
 assign ce = litedramcontroller_syncfifo_writable;
 assign litedramcontroller_syncfifo_we = (litedramcontroller_syncfifo_writable & rhs_array_muxed1);
-assign request = {litedramcontroller_tmrbankmachine7_loggingsystem_request, litedramcontroller_tmrbankmachine6_loggingsystem_request, litedramcontroller_tmrbankmachine5_loggingsystem_request, litedramcontroller_tmrbankmachine4_loggingsystem_request, litedramcontroller_tmrbankmachine3_loggingsystem_request, litedramcontroller_tmrbankmachine2_loggingsystem_request, litedramcontroller_tmrbankmachine1_loggingsystem_request, litedramcontroller_tmrbankmachine0_loggingsystem_request};
+assign request = {litedramcontroller_multiplexer_loggingsystem_request, litedramcontroller_tmrbankmachine7_loggingsystem_request, litedramcontroller_tmrbankmachine6_loggingsystem_request, litedramcontroller_tmrbankmachine5_loggingsystem_request, litedramcontroller_tmrbankmachine4_loggingsystem_request, litedramcontroller_tmrbankmachine3_loggingsystem_request, litedramcontroller_tmrbankmachine2_loggingsystem_request, litedramcontroller_tmrbankmachine1_loggingsystem_request, litedramcontroller_tmrbankmachine0_loggingsystem_request};
 assign litedramcontroller_tmrbankmachine0_loggingsystem_ready = ((grant == 1'd0) & litedramcontroller_syncfifo_writable);
 assign litedramcontroller_tmrbankmachine1_loggingsystem_ready = ((grant == 1'd1) & litedramcontroller_syncfifo_writable);
 assign litedramcontroller_tmrbankmachine2_loggingsystem_ready = ((grant == 2'd2) & litedramcontroller_syncfifo_writable);
@@ -7509,6 +7520,7 @@ assign litedramcontroller_tmrbankmachine4_loggingsystem_ready = ((grant == 3'd4)
 assign litedramcontroller_tmrbankmachine5_loggingsystem_ready = ((grant == 3'd5) & litedramcontroller_syncfifo_writable);
 assign litedramcontroller_tmrbankmachine6_loggingsystem_ready = ((grant == 3'd6) & litedramcontroller_syncfifo_writable);
 assign litedramcontroller_tmrbankmachine7_loggingsystem_ready = ((grant == 3'd7) & litedramcontroller_syncfifo_writable);
+assign litedramcontroller_multiplexer_loggingsystem_ready = ((grant == 4'd8) & litedramcontroller_syncfifo_writable);
 
 // synthesis translate_off
 reg dummy_d_37;
@@ -10918,6 +10930,31 @@ always @(*) begin
 	dummy_d_102 <= dummy_s;
 // synthesis translate_on
 end
+assign litedramcontroller_multiplexer_log_n = 4'd8;
+assign litedramcontroller_multiplexer_log_info = 1'd0;
+
+// synthesis translate_off
+reg dummy_d_103;
+// synthesis translate_on
+always @(*) begin
+	litedramcontroller_multiplexer_log_val <= 8'd0;
+	if (litedramcontroller_multiplexer_log_read) begin
+		litedramcontroller_multiplexer_log_val <= 1'd0;
+	end else begin
+		if (litedramcontroller_multiplexer_log_write) begin
+			litedramcontroller_multiplexer_log_val <= 1'd1;
+		end else begin
+			if (litedramcontroller_multiplexer_log_refresh) begin
+				litedramcontroller_multiplexer_log_val <= 2'd2;
+			end
+		end
+	end
+// synthesis translate_off
+	dummy_d_103 <= dummy_s;
+// synthesis translate_on
+end
+assign litedramcontroller_multiplexer_loggingsystem_message = {litedramcontroller_multiplexer_log_n, litedramcontroller_multiplexer_log_val, litedramcontroller_multiplexer_log_info};
+assign litedramcontroller_multiplexer_loggingsystem_request = ((litedramcontroller_multiplexer_log_read | litedramcontroller_multiplexer_log_write) | litedramcontroller_multiplexer_log_refresh);
 assign litedramcontroller_multiplexer_rdcmdphase = (rdphase_storage - 1'd1);
 assign litedramcontroller_multiplexer_wrcmdphase = (wrphase_storage - 1'd1);
 assign litedramcontroller_multiplexer_choose_cmd_int_endpoint0_valid = litedramcontroller_multiplexer_endpoint0_valid;
@@ -11572,26 +11609,13 @@ assign litedramcontroller_multiplexer_steerer_int3_steererint_endpoint2_payload_
 assign litedramcontroller_multiplexer_steerer_int3_steererint_endpoint2_ready = litedramcontroller_multiplexer_refreshCmd_ready;
 
 // synthesis translate_off
-reg dummy_d_103;
+reg dummy_d_104;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata <= 64'd0;
 	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata <= litedramcontroller_dfi_p0_rddata;
 	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata <= litedramcontroller_dfi_p0_rddata;
 	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata <= litedramcontroller_dfi_p0_rddata;
-// synthesis translate_off
-	dummy_d_103 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_104;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata_valid <= 1'd0;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata_valid <= litedramcontroller_dfi_p0_rddata_valid;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata_valid <= litedramcontroller_dfi_p0_rddata_valid;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata_valid <= litedramcontroller_dfi_p0_rddata_valid;
 // synthesis translate_off
 	dummy_d_104 <= dummy_s;
 // synthesis translate_on
@@ -11601,10 +11625,10 @@ end
 reg dummy_d_105;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata <= 64'd0;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata <= litedramcontroller_dfi_p1_rddata;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata <= litedramcontroller_dfi_p1_rddata;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata <= litedramcontroller_dfi_p1_rddata;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata_valid <= 1'd0;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata_valid <= litedramcontroller_dfi_p0_rddata_valid;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata_valid <= litedramcontroller_dfi_p0_rddata_valid;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p0_rddata_valid <= litedramcontroller_dfi_p0_rddata_valid;
 // synthesis translate_off
 	dummy_d_105 <= dummy_s;
 // synthesis translate_on
@@ -11614,10 +11638,10 @@ end
 reg dummy_d_106;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata_valid <= 1'd0;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata_valid <= litedramcontroller_dfi_p1_rddata_valid;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata_valid <= litedramcontroller_dfi_p1_rddata_valid;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata_valid <= litedramcontroller_dfi_p1_rddata_valid;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata <= 64'd0;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata <= litedramcontroller_dfi_p1_rddata;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata <= litedramcontroller_dfi_p1_rddata;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata <= litedramcontroller_dfi_p1_rddata;
 // synthesis translate_off
 	dummy_d_106 <= dummy_s;
 // synthesis translate_on
@@ -11627,10 +11651,10 @@ end
 reg dummy_d_107;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata <= 64'd0;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata <= litedramcontroller_dfi_p2_rddata;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata <= litedramcontroller_dfi_p2_rddata;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata <= litedramcontroller_dfi_p2_rddata;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata_valid <= 1'd0;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata_valid <= litedramcontroller_dfi_p1_rddata_valid;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata_valid <= litedramcontroller_dfi_p1_rddata_valid;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p1_rddata_valid <= litedramcontroller_dfi_p1_rddata_valid;
 // synthesis translate_off
 	dummy_d_107 <= dummy_s;
 // synthesis translate_on
@@ -11640,10 +11664,10 @@ end
 reg dummy_d_108;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata_valid <= 1'd0;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata_valid <= litedramcontroller_dfi_p2_rddata_valid;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata_valid <= litedramcontroller_dfi_p2_rddata_valid;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata_valid <= litedramcontroller_dfi_p2_rddata_valid;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata <= 64'd0;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata <= litedramcontroller_dfi_p2_rddata;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata <= litedramcontroller_dfi_p2_rddata;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata <= litedramcontroller_dfi_p2_rddata;
 // synthesis translate_off
 	dummy_d_108 <= dummy_s;
 // synthesis translate_on
@@ -11653,10 +11677,10 @@ end
 reg dummy_d_109;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata <= 64'd0;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata <= litedramcontroller_dfi_p3_rddata;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata <= litedramcontroller_dfi_p3_rddata;
-	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata <= litedramcontroller_dfi_p3_rddata;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata_valid <= 1'd0;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata_valid <= litedramcontroller_dfi_p2_rddata_valid;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata_valid <= litedramcontroller_dfi_p2_rddata_valid;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p2_rddata_valid <= litedramcontroller_dfi_p2_rddata_valid;
 // synthesis translate_off
 	dummy_d_109 <= dummy_s;
 // synthesis translate_on
@@ -11666,12 +11690,25 @@ end
 reg dummy_d_110;
 // synthesis translate_on
 always @(*) begin
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata <= 64'd0;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata <= litedramcontroller_dfi_p3_rddata;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata <= litedramcontroller_dfi_p3_rddata;
+	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata <= litedramcontroller_dfi_p3_rddata;
+// synthesis translate_off
+	dummy_d_110 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_111;
+// synthesis translate_on
+always @(*) begin
 	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata_valid <= 1'd0;
 	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata_valid <= litedramcontroller_dfi_p3_rddata_valid;
 	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata_valid <= litedramcontroller_dfi_p3_rddata_valid;
 	litedramcontroller_multiplexer_steerer_int_steererint_dfi_p3_rddata_valid <= litedramcontroller_dfi_p3_rddata_valid;
 // synthesis translate_off
-	dummy_d_110 <= dummy_s;
+	dummy_d_111 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_trrdcon_valid = ((litedramcontroller_multiplexer_choose_cmd_source_valid & litedramcontroller_multiplexer_choose_cmd_source_ready) & ((litedramcontroller_multiplexer_choose_cmd_source_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_source_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_source_payload_we)));
@@ -11887,7 +11924,7 @@ assign litedramcontroller_multiplexer_tmrinput_control87 = (((litedramcontroller
 assign litedramcontroller_multiplexer_endpoint7_payload_is_write = litedramcontroller_multiplexer_tmrinput_control87;
 
 // synthesis translate_off
-reg dummy_d_111;
+reg dummy_d_112;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int_valids <= 8'd0;
@@ -11900,7 +11937,7 @@ always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int_valids[6] <= (litedramcontroller_multiplexer_choose_cmd_int_endpoint6_valid & (((litedramcontroller_multiplexer_choose_cmd_int_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_int_want_cmds) & ((~((litedramcontroller_multiplexer_choose_cmd_int_endpoint6_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_cmd_int_want_activates)) | ((litedramcontroller_multiplexer_choose_cmd_int_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_cmd_int_want_reads) & (litedramcontroller_multiplexer_choose_cmd_int_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_cmd_int_want_writes))));
 	litedramcontroller_multiplexer_choose_cmd_int_valids[7] <= (litedramcontroller_multiplexer_choose_cmd_int_endpoint7_valid & (((litedramcontroller_multiplexer_choose_cmd_int_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_int_want_cmds) & ((~((litedramcontroller_multiplexer_choose_cmd_int_endpoint7_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_cmd_int_want_activates)) | ((litedramcontroller_multiplexer_choose_cmd_int_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_cmd_int_want_reads) & (litedramcontroller_multiplexer_choose_cmd_int_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_cmd_int_want_writes))));
 // synthesis translate_off
-	dummy_d_111 <= dummy_s;
+	dummy_d_112 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_cmd_int_request = litedramcontroller_multiplexer_choose_cmd_int_valids;
@@ -11912,25 +11949,12 @@ assign litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_is_write = rhs_
 assign litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_is_cmd = rhs_array_muxed7;
 
 // synthesis translate_off
-reg dummy_d_112;
+reg dummy_d_113;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_cas <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_cmd_int_cmd_valid) begin
 		litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_cas <= t_array_muxed0;
-	end
-// synthesis translate_off
-	dummy_d_112 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_113;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_ras <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd_int_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_ras <= t_array_muxed1;
 	end
 // synthesis translate_off
 	dummy_d_113 <= dummy_s;
@@ -11941,9 +11965,9 @@ end
 reg dummy_d_114;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_we <= 1'd0;
+	litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_ras <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_cmd_int_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_we <= t_array_muxed2;
+		litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_ras <= t_array_muxed1;
 	end
 // synthesis translate_off
 	dummy_d_114 <= dummy_s;
@@ -11954,9 +11978,9 @@ end
 reg dummy_d_115;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int_endpoint0_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 1'd0))) begin
-		litedramcontroller_multiplexer_choose_cmd_int_endpoint0_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_we <= 1'd0;
+	if (litedramcontroller_multiplexer_choose_cmd_int_cmd_valid) begin
+		litedramcontroller_multiplexer_choose_cmd_int_cmd_payload_we <= t_array_muxed2;
 	end
 // synthesis translate_off
 	dummy_d_115 <= dummy_s;
@@ -11967,9 +11991,9 @@ end
 reg dummy_d_116;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int_endpoint1_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 1'd1))) begin
-		litedramcontroller_multiplexer_choose_cmd_int_endpoint1_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int_endpoint0_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 1'd0))) begin
+		litedramcontroller_multiplexer_choose_cmd_int_endpoint0_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_116 <= dummy_s;
@@ -11980,9 +12004,9 @@ end
 reg dummy_d_117;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int_endpoint2_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 2'd2))) begin
-		litedramcontroller_multiplexer_choose_cmd_int_endpoint2_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int_endpoint1_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 1'd1))) begin
+		litedramcontroller_multiplexer_choose_cmd_int_endpoint1_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_117 <= dummy_s;
@@ -11993,9 +12017,9 @@ end
 reg dummy_d_118;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int_endpoint3_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 2'd3))) begin
-		litedramcontroller_multiplexer_choose_cmd_int_endpoint3_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int_endpoint2_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 2'd2))) begin
+		litedramcontroller_multiplexer_choose_cmd_int_endpoint2_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_118 <= dummy_s;
@@ -12006,9 +12030,9 @@ end
 reg dummy_d_119;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int_endpoint4_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 3'd4))) begin
-		litedramcontroller_multiplexer_choose_cmd_int_endpoint4_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int_endpoint3_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 2'd3))) begin
+		litedramcontroller_multiplexer_choose_cmd_int_endpoint3_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_119 <= dummy_s;
@@ -12019,9 +12043,9 @@ end
 reg dummy_d_120;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int_endpoint5_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 3'd5))) begin
-		litedramcontroller_multiplexer_choose_cmd_int_endpoint5_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int_endpoint4_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 3'd4))) begin
+		litedramcontroller_multiplexer_choose_cmd_int_endpoint4_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_120 <= dummy_s;
@@ -12032,9 +12056,9 @@ end
 reg dummy_d_121;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int_endpoint6_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 3'd6))) begin
-		litedramcontroller_multiplexer_choose_cmd_int_endpoint6_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int_endpoint5_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 3'd5))) begin
+		litedramcontroller_multiplexer_choose_cmd_int_endpoint5_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_121 <= dummy_s;
@@ -12045,18 +12069,31 @@ end
 reg dummy_d_122;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int_endpoint7_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 3'd7))) begin
-		litedramcontroller_multiplexer_choose_cmd_int_endpoint7_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int_endpoint6_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 3'd6))) begin
+		litedramcontroller_multiplexer_choose_cmd_int_endpoint6_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_122 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_multiplexer_choose_cmd_int_ce = (litedramcontroller_multiplexer_choose_cmd_int_cmd_ready | (~litedramcontroller_multiplexer_choose_cmd_int_cmd_valid));
 
 // synthesis translate_off
 reg dummy_d_123;
+// synthesis translate_on
+always @(*) begin
+	litedramcontroller_multiplexer_choose_cmd_int_endpoint7_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int_grant == 3'd7))) begin
+		litedramcontroller_multiplexer_choose_cmd_int_endpoint7_ready <= 1'd1;
+	end
+// synthesis translate_off
+	dummy_d_123 <= dummy_s;
+// synthesis translate_on
+end
+assign litedramcontroller_multiplexer_choose_cmd_int_ce = (litedramcontroller_multiplexer_choose_cmd_int_cmd_ready | (~litedramcontroller_multiplexer_choose_cmd_int_cmd_valid));
+
+// synthesis translate_off
+reg dummy_d_124;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_valids <= 8'd0;
@@ -12069,7 +12106,7 @@ always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_valids[6] <= (litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_valid & (((litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_int2_want_cmds) & ((~((litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_cmd_int2_want_activates)) | ((litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_cmd_int2_want_reads) & (litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_cmd_int2_want_writes))));
 	litedramcontroller_multiplexer_choose_cmd_int2_valids[7] <= (litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_valid & (((litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_int2_want_cmds) & ((~((litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_cmd_int2_want_activates)) | ((litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_cmd_int2_want_reads) & (litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_cmd_int2_want_writes))));
 // synthesis translate_off
-	dummy_d_123 <= dummy_s;
+	dummy_d_124 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_cmd_int2_request = litedramcontroller_multiplexer_choose_cmd_int2_valids;
@@ -12081,25 +12118,12 @@ assign litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_is_write = rhs
 assign litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_is_cmd = rhs_array_muxed13;
 
 // synthesis translate_off
-reg dummy_d_124;
+reg dummy_d_125;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_cas <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid) begin
 		litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_cas <= t_array_muxed3;
-	end
-// synthesis translate_off
-	dummy_d_124 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_125;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_ras <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_ras <= t_array_muxed4;
 	end
 // synthesis translate_off
 	dummy_d_125 <= dummy_s;
@@ -12110,9 +12134,9 @@ end
 reg dummy_d_126;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_we <= 1'd0;
+	litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_ras <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_we <= t_array_muxed5;
+		litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_ras <= t_array_muxed4;
 	end
 // synthesis translate_off
 	dummy_d_126 <= dummy_s;
@@ -12123,9 +12147,9 @@ end
 reg dummy_d_127;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint0_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 1'd0))) begin
-		litedramcontroller_multiplexer_choose_cmd_int2_endpoint0_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_we <= 1'd0;
+	if (litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid) begin
+		litedramcontroller_multiplexer_choose_cmd_int2_cmd_payload_we <= t_array_muxed5;
 	end
 // synthesis translate_off
 	dummy_d_127 <= dummy_s;
@@ -12136,9 +12160,9 @@ end
 reg dummy_d_128;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint1_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 1'd1))) begin
-		litedramcontroller_multiplexer_choose_cmd_int2_endpoint1_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int2_endpoint0_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 1'd0))) begin
+		litedramcontroller_multiplexer_choose_cmd_int2_endpoint0_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_128 <= dummy_s;
@@ -12149,9 +12173,9 @@ end
 reg dummy_d_129;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint2_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 2'd2))) begin
-		litedramcontroller_multiplexer_choose_cmd_int2_endpoint2_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int2_endpoint1_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 1'd1))) begin
+		litedramcontroller_multiplexer_choose_cmd_int2_endpoint1_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_129 <= dummy_s;
@@ -12162,9 +12186,9 @@ end
 reg dummy_d_130;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint3_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 2'd3))) begin
-		litedramcontroller_multiplexer_choose_cmd_int2_endpoint3_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int2_endpoint2_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 2'd2))) begin
+		litedramcontroller_multiplexer_choose_cmd_int2_endpoint2_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_130 <= dummy_s;
@@ -12175,9 +12199,9 @@ end
 reg dummy_d_131;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint4_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd4))) begin
-		litedramcontroller_multiplexer_choose_cmd_int2_endpoint4_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int2_endpoint3_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 2'd3))) begin
+		litedramcontroller_multiplexer_choose_cmd_int2_endpoint3_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_131 <= dummy_s;
@@ -12188,9 +12212,9 @@ end
 reg dummy_d_132;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint5_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd5))) begin
-		litedramcontroller_multiplexer_choose_cmd_int2_endpoint5_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int2_endpoint4_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd4))) begin
+		litedramcontroller_multiplexer_choose_cmd_int2_endpoint4_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_132 <= dummy_s;
@@ -12201,9 +12225,9 @@ end
 reg dummy_d_133;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd6))) begin
-		litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int2_endpoint5_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd5))) begin
+		litedramcontroller_multiplexer_choose_cmd_int2_endpoint5_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_133 <= dummy_s;
@@ -12214,18 +12238,31 @@ end
 reg dummy_d_134;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd7))) begin
-		litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd6))) begin
+		litedramcontroller_multiplexer_choose_cmd_int2_endpoint6_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_134 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_multiplexer_choose_cmd_int2_ce = (litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready | (~litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid));
 
 // synthesis translate_off
 reg dummy_d_135;
+// synthesis translate_on
+always @(*) begin
+	litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int2_grant == 3'd7))) begin
+		litedramcontroller_multiplexer_choose_cmd_int2_endpoint7_ready <= 1'd1;
+	end
+// synthesis translate_off
+	dummy_d_135 <= dummy_s;
+// synthesis translate_on
+end
+assign litedramcontroller_multiplexer_choose_cmd_int2_ce = (litedramcontroller_multiplexer_choose_cmd_int2_cmd_ready | (~litedramcontroller_multiplexer_choose_cmd_int2_cmd_valid));
+
+// synthesis translate_off
+reg dummy_d_136;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_valids <= 8'd0;
@@ -12238,7 +12275,7 @@ always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_valids[6] <= (litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_valid & (((litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_int3_want_cmds) & ((~((litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_cmd_int3_want_activates)) | ((litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_cmd_int3_want_reads) & (litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_cmd_int3_want_writes))));
 	litedramcontroller_multiplexer_choose_cmd_int3_valids[7] <= (litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_valid & (((litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_cmd_int3_want_cmds) & ((~((litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_payload_ras & (~litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_cmd_int3_want_activates)) | ((litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_cmd_int3_want_reads) & (litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_cmd_int3_want_writes))));
 // synthesis translate_off
-	dummy_d_135 <= dummy_s;
+	dummy_d_136 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_cmd_int3_request = litedramcontroller_multiplexer_choose_cmd_int3_valids;
@@ -12250,25 +12287,12 @@ assign litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_is_write = rhs
 assign litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_is_cmd = rhs_array_muxed19;
 
 // synthesis translate_off
-reg dummy_d_136;
+reg dummy_d_137;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_cas <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid) begin
 		litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_cas <= t_array_muxed6;
-	end
-// synthesis translate_off
-	dummy_d_136 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_137;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_ras <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_ras <= t_array_muxed7;
 	end
 // synthesis translate_off
 	dummy_d_137 <= dummy_s;
@@ -12279,9 +12303,9 @@ end
 reg dummy_d_138;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_we <= 1'd0;
+	litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_ras <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_we <= t_array_muxed8;
+		litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_ras <= t_array_muxed7;
 	end
 // synthesis translate_off
 	dummy_d_138 <= dummy_s;
@@ -12292,9 +12316,9 @@ end
 reg dummy_d_139;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint0_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 1'd0))) begin
-		litedramcontroller_multiplexer_choose_cmd_int3_endpoint0_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_we <= 1'd0;
+	if (litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid) begin
+		litedramcontroller_multiplexer_choose_cmd_int3_cmd_payload_we <= t_array_muxed8;
 	end
 // synthesis translate_off
 	dummy_d_139 <= dummy_s;
@@ -12305,9 +12329,9 @@ end
 reg dummy_d_140;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint1_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 1'd1))) begin
-		litedramcontroller_multiplexer_choose_cmd_int3_endpoint1_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int3_endpoint0_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 1'd0))) begin
+		litedramcontroller_multiplexer_choose_cmd_int3_endpoint0_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_140 <= dummy_s;
@@ -12318,9 +12342,9 @@ end
 reg dummy_d_141;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint2_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 2'd2))) begin
-		litedramcontroller_multiplexer_choose_cmd_int3_endpoint2_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int3_endpoint1_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 1'd1))) begin
+		litedramcontroller_multiplexer_choose_cmd_int3_endpoint1_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_141 <= dummy_s;
@@ -12331,9 +12355,9 @@ end
 reg dummy_d_142;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint3_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 2'd3))) begin
-		litedramcontroller_multiplexer_choose_cmd_int3_endpoint3_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int3_endpoint2_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 2'd2))) begin
+		litedramcontroller_multiplexer_choose_cmd_int3_endpoint2_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_142 <= dummy_s;
@@ -12344,9 +12368,9 @@ end
 reg dummy_d_143;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint4_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd4))) begin
-		litedramcontroller_multiplexer_choose_cmd_int3_endpoint4_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int3_endpoint3_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 2'd3))) begin
+		litedramcontroller_multiplexer_choose_cmd_int3_endpoint3_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_143 <= dummy_s;
@@ -12357,9 +12381,9 @@ end
 reg dummy_d_144;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint5_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd5))) begin
-		litedramcontroller_multiplexer_choose_cmd_int3_endpoint5_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int3_endpoint4_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd4))) begin
+		litedramcontroller_multiplexer_choose_cmd_int3_endpoint4_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_144 <= dummy_s;
@@ -12370,9 +12394,9 @@ end
 reg dummy_d_145;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd6))) begin
-		litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int3_endpoint5_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd5))) begin
+		litedramcontroller_multiplexer_choose_cmd_int3_endpoint5_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_145 <= dummy_s;
@@ -12383,18 +12407,31 @@ end
 reg dummy_d_146;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd7))) begin
-		litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd6))) begin
+		litedramcontroller_multiplexer_choose_cmd_int3_endpoint6_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_146 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_multiplexer_choose_cmd_int3_ce = (litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready | (~litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid));
 
 // synthesis translate_off
 reg dummy_d_147;
+// synthesis translate_on
+always @(*) begin
+	litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid & litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_cmd_int3_grant == 3'd7))) begin
+		litedramcontroller_multiplexer_choose_cmd_int3_endpoint7_ready <= 1'd1;
+	end
+// synthesis translate_off
+	dummy_d_147 <= dummy_s;
+// synthesis translate_on
+end
+assign litedramcontroller_multiplexer_choose_cmd_int3_ce = (litedramcontroller_multiplexer_choose_cmd_int3_cmd_ready | (~litedramcontroller_multiplexer_choose_cmd_int3_cmd_valid));
+
+// synthesis translate_off
+reg dummy_d_148;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req_int_valids <= 8'd0;
@@ -12407,7 +12444,7 @@ always @(*) begin
 	litedramcontroller_multiplexer_choose_req_int_valids[6] <= (litedramcontroller_multiplexer_choose_req_int_endpoint6_valid & (((litedramcontroller_multiplexer_choose_req_int_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_req_int_want_cmds) & ((~((litedramcontroller_multiplexer_choose_req_int_endpoint6_payload_ras & (~litedramcontroller_multiplexer_choose_req_int_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_choose_req_int_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_req_int_want_activates)) | ((litedramcontroller_multiplexer_choose_req_int_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_req_int_want_reads) & (litedramcontroller_multiplexer_choose_req_int_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_req_int_want_writes))));
 	litedramcontroller_multiplexer_choose_req_int_valids[7] <= (litedramcontroller_multiplexer_choose_req_int_endpoint7_valid & (((litedramcontroller_multiplexer_choose_req_int_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_req_int_want_cmds) & ((~((litedramcontroller_multiplexer_choose_req_int_endpoint7_payload_ras & (~litedramcontroller_multiplexer_choose_req_int_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_choose_req_int_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_req_int_want_activates)) | ((litedramcontroller_multiplexer_choose_req_int_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_req_int_want_reads) & (litedramcontroller_multiplexer_choose_req_int_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_req_int_want_writes))));
 // synthesis translate_off
-	dummy_d_147 <= dummy_s;
+	dummy_d_148 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_req_int_request = litedramcontroller_multiplexer_choose_req_int_valids;
@@ -12419,25 +12456,12 @@ assign litedramcontroller_multiplexer_choose_req_int_cmd_payload_is_write = rhs_
 assign litedramcontroller_multiplexer_choose_req_int_cmd_payload_is_cmd = rhs_array_muxed25;
 
 // synthesis translate_off
-reg dummy_d_148;
+reg dummy_d_149;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req_int_cmd_payload_cas <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req_int_cmd_valid) begin
 		litedramcontroller_multiplexer_choose_req_int_cmd_payload_cas <= t_array_muxed9;
-	end
-// synthesis translate_off
-	dummy_d_148 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_149;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int_cmd_payload_ras <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_req_int_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req_int_cmd_payload_ras <= t_array_muxed10;
 	end
 // synthesis translate_off
 	dummy_d_149 <= dummy_s;
@@ -12448,9 +12472,9 @@ end
 reg dummy_d_150;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int_cmd_payload_we <= 1'd0;
+	litedramcontroller_multiplexer_choose_req_int_cmd_payload_ras <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req_int_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req_int_cmd_payload_we <= t_array_muxed11;
+		litedramcontroller_multiplexer_choose_req_int_cmd_payload_ras <= t_array_muxed10;
 	end
 // synthesis translate_off
 	dummy_d_150 <= dummy_s;
@@ -12461,9 +12485,9 @@ end
 reg dummy_d_151;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int_endpoint0_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 1'd0))) begin
-		litedramcontroller_multiplexer_choose_req_int_endpoint0_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int_cmd_payload_we <= 1'd0;
+	if (litedramcontroller_multiplexer_choose_req_int_cmd_valid) begin
+		litedramcontroller_multiplexer_choose_req_int_cmd_payload_we <= t_array_muxed11;
 	end
 // synthesis translate_off
 	dummy_d_151 <= dummy_s;
@@ -12474,9 +12498,9 @@ end
 reg dummy_d_152;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int_endpoint1_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 1'd1))) begin
-		litedramcontroller_multiplexer_choose_req_int_endpoint1_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int_endpoint0_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 1'd0))) begin
+		litedramcontroller_multiplexer_choose_req_int_endpoint0_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_152 <= dummy_s;
@@ -12487,9 +12511,9 @@ end
 reg dummy_d_153;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int_endpoint2_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 2'd2))) begin
-		litedramcontroller_multiplexer_choose_req_int_endpoint2_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int_endpoint1_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 1'd1))) begin
+		litedramcontroller_multiplexer_choose_req_int_endpoint1_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_153 <= dummy_s;
@@ -12500,9 +12524,9 @@ end
 reg dummy_d_154;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int_endpoint3_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 2'd3))) begin
-		litedramcontroller_multiplexer_choose_req_int_endpoint3_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int_endpoint2_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 2'd2))) begin
+		litedramcontroller_multiplexer_choose_req_int_endpoint2_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_154 <= dummy_s;
@@ -12513,9 +12537,9 @@ end
 reg dummy_d_155;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int_endpoint4_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 3'd4))) begin
-		litedramcontroller_multiplexer_choose_req_int_endpoint4_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int_endpoint3_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 2'd3))) begin
+		litedramcontroller_multiplexer_choose_req_int_endpoint3_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_155 <= dummy_s;
@@ -12526,9 +12550,9 @@ end
 reg dummy_d_156;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int_endpoint5_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 3'd5))) begin
-		litedramcontroller_multiplexer_choose_req_int_endpoint5_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int_endpoint4_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 3'd4))) begin
+		litedramcontroller_multiplexer_choose_req_int_endpoint4_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_156 <= dummy_s;
@@ -12539,9 +12563,9 @@ end
 reg dummy_d_157;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int_endpoint6_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 3'd6))) begin
-		litedramcontroller_multiplexer_choose_req_int_endpoint6_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int_endpoint5_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 3'd5))) begin
+		litedramcontroller_multiplexer_choose_req_int_endpoint5_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_157 <= dummy_s;
@@ -12552,18 +12576,31 @@ end
 reg dummy_d_158;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int_endpoint7_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 3'd7))) begin
-		litedramcontroller_multiplexer_choose_req_int_endpoint7_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int_endpoint6_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 3'd6))) begin
+		litedramcontroller_multiplexer_choose_req_int_endpoint6_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_158 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_multiplexer_choose_req_int_ce = (litedramcontroller_multiplexer_choose_req_int_cmd_ready | (~litedramcontroller_multiplexer_choose_req_int_cmd_valid));
 
 // synthesis translate_off
 reg dummy_d_159;
+// synthesis translate_on
+always @(*) begin
+	litedramcontroller_multiplexer_choose_req_int_endpoint7_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int_cmd_valid & litedramcontroller_multiplexer_choose_req_int_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int_grant == 3'd7))) begin
+		litedramcontroller_multiplexer_choose_req_int_endpoint7_ready <= 1'd1;
+	end
+// synthesis translate_off
+	dummy_d_159 <= dummy_s;
+// synthesis translate_on
+end
+assign litedramcontroller_multiplexer_choose_req_int_ce = (litedramcontroller_multiplexer_choose_req_int_cmd_ready | (~litedramcontroller_multiplexer_choose_req_int_cmd_valid));
+
+// synthesis translate_off
+reg dummy_d_160;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req_int2_valids <= 8'd0;
@@ -12576,7 +12613,7 @@ always @(*) begin
 	litedramcontroller_multiplexer_choose_req_int2_valids[6] <= (litedramcontroller_multiplexer_choose_req_int2_endpoint6_valid & (((litedramcontroller_multiplexer_choose_req_int2_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_req_int2_want_cmds) & ((~((litedramcontroller_multiplexer_choose_req_int2_endpoint6_payload_ras & (~litedramcontroller_multiplexer_choose_req_int2_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_choose_req_int2_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_req_int2_want_activates)) | ((litedramcontroller_multiplexer_choose_req_int2_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_req_int2_want_reads) & (litedramcontroller_multiplexer_choose_req_int2_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_req_int2_want_writes))));
 	litedramcontroller_multiplexer_choose_req_int2_valids[7] <= (litedramcontroller_multiplexer_choose_req_int2_endpoint7_valid & (((litedramcontroller_multiplexer_choose_req_int2_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_req_int2_want_cmds) & ((~((litedramcontroller_multiplexer_choose_req_int2_endpoint7_payload_ras & (~litedramcontroller_multiplexer_choose_req_int2_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_choose_req_int2_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_req_int2_want_activates)) | ((litedramcontroller_multiplexer_choose_req_int2_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_req_int2_want_reads) & (litedramcontroller_multiplexer_choose_req_int2_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_req_int2_want_writes))));
 // synthesis translate_off
-	dummy_d_159 <= dummy_s;
+	dummy_d_160 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_req_int2_request = litedramcontroller_multiplexer_choose_req_int2_valids;
@@ -12588,25 +12625,12 @@ assign litedramcontroller_multiplexer_choose_req_int2_cmd_payload_is_write = rhs
 assign litedramcontroller_multiplexer_choose_req_int2_cmd_payload_is_cmd = rhs_array_muxed31;
 
 // synthesis translate_off
-reg dummy_d_160;
+reg dummy_d_161;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req_int2_cmd_payload_cas <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req_int2_cmd_valid) begin
 		litedramcontroller_multiplexer_choose_req_int2_cmd_payload_cas <= t_array_muxed12;
-	end
-// synthesis translate_off
-	dummy_d_160 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_161;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int2_cmd_payload_ras <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_req_int2_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req_int2_cmd_payload_ras <= t_array_muxed13;
 	end
 // synthesis translate_off
 	dummy_d_161 <= dummy_s;
@@ -12617,9 +12641,9 @@ end
 reg dummy_d_162;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int2_cmd_payload_we <= 1'd0;
+	litedramcontroller_multiplexer_choose_req_int2_cmd_payload_ras <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req_int2_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req_int2_cmd_payload_we <= t_array_muxed14;
+		litedramcontroller_multiplexer_choose_req_int2_cmd_payload_ras <= t_array_muxed13;
 	end
 // synthesis translate_off
 	dummy_d_162 <= dummy_s;
@@ -12630,9 +12654,9 @@ end
 reg dummy_d_163;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int2_endpoint0_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 1'd0))) begin
-		litedramcontroller_multiplexer_choose_req_int2_endpoint0_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int2_cmd_payload_we <= 1'd0;
+	if (litedramcontroller_multiplexer_choose_req_int2_cmd_valid) begin
+		litedramcontroller_multiplexer_choose_req_int2_cmd_payload_we <= t_array_muxed14;
 	end
 // synthesis translate_off
 	dummy_d_163 <= dummy_s;
@@ -12643,9 +12667,9 @@ end
 reg dummy_d_164;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int2_endpoint1_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 1'd1))) begin
-		litedramcontroller_multiplexer_choose_req_int2_endpoint1_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int2_endpoint0_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 1'd0))) begin
+		litedramcontroller_multiplexer_choose_req_int2_endpoint0_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_164 <= dummy_s;
@@ -12656,9 +12680,9 @@ end
 reg dummy_d_165;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int2_endpoint2_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 2'd2))) begin
-		litedramcontroller_multiplexer_choose_req_int2_endpoint2_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int2_endpoint1_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 1'd1))) begin
+		litedramcontroller_multiplexer_choose_req_int2_endpoint1_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_165 <= dummy_s;
@@ -12669,9 +12693,9 @@ end
 reg dummy_d_166;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int2_endpoint3_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 2'd3))) begin
-		litedramcontroller_multiplexer_choose_req_int2_endpoint3_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int2_endpoint2_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 2'd2))) begin
+		litedramcontroller_multiplexer_choose_req_int2_endpoint2_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_166 <= dummy_s;
@@ -12682,9 +12706,9 @@ end
 reg dummy_d_167;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int2_endpoint4_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 3'd4))) begin
-		litedramcontroller_multiplexer_choose_req_int2_endpoint4_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int2_endpoint3_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 2'd3))) begin
+		litedramcontroller_multiplexer_choose_req_int2_endpoint3_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_167 <= dummy_s;
@@ -12695,9 +12719,9 @@ end
 reg dummy_d_168;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int2_endpoint5_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 3'd5))) begin
-		litedramcontroller_multiplexer_choose_req_int2_endpoint5_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int2_endpoint4_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 3'd4))) begin
+		litedramcontroller_multiplexer_choose_req_int2_endpoint4_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_168 <= dummy_s;
@@ -12708,9 +12732,9 @@ end
 reg dummy_d_169;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int2_endpoint6_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 3'd6))) begin
-		litedramcontroller_multiplexer_choose_req_int2_endpoint6_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int2_endpoint5_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 3'd5))) begin
+		litedramcontroller_multiplexer_choose_req_int2_endpoint5_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_169 <= dummy_s;
@@ -12721,18 +12745,31 @@ end
 reg dummy_d_170;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int2_endpoint7_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 3'd7))) begin
-		litedramcontroller_multiplexer_choose_req_int2_endpoint7_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int2_endpoint6_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 3'd6))) begin
+		litedramcontroller_multiplexer_choose_req_int2_endpoint6_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_170 <= dummy_s;
 // synthesis translate_on
 end
-assign litedramcontroller_multiplexer_choose_req_int2_ce = (litedramcontroller_multiplexer_choose_req_int2_cmd_ready | (~litedramcontroller_multiplexer_choose_req_int2_cmd_valid));
 
 // synthesis translate_off
 reg dummy_d_171;
+// synthesis translate_on
+always @(*) begin
+	litedramcontroller_multiplexer_choose_req_int2_endpoint7_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int2_cmd_valid & litedramcontroller_multiplexer_choose_req_int2_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int2_grant == 3'd7))) begin
+		litedramcontroller_multiplexer_choose_req_int2_endpoint7_ready <= 1'd1;
+	end
+// synthesis translate_off
+	dummy_d_171 <= dummy_s;
+// synthesis translate_on
+end
+assign litedramcontroller_multiplexer_choose_req_int2_ce = (litedramcontroller_multiplexer_choose_req_int2_cmd_ready | (~litedramcontroller_multiplexer_choose_req_int2_cmd_valid));
+
+// synthesis translate_off
+reg dummy_d_172;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req_int3_valids <= 8'd0;
@@ -12745,7 +12782,7 @@ always @(*) begin
 	litedramcontroller_multiplexer_choose_req_int3_valids[6] <= (litedramcontroller_multiplexer_choose_req_int3_endpoint6_valid & (((litedramcontroller_multiplexer_choose_req_int3_endpoint6_payload_is_cmd & litedramcontroller_multiplexer_choose_req_int3_want_cmds) & ((~((litedramcontroller_multiplexer_choose_req_int3_endpoint6_payload_ras & (~litedramcontroller_multiplexer_choose_req_int3_endpoint6_payload_cas)) & (~litedramcontroller_multiplexer_choose_req_int3_endpoint6_payload_we))) | litedramcontroller_multiplexer_choose_req_int3_want_activates)) | ((litedramcontroller_multiplexer_choose_req_int3_endpoint6_payload_is_read == litedramcontroller_multiplexer_choose_req_int3_want_reads) & (litedramcontroller_multiplexer_choose_req_int3_endpoint6_payload_is_write == litedramcontroller_multiplexer_choose_req_int3_want_writes))));
 	litedramcontroller_multiplexer_choose_req_int3_valids[7] <= (litedramcontroller_multiplexer_choose_req_int3_endpoint7_valid & (((litedramcontroller_multiplexer_choose_req_int3_endpoint7_payload_is_cmd & litedramcontroller_multiplexer_choose_req_int3_want_cmds) & ((~((litedramcontroller_multiplexer_choose_req_int3_endpoint7_payload_ras & (~litedramcontroller_multiplexer_choose_req_int3_endpoint7_payload_cas)) & (~litedramcontroller_multiplexer_choose_req_int3_endpoint7_payload_we))) | litedramcontroller_multiplexer_choose_req_int3_want_activates)) | ((litedramcontroller_multiplexer_choose_req_int3_endpoint7_payload_is_read == litedramcontroller_multiplexer_choose_req_int3_want_reads) & (litedramcontroller_multiplexer_choose_req_int3_endpoint7_payload_is_write == litedramcontroller_multiplexer_choose_req_int3_want_writes))));
 // synthesis translate_off
-	dummy_d_171 <= dummy_s;
+	dummy_d_172 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_req_int3_request = litedramcontroller_multiplexer_choose_req_int3_valids;
@@ -12757,25 +12794,12 @@ assign litedramcontroller_multiplexer_choose_req_int3_cmd_payload_is_write = rhs
 assign litedramcontroller_multiplexer_choose_req_int3_cmd_payload_is_cmd = rhs_array_muxed37;
 
 // synthesis translate_off
-reg dummy_d_172;
+reg dummy_d_173;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_multiplexer_choose_req_int3_cmd_payload_cas <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req_int3_cmd_valid) begin
 		litedramcontroller_multiplexer_choose_req_int3_cmd_payload_cas <= t_array_muxed15;
-	end
-// synthesis translate_off
-	dummy_d_172 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_173;
-// synthesis translate_on
-always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int3_cmd_payload_ras <= 1'd0;
-	if (litedramcontroller_multiplexer_choose_req_int3_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req_int3_cmd_payload_ras <= t_array_muxed16;
 	end
 // synthesis translate_off
 	dummy_d_173 <= dummy_s;
@@ -12786,9 +12810,9 @@ end
 reg dummy_d_174;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int3_cmd_payload_we <= 1'd0;
+	litedramcontroller_multiplexer_choose_req_int3_cmd_payload_ras <= 1'd0;
 	if (litedramcontroller_multiplexer_choose_req_int3_cmd_valid) begin
-		litedramcontroller_multiplexer_choose_req_int3_cmd_payload_we <= t_array_muxed17;
+		litedramcontroller_multiplexer_choose_req_int3_cmd_payload_ras <= t_array_muxed16;
 	end
 // synthesis translate_off
 	dummy_d_174 <= dummy_s;
@@ -12799,9 +12823,9 @@ end
 reg dummy_d_175;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int3_endpoint0_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 1'd0))) begin
-		litedramcontroller_multiplexer_choose_req_int3_endpoint0_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int3_cmd_payload_we <= 1'd0;
+	if (litedramcontroller_multiplexer_choose_req_int3_cmd_valid) begin
+		litedramcontroller_multiplexer_choose_req_int3_cmd_payload_we <= t_array_muxed17;
 	end
 // synthesis translate_off
 	dummy_d_175 <= dummy_s;
@@ -12812,9 +12836,9 @@ end
 reg dummy_d_176;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int3_endpoint1_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 1'd1))) begin
-		litedramcontroller_multiplexer_choose_req_int3_endpoint1_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int3_endpoint0_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 1'd0))) begin
+		litedramcontroller_multiplexer_choose_req_int3_endpoint0_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_176 <= dummy_s;
@@ -12825,9 +12849,9 @@ end
 reg dummy_d_177;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int3_endpoint2_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 2'd2))) begin
-		litedramcontroller_multiplexer_choose_req_int3_endpoint2_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int3_endpoint1_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 1'd1))) begin
+		litedramcontroller_multiplexer_choose_req_int3_endpoint1_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_177 <= dummy_s;
@@ -12838,9 +12862,9 @@ end
 reg dummy_d_178;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int3_endpoint3_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 2'd3))) begin
-		litedramcontroller_multiplexer_choose_req_int3_endpoint3_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int3_endpoint2_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 2'd2))) begin
+		litedramcontroller_multiplexer_choose_req_int3_endpoint2_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_178 <= dummy_s;
@@ -12851,9 +12875,9 @@ end
 reg dummy_d_179;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int3_endpoint4_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 3'd4))) begin
-		litedramcontroller_multiplexer_choose_req_int3_endpoint4_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int3_endpoint3_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 2'd3))) begin
+		litedramcontroller_multiplexer_choose_req_int3_endpoint3_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_179 <= dummy_s;
@@ -12864,9 +12888,9 @@ end
 reg dummy_d_180;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int3_endpoint5_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 3'd5))) begin
-		litedramcontroller_multiplexer_choose_req_int3_endpoint5_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int3_endpoint4_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 3'd4))) begin
+		litedramcontroller_multiplexer_choose_req_int3_endpoint4_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_180 <= dummy_s;
@@ -12877,9 +12901,9 @@ end
 reg dummy_d_181;
 // synthesis translate_on
 always @(*) begin
-	litedramcontroller_multiplexer_choose_req_int3_endpoint6_ready <= 1'd0;
-	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 3'd6))) begin
-		litedramcontroller_multiplexer_choose_req_int3_endpoint6_ready <= 1'd1;
+	litedramcontroller_multiplexer_choose_req_int3_endpoint5_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 3'd5))) begin
+		litedramcontroller_multiplexer_choose_req_int3_endpoint5_ready <= 1'd1;
 	end
 // synthesis translate_off
 	dummy_d_181 <= dummy_s;
@@ -12890,12 +12914,25 @@ end
 reg dummy_d_182;
 // synthesis translate_on
 always @(*) begin
+	litedramcontroller_multiplexer_choose_req_int3_endpoint6_ready <= 1'd0;
+	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 3'd6))) begin
+		litedramcontroller_multiplexer_choose_req_int3_endpoint6_ready <= 1'd1;
+	end
+// synthesis translate_off
+	dummy_d_182 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_183;
+// synthesis translate_on
+always @(*) begin
 	litedramcontroller_multiplexer_choose_req_int3_endpoint7_ready <= 1'd0;
 	if (((litedramcontroller_multiplexer_choose_req_int3_cmd_valid & litedramcontroller_multiplexer_choose_req_int3_cmd_ready) & (litedramcontroller_multiplexer_choose_req_int3_grant == 3'd7))) begin
 		litedramcontroller_multiplexer_choose_req_int3_endpoint7_ready <= 1'd1;
 	end
 // synthesis translate_off
-	dummy_d_182 <= dummy_s;
+	dummy_d_183 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_choose_req_int3_ce = (litedramcontroller_multiplexer_choose_req_int3_cmd_ready | (~litedramcontroller_multiplexer_choose_req_int3_cmd_valid));
@@ -13093,7 +13130,7 @@ assign litedramcontroller_TMRinterface_rdata = {3{{litedramcontroller_dfi_p3_rdd
 assign litedramcontroller_multiplexer_tmrinput_control177 = (((litedramcontroller_TMRinterface_wdata[255:0] & litedramcontroller_TMRinterface_wdata[511:256]) | (litedramcontroller_TMRinterface_wdata[511:256] & litedramcontroller_TMRinterface_wdata[767:512])) | (litedramcontroller_TMRinterface_wdata[255:0] & litedramcontroller_TMRinterface_wdata[767:512]));
 
 // synthesis translate_off
-reg dummy_d_183;
+reg dummy_d_184;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_dfi_p0_wrdata <= 64'd0;
@@ -13106,13 +13143,13 @@ always @(*) begin
 	litedramcontroller_dfi_p3_wrdata <= litedramcontroller_multiplexer_tmrinput_control173;
 	{litedramcontroller_dfi_p3_wrdata, litedramcontroller_dfi_p2_wrdata, litedramcontroller_dfi_p1_wrdata, litedramcontroller_dfi_p0_wrdata} <= litedramcontroller_multiplexer_tmrinput_control177;
 // synthesis translate_off
-	dummy_d_183 <= dummy_s;
+	dummy_d_184 <= dummy_s;
 // synthesis translate_on
 end
 assign litedramcontroller_multiplexer_tmrinput_control178 = (((slice_proxy1278[31:0] & slice_proxy1279[63:32]) | (slice_proxy1280[63:32] & slice_proxy1281[95:64])) | (slice_proxy1282[31:0] & slice_proxy1283[95:64]));
 
 // synthesis translate_off
-reg dummy_d_184;
+reg dummy_d_185;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_dfi_p0_wrdata_mask <= 8'd0;
@@ -13125,14 +13162,15 @@ always @(*) begin
 	litedramcontroller_dfi_p3_wrdata_mask <= litedramcontroller_multiplexer_tmrinput_control175;
 	{litedramcontroller_dfi_p3_wrdata_mask, litedramcontroller_dfi_p2_wrdata_mask, litedramcontroller_dfi_p1_wrdata_mask, litedramcontroller_dfi_p0_wrdata_mask} <= litedramcontroller_multiplexer_tmrinput_control178;
 // synthesis translate_off
-	dummy_d_184 <= dummy_s;
+	dummy_d_185 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_185;
+reg dummy_d_186;
 // synthesis translate_on
 always @(*) begin
+	litedramcontroller_multiplexer_fsm_state <= 1'd0;
 	litedramcontroller_multiplexer_choose_cmd_int_want_activates <= 1'd0;
 	litedramcontroller_multiplexer_choose_cmd_int2_want_activates <= 1'd0;
 	litedramcontroller_multiplexer_choose_cmd_int3_want_activates <= 1'd0;
@@ -13163,6 +13201,7 @@ always @(*) begin
 	tmrmultiplexer_next_state <= tmrmultiplexer_state;
 	case (tmrmultiplexer_state)
 		1'd1: begin
+			litedramcontroller_multiplexer_fsm_state <= 1'd1;
 			litedramcontroller_multiplexer_en1 <= 1'd1;
 			litedramcontroller_multiplexer_choose_req_int_want_writes <= 1'd1;
 			litedramcontroller_multiplexer_choose_req_int2_want_writes <= 1'd1;
@@ -13270,6 +13309,7 @@ always @(*) begin
 			end
 		end
 		2'd2: begin
+			litedramcontroller_multiplexer_fsm_state <= 2'd2;
 			litedramcontroller_multiplexer_steerer_int_steererint0 <= 2'd3;
 			litedramcontroller_multiplexer_steerer_int2_steererint0 <= 2'd3;
 			litedramcontroller_multiplexer_steerer_int3_steererint0 <= 2'd3;
@@ -13305,6 +13345,7 @@ always @(*) begin
 			tmrmultiplexer_next_state <= 1'd1;
 		end
 		default: begin
+			litedramcontroller_multiplexer_fsm_state <= 1'd0;
 			litedramcontroller_multiplexer_en0 <= 1'd1;
 			litedramcontroller_multiplexer_choose_req_int_want_reads <= 1'd1;
 			litedramcontroller_multiplexer_choose_req_int2_want_reads <= 1'd1;
@@ -13413,7 +13454,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_185 <= dummy_s;
+	dummy_d_186 <= dummy_s;
 // synthesis translate_on
 end
 assign roundrobin0_request = {(((cmd_payload_addr[9:7] == 1'd0) & (~(((((((locked0 | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid)};
@@ -13458,7 +13499,7 @@ assign litedramcontroller_interface_bank7_we = rhs_array_muxed60;
 assign litedramcontroller_interface_bank7_valid = rhs_array_muxed61;
 
 // synthesis translate_off
-reg dummy_d_186;
+reg dummy_d_187;
 // synthesis translate_on
 always @(*) begin
 	litedramcontroller_TMRinterface_wdata <= 768'd0;
@@ -13474,7 +13515,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_186 <= dummy_s;
+	dummy_d_187 <= dummy_s;
 // synthesis translate_on
 end
 assign TMRrdata_payload_data = litedramcontroller_TMRinterface_rdata;
@@ -14873,7 +14914,7 @@ assign slice_proxy1282 = (~litedramcontroller_TMRinterface_wdata_we);
 assign slice_proxy1283 = (~litedramcontroller_TMRinterface_wdata_we);
 
 // synthesis translate_off
-reg dummy_d_187;
+reg dummy_d_188;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed0 <= 48'd0;
@@ -14899,17 +14940,20 @@ always @(*) begin
 		3'd6: begin
 			rhs_array_muxed0 <= litedramcontroller_tmrbankmachine6_loggingsystem_message;
 		end
-		default: begin
+		3'd7: begin
 			rhs_array_muxed0 <= litedramcontroller_tmrbankmachine7_loggingsystem_message;
+		end
+		default: begin
+			rhs_array_muxed0 <= litedramcontroller_multiplexer_loggingsystem_message;
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_187 <= dummy_s;
+	dummy_d_188 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_188;
+reg dummy_d_189;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed1 <= 1'd0;
@@ -14935,17 +14979,20 @@ always @(*) begin
 		3'd6: begin
 			rhs_array_muxed1 <= litedramcontroller_tmrbankmachine6_loggingsystem_request;
 		end
-		default: begin
+		3'd7: begin
 			rhs_array_muxed1 <= litedramcontroller_tmrbankmachine7_loggingsystem_request;
+		end
+		default: begin
+			rhs_array_muxed1 <= litedramcontroller_multiplexer_loggingsystem_request;
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_188 <= dummy_s;
+	dummy_d_189 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_189;
+reg dummy_d_190;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed2 <= 1'd0;
@@ -14976,12 +15023,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_189 <= dummy_s;
+	dummy_d_190 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_190;
+reg dummy_d_191;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed3 <= 14'd0;
@@ -15012,12 +15059,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_190 <= dummy_s;
+	dummy_d_191 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_191;
+reg dummy_d_192;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed4 <= 3'd0;
@@ -15048,12 +15095,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_191 <= dummy_s;
+	dummy_d_192 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_192;
+reg dummy_d_193;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed5 <= 1'd0;
@@ -15084,12 +15131,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_192 <= dummy_s;
+	dummy_d_193 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_193;
+reg dummy_d_194;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed6 <= 1'd0;
@@ -15120,12 +15167,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_193 <= dummy_s;
+	dummy_d_194 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_194;
+reg dummy_d_195;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed7 <= 1'd0;
@@ -15156,12 +15203,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_194 <= dummy_s;
+	dummy_d_195 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_195;
+reg dummy_d_196;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed0 <= 1'd0;
@@ -15192,12 +15239,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_195 <= dummy_s;
+	dummy_d_196 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_196;
+reg dummy_d_197;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed1 <= 1'd0;
@@ -15228,12 +15275,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_196 <= dummy_s;
+	dummy_d_197 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_197;
+reg dummy_d_198;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed2 <= 1'd0;
@@ -15264,12 +15311,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_197 <= dummy_s;
+	dummy_d_198 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_198;
+reg dummy_d_199;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed8 <= 1'd0;
@@ -15300,12 +15347,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_198 <= dummy_s;
+	dummy_d_199 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_199;
+reg dummy_d_200;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed9 <= 14'd0;
@@ -15336,12 +15383,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_199 <= dummy_s;
+	dummy_d_200 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_200;
+reg dummy_d_201;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed10 <= 3'd0;
@@ -15372,12 +15419,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_200 <= dummy_s;
+	dummy_d_201 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_201;
+reg dummy_d_202;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed11 <= 1'd0;
@@ -15408,12 +15455,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_201 <= dummy_s;
+	dummy_d_202 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_202;
+reg dummy_d_203;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed12 <= 1'd0;
@@ -15444,12 +15491,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_202 <= dummy_s;
+	dummy_d_203 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_203;
+reg dummy_d_204;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed13 <= 1'd0;
@@ -15480,12 +15527,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_203 <= dummy_s;
+	dummy_d_204 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_204;
+reg dummy_d_205;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed3 <= 1'd0;
@@ -15516,12 +15563,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_204 <= dummy_s;
+	dummy_d_205 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_205;
+reg dummy_d_206;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed4 <= 1'd0;
@@ -15552,12 +15599,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_205 <= dummy_s;
+	dummy_d_206 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_206;
+reg dummy_d_207;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed5 <= 1'd0;
@@ -15588,12 +15635,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_206 <= dummy_s;
+	dummy_d_207 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_207;
+reg dummy_d_208;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed14 <= 1'd0;
@@ -15624,12 +15671,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_207 <= dummy_s;
+	dummy_d_208 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_208;
+reg dummy_d_209;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed15 <= 14'd0;
@@ -15660,12 +15707,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_208 <= dummy_s;
+	dummy_d_209 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_209;
+reg dummy_d_210;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed16 <= 3'd0;
@@ -15696,12 +15743,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_209 <= dummy_s;
+	dummy_d_210 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_210;
+reg dummy_d_211;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed17 <= 1'd0;
@@ -15732,12 +15779,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_210 <= dummy_s;
+	dummy_d_211 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_211;
+reg dummy_d_212;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed18 <= 1'd0;
@@ -15768,12 +15815,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_211 <= dummy_s;
+	dummy_d_212 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_212;
+reg dummy_d_213;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed19 <= 1'd0;
@@ -15804,12 +15851,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_212 <= dummy_s;
+	dummy_d_213 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_213;
+reg dummy_d_214;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed6 <= 1'd0;
@@ -15840,12 +15887,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_213 <= dummy_s;
+	dummy_d_214 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_214;
+reg dummy_d_215;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed7 <= 1'd0;
@@ -15876,12 +15923,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_214 <= dummy_s;
+	dummy_d_215 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_215;
+reg dummy_d_216;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed8 <= 1'd0;
@@ -15912,12 +15959,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_215 <= dummy_s;
+	dummy_d_216 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_216;
+reg dummy_d_217;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed20 <= 1'd0;
@@ -15948,12 +15995,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_216 <= dummy_s;
+	dummy_d_217 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_217;
+reg dummy_d_218;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed21 <= 14'd0;
@@ -15984,12 +16031,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_217 <= dummy_s;
+	dummy_d_218 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_218;
+reg dummy_d_219;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed22 <= 3'd0;
@@ -16020,12 +16067,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_218 <= dummy_s;
+	dummy_d_219 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_219;
+reg dummy_d_220;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed23 <= 1'd0;
@@ -16056,12 +16103,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_219 <= dummy_s;
+	dummy_d_220 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_220;
+reg dummy_d_221;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed24 <= 1'd0;
@@ -16092,12 +16139,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_220 <= dummy_s;
+	dummy_d_221 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_221;
+reg dummy_d_222;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed25 <= 1'd0;
@@ -16128,12 +16175,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_221 <= dummy_s;
+	dummy_d_222 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_222;
+reg dummy_d_223;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed9 <= 1'd0;
@@ -16164,12 +16211,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_222 <= dummy_s;
+	dummy_d_223 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_223;
+reg dummy_d_224;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed10 <= 1'd0;
@@ -16200,12 +16247,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_223 <= dummy_s;
+	dummy_d_224 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_224;
+reg dummy_d_225;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed11 <= 1'd0;
@@ -16236,12 +16283,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_224 <= dummy_s;
+	dummy_d_225 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_225;
+reg dummy_d_226;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed26 <= 1'd0;
@@ -16272,12 +16319,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_225 <= dummy_s;
+	dummy_d_226 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_226;
+reg dummy_d_227;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed27 <= 14'd0;
@@ -16308,12 +16355,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_226 <= dummy_s;
+	dummy_d_227 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_227;
+reg dummy_d_228;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed28 <= 3'd0;
@@ -16344,12 +16391,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_227 <= dummy_s;
+	dummy_d_228 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_228;
+reg dummy_d_229;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed29 <= 1'd0;
@@ -16380,12 +16427,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_228 <= dummy_s;
+	dummy_d_229 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_229;
+reg dummy_d_230;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed30 <= 1'd0;
@@ -16416,12 +16463,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_229 <= dummy_s;
+	dummy_d_230 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_230;
+reg dummy_d_231;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed31 <= 1'd0;
@@ -16452,12 +16499,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_230 <= dummy_s;
+	dummy_d_231 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_231;
+reg dummy_d_232;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed12 <= 1'd0;
@@ -16488,12 +16535,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_231 <= dummy_s;
+	dummy_d_232 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_232;
+reg dummy_d_233;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed13 <= 1'd0;
@@ -16524,12 +16571,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_232 <= dummy_s;
+	dummy_d_233 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_233;
+reg dummy_d_234;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed14 <= 1'd0;
@@ -16560,12 +16607,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_233 <= dummy_s;
+	dummy_d_234 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_234;
+reg dummy_d_235;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed32 <= 1'd0;
@@ -16596,12 +16643,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_234 <= dummy_s;
+	dummy_d_235 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_235;
+reg dummy_d_236;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed33 <= 14'd0;
@@ -16632,12 +16679,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_235 <= dummy_s;
+	dummy_d_236 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_236;
+reg dummy_d_237;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed34 <= 3'd0;
@@ -16668,12 +16715,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_236 <= dummy_s;
+	dummy_d_237 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_237;
+reg dummy_d_238;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed35 <= 1'd0;
@@ -16704,12 +16751,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_237 <= dummy_s;
+	dummy_d_238 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_238;
+reg dummy_d_239;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed36 <= 1'd0;
@@ -16740,12 +16787,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_238 <= dummy_s;
+	dummy_d_239 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_239;
+reg dummy_d_240;
 // synthesis translate_on
 always @(*) begin
 	rhs_array_muxed37 <= 1'd0;
@@ -16776,12 +16823,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_239 <= dummy_s;
+	dummy_d_240 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_240;
+reg dummy_d_241;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed15 <= 1'd0;
@@ -16812,12 +16859,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_240 <= dummy_s;
+	dummy_d_241 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_241;
+reg dummy_d_242;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed16 <= 1'd0;
@@ -16848,12 +16895,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_241 <= dummy_s;
+	dummy_d_242 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_242;
+reg dummy_d_243;
 // synthesis translate_on
 always @(*) begin
 	t_array_muxed17 <= 1'd0;
@@ -16884,21 +16931,6 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_242 <= dummy_s;
-// synthesis translate_on
-end
-
-// synthesis translate_off
-reg dummy_d_243;
-// synthesis translate_on
-always @(*) begin
-	rhs_array_muxed38 <= 21'd0;
-	case (roundrobin0_grant)
-		default: begin
-			rhs_array_muxed38 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
-		end
-	endcase
-// synthesis translate_off
 	dummy_d_243 <= dummy_s;
 // synthesis translate_on
 end
@@ -16907,10 +16939,10 @@ end
 reg dummy_d_244;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed39 <= 1'd0;
+	rhs_array_muxed38 <= 21'd0;
 	case (roundrobin0_grant)
 		default: begin
-			rhs_array_muxed39 <= cmd_payload_we;
+			rhs_array_muxed38 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -16922,10 +16954,10 @@ end
 reg dummy_d_245;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed40 <= 1'd0;
+	rhs_array_muxed39 <= 1'd0;
 	case (roundrobin0_grant)
 		default: begin
-			rhs_array_muxed40 <= (((cmd_payload_addr[9:7] == 1'd0) & (~(((((((locked0 | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+			rhs_array_muxed39 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -16937,10 +16969,10 @@ end
 reg dummy_d_246;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed41 <= 21'd0;
-	case (roundrobin1_grant)
+	rhs_array_muxed40 <= 1'd0;
+	case (roundrobin0_grant)
 		default: begin
-			rhs_array_muxed41 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+			rhs_array_muxed40 <= (((cmd_payload_addr[9:7] == 1'd0) & (~(((((((locked0 | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -16952,10 +16984,10 @@ end
 reg dummy_d_247;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed42 <= 1'd0;
+	rhs_array_muxed41 <= 21'd0;
 	case (roundrobin1_grant)
 		default: begin
-			rhs_array_muxed42 <= cmd_payload_we;
+			rhs_array_muxed41 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -16967,10 +16999,10 @@ end
 reg dummy_d_248;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed43 <= 1'd0;
+	rhs_array_muxed42 <= 1'd0;
 	case (roundrobin1_grant)
 		default: begin
-			rhs_array_muxed43 <= (((cmd_payload_addr[9:7] == 1'd1) & (~(((((((locked1 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+			rhs_array_muxed42 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -16982,10 +17014,10 @@ end
 reg dummy_d_249;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed44 <= 21'd0;
-	case (roundrobin2_grant)
+	rhs_array_muxed43 <= 1'd0;
+	case (roundrobin1_grant)
 		default: begin
-			rhs_array_muxed44 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+			rhs_array_muxed43 <= (((cmd_payload_addr[9:7] == 1'd1) & (~(((((((locked1 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -16997,10 +17029,10 @@ end
 reg dummy_d_250;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed45 <= 1'd0;
+	rhs_array_muxed44 <= 21'd0;
 	case (roundrobin2_grant)
 		default: begin
-			rhs_array_muxed45 <= cmd_payload_we;
+			rhs_array_muxed44 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -17012,10 +17044,10 @@ end
 reg dummy_d_251;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed46 <= 1'd0;
+	rhs_array_muxed45 <= 1'd0;
 	case (roundrobin2_grant)
 		default: begin
-			rhs_array_muxed46 <= (((cmd_payload_addr[9:7] == 2'd2) & (~(((((((locked2 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+			rhs_array_muxed45 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -17027,10 +17059,10 @@ end
 reg dummy_d_252;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed47 <= 21'd0;
-	case (roundrobin3_grant)
+	rhs_array_muxed46 <= 1'd0;
+	case (roundrobin2_grant)
 		default: begin
-			rhs_array_muxed47 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+			rhs_array_muxed46 <= (((cmd_payload_addr[9:7] == 2'd2) & (~(((((((locked2 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -17042,10 +17074,10 @@ end
 reg dummy_d_253;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed48 <= 1'd0;
+	rhs_array_muxed47 <= 21'd0;
 	case (roundrobin3_grant)
 		default: begin
-			rhs_array_muxed48 <= cmd_payload_we;
+			rhs_array_muxed47 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -17057,10 +17089,10 @@ end
 reg dummy_d_254;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed49 <= 1'd0;
+	rhs_array_muxed48 <= 1'd0;
 	case (roundrobin3_grant)
 		default: begin
-			rhs_array_muxed49 <= (((cmd_payload_addr[9:7] == 2'd3) & (~(((((((locked3 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+			rhs_array_muxed48 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -17072,10 +17104,10 @@ end
 reg dummy_d_255;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed50 <= 21'd0;
-	case (roundrobin4_grant)
+	rhs_array_muxed49 <= 1'd0;
+	case (roundrobin3_grant)
 		default: begin
-			rhs_array_muxed50 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+			rhs_array_muxed49 <= (((cmd_payload_addr[9:7] == 2'd3) & (~(((((((locked3 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -17087,10 +17119,10 @@ end
 reg dummy_d_256;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed51 <= 1'd0;
+	rhs_array_muxed50 <= 21'd0;
 	case (roundrobin4_grant)
 		default: begin
-			rhs_array_muxed51 <= cmd_payload_we;
+			rhs_array_muxed50 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -17102,10 +17134,10 @@ end
 reg dummy_d_257;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed52 <= 1'd0;
+	rhs_array_muxed51 <= 1'd0;
 	case (roundrobin4_grant)
 		default: begin
-			rhs_array_muxed52 <= (((cmd_payload_addr[9:7] == 3'd4) & (~(((((((locked4 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+			rhs_array_muxed51 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -17117,10 +17149,10 @@ end
 reg dummy_d_258;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed53 <= 21'd0;
-	case (roundrobin5_grant)
+	rhs_array_muxed52 <= 1'd0;
+	case (roundrobin4_grant)
 		default: begin
-			rhs_array_muxed53 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+			rhs_array_muxed52 <= (((cmd_payload_addr[9:7] == 3'd4) & (~(((((((locked4 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -17132,10 +17164,10 @@ end
 reg dummy_d_259;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed54 <= 1'd0;
+	rhs_array_muxed53 <= 21'd0;
 	case (roundrobin5_grant)
 		default: begin
-			rhs_array_muxed54 <= cmd_payload_we;
+			rhs_array_muxed53 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -17147,10 +17179,10 @@ end
 reg dummy_d_260;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed55 <= 1'd0;
+	rhs_array_muxed54 <= 1'd0;
 	case (roundrobin5_grant)
 		default: begin
-			rhs_array_muxed55 <= (((cmd_payload_addr[9:7] == 3'd5) & (~(((((((locked5 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+			rhs_array_muxed54 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -17162,10 +17194,10 @@ end
 reg dummy_d_261;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed56 <= 21'd0;
-	case (roundrobin6_grant)
+	rhs_array_muxed55 <= 1'd0;
+	case (roundrobin5_grant)
 		default: begin
-			rhs_array_muxed56 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+			rhs_array_muxed55 <= (((cmd_payload_addr[9:7] == 3'd5) & (~(((((((locked5 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -17177,10 +17209,10 @@ end
 reg dummy_d_262;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed57 <= 1'd0;
+	rhs_array_muxed56 <= 21'd0;
 	case (roundrobin6_grant)
 		default: begin
-			rhs_array_muxed57 <= cmd_payload_we;
+			rhs_array_muxed56 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -17192,10 +17224,10 @@ end
 reg dummy_d_263;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed58 <= 1'd0;
+	rhs_array_muxed57 <= 1'd0;
 	case (roundrobin6_grant)
 		default: begin
-			rhs_array_muxed58 <= (((cmd_payload_addr[9:7] == 3'd6) & (~(((((((locked6 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
+			rhs_array_muxed57 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -17207,10 +17239,10 @@ end
 reg dummy_d_264;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed59 <= 21'd0;
-	case (roundrobin7_grant)
+	rhs_array_muxed58 <= 1'd0;
+	case (roundrobin6_grant)
 		default: begin
-			rhs_array_muxed59 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
+			rhs_array_muxed58 <= (((cmd_payload_addr[9:7] == 3'd6) & (~(((((((locked6 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank7_lock & (roundrobin7_grant == 1'd0))))) & cmd_valid);
 		end
 	endcase
 // synthesis translate_off
@@ -17222,10 +17254,10 @@ end
 reg dummy_d_265;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed60 <= 1'd0;
+	rhs_array_muxed59 <= 21'd0;
 	case (roundrobin7_grant)
 		default: begin
-			rhs_array_muxed60 <= cmd_payload_we;
+			rhs_array_muxed59 <= {cmd_payload_addr[23:10], cmd_payload_addr[6:0]};
 		end
 	endcase
 // synthesis translate_off
@@ -17237,10 +17269,10 @@ end
 reg dummy_d_266;
 // synthesis translate_on
 always @(*) begin
-	rhs_array_muxed61 <= 1'd0;
+	rhs_array_muxed60 <= 1'd0;
 	case (roundrobin7_grant)
 		default: begin
-			rhs_array_muxed61 <= (((cmd_payload_addr[9:7] == 3'd7) & (~(((((((locked7 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))))) & cmd_valid);
+			rhs_array_muxed60 <= cmd_payload_we;
 		end
 	endcase
 // synthesis translate_off
@@ -17250,6 +17282,21 @@ end
 
 // synthesis translate_off
 reg dummy_d_267;
+// synthesis translate_on
+always @(*) begin
+	rhs_array_muxed61 <= 1'd0;
+	case (roundrobin7_grant)
+		default: begin
+			rhs_array_muxed61 <= (((cmd_payload_addr[9:7] == 3'd7) & (~(((((((locked7 | (litedramcontroller_interface_bank0_lock & (roundrobin0_grant == 1'd0))) | (litedramcontroller_interface_bank1_lock & (roundrobin1_grant == 1'd0))) | (litedramcontroller_interface_bank2_lock & (roundrobin2_grant == 1'd0))) | (litedramcontroller_interface_bank3_lock & (roundrobin3_grant == 1'd0))) | (litedramcontroller_interface_bank4_lock & (roundrobin4_grant == 1'd0))) | (litedramcontroller_interface_bank5_lock & (roundrobin5_grant == 1'd0))) | (litedramcontroller_interface_bank6_lock & (roundrobin6_grant == 1'd0))))) & cmd_valid);
+		end
+	endcase
+// synthesis translate_off
+	dummy_d_267 <= dummy_s;
+// synthesis translate_on
+end
+
+// synthesis translate_off
+reg dummy_d_268;
 // synthesis translate_on
 always @(*) begin
 	array_muxed0 <= 3'd0;
@@ -17268,12 +17315,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_267 <= dummy_s;
+	dummy_d_268 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_268;
+reg dummy_d_269;
 // synthesis translate_on
 always @(*) begin
 	array_muxed1 <= 14'd0;
@@ -17292,12 +17339,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_268 <= dummy_s;
+	dummy_d_269 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_269;
+reg dummy_d_270;
 // synthesis translate_on
 always @(*) begin
 	array_muxed2 <= 1'd0;
@@ -17316,12 +17363,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_269 <= dummy_s;
+	dummy_d_270 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_270;
+reg dummy_d_271;
 // synthesis translate_on
 always @(*) begin
 	array_muxed3 <= 1'd0;
@@ -17340,12 +17387,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_270 <= dummy_s;
+	dummy_d_271 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_271;
+reg dummy_d_272;
 // synthesis translate_on
 always @(*) begin
 	array_muxed4 <= 1'd0;
@@ -17364,12 +17411,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_271 <= dummy_s;
+	dummy_d_272 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_272;
+reg dummy_d_273;
 // synthesis translate_on
 always @(*) begin
 	array_muxed5 <= 1'd0;
@@ -17388,12 +17435,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_272 <= dummy_s;
+	dummy_d_273 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_273;
+reg dummy_d_274;
 // synthesis translate_on
 always @(*) begin
 	array_muxed6 <= 1'd0;
@@ -17412,12 +17459,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_273 <= dummy_s;
+	dummy_d_274 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_274;
+reg dummy_d_275;
 // synthesis translate_on
 always @(*) begin
 	array_muxed7 <= 3'd0;
@@ -17436,12 +17483,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_274 <= dummy_s;
+	dummy_d_275 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_275;
+reg dummy_d_276;
 // synthesis translate_on
 always @(*) begin
 	array_muxed8 <= 14'd0;
@@ -17460,12 +17507,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_275 <= dummy_s;
+	dummy_d_276 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_276;
+reg dummy_d_277;
 // synthesis translate_on
 always @(*) begin
 	array_muxed9 <= 1'd0;
@@ -17484,12 +17531,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_276 <= dummy_s;
+	dummy_d_277 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_277;
+reg dummy_d_278;
 // synthesis translate_on
 always @(*) begin
 	array_muxed10 <= 1'd0;
@@ -17508,12 +17555,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_277 <= dummy_s;
+	dummy_d_278 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_278;
+reg dummy_d_279;
 // synthesis translate_on
 always @(*) begin
 	array_muxed11 <= 1'd0;
@@ -17532,12 +17579,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_278 <= dummy_s;
+	dummy_d_279 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_279;
+reg dummy_d_280;
 // synthesis translate_on
 always @(*) begin
 	array_muxed12 <= 1'd0;
@@ -17556,12 +17603,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_279 <= dummy_s;
+	dummy_d_280 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_280;
+reg dummy_d_281;
 // synthesis translate_on
 always @(*) begin
 	array_muxed13 <= 1'd0;
@@ -17580,12 +17627,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_280 <= dummy_s;
+	dummy_d_281 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_281;
+reg dummy_d_282;
 // synthesis translate_on
 always @(*) begin
 	array_muxed14 <= 3'd0;
@@ -17604,12 +17651,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_281 <= dummy_s;
+	dummy_d_282 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_282;
+reg dummy_d_283;
 // synthesis translate_on
 always @(*) begin
 	array_muxed15 <= 14'd0;
@@ -17628,12 +17675,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_282 <= dummy_s;
+	dummy_d_283 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_283;
+reg dummy_d_284;
 // synthesis translate_on
 always @(*) begin
 	array_muxed16 <= 1'd0;
@@ -17652,12 +17699,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_283 <= dummy_s;
+	dummy_d_284 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_284;
+reg dummy_d_285;
 // synthesis translate_on
 always @(*) begin
 	array_muxed17 <= 1'd0;
@@ -17676,12 +17723,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_284 <= dummy_s;
+	dummy_d_285 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_285;
+reg dummy_d_286;
 // synthesis translate_on
 always @(*) begin
 	array_muxed18 <= 1'd0;
@@ -17700,12 +17747,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_285 <= dummy_s;
+	dummy_d_286 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_286;
+reg dummy_d_287;
 // synthesis translate_on
 always @(*) begin
 	array_muxed19 <= 1'd0;
@@ -17724,12 +17771,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_286 <= dummy_s;
+	dummy_d_287 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_287;
+reg dummy_d_288;
 // synthesis translate_on
 always @(*) begin
 	array_muxed20 <= 1'd0;
@@ -17748,12 +17795,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_287 <= dummy_s;
+	dummy_d_288 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_288;
+reg dummy_d_289;
 // synthesis translate_on
 always @(*) begin
 	array_muxed21 <= 3'd0;
@@ -17772,12 +17819,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_288 <= dummy_s;
+	dummy_d_289 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_289;
+reg dummy_d_290;
 // synthesis translate_on
 always @(*) begin
 	array_muxed22 <= 14'd0;
@@ -17796,12 +17843,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_289 <= dummy_s;
+	dummy_d_290 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_290;
+reg dummy_d_291;
 // synthesis translate_on
 always @(*) begin
 	array_muxed23 <= 1'd0;
@@ -17820,12 +17867,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_290 <= dummy_s;
+	dummy_d_291 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_291;
+reg dummy_d_292;
 // synthesis translate_on
 always @(*) begin
 	array_muxed24 <= 1'd0;
@@ -17844,12 +17891,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_291 <= dummy_s;
+	dummy_d_292 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_292;
+reg dummy_d_293;
 // synthesis translate_on
 always @(*) begin
 	array_muxed25 <= 1'd0;
@@ -17868,12 +17915,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_292 <= dummy_s;
+	dummy_d_293 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_293;
+reg dummy_d_294;
 // synthesis translate_on
 always @(*) begin
 	array_muxed26 <= 1'd0;
@@ -17892,12 +17939,12 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_293 <= dummy_s;
+	dummy_d_294 <= dummy_s;
 // synthesis translate_on
 end
 
 // synthesis translate_off
-reg dummy_d_294;
+reg dummy_d_295;
 // synthesis translate_on
 always @(*) begin
 	array_muxed27 <= 1'd0;
@@ -17916,7 +17963,7 @@ always @(*) begin
 		end
 	endcase
 // synthesis translate_off
-	dummy_d_294 <= dummy_s;
+	dummy_d_295 <= dummy_s;
 // synthesis translate_on
 end
 
@@ -18016,6 +18063,10 @@ always @(posedge sys_clk) begin
 									end else begin
 										if (request[7]) begin
 											grant <= 3'd7;
+										end else begin
+											if (request[8]) begin
+												grant <= 4'd8;
+											end
 										end
 									end
 								end
@@ -18043,8 +18094,12 @@ always @(posedge sys_clk) begin
 									if (request[7]) begin
 										grant <= 3'd7;
 									end else begin
-										if (request[0]) begin
-											grant <= 1'd0;
+										if (request[8]) begin
+											grant <= 4'd8;
+										end else begin
+											if (request[0]) begin
+												grant <= 1'd0;
+											end
 										end
 									end
 								end
@@ -18069,11 +18124,15 @@ always @(posedge sys_clk) begin
 								if (request[7]) begin
 									grant <= 3'd7;
 								end else begin
-									if (request[0]) begin
-										grant <= 1'd0;
+									if (request[8]) begin
+										grant <= 4'd8;
 									end else begin
-										if (request[1]) begin
-											grant <= 1'd1;
+										if (request[0]) begin
+											grant <= 1'd0;
+										end else begin
+											if (request[1]) begin
+												grant <= 1'd1;
+											end
 										end
 									end
 								end
@@ -18095,14 +18154,18 @@ always @(posedge sys_clk) begin
 							if (request[7]) begin
 								grant <= 3'd7;
 							end else begin
-								if (request[0]) begin
-									grant <= 1'd0;
+								if (request[8]) begin
+									grant <= 4'd8;
 								end else begin
-									if (request[1]) begin
-										grant <= 1'd1;
+									if (request[0]) begin
+										grant <= 1'd0;
 									end else begin
-										if (request[2]) begin
-											grant <= 2'd2;
+										if (request[1]) begin
+											grant <= 1'd1;
+										end else begin
+											if (request[2]) begin
+												grant <= 2'd2;
+											end
 										end
 									end
 								end
@@ -18121,17 +18184,21 @@ always @(posedge sys_clk) begin
 						if (request[7]) begin
 							grant <= 3'd7;
 						end else begin
-							if (request[0]) begin
-								grant <= 1'd0;
+							if (request[8]) begin
+								grant <= 4'd8;
 							end else begin
-								if (request[1]) begin
-									grant <= 1'd1;
+								if (request[0]) begin
+									grant <= 1'd0;
 								end else begin
-									if (request[2]) begin
-										grant <= 2'd2;
+									if (request[1]) begin
+										grant <= 1'd1;
 									end else begin
-										if (request[3]) begin
-											grant <= 2'd3;
+										if (request[2]) begin
+											grant <= 2'd2;
+										end else begin
+											if (request[3]) begin
+												grant <= 2'd3;
+											end
 										end
 									end
 								end
@@ -18147,6 +18214,39 @@ always @(posedge sys_clk) begin
 					if (request[7]) begin
 						grant <= 3'd7;
 					end else begin
+						if (request[8]) begin
+							grant <= 4'd8;
+						end else begin
+							if (request[0]) begin
+								grant <= 1'd0;
+							end else begin
+								if (request[1]) begin
+									grant <= 1'd1;
+								end else begin
+									if (request[2]) begin
+										grant <= 2'd2;
+									end else begin
+										if (request[3]) begin
+											grant <= 2'd3;
+										end else begin
+											if (request[4]) begin
+												grant <= 3'd4;
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			3'd6: begin
+				if (request[7]) begin
+					grant <= 3'd7;
+				end else begin
+					if (request[8]) begin
+						grant <= 4'd8;
+					end else begin
 						if (request[0]) begin
 							grant <= 1'd0;
 						end else begin
@@ -18161,6 +18261,10 @@ always @(posedge sys_clk) begin
 									end else begin
 										if (request[4]) begin
 											grant <= 3'd4;
+										end else begin
+											if (request[5]) begin
+												grant <= 3'd5;
+											end
 										end
 									end
 								end
@@ -18169,9 +18273,9 @@ always @(posedge sys_clk) begin
 					end
 				end
 			end
-			3'd6: begin
-				if (request[7]) begin
-					grant <= 3'd7;
+			3'd7: begin
+				if (request[8]) begin
+					grant <= 4'd8;
 				end else begin
 					if (request[0]) begin
 						grant <= 1'd0;
@@ -18190,6 +18294,10 @@ always @(posedge sys_clk) begin
 									end else begin
 										if (request[5]) begin
 											grant <= 3'd5;
+										end else begin
+											if (request[6]) begin
+												grant <= 3'd6;
+											end
 										end
 									end
 								end
@@ -18198,7 +18306,7 @@ always @(posedge sys_clk) begin
 					end
 				end
 			end
-			3'd7: begin
+			4'd8: begin
 				if (request[0]) begin
 					grant <= 1'd0;
 				end else begin
@@ -18219,6 +18327,10 @@ always @(posedge sys_clk) begin
 									end else begin
 										if (request[6]) begin
 											grant <= 3'd6;
+										end else begin
+											if (request[7]) begin
+												grant <= 3'd7;
+											end
 										end
 									end
 								end
@@ -20842,6 +20954,29 @@ always @(posedge sys_clk) begin
 		end
 	end
 	tmrbankmachine7_state <= tmrbankmachine7_next_state;
+	litedramcontroller_multiplexer_fsm_state_edge <= litedramcontroller_multiplexer_fsm_state;
+	if ((litedramcontroller_multiplexer_fsm_state != litedramcontroller_multiplexer_fsm_state_edge)) begin
+		if ((litedramcontroller_multiplexer_fsm_state == 1'd0)) begin
+			litedramcontroller_multiplexer_log_read <= 1'd1;
+		end
+		if ((litedramcontroller_multiplexer_fsm_state == 1'd1)) begin
+			litedramcontroller_multiplexer_log_write <= 1'd1;
+		end
+		if ((litedramcontroller_multiplexer_fsm_state == 2'd2)) begin
+			litedramcontroller_multiplexer_log_refresh <= 1'd1;
+		end
+	end
+	if (litedramcontroller_multiplexer_loggingsystem_ready) begin
+		if (litedramcontroller_multiplexer_log_read) begin
+			litedramcontroller_multiplexer_log_read <= 1'd0;
+		end
+		if (litedramcontroller_multiplexer_log_write) begin
+			litedramcontroller_multiplexer_log_write <= 1'd0;
+		end
+		if (litedramcontroller_multiplexer_log_refresh) begin
+			litedramcontroller_multiplexer_log_refresh <= 1'd0;
+		end
+	end
 	if ((~litedramcontroller_multiplexer_en0)) begin
 		litedramcontroller_multiplexer_time0 <= 5'd31;
 	end else begin
@@ -22989,6 +23124,10 @@ always @(posedge sys_clk) begin
 		litedramcontroller_tmrbankmachine7_trascon3_ready <= 1'd0;
 		litedramcontroller_tmrbankmachine7_trascon3_count <= 3'd0;
 		litedramcontroller_tmrbankmachine7_fsm_state_edge <= 3'd0;
+		litedramcontroller_multiplexer_fsm_state_edge <= 1'd0;
+		litedramcontroller_multiplexer_log_read <= 1'd0;
+		litedramcontroller_multiplexer_log_write <= 1'd0;
+		litedramcontroller_multiplexer_log_refresh <= 1'd0;
 		litedramcontroller_multiplexer_choose_cmd_int_grant <= 3'd0;
 		litedramcontroller_multiplexer_choose_cmd_int2_grant <= 3'd0;
 		litedramcontroller_multiplexer_choose_cmd_int3_grant <= 3'd0;
@@ -23053,7 +23192,7 @@ always @(posedge sys_clk) begin
 		litedramcontroller_multiplexer_twtrcon3_count <= 3'd0;
 		litedramcontroller_multiplexer_time0 <= 5'd0;
 		litedramcontroller_multiplexer_time1 <= 4'd0;
-		grant <= 3'd0;
+		grant <= 4'd0;
 		tmrrefresher_state <= 2'd0;
 		tmrbankmachine0_state <= 4'd0;
 		tmrbankmachine1_state <= 4'd0;

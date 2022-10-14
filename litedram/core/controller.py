@@ -123,7 +123,8 @@ class LiteDRAMController(Module, AutoCSR):
             refresher     = self.refresher,
             dfi           = self.dfi,
             interface     = interface,
-            TMRinterface  = TMRinterface)
+            TMRinterface  = TMRinterface,
+            logger        = logger)
 
     #def get_csrs(self):
     #    return self.multiplexer.get_csrs()

@@ -625,7 +625,8 @@ class TMRMultiplexer(Module, AutoCSR):
             refresher,
             dfi,
             interface,
-            TMRinterface):
+            TMRinterface,
+            logger):
         assert(settings.phy.nphases == len(dfi.phases))
         
         #TODO Refactor interface here
@@ -633,6 +634,41 @@ class TMRMultiplexer(Module, AutoCSR):
         self.dfi = dfi
         
         ###
+        
+        # Logging Messages -------------------------------------------------------------------------
+        
+        log_n = Signal(8)
+        log_val = Signal(8)
+        log_info = Signal(32)
+        
+        self.comb += [log_n.eq(8), log_info.eq(0)]
+        
+        fsm_state = Signal(max=2)
+        fsm_state_edge = Signal(max=2)
+        
+        self.sync += fsm_state_edge.eq(fsm_state)
+        
+        message, ready, request = logger.get_log_port()
+        
+        # Log Signals
+        log_read = Signal()
+        log_write = Signal()
+        log_refresh = Signal()
+        
+        self.comb += If(log_read, log_val.eq(0)).Elif(log_write, log_val.eq(1)).Elif(log_refresh, log_val.eq(2))
+        
+        self.comb += message.eq(Cat(log_info, log_val, log_n))
+        self.comb += request.eq(log_read | log_write | log_refresh)
+        
+        self.sync += [If(fsm_state != fsm_state_edge,
+                        If(fsm_state == 0, log_read.eq(1)),
+                        If(fsm_state == 1, log_write.eq(1)),
+                        If(fsm_state == 2, log_refresh.eq(1)))]
+        
+        self.sync += If(ready, 
+                        If(log_read, log_read.eq(0)),
+                        If(log_write, log_write.eq(0)),
+                        If(log_refresh, log_refresh.eq(0)))
 
         ras_allowed = Signal(reset=1)
         cas_allowed = Signal(reset=1)
@@ -918,6 +954,7 @@ class TMRMultiplexer(Module, AutoCSR):
         # Control FSM ------------------------------------------------------------------------------
         self.submodules.fsm = fsm = FSM()
         fsm.act("READ",
+            fsm_state.eq(0),
             read_time_en.eq(1),
             choose_req_int.want_reads.eq(1),
             choose_req_int2.want_reads.eq(1),
@@ -945,6 +982,7 @@ class TMRMultiplexer(Module, AutoCSR):
             )
         )
         fsm.act("WRITE",
+            fsm_state.eq(1),
             write_time_en.eq(1),
             choose_req_int.want_writes.eq(1),
             choose_req_int2.want_writes.eq(1),
@@ -971,6 +1009,7 @@ class TMRMultiplexer(Module, AutoCSR):
             )
         )
         fsm.act("REFRESH",
+            fsm_state.eq(2),
             steerer_int.sel[0].eq(STEER_REFRESH),
             steerer_int2.sel[0].eq(STEER_REFRESH),
             steerer_int3.sel[0].eq(STEER_REFRESH),
