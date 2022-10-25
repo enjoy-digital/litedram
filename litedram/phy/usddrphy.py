@@ -93,20 +93,25 @@ class USDDRPHY(Module, AutoCSR):
 
         # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
-            phytype       = phytype,
-            memtype       = memtype,
-            databits      = databits,
-            dfi_databits  = 2*databits,
-            nranks        = nranks,
-            nphases       = nphases,
-            rdphase       = self._rdphase.storage,
-            wrphase       = self._wrphase.storage,
-            cl            = cl,
-            cwl           = cwl,
-            read_latency  = cl_sys_latency + 5,
-            write_latency = cwl_sys_latency - 1,
-            cmd_latency   = cmd_latency,
-            cmd_delay     = cmd_delay,
+            phytype                   = phytype,
+            memtype                   = memtype,
+            databits                  = databits,
+            dfi_databits              = 2*databits,
+            nranks                    = nranks,
+            nphases                   = nphases,
+            rdphase                   = self._rdphase.storage,
+            wrphase                   = self._wrphase.storage,
+            cl                        = cl,
+            cwl                       = cwl,
+            read_latency              = cl_sys_latency + 5,
+            write_latency             = cwl_sys_latency - 1,
+            cmd_latency               = cmd_latency,
+            cmd_delay                 = cmd_delay,
+            write_leveling            = True,
+            write_latency_calibration = True,
+            read_leveling             = True,
+            delays                    = 512,
+            bitslips                  = 8,
         )
 
         if is_rdimm:
@@ -132,45 +137,46 @@ class USDDRPHY(Module, AutoCSR):
             pads.sel_group(pads_group)
 
             # Clock --------------------------------------------------------------------------------
-            clk_o_nodelay = Signal()
-            clk_o_delayed = Signal()
-            self.specials += [
-                Instance("OSERDESE3",
-                    p_SIM_DEVICE         = device,
-                    p_DATA_WIDTH         = 8,
-                    p_INIT               = 0,
-                    p_IS_RST_INVERTED    = 0,
-                    p_IS_CLK_INVERTED    = 0,
-                    p_IS_CLKDIV_INVERTED = 0,
-                    i_RST    = ResetSignal("ic") | self._rst.storage,
-                    i_CLK    = ClockSignal("sys4x"),
-                    i_CLKDIV = ClockSignal("sys"),
-                    i_D      = 0b10101010,
-                    o_OQ     = clk_o_nodelay,
-                ),
-                Instance("ODELAYE3",
-                    p_SIM_DEVICE       = device,
-                    p_CASCADE          = "NONE",
-                    p_UPDATE_MODE      = "ASYNC",
-                    p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
-                    p_DELAY_FORMAT     = "TIME",
-                    p_DELAY_TYPE       = "VARIABLE",
-                    p_DELAY_VALUE      = 0,
-                    i_RST          = ResetSignal("ic") | self._cdly_rst.re | self._rst.storage,
-                    i_CLK          = ClockSignal("sys"),
-                    i_EN_VTC       = self._en_vtc.storage,
-                    i_CE           = self._cdly_inc.re,
-                    i_INC          = 1,
-                    o_CNTVALUEOUT  = self._cdly_value.status,
-                    i_ODATAIN      = clk_o_nodelay,
-                    o_DATAOUT      = clk_o_delayed,
-                ),
-                Instance("OBUFDS",
-                    i_I  = clk_o_delayed,
-                    o_O  = pads.clk_p,
-                    o_OB = pads.clk_n,
-                )
-            ]
+            for i in range(len(pads.clk_p)):
+                clk_o_nodelay = Signal()
+                clk_o_delayed = Signal()
+                self.specials += [
+                    Instance("OSERDESE3",
+                        p_SIM_DEVICE         = device,
+                        p_DATA_WIDTH         = 8,
+                        p_INIT               = 0,
+                        p_IS_RST_INVERTED    = 0,
+                        p_IS_CLK_INVERTED    = 0,
+                        p_IS_CLKDIV_INVERTED = 0,
+                        i_RST    = ResetSignal("ic") | self._rst.storage,
+                        i_CLK    = ClockSignal("sys4x"),
+                        i_CLKDIV = ClockSignal("sys"),
+                        i_D      = 0b10101010,
+                        o_OQ     = clk_o_nodelay,
+                    ),
+                    Instance("ODELAYE3",
+                        p_SIM_DEVICE       = device,
+                        p_CASCADE          = "NONE",
+                        p_UPDATE_MODE      = "ASYNC",
+                        p_REFCLK_FREQUENCY = iodelay_clk_freq/1e6,
+                        p_DELAY_FORMAT     = "TIME",
+                        p_DELAY_TYPE       = "VARIABLE",
+                        p_DELAY_VALUE      = 0,
+                        i_RST          = ResetSignal("ic") | self._cdly_rst.re | self._rst.storage,
+                        i_CLK          = ClockSignal("sys"),
+                        i_EN_VTC       = self._en_vtc.storage,
+                        i_CE           = self._cdly_inc.re,
+                        i_INC          = 1,
+                        o_CNTVALUEOUT  = self._cdly_value.status if i == 0 else Signal(),
+                        i_ODATAIN      = clk_o_nodelay,
+                        o_DATAOUT      = clk_o_delayed,
+                    ),
+                    Instance("OBUFDS",
+                        i_I  = clk_o_delayed,
+                        o_O  = pads.clk_p[i],
+                        o_OB = pads.clk_n[i],
+                    )
+                ]
 
             # Commands -----------------------------------------------------------------------------
             pads_ba = Signal(bankbits)

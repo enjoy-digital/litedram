@@ -11,7 +11,7 @@ import argparse
 
 from migen import *
 
-from litex_boards.platforms import genesys2
+from litex_boards.platforms import digilent_genesys2
 
 from litex.soc.cores.clock import *
 from litex.soc.interconnect.csr import *
@@ -36,6 +36,7 @@ class _CRG(Module, AutoCSR):
 
         # # #
 
+        # Main PLL.
         self.submodules.main_pll = main_pll = S7PLL(speedgrade=-2)
         self.comb += main_pll.reset.eq(~platform.request("cpu_reset_n"))
         main_pll.register_clkin(platform.request("clk200"), 200e6)
@@ -45,27 +46,26 @@ class _CRG(Module, AutoCSR):
         main_pll.expose_drp()
         self.submodules.idelayctrl = S7IDELAYCTRL(self.cd_clk200)
 
+        # DRAM PLL.
         self.submodules.pll = pll = S7PLL(speedgrade=-2)
         self.comb += pll.reset.eq(~main_pll.locked | self.rst)
         pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
         pll.create_clkout(self.cd_sys,    sys_clk_freq)
         pll.create_clkout(self.cd_sys4x,  4*sys_clk_freq)
 
-        sys_clk_counter = Signal(32)
-        self.sync += sys_clk_counter.eq(sys_clk_counter + 1)
+        # Sys Clk Counter.
         self.sys_clk_counter = CSRStatus(32)
-        self.comb += self.sys_clk_counter.status.eq(sys_clk_counter)
+        self.sync += self.sys_clk_counter.status.eq(self.sys_clk_counter.status + 1)
 
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
     def __init__(self, uart="crossover", sys_clk_freq=int(125e6), with_bist=False, with_analyzer=False):
-        platform = genesys2.Platform()
+        platform = digilent_genesys2.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, clk_freq=sys_clk_freq,
             ident               = "LiteDRAM bench on Genesys2",
-            ident_version       = True,
             integrated_rom_size = 0x10000,
             integrated_rom_mode = "rw",
             uart_name           = uart)
@@ -125,7 +125,7 @@ def main():
     args = parser.parse_args()
 
     soc     = BenchSoC(uart=args.uart, with_bist=args.with_bist, with_analyzer=args.with_analyzer)
-    builder = Builder(soc, output_dir="build/genesys2", csr_csv="csr.csv")
+    builder = Builder(soc, output_dir="build/digilent_genesys2", csr_csv="csr.csv")
     builder.build(run=args.build)
 
     if args.load:
@@ -134,7 +134,7 @@ def main():
 
     if args.load_bios:
         from common import load_bios
-        load_bios("build/genesys2/software/bios/bios.bin")
+        load_bios("build/digilent_genesys2/software/bios/bios.bin")
 
     if args.sys_clk_freq is not None:
         from common import s7_set_sys_clk
@@ -147,7 +147,7 @@ def main():
             freq_max      = 180e6,
             freq_step     = 1e6,
             vco_freq      = soc.crg.main_pll.compute_config()["vco"],
-            bios_filename = "build/genesys2/software/bios/bios.bin")
+            bios_filename = "build/digilent_genesys2/software/bios/bios.bin")
 
 if __name__ == "__main__":
     main()

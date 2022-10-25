@@ -184,8 +184,14 @@ def s7_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
         start = time.time()
         while (time.time() - start) < bios_timeout:
             if bus.regs.uart_xover_rxfull.read():
-                for c in bus.read(bus.regs.uart_xover_rxtx.addr, 16, burst="fixed"):
-                    print("{:c}".format(c), end="")
+                length = 16
+            elif not bus.regs.uart_xover_rxempty.read():
+                length = 1
+            else:
+                time.sleep(1e-3)
+                continue
+            for c in bus.read(bus.regs.uart_xover_rxtx.addr, length=length, burst="fixed"):
+                print("{:c}".format(c), end="")
         print("")
 
     # # #
@@ -280,9 +286,15 @@ def us_bench_test(freq_min, freq_max, freq_step, vco_freq, bios_filename, bios_t
         ctrl.reboot()
         start = time.time()
         while (time.time() - start) < bios_timeout:
-            if bus.regs.uart_xover_rxempty.read() == 0:
-                for c in bus.read(bus.regs.uart_xover_rxtx.addr, 1, burst="fixed"):
-                    print("{:c}".format(c), end="")
+            if bus.regs.uart_xover_rxfull.read():
+                length = 16
+            elif not bus.regs.uart_xover_rxempty.read():
+                length = 1
+            else:
+                time.sleep(1e-3)
+                continue
+            for c in bus.read(bus.regs.uart_xover_rxtx.addr, length=length, burst="fixed"):
+                print("{:c}".format(c), end="")
         print("")
 
     # # #

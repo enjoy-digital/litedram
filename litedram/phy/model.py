@@ -2,7 +2,7 @@
 # This file is part of LiteDRAM.
 #
 # Copyright (c) 2015-2020 Florent Kermarrec <florent@enjoy-digital.fr>
-# Copyright (c) 2020 Antmicro <www.antmicro.com>
+# Copyright (c) 2020-2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
 # SDRAM simulation PHY at DFI level tested with SDR/DDR/DDR2/LPDDR/DDR3
@@ -11,7 +11,7 @@
 
 from migen import *
 
-from litedram.common import burst_lengths
+from litedram.common import *
 from litedram.phy.dfi import *
 from litedram.modules import _speedgrade_timings, _technology_timings
 
@@ -230,6 +230,8 @@ class DFITimingsChecker(Module):
         self.timings = new_timings
 
     def __init__(self, dfi, nbanks, nphases, timings, refresh_mode, memtype, verbose=False):
+        self.logging_enabled = Signal(reset=1)
+
         self.prepare_timings(timings, refresh_mode, memtype)
         self.add_cmds()
         self.add_rules()
@@ -266,7 +268,7 @@ class DFITimingsChecker(Module):
             if verbose:
                 for _, cmd in self.cmds.items():
                     self.sync += [
-                        If(state == cmd.enc,
+                        If((state == cmd.enc) & self.logging_enabled,
                             If(all_banks,
                                 Display("[%016dps] P%0d " + cmd.name, ps, np)
                             ).Else(
@@ -286,7 +288,7 @@ class DFITimingsChecker(Module):
                         for rule in self.rules:
                             if rule.prev == prev.name and rule.curr == curr.name:
                                 self.sync += [
-                                    If(cmd_recv & (last_cmd[i] == prev.enc) &
+                                    If(self.logging_enabled & cmd_recv & (last_cmd[i] == prev.enc) &
                                        (ps < (last_cmd_ps[i][prev.idx] + rule.delay)),
                                         Display("[%016dps] {} violation on bank %0d".format(rule.name), ps, i)
                                     )
@@ -302,14 +304,14 @@ class DFITimingsChecker(Module):
 
                         # act_curr points to newest ACT timestamp
                         self.sync += [
-                            If(cmd_recv & (ps < (act_ps[act_curr] + self.timings["tRRD"])),
+                            If(self.logging_enabled & cmd_recv & (ps < (act_ps[act_curr] + self.timings["tRRD"])),
                                 Display("[%016dps] tRRD violation on bank %0d", ps, i)
                             )
                         ]
 
                         # act_next points to the oldest ACT timestamp
                         self.sync += [
-                            If(cmd_recv & (ps < (act_ps[act_next] + self.timings["tFAW"])),
+                            If(self.logging_enabled & cmd_recv & (ps < (act_ps[act_next] + self.timings["tFAW"])),
                                 Display("[%016dps] tFAW violation on bank %0d", ps, i)
                             )
                         ]
@@ -338,7 +340,7 @@ class DFITimingsChecker(Module):
         self.sync += If(ref_issued != 0, ref_ps.eq(ps), ref_ps_diff.eq(ref_ps_diff - curr_diff))
 
         self.sync += [
-            If((ref_ps_mod == 0) & (ref_ps_diff > 0),
+            If((self.logging_enabled & ref_ps_mod == 0) & (ref_ps_diff > 0),
                 Display("[%016dps] tREFI violation (64ms period): %0d", ps, ref_ps_diff)
             )
         ]
@@ -349,14 +351,14 @@ class DFITimingsChecker(Module):
             self.sync += [
                 If(ref_issued != 0,
                     ref_done.eq(1),
-                    If(~ref_done,
+                    If(self.logging_enabled & ~ref_done,
                         Display("[%016dps] Late refresh", ps)
                     )
                 )
             ]
 
             self.sync += [
-                If((curr_diff > 0) & ref_done & (ref_issued == 0),
+                If(self.logging_enabled & (curr_diff > 0) & ref_done & (ref_issued == 0),
                     Display("[%016dps] tREFI violation", ps),
                     ref_done.eq(0)
                 )
@@ -369,12 +371,81 @@ class DFITimingsChecker(Module):
             ref_done = Signal()
             self.sync += If(ref_issued != 0, ref_done.eq(1))
             self.sync += [
-                If((ref_issued == 0) & ref_done &
+                If(self.logging_enabled & (ref_issued == 0) & ref_done &
                    (ref_ps > (ps + ref_limit[refresh_mode] * self.timings['tREFI'])),
                     Display("[%016dps] tREFI violation (too many postponed refreshes)", ps),
                     ref_done.eq(0)
                 )
             ]
+
+# SDRAM PHY Settings -------------------------------------------------------------------------------
+
+sdram_module_nphases = {
+    "SDR":   1,
+    "DDR":   2,
+    "LPDDR": 2,
+    "DDR2":  2,
+    "DDR3":  4,
+    "DDR4":  4,
+}
+
+def get_sdram_phy_settings(memtype, data_width, clk_freq):
+    nphases = sdram_module_nphases[memtype]
+
+    if memtype == "SDR":
+        # Settings from gensdrphy
+        rdphase       = 0
+        wrphase       = 0
+        cl            = 2
+        cwl           = None
+        read_latency  = 4
+        write_latency = 0
+    elif memtype in ["DDR", "LPDDR"]:
+        # Settings from s6ddrphy
+        rdphase       = 0
+        wrphase       = 1
+        cl            = 3
+        cwl           = None
+        read_latency  = 5
+        write_latency = 0
+    elif memtype in ["DDR2", "DDR3"]:
+        # Settings from s7ddrphy
+        tck             = 2/(2*nphases*clk_freq)
+        cl, cwl         = get_default_cl_cwl(memtype, tck)
+        cl_sys_latency  = get_sys_latency(nphases, cl)
+        cwl_sys_latency = get_sys_latency(nphases, cwl)
+        rdphase         = get_sys_phase(nphases, cl_sys_latency, cl)
+        wrphase         = get_sys_phase(nphases, cwl_sys_latency, cwl)
+        read_latency    = cl_sys_latency + 6
+        write_latency   = cwl_sys_latency - 1
+    elif memtype == "DDR4":
+        # Settings from usddrphy
+        tck             = 2/(2*nphases*clk_freq)
+        cl, cwl         = get_default_cl_cwl(memtype, tck)
+        cl_sys_latency  = get_sys_latency(nphases, cl)
+        cwl_sys_latency = get_sys_latency(nphases, cwl)
+        rdphase         = get_sys_phase(nphases, cl_sys_latency, cl)
+        wrphase         = get_sys_phase(nphases, cwl_sys_latency, cwl)
+        read_latency    = cl_sys_latency + 5
+        write_latency   = cwl_sys_latency - 1
+
+    sdram_phy_settings = {
+        "nphases":       nphases,
+        "rdphase":       rdphase,
+        "wrphase":       wrphase,
+        "cl":            cl,
+        "cwl":           cwl,
+        "read_latency":  read_latency,
+        "write_latency": write_latency,
+    }
+
+    return PhySettings(
+        phytype      = "SDRAMPHYModel",
+        memtype      = memtype,
+        databits     = data_width,
+        dfi_databits = data_width if memtype == "SDR" else 2*data_width,
+        **sdram_phy_settings,
+    )
 
 # SDRAM PHY Model ----------------------------------------------------------------------------------
 
@@ -432,11 +503,20 @@ class SDRAMPHYModel(Module):
 
         return bank_init
 
-    def __init__(self, module, settings, clk_freq=100e6,
+    def __init__(self, module, settings=None, data_width=None, clk_freq=100e6,
         we_granularity         = 8,
         init                   = [],
         address_mapping        = "ROW_BANK_COL",
         verbosity              = SDRAM_VERBOSE_OFF):
+
+        # PHY Settings -----------------------------------------------------------------------------
+        if settings is None:
+            assert data_width is not None
+            settings = get_sdram_phy_settings(
+                memtype    = module.memtype,
+                data_width = data_width,
+                clk_freq   = clk_freq
+            )
 
         # Parameters -------------------------------------------------------------------------------
         burst_length = {
@@ -445,6 +525,7 @@ class SDRAMPHYModel(Module):
             "LPDDR": 2,
             "DDR2":  2,
             "DDR3":  2,
+            "RPC":   4,
             "DDR4":  2,
             }[settings.memtype]
 

@@ -490,6 +490,15 @@ class MT48LC32M8(SDRModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 15))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=20, tRCD=20, tWR=15, tRFC=(None, 66), tFAW=None, tRAS=44)}
 
+class AS4C4M16(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 4096
+    ncols  = 256
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 14))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=22, tRCD=21, tWR=20, tRFC=(None, 63), tFAW=None, tRAS=42)}
+
 class AS4C16M16(SDRModule):
     # geometry
     nbanks = 4
@@ -535,6 +544,15 @@ class M12L16161A(SDRModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 10))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 55), tFAW=None, tRAS=40)}
 
+class W9825G6KH6(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 8192
+    ncols  = 512
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 10))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 60), tFAW=None, tRAS=42)}
+
 # DDR ----------------------------------------------------------------------------------------------
 
 class DDRModule(SDRAMModule):                     memtype = "DDR"
@@ -562,6 +580,16 @@ class MT46H32M16(LPDDRModule):
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 72), tFAW=None, tRAS=None)}
+
+class MT46H64M16(LPDDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 16384
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 72), tFAW=None, tRAS=None)}
+
 
 class MT46H32M32(LPDDRModule):
     # geometry
@@ -618,6 +646,18 @@ class P3R1GE4JGF(DDR2Module):
 class DDR3Module(SDRAMModule):                     memtype = "DDR3"
 class DDR3RegisteredModule(SDRAMRegisteredModule): memtype = "DDR3"
 
+class AS4C128M16(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 16384
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=13.75, tRFC=(160, None), tFAW=(None, 40), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
 class MT41K64M16(DDR3Module):
     # geometry
     nbanks = 8
@@ -646,6 +686,18 @@ class MT41J256M8(DDR3Module):
         "1333": _SpeedgradeTimings(tRP=13.5,  tRCD=13.5,  tWR=15,  tRFC=(107, None), tFAW=(None, 45), tRAS=36),
     }
     speedgrade_timings["default"] = speedgrade_timings["1333"]
+
+class MT41K256M8(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6), tZQCS=(64, 80))
+    speedgrade_timings = {
+          "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(128, None), tFAW=(None, 40), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 class MT41J128M16(DDR3Module):
     # geometry
@@ -761,6 +813,20 @@ class IS43TR16256A(DDR3Module):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
+class IS43TR16512B(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 65536
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "800":  _SpeedgradeTimings(tRP=15,     tRCD=15,     tWR=15, tRFC=(None, 350), tFAW=(None, 50), tRAS=37.5),
+        "1066": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=(None, 350), tFAW=(None, 50), tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5,   tRCD=13.5,   tWR=15, tRFC=(None, 350), tFAW=(None, 50), tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75,  tRCD=13.75,  tWR=15, tRFC=(None, 350), tFAW=(None, 50), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 # DDR3 (SO-DIMM) -----------------------------------------------------------------------------------
 
@@ -865,6 +931,35 @@ class MT16KTF1G64HZ(DDR3Module):
     }
     speedgrade_timings["default"] = speedgrade_timings["1866"]
 
+# RPC ----------------------------------------------------------------------------------------------
+
+class RPCModule(SDRAMModule): memtype = "RPC"
+
+class EM6GA16L(RPCModule):
+    # 64MBits per bank => 256Mb
+    # TODO: the timings may need further verification
+    # geometry
+    nbanks = 4     #
+    ncols = 1024
+    nrows = 4096  # 64M / 1024 / 16 = 4k
+    # timings
+    technology_timings = _TechnologyTimings(
+        tREFI=64e6/8192,
+        # It seems that we need to calculate tCCD from tBESL by assuming BC=1, then it is:
+        # RL=WL + burst_time + tBESL
+        tCCD=(13+1 + 8 + 7, None),
+        # CCD enforces tBESL for read commands, we use tWTR to ensure it for writes
+        tWTR=(11 + 2, None),  # 11 for tBESL + 2 for STB low before a command
+        tRRD=(None, 7.5),
+        tZQCS=(None, 90),
+    )
+    speedgrade_timings = {
+        # FIXME: we're increasing tWR by 1 sysclk to compensate for long write (assuming max sysclk 200 MHz)
+        # Should we use tRFQSd for tRFC?
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15 + 1e9/200e6, tRFC=(3*100, None), tFAW=None, tRAS=35),
+        "1866": _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=15 + 1e9/200e6, tRFC=(3*100, None), tFAW=None, tRAS=34),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
 
 # DDR4 (Chips) -------------------------------------------------------------------------------------
 
@@ -903,6 +998,26 @@ class MT40A1G8(DDR4Module):
         "2666": _SpeedgradeTimings(tRP=13.50, tRCD=13.50, tWR=15, tRFC=trfc, tFAW=(20, 21), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
+
+class MT40A2G8(DDR4Module):
+    # geometry
+    ngroupbanks = 4
+    ngroups     = 4
+    nbanks      = ngroups * ngroupbanks
+    nrows       = 131072
+    ncols       = 1024
+    # timings
+    trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
+    trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6.4), tZQCS=(128, 80))
+    speedgrade_timings = {
+        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
+        "2666": _SpeedgradeTimings(tRP=13.50, tRCD=13.50, tWR=15, tRFC=trfc, tFAW=(20, 21), tRAS=32),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["2400"]
+
+class MT40A2G16(MT40A2G8):
+    pass # TwinDie MT40A2G8.
 
 class MT40A256M16(DDR4Module):
     # geometry
@@ -1001,9 +1116,56 @@ class MTA18ASF2G72PZ(DDR4RegisteredModule):
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
     technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
+        "2400": _SpeedgradeTimings(tRP=14.16, tRCD=14.16, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
+        "2666": _SpeedgradeTimings(tRP=14.25, tRCD=14.25, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
+        "2933": _SpeedgradeTimings(tRP=14.32, tRCD=14.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
+        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
+
+class MTA36ASF4G72PZ(MTA18ASF2G72PZ): pass
+    # This module is similar to MTA18ASF2G72PZ, with the exception that it is a dual-rank module. The rank number
+    # can be specified in the PHY settings.
+
+class HMA82GR7DJR4N(DDR4RegisteredModule):
+    # geometry
+    ngroupbanks = 4
+    ngroups     = 4
+    nbanks      = ngroups * ngroupbanks
+    nrows       = 131072
+    ncols       = 1024
+    # timings
+    trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
+    trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
+    speedgrade_timings = {
+        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=10, tRAS=32),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["3200"]
+
+class HMA84GR7DJR4N(HMA82GR7DJR4N): pass
+    # This module is similar to HMA82GR7DJR4N, with the exception that it is a dual-rank module. The rank number
+    # can be specified in the PHY settings.
+
+class M393A2K40DB3(DDR4RegisteredModule):
+    # geometry
+    ngroupbanks = 4
+    ngroups     = 4
+    nbanks      = ngroups * ngroupbanks
+    nrows       = 131072
+    ncols       = 1024
+    # timings
+    trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
+    trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
+    speedgrade_timings = {
+        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=10, tRAS=32),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["3200"]
+
+class M393A4K40DB3(M393A2K40DB3): pass
+    # This module is similar to M393A2K40DB3, with the exception that it is a dual-rank module. The rank number
+    # can be specified in the PHY settings.
 
 # LPDDR4 -------------------------------------------------------------------------------------------
 

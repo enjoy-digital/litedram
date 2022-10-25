@@ -117,7 +117,8 @@ class ECP5DDRPHY(Module, AutoCSR):
         cl           = None,
         cwl          = None,
         cmd_delay    = 0,
-        clk_polarity = 0):
+        clk_polarity = 0,
+        dm_remapping = None):
         assert isinstance(cmd_delay, int) and cmd_delay < 128
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
@@ -127,6 +128,8 @@ class ECP5DDRPHY(Module, AutoCSR):
         nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits    = len(pads.dq)
         nphases     = 2
+        if not dm_remapping:
+            dm_remapping = {}
         assert databits%8 == 0
 
         # Init -------------------------------------------------------------------------------------
@@ -167,7 +170,10 @@ class ECP5DDRPHY(Module, AutoCSR):
             cl            = cl,
             cwl           = cwl,
             read_latency  = cl_sys_latency + 10,
-            write_latency = cwl_sys_latency
+            write_latency = cwl_sys_latency,
+            read_leveling = True,
+            bitslips      = 4,
+            delays        = 8,
         )
 
         # DFI Interface ----------------------------------------------------------------------------
@@ -240,14 +246,14 @@ class ECP5DDRPHY(Module, AutoCSR):
         dqs_preamble  = Signal()
         for i in range(databits//8):
             # DQSBUFM
-            dqs_i   = Signal()
-            dqsr90  = Signal()
-            dqsw270 = Signal()
-            dqsw    = Signal()
-            rdpntr  = Signal(3)
-            wrpntr  = Signal(3)
-            rdly    = Signal(7)
-            burstdet  = Signal()
+            dqs_i    = Signal()
+            dqsr90   = Signal()
+            dqsw270  = Signal()
+            dqsw     = Signal()
+            rdpntr   = Signal(3)
+            wrpntr   = Signal(3)
+            rdly     = Signal(3)
+            burstdet = Signal()
             self.sync += [
                 If(self._dly_sel.storage[i] & self._rdly_dq_rst.re, rdly.eq(0)),
                 If(self._dly_sel.storage[i] & self._rdly_dq_inc.re, rdly.eq(rdly + 1))
@@ -324,7 +330,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             dm_o_data_d     = Signal(8)
             dm_o_data_muxed = Signal(4)
             for n in range(8):
-                self.comb += dm_o_data[n].eq(dfi.phases[n//4].wrdata_mask[n%4*databits//8 + i])
+                self.comb += dm_o_data[n].eq(dfi.phases[n//4].wrdata_mask[n%4*databits//8+dm_remapping.get(i, i)])
             self.sync += dm_o_data_d.eq(dm_o_data)
             dm_bl8_cases = {}
             dm_bl8_cases[0] = dm_o_data_muxed.eq(dm_o_data[:4])

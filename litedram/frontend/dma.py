@@ -54,12 +54,13 @@ class LiteDRAMDMAReader(Module, AutoCSR):
     def __init__(self, port, fifo_depth=16, fifo_buffered=False, with_csr=False):
         assert isinstance(port, (LiteDRAMNativePort, LiteDRAMAXIPort))
         self.port   = port
+        self.enable = enable = Signal(reset=1)
         self.sink   = sink   = stream.Endpoint([("address", port.address_width)])
         self.source = source = stream.Endpoint([("data", port.data_width)])
 
         # # #
 
-        # Native / AXI selection
+        # Native / AXI selection -------------------------------------------------------------------
         is_native = isinstance(port, LiteDRAMNativePort)
         is_axi    = isinstance(port, LiteDRAMAXIPort)
         if is_native:
@@ -79,14 +80,14 @@ class LiteDRAMDMAReader(Module, AutoCSR):
             self.comb += cmd.size.eq(int(log2(port.data_width//8)))
         self.comb += [
             cmd.addr.eq(sink.address),
-            cmd.valid.eq(sink.valid & request_enable),
-            sink.ready.eq(cmd.ready & request_enable),
+            cmd.valid.eq(enable & sink.valid & request_enable),
+            sink.ready.eq(enable & cmd.ready & request_enable),
             request_issued.eq(cmd.valid & cmd.ready)
         ]
 
         # FIFO reservation level counter -----------------------------------------------------------
-        # incremented when data is planned to be queued
-        # decremented when data is dequeued
+        # - Incremented when data is planned to be queued.
+        # - Decremented when data is dequeued.
         data_dequeued = Signal()
         self.rsv_level = rsv_level = Signal(max=fifo_depth+1)
         self.sync += [
@@ -104,8 +105,9 @@ class LiteDRAMDMAReader(Module, AutoCSR):
 
         self.comb += [
             rdata.connect(fifo.sink, omit={"id", "resp"}),
-            fifo.source.connect(source),
-            data_dequeued.eq(source.valid & source.ready)
+            fifo.source.connect(source, omit={"ready"}),
+            fifo.source.ready.eq(source.ready | ~enable), # Flush FIFO/Reservation counter when disabled.
+            data_dequeued.eq(fifo.source.valid & fifo.source.ready)
         ]
 
         if with_csr:
@@ -125,6 +127,7 @@ class LiteDRAMDMAReader(Module, AutoCSR):
         base   = Signal(self.port.address_width)
         offset = Signal(self.port.address_width)
         length = Signal(self.port.address_width)
+        self.comb += self.enable.eq(self._enable.storage)
         self.comb += base.eq(self._base.storage[shift:])
         self.comb += length.eq(self._length.storage[shift:])
 
@@ -192,6 +195,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             (cmd, wdata) = port.cmd, port.wdata
         elif is_axi:
             (cmd, wdata) = port.aw, port.w
+            self.comb += port.b.ready.eq(1) # Always ack write responses.
         else:
             raise NotImplementedError
 
@@ -267,7 +271,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
                     If(self._loop.storage,
                         NextValue(offset, 0)
                     ).Else(
-                        NextState("IDLE")
+                        NextState("DONE")
                     )
                 )
             )

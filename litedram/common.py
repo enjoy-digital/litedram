@@ -4,13 +4,14 @@
 # Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
 # Copyright (c) 2018 John Sully <john@csquare.ca>
 # Copyright (c) 2018 bunnie <bunnie@kosagi.com>
-# Copyright (c) 2021 Antmicro <www.antmicro.com>
+# Copyright (c) 2020-2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
 import math
 from functools import reduce
 from operator import add
 from collections import OrderedDict
+from typing import Union, Optional
 
 from migen import *
 
@@ -24,8 +25,10 @@ burst_lengths = {
     "LPDDR":  4,
     "DDR2":   4,
     "DDR3":   8,
+    "RPC":    16,
     "DDR4":   8,
     "LPDDR4": 16,
+    "LPDDR5": 16,
 }
 
 def get_default_cl_cwl(memtype, tck):
@@ -203,11 +206,32 @@ class Settings:
 
 
 class PhySettings(Settings):
-    def __init__(self, phytype, memtype, databits, dfi_databits,
-                 nphases,
-                 rdphase, wrphase,
-                 cl, read_latency, write_latency, nranks=1, cwl=None,
-                 cmd_latency=None, cmd_delay=None):
+    def __init__(self,
+            phytype: str,
+            memtype: str,  # SDR, DDR, DDR2, ...
+            databits: int,  # number of DQ lines
+            dfi_databits: int,  # per-phase DFI data width
+            nphases: int,  # number of DFI phases
+            rdphase: Union[int, Signal],  # phase on which READ command will be issued by MC
+            wrphase: Union[int, Signal],  # phase on which WRITE command will be issued by MC
+            cl: int,  # latency (DRAM clk) from READ command to first data
+            read_latency: int,  # latency (MC clk) from DFI.rddata_en to DFI.rddata_valid
+            write_latency: int,  # latency (MC clk) from DFI.wrdata_en to DFI.wrdata
+            strobes: Optional[int] = None,  # number of DQS lines
+            nranks: int = 1,  # number of DRAM ranks
+            cwl: Optional[int] = None,  # latency (DRAM clk) from WRITE command to first data
+            cmd_latency: Optional[int] = None,  # additional command latency (MC clk)
+            cmd_delay: Optional[int] = None,  # used to force cmd delay during initialization in BIOS
+            bitslips: int = 0,  # number of write/read bitslip taps
+            delays: int = 0,  # number of write/read delay taps
+            # PHY training capabilities
+            write_leveling: bool = False,
+            write_dq_dqs_training: bool = False,
+            write_latency_calibration: bool = False,
+            read_leveling: bool = False,
+        ):
+        if strobes is None:
+            strobes = databits // 8
         self.set_attributes(locals())
         self.cwl = cl if cwl is None else cwl
         self.is_rdimm = False
@@ -217,9 +241,16 @@ class PhySettings(Settings):
     # rtt_wr: Writes on-die termination impedance
     # ron: Output driver impedance
     # tdqs: Termination Data Strobe enable.
-    def add_electrical_settings(self, rtt_nom, rtt_wr, ron, tdqs=False):
+    def add_electrical_settings(self, rtt_nom=None, rtt_wr=None, ron=None, tdqs=None):
         assert self.memtype in ["DDR3", "DDR4"]
-        self.set_attributes(locals())
+        if rtt_nom is not None:
+            self.rtt = rtt_nom
+        if rtt_wr is not None:
+            self.rtt_wr = rtt_wr
+        if ron is not None:
+            self.ron = ron
+        if tdqs is not None:
+            self.tdqs = tdqs
 
     # Optional RDIMM configuration
     def set_rdimm(self, tck, rcd_pll_bypass, rcd_ca_cs_drive, rcd_odt_cke_drive, rcd_clk_drive):

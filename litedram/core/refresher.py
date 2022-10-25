@@ -247,6 +247,8 @@ class Refresher(Module):
         wants_zqcs    = Signal()
 
         # Refresh Timer ----------------------------------------------------------------------------
+        if settings.timing.tREFI < 100: # FIXME: Reduce Margin.
+            raise ValueError("Clk/tREFI is ratio too low , please increase Clk frequency or disable Refresh.")
         timer = RefreshTimer(settings.timing.tREFI)
         self.submodules.timer = timer
         self.comb += timer.wait.eq(~timer.done)

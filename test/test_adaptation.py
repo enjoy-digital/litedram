@@ -118,7 +118,7 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
             dut.memory.read_handler(dut.read_crossbar_port),
             timeout_generator(1000),
         ]
-        run_simulation(dut, generators, vcd_name='sim.vcd')
+        run_simulation(dut, generators)
         self.assertEqual(dut.memory.mem, mem_expected)
         self.assertEqual(dut.read_driver.rdata, [data for adr, data in pattern])
 
@@ -157,6 +157,14 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
     def test_converter_1to8(self):
         # Verify 32-bit to 256-bit up-conversion.
         self.converter_test(test_data="32bit_to_256bit", user_data_width=32, native_data_width=256)
+
+    def test_converter_1to16(self):
+        # Verify 32-bit to 256-bit up-conversion.
+        self.converter_test(test_data="8bit_to_128bit", user_data_width=8, native_data_width=128)
+
+    def test_converter_1to32(self):
+        # Verify 32-bit to 256-bit up-conversion.
+        self.converter_test(test_data="8bit_to_256bit", user_data_width=8, native_data_width=256)
 
     def test_up_converter_read_latencies(self):
         # Verify that up-conversion works with different port reader latencies

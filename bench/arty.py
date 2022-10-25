@@ -11,13 +11,14 @@ import argparse
 
 from migen import *
 
-from litex_boards.platforms import arty
+from litex_boards.platforms import digilent_arty
 
 from litex.soc.cores.clock import *
 from litex.soc.interconnect.csr import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 
+from litedram.common import PHYPadsReducer
 from litedram.phy import s7ddrphy
 from litedram.modules import MT41K128M16
 
@@ -38,6 +39,7 @@ class _CRG(Module, AutoCSR):
 
         # # #
 
+        # Main PLL.
         self.submodules.main_pll = main_pll = S7PLL(speedgrade=-1)
         self.comb += main_pll.reset.eq(~platform.request("cpu_reset"))
         main_pll.register_clkin(platform.request("clk100"), 100e6)
@@ -50,6 +52,8 @@ class _CRG(Module, AutoCSR):
 
         self.comb += platform.request("eth_ref_clk").eq(self.cd_eth.clk)
 
+
+        # DRAM PLL.
         self.submodules.pll = pll = S7PLL(speedgrade=-1)
         self.comb += pll.reset.eq(~main_pll.locked | self.rst)
         pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
@@ -57,21 +61,19 @@ class _CRG(Module, AutoCSR):
         pll.create_clkout(self.cd_sys4x,        4*sys_clk_freq)
         pll.create_clkout(self.cd_sys4x_dqs,    4*sys_clk_freq, phase=90)
 
-        sys_clk_counter = Signal(32)
-        self.sync += sys_clk_counter.eq(sys_clk_counter + 1)
+        # Sys Clk Counter.
         self.sys_clk_counter = CSRStatus(32)
-        self.comb += self.sys_clk_counter.status.eq(sys_clk_counter)
+        self.sync += self.sys_clk_counter.status.eq(self.sys_clk_counter.status + 1)
 
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
     def __init__(self, uart="crossover", sys_clk_freq=int(125e6), with_bist=False, with_analyzer=False):
-        platform = arty.Platform()
+        platform = digilent_arty.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, clk_freq=sys_clk_freq,
             ident               = "LiteDRAM bench on Arty",
-            ident_version       = True,
             integrated_rom_size = 0x10000,
             integrated_rom_mode = "rw",
             uart_name           = uart)
@@ -80,7 +82,8 @@ class BenchSoC(SoCCore):
         self.submodules.crg = _CRG(platform, sys_clk_freq)
 
         # DDR3 SDRAM -------------------------------------------------------------------------------
-        self.submodules.ddrphy = s7ddrphy.A7DDRPHY(platform.request("ddram"),
+        self.submodules.ddrphy = s7ddrphy.A7DDRPHY(
+            pads         = PHYPadsReducer(platform.request("ddram"), [0, 1]),
             memtype      = "DDR3",
             nphases      = 4,
             sys_clk_freq = sys_clk_freq)
@@ -131,7 +134,7 @@ def main():
     args = parser.parse_args()
 
     soc     = BenchSoC(uart=args.uart, with_bist=args.with_bist, with_analyzer=args.with_analyzer)
-    builder = Builder(soc, output_dir="build/arty", csr_csv="csr.csv")
+    builder = Builder(soc, csr_csv="csr.csv")
     builder.build(run=args.build)
 
     if args.load:
@@ -140,7 +143,7 @@ def main():
 
     if args.load_bios:
         from common import load_bios
-        load_bios("build/arty/software/bios/bios.bin")
+        load_bios("build/digilent_arty/software/bios/bios.bin")
 
     if args.sys_clk_freq is not None:
         from common import s7_set_sys_clk
@@ -153,7 +156,7 @@ def main():
             freq_max      = 150e6,
             freq_step     = 1e6,
             vco_freq      = soc.crg.main_pll.compute_config()["vco"],
-            bios_filename = "build/arty/software/bios/bios.bin")
+            bios_filename = "build/digilent_arty/software/bios/bios.bin")
 
 if __name__ == "__main__":
     main()

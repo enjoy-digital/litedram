@@ -76,7 +76,7 @@ class TestRefresh(unittest.TestCase):
         settings.with_refresh = True
         settings.refresh_zqcs_freq = 1e0
         settings.timing = Obj()
-        settings.timing.tREFI = 64
+        settings.timing.tREFI = 128
         settings.timing.tRP   = 1
         settings.timing.tRFC  = 2
         settings.timing.tZQCS = 64

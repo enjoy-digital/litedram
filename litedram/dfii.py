@@ -26,10 +26,10 @@ class PhaseInjector(Module, AutoCSR):
 
         self.comb += [
             If(self._command_issue.re,
-                phase.cs_n.eq(Replicate(~self._command.storage[0], len(phase.cs_n))),
-                phase.we_n.eq(~self._command.storage[1]),
-                phase.cas_n.eq(~self._command.storage[2]),
-                phase.ras_n.eq(~self._command.storage[3])
+                phase.cs_n.eq(Replicate(~self._command.fields.cs, len(phase.cs_n))),
+                phase.we_n.eq(~self._command.fields.we),
+                phase.cas_n.eq(~self._command.fields.cas),
+                phase.ras_n.eq(~self._command.fields.ras)
             ).Else(
                 phase.cs_n.eq(Replicate(1, len(phase.cs_n))),
                 phase.we_n.eq(1),
@@ -38,8 +38,8 @@ class PhaseInjector(Module, AutoCSR):
             ),
             phase.address.eq(self._address.storage),
             phase.bank.eq(self._baddress.storage),
-            phase.wrdata_en.eq(self._command_issue.re & self._command.storage[4]),
-            phase.rddata_en.eq(self._command_issue.re & self._command.storage[5]),
+            phase.wrdata_en.eq(self._command_issue.re & self._command.fields.wren),
+            phase.rddata_en.eq(self._command_issue.re & self._command.fields.rden),
             phase.wrdata.eq(self._wrdata.storage),
             phase.wrdata_mask.eq(0)
         ]
@@ -57,25 +57,37 @@ class DFIInjector(Module, AutoCSR):
         self._control = CSRStorage(fields=[
             CSRField("sel",     size=1, values=[
                 ("``0b0``", "Software (CPU) control."),
-                ("``0b1`",  "Hardware control (default)."),
+                ("``0b1``", "Hardware control (default)."),
             ], reset=0b1), # Defaults to HW control.
-            CSRField("cke",     size=1),
-            CSRField("odt",     size=1),
-            CSRField("reset_n", size=1),
-        ])
+            CSRField("cke",     size=1, description="DFI clock enable bus"),
+            CSRField("odt",     size=1, description="DFI on-die termination bus"),
+            CSRField("reset_n", size=1, description="DFI clock reset bus"),
+        ], description="Control DFI signals common to all phases")
 
-        for n, phase in enumerate(inti.phases):
+        for n, phase in enumerate(csr_dfi.phases):
             setattr(self.submodules, "pi" + str(n), PhaseInjector(phase))
 
         # # #
         
         connect_TMR(self, self.TMRslave, self.slave, master=False)
 
-        self.comb += If(self._control.fields.sel,
-                self.slave.connect(self.master)
+        self.comb += [
+            # Hardware Control.
+            # -----------------
+            If(self._control.fields.sel,
+                # Through External DFI.
+                If(self.ext_dfi_sel,
+                    self.ext_dfi.connect(self.master)
+                # Through LiteDRAM controller.
+                ).Else(
+                    self.slave.connect(self.master)
+                )
+            # Software Control (through CSRs).
+            # --------------------------------
             ).Else(
-                inti.connect(self.master)
+                csr_dfi.connect(self.master)
             )
+        ]
         for i in range(nranks):
             self.comb += [phase.cke[i].eq(self._control.fields.cke) for phase in inti.phases]
             self.comb += [phase.odt[i].eq(self._control.fields.odt) for phase in inti.phases if hasattr(phase, "odt")]

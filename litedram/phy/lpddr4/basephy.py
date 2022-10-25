@@ -6,7 +6,6 @@
 
 from operator import or_
 from functools import reduce
-from collections import defaultdict
 
 from migen import *
 
@@ -15,21 +14,9 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
-from litedram.phy.lpddr4.utils import bitpattern, delayed, ConstBitSlip, DQSPattern, Serializer, Deserializer
+from litedram.phy.utils import (bitpattern, delayed, DQSPattern, Serializer, Deserializer, Latency,
+    CommandsPipeline)
 from litedram.phy.lpddr4.commands import DFIPhaseAdapter
-
-
-class Latency:
-    """Used to specify latency for LPDDR4PHY"""
-    def __init__(self, sys, sys8x=0):
-        self.sys = sys + sys8x//8
-        self.sys8x = sys8x % 8
-
-    def __add__(self, other):
-        return Latency(sys=self.sys + other.sys, sys8x=self.sys8x + other.sys8x)
-
-    def __repr__(self):
-        return "Latency(sys={}, sys8x={})".format(self.sys, self.sys8x)
 
 
 class LPDDR4Output:
@@ -42,14 +29,14 @@ class LPDDR4Output:
         self.reset_n = Signal(nphases)
         self.cs      = Signal(nphases)
         self.ca      = [Signal(nphases)   for _ in range(6)]
-        self.dmi_o   = [Signal(2*nphases) for _ in range(2)]
-        self.dmi_i   = [Signal(2*nphases) for _ in range(2)]
+        self.dmi_o   = [Signal(2*nphases) for _ in range(databits//8)]
+        self.dmi_i   = [Signal(2*nphases) for _ in range(databits//8)]
         self.dmi_oe  = Signal()  # no serialization
         self.dq_o    = [Signal(2*nphases) for _ in range(databits)]
         self.dq_i    = [Signal(2*nphases) for _ in range(databits)]
         self.dq_oe   = Signal()  # no serialization
-        self.dqs_o   = [Signal(2*nphases) for _ in range(2)]
-        self.dqs_i   = [Signal(2*nphases) for _ in range(2)]
+        self.dqs_o   = [Signal(2*nphases) for _ in range(databits//8)]
+        self.dqs_i   = [Signal(2*nphases) for _ in range(databits//8)]
         self.dqs_oe  = Signal()  # no serialization
 
 
@@ -139,7 +126,7 @@ class LPDDR4PHY(Module, AutoCSR):
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
         # For reads we need to account for ser+des latency to make sure we get the data in-phase with sys clock
-        rdphase = get_sys_phase(nphases, cl_sys_latency, cl + cmd_latency + ser_latency.sys8x + des_latency.sys8x)
+        rdphase = get_sys_phase(nphases, cl_sys_latency, cl + cmd_latency + ser_latency.sys8x % 8 + des_latency.sys8x % 8)
         # No need to modify wrphase, because ser_latency applies the same to both CA and DQ
         wrphase = get_sys_phase(nphases, cwl_sys_latency, cwl + cmd_latency)
 
@@ -154,8 +141,8 @@ class LPDDR4PHY(Module, AutoCSR):
         rdphase, cl_sys_latency = updated_latency(rdphase, cl_sys_latency)
 
         # Read latency
-        read_data_delay = ca_latency + ser_latency.sys + cl_sys_latency  # DFI cmd -> read data on DQ
-        read_des_delay  = des_latency.sys + bitslip_cycles+bitslip_range  # data on DQ -> data on DFI rddata
+        read_data_delay = ca_latency + ser_latency.sys8x//8 + cl_sys_latency  # DFI cmd -> read data on DQ
+        read_des_delay  = des_latency.sys8x//8 + bitslip_cycles+bitslip_range  # data on DQ -> data on DFI rddata
         read_latency    = read_data_delay + read_des_delay
 
         # Write latency
@@ -194,6 +181,7 @@ class LPDDR4PHY(Module, AutoCSR):
             write_latency = write_latency,
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
+            bitslips      = 16,
         )
 
         # DFI Interface ----------------------------------------------------------------------------
@@ -222,55 +210,20 @@ class LPDDR4PHY(Module, AutoCSR):
         ]
 
         # LPDDR4 Commands --------------------------------------------------------------------------
-        # Each LPDDR4 command can span several phases (2 or 4), so the commands cannot overlap.
-        # This should be guaranteed by the controller based on module timings, but we also include
-        # an overlaps check in PHY logic.
-        # Basic check will make sure that no command will be sent to DRAM if there was any command
-        # sent by the controller on DFI during 3 previous cycles. The extended version will instead
-        # make sure no command is sent to DRAM if there was any command _actually sent to DRAM_
-        # during 3 previous cycles. This is more expensive in terms of resources and generally not
-        # needed.
+        # Each LPDDR4 command can span several phases (2 or 4), so in theory the commands could
+        # overlap. No overlap should be guaranteed by the controller based on module timings, but
+        # we also include an overlaps check in PHY logic.
+        self.submodules.commands = CommandsPipeline(adapters,
+            cs_ser_width = len(self.out.cs),
+            ca_ser_width = len(self.out.ca[0]),
+            ca_nbits     = len(self.out.ca),
+            cmd_nphases_span = 4,
+            extended_overlaps_check = extended_overlaps_check
+        )
 
-        # Create a history of valid adapters used for masking overlapping ones
-        valids = ConstBitSlip(dw=nphases, cycles=1, slp=0)
-        self.submodules += valids
-        self.comb += valids.i.eq(Cat(a.valid for a in adapters))
-        valids_hist = valids.r
-        if extended_overlaps_check:
-            valids_hist = Signal.like(valids.r)
-            for i in range(len(valids_hist)):
-                was_valid_before = reduce(or_, valids_hist[max(0, i-3):i], 0)
-                self.comb += valids_hist[i].eq(valids.r[i] & ~was_valid_before)
-
-        cs_per_adapter = []
-        ca_per_adapter = defaultdict(list)
-        for phase, adapter in enumerate(adapters):
-            # The signals from an adapter can be used if there were no commands on 3 previous cycles
-            allowed = ~reduce(or_, valids_hist[nphases+phase - 3:nphases+phase])
-
-            # Use CS and CA of given adapter slipped by `phase` bits
-            cs_bs = ConstBitSlip(dw=nphases, cycles=1, slp=phase)
-            self.submodules += cs_bs
-            self.comb += cs_bs.i.eq(Cat(adapter.cs)),
-            cs_mask = Replicate(allowed, len(cs_bs.o))
-            cs = cs_bs.o & cs_mask
-            cs_per_adapter.append(cs)
-
-            # For CA we need to do the same for each bit
-            ca_bits = []
-            for bit in range(6):
-                ca_bs = ConstBitSlip(dw=nphases, cycles=1, slp=phase)
-                self.submodules += ca_bs
-                ca_bit_hist = [adapter.ca[i][bit] for i in range(4)]
-                self.comb += ca_bs.i.eq(Cat(*ca_bit_hist)),
-                ca_mask = Replicate(allowed, len(ca_bs.o))
-                ca = ca_bs.o & ca_mask
-                ca_per_adapter[bit].append(ca)
-
-        # OR all the masked signals
-        self.comb += self.out.cs.eq(reduce(or_, cs_per_adapter))
+        self.comb += self.out.cs.eq(self.commands.cs)
         for bit in range(6):
-            self.comb += self.out.ca[bit].eq(reduce(or_, ca_per_adapter[bit]))
+            self.comb += self.out.ca[bit].eq(self.commands.ca[bit])
 
         # DQ ---------------------------------------------------------------------------------------
         dq_oe = Signal()

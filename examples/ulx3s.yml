@@ -1,0 +1,43 @@
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2021 Florent Kermarrec <florent@enjoy-digital.fr>
+# SPDX-License-Identifier: BSD-2-Clause
+
+{
+    # General ------------------------------------------------------------------
+    "device":  "LFE5U-45F-6BG381C", # FPGA device.
+    "cpu":     "serv",              # CPU type (ex vexriscv, serv, None)
+    "memtype": "SDR",               # DRAM type
+    "uart":    "rs232",             # Type of UART interface (rs232, fifo)
+
+    # PHY ----------------------------------------------------------------------
+    "sdram_module":    "MT48LC16M16", # SDRAM modules of the board or SO-DIMM
+    "sdram_module_nb": 2,             # Number of byte groups
+    "sdram_phy":       "GENSDRPHY",   # Type of FPGA PHY
+
+    # Frequency ----------------------------------------------------------------
+    "sys_clk_freq":     50e6,  # System clock frequency (SDR_clk = sys_clk)
+
+    # Core ---------------------------------------------------------------------
+    "cmd_buffer_depth": 16,    # Depth of the command buffer
+
+    # User Ports ---------------------------------------------------------------
+    "user_ports": {
+        "axi_0" : {
+            "type": "axi",
+            "id_width": 32,
+        },
+        "wishbone_0" : {
+            "type": "wishbone",
+        },
+        "native_0" : {
+            "type": "native",
+        },
+        "fifo_0" : {
+            "type":  "fifo",
+            "base":  0x00000000,
+            "depth": 0x01000000,
+        },
+    },
+}

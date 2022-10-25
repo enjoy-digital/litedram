@@ -70,17 +70,23 @@ z_to_ron = {
     "34ohm" : 0b1,
 }
 
+def r2rzq(r):
+    r = r.replace("ohm", "")
+    if r == "disabled":
+        return ""
+    return f"(RZQ/{240//int(r)})"
+
 if args.list:
   print("Supported DDR3 Electrical settings:")
   print("rtt_nom:")
   for v in z_to_rtt_nom.keys():
-    print(f" - {v}")
+    print(f" - {v} {' '*(8-len(v))} {r2rzq(v)}")
   print("rtt_wr:")
   for v in z_to_rtt_wr.keys():
-    print(f" - {v}")
+    print(f" - {v} {' '*(8-len(v))} {r2rzq(v)}")
   print("ron:")
   for v in z_to_ron.keys():
-    print(f" - {v}")
+    print(f" - {v} {' '*(8-len(v))} {r2rzq(v)}")
 
 # DDR4 Mode Register formating ---------------------------------------------------------------------
 
@@ -128,9 +134,9 @@ print(f"cl:  {args.cl}")
 print(f"cwl: {args.cwl}")
 
 print("DDR3 Electrical Settings:")
-print(f"rtt_nom: {args.rtt_nom}")
-print(f"rtt_wr:  {args.rtt_wr}")
-print(f"ron:     {args.ron}")
+print(f"rtt_nom: {args.rtt_nom} {r2rzq(args.rtt_nom)}")
+print(f"rtt_wr:  {args.rtt_wr} {r2rzq(args.rtt_wr)}")
+print(f"ron:     {args.ron} {r2rzq(args.ron)}")
 
 print("Commands to be used with LiteX BIOS:")
 print("sdram_mr_write 0 {:d}".format(format_mr0(

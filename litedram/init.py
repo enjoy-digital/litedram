@@ -7,10 +7,11 @@
 # Copyright (c) 2014 Yann Sionneau <ys@m-labs.hk>
 # Copyright (c) 2018 bunnie <bunnie@kosagi.com>
 # Copyright (c) 2019 Gabriel L. Somlo <gsomlo@gmail.com>
-# Copyright (c) 2021 Antmicro <www.antmicro.com>
+# Copyright (c) 2020-2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
 import math
+from contextlib import contextmanager
 
 from migen import *
 
@@ -21,6 +22,18 @@ cmds = {
     "UNRESET":       "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
     "CKE":           "DFII_CONTROL_CKE|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N"
 }
+
+def reg(fields):
+    # takes a list of tuples: [(bit_offset, bit_width, value), ...]
+    regval = 0
+    written = 0
+    for shift, width, val in fields:
+        mask = (2**width - 1) << shift
+        assert written & mask == 0, "Would overwrite another field, xor=0b{:032b}".format(mask ^ written)
+        assert val < 2**width, "Value larger than field width: val={}, width={}".format(val, width)
+        regval |= (val << shift) & mask
+        written |= mask
+    return regval
 
 # SDR ----------------------------------------------------------------------------------------------
 
@@ -191,21 +204,11 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
         "34ohm" : 1,
     }
 
-    # default electrical settings (point to point)
-    rtt_nom = "60ohm"
-    rtt_wr  = "60ohm"
-    ron     = "34ohm"
-    tdqs    = 0
-
-    # override electrical settings if specified
-    if hasattr(phy_settings, "rtt_nom"):
-        rtt_nom = phy_settings.rtt_nom
-    if hasattr(phy_settings, "rtt_wr"):
-        rtt_wr = phy_settings.rtt_wr
-    if hasattr(phy_settings, "ron"):
-        ron = phy_settings.ron
-    if getattr(phy_settings, "tdqs", False):
-        tdqs = 1
+    # Get Electrical Settings (or use default: Point to Point).
+    rtt_nom = getattr(phy_settings, "rtt_nom", "60ohm")
+    rtt_wr  = getattr(phy_settings, "rtt_wr",  "60ohm")
+    ron     = getattr(phy_settings, "ron",     "34ohm")
+    tdqs    = getattr(phy_settings, "tdqs",    0)
 
     wr  = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
     mr0 = format_mr0(bl, cl, wr, 1)
@@ -224,6 +227,57 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
     ]
 
     return init_sequence, {1: mr1}
+
+# RPC ----------------------------------------------------------------------------------------------
+
+def get_rpc_phy_init_sequence(phy_settings, timing_settings):
+    from litedram.phy.rpc.commands import ModeRegister
+
+    assert phy_settings.cl == phy_settings.cwl
+    # subtract that +1 always added for AL
+    cl  = phy_settings.cl - 1
+
+    nwr = 8
+    zout = 60
+    odt = 30
+    odt_stb = 1  # disable ODT on STB
+    csr_fx = 0  # do not use loop refresh mode
+    odt_pd = 0  # ODT during PD disabled by DRAM
+
+    mr_a, mr_ba = ModeRegister.dfi_encode(
+        cl      = ModeRegister.CL[cl],
+        nwr     = ModeRegister.NWR[nwr],
+        zout    = ModeRegister.ZOUT[zout],
+        odt     = ModeRegister.ODT[odt],
+        csr_fx  = csr_fx,
+        odt_stb = odt_stb,
+        odt_pd  = odt_pd,
+    )
+
+    def ck(sec):
+        # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
+        fmax = 200e6
+        return int(math.ceil(sec * fmax))
+
+    init_sequence = [
+        # Apply power, stabilize clocks for 200us, CS# and STB should be high
+        ("Stabilize clocks", 0x0000, 0, cmds["UNRESET"], ck(200e-6)),
+        # Send CS# low once, to make PHY start holding it all the time
+        ("Hold CS# low", 0x0000, 0, "DFII_COMMAND_CS", ck(100e-9)),
+        # Enter PU RESET, by issuing ACT with reset_n=0, PHY will perform the reset sequence
+        ("RPC special commands: ON", 0x0000, 0, "DFII_CONTROL_ODT", ck(100e-9)),
+        ("PU RESET sequence (ACT)", 0x0000, 0, "DFII_COMMAND_RAS|DFII_COMMAND_CS", ck(5e-6)),
+        ("RPC special commands: OFF", 0x0000, 0, cmds["UNRESET"], ck(100e-9)),
+        # Setup mode register
+        ("Precharge ALL", 0x0400, 0, cmds["PRECHARGE_ALL"], ck(100e-9)),
+        ("Load Mode Register: CL={}".format(cl), mr_a, mr_ba, cmds["MODE_REGISTER"], ck(100e-9)),
+        # ZQ Calibration (ZQ LONG will be translated to RPC ZQ INIT by PHY)
+        ("RPC special commands: ON", 0x0000, 0, "DFII_CONTROL_ODT", ck(100e-9)),
+        ("ZQ Init Calibration", 0x0400, 0, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
+        ("RPC special commands: OFF", 0x0000, 0, cmds["UNRESET"], ck(100e-9)),
+    ]
+
+    return init_sequence, None
 
 # DDR4 ---------------------------------------------------------------------------------------------
 
@@ -353,23 +407,13 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
         "48ohm" : 0b01,
     }
 
-    # default electrical settings (point to point)
-    rtt_nom = "40ohm"
-    rtt_wr  = "120ohm"
-    ron     = "34ohm"
-    tdqs    = 0
+    # Get Electrical Settings (or use default: Point to Point).
+    rtt_nom = getattr(phy_settings, "rtt_nom", "40ohm")
+    rtt_wr  = getattr(phy_settings, "rtt_wr",  "120ohm")
+    ron     = getattr(phy_settings, "ron",     "34ohm")
+    tdqs    = getattr(phy_settings, "tdqs",    0)
     dm      = 1
     assert not (dm and tdqs)
-
-    # override electrical settings if specified
-    if hasattr(phy_settings, "rtt_nom"):
-        rtt_nom = phy_settings.rtt_nom
-    if hasattr(phy_settings, "rtt_wr"):
-        rtt_wr = phy_settings.rtt_wr
-    if hasattr(phy_settings, "ron"):
-        ron = phy_settings.ron
-    if getattr(phy_settings, "tdqs", False):
-        tdqs = 1
 
     wr  = max(timing_settings.tWTR*phy_settings.nphases, 10) # >= ceiling(tWR/tCK)
     mr0 = format_mr0(bl, cl, wr, 1)
@@ -418,6 +462,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
         f0rc03 = 0x030 | phy_settings.rcd_ca_cs_drive    # F0RC03: CA/CS drive strength
         f0rc04 = 0x040 | phy_settings.rcd_odt_cke_drive  # F0RC04: ODT/CKE drive strength
         f0rc05 = 0x050 | phy_settings.rcd_clk_drive      # F0RC04: ODT/CKE drive strength
+        f0rc0d = 0x0D0 | 0x4                             # F0RC0D: DIMM configration; 4: Direct DualCS RDIMM
 
         f0rc0a = 0x0A0 | coarse_speed                    # F0RC0A: coarse speed selection and PLL bypass
         f0rc3x = 0x300 | fine_speed                      # F0RC3x: fine speed selection
@@ -428,6 +473,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
             ("Load RCD F0RC03", f0rc03, 7, cmds["MODE_REGISTER"], 100),
             ("Load RCD F0RC04", f0rc04, 7, cmds["MODE_REGISTER"], 100),
             ("Load RCD F0RC05", f0rc05, 7, cmds["MODE_REGISTER"], 100),
+            ("Load RCD F0RC0D", f0rc0d, 7, cmds["MODE_REGISTER"], 100),
             ("Load RCD F0RC0A", f0rc0a, 7, cmds["MODE_REGISTER"], 100),
             ("Load RCD F0RC3X", f0rc3x, 7, cmds["MODE_REGISTER"], 100),
         ]
@@ -524,17 +570,6 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
         },
     }
 
-    def reg(fields):
-        regval = 0
-        written = 0
-        for shift, width, val in fields:
-            mask = (2**width - 1) << shift
-            assert written & mask == 0, "Would overwrite another field, xor=0b{:032b}".format(mask ^ written)
-            assert val < 2**width, "Value larger than field width: val={}, width={}".format(val, width)
-            regval |= (val << shift) & mask
-            written |= mask
-        return regval
-
     mr = {}
     mr[1] = reg([
         (0, 2, {16: 0b00, 32: 0b01, "on-the-fly": 0b10}[bl]),
@@ -628,6 +663,140 @@ def get_lpddr4_phy_init_sequence(phy_settings, timing_settings):
 
     return init_sequence, mr
 
+# LPDDR5 -------------------------------------------------------------------------------------------
+
+def get_lpddr5_phy_init_sequence(phy_settings, timing_settings):
+    from litedram.phy.lpddr5.basephy import FREQUENCY_RANGES
+    from litedram.phy.lpddr5.commands import SpecialCmd, MPC, BankOrganization
+
+    rl = phy_settings.cl
+    wl = phy_settings.cwl
+    wck_ck_ratio = phy_settings.wck_ck_ratio
+    bl = 16
+    dq_odt = getattr(phy_settings, "dq_odt", "RZQ/2")
+    ca_odt = getattr(phy_settings, "dq_odt", "RZQ/2")
+    pull_down_drive_strength = getattr(phy_settings, "pull_down_drive_strength", "RZQ/2")
+    soc_odt = getattr(phy_settings, "soc_odt", "disable")
+    wck_odt = getattr(phy_settings, "wck_odt", "disable")
+    vref_ca = getattr(phy_settings, "vref_ca", 34.0)
+    vref_dq = getattr(phy_settings, "vref_dq", 34.0)
+
+    # find definitions for given wck_ck_ratio/wl/rl
+    def get_frange():
+        for fr in FREQUENCY_RANGES[wck_ck_ratio]:
+            fr = fr.for_set(wl_set="A", rl_set=0)
+            if fr.wl == wl and fr.rl == rl:
+                return fr
+        raise ValueError
+
+    frange = get_frange()
+
+    rzq_map = {
+        "disable": 0b000,
+        "RZQ/1":   0b001,
+        "RZQ/2":   0b010,
+        "RZQ/3":   0b011,
+        "RZQ/4":   0b100,
+        "RZQ/5":   0b101,
+        "RZQ/6":   0b110,
+    }
+
+    # Both VrefCA and VrefDQ have the same mapping <10.0%, 73.5%> => <0b0000000, 0b1111111>
+    def get_vref(vref_percent, testing=False):
+        assert 10.0 <= vref_percent <= 73.5
+        assert testing or vref_percent >= 15.0, f"Vref of {vref_percent:.2f}% (<15%) meant only for testing purpose"
+        vref_percent = round(vref_percent * 2) / 2  # round to x.5
+        reg = int((vref_percent - 10.0) * 2)
+        assert 0 <= reg <= 0b1111111
+        return reg
+
+    mr = {}
+    mr[1] = reg([
+        (3, 1, 0),  # differential CK
+        (4, 4, frange.mr),
+    ])
+    mr[2] = reg([
+        (0, 4, frange.mr),  # seems that in both MR1 and MR2 we need the same value
+        (4, 4, frange.n_wr_op),
+    ])
+    mr[3] = reg([
+        (0, 3, rzq_map[pull_down_drive_strength]),
+        (3, 2, BankOrganization.B16),
+        (5, 1, 0),  # WL Set "A"
+    ])
+    mr[10] = reg([
+        (0, 0, 0),  # RDQS postamble toggle mode
+        (2, 2, 0b00),  # WCK postamble 2.5*tWCK
+        (4, 2, 0b00),  # RDQS preamble 4*tWCK static + 0 toggle
+        (6, 2, 0b00),  # RDQS postamble 0.5*tWCK
+    ])
+    mr[11] = reg([
+        (0, 3, rzq_map[dq_odt]),
+        (3, 1, 0),  # non-target ODT disabled
+        (4, 3, rzq_map[ca_odt]),
+    ])
+    mr[12] = reg([
+        (0, 7, get_vref(vref_ca)),
+        (7, 1, 0),
+    ])
+    mr[13] = 0 # defaults, DM enabled
+    mr[14] = reg([
+        (0, 7, get_vref(vref_dq)),
+        (7, 1, 0),
+    ])
+    mr[15] = get_vref(vref_dq)
+    mr[17] = reg([
+        (0, 3, rzq_map[soc_odt]),
+        # defaults
+        (3, 1, 1),
+        (4, 1, 1),
+        (5, 1, 1),
+        (6, 1, 0),
+        (7, 1, 0),
+    ])
+    mr[18] = reg([
+        (0, 3, rzq_map[wck_odt]),
+        (3, 1, 0),  # WCK low frequency mode
+        (4, 1, 0),  # WCK always on mode disabled
+        (6, 1, 0),  # WCK2CK leveling disabled
+        (7, 1, {2: 1, 4: 0}[wck_ck_ratio]),
+    ])
+    # MR19 - defaults
+    mr[20] = reg([
+        (0, 2, 0b01),  # TODO: as we don't actually use RDQS, maybe we can just disable it
+        # zero-defaults
+    ])
+    mr[22] = 0  # Write/read link ECC disabled
+    mr[28] = reg([
+        (0, 1, 0), # ZQ Reset
+        (1, 1, 0), # ZQ Stop
+        (2, 2, 0b01), # ZQ background calibration interval (64ms default)
+        (5, 1, 0), # ZQ mode
+    ])
+
+    def cmd_mr(ma):
+        # Convert Mode Register Write command to DFI as expected by PHY
+        op = mr[ma]
+        assert ma < 2**7, "MR address to big: {}".format(ma)
+        assert op < 2**8, "MR opcode to big: {}".format(op)
+        a = op
+        ba = ma
+        return ("Load More Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
+
+    def ck(sec):
+        fmax = 200e6
+        return int(math.ceil(sec * fmax))
+
+    init_sequence = [
+        ("Assert reset", 0x0000, 0, "DFII_CONTROL_ODT", ck(200e-6)),  # ??
+        ("Release reset", 0x0000, 0, cmds["UNRESET"], ck(2e-3) + 5),
+        ("Toggle CS", 0, SpecialCmd.NOP, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(2e-6)),
+        *[cmd_mr(ma) for ma in sorted(mr.keys())],
+        ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(4, ck(30e-9))),
+    ]
+
+    return init_sequence, mr
+
 # Init Sequence ------------------------------------------------------------------------------------
 
 def get_sdram_phy_init_sequence(phy_settings, timing_settings):
@@ -637,178 +806,215 @@ def get_sdram_phy_init_sequence(phy_settings, timing_settings):
         "LPDDR":  get_lpddr_phy_init_sequence,
         "DDR2":   get_ddr2_phy_init_sequence,
         "DDR3":   get_ddr3_phy_init_sequence,
+        "RPC":    get_rpc_phy_init_sequence,
         "DDR4":   get_ddr4_phy_init_sequence,
         "LPDDR4": get_lpddr4_phy_init_sequence,
+        "LPDDR5": get_lpddr5_phy_init_sequence,
     }[phy_settings.memtype](phy_settings, timing_settings)
 
 # C Header -----------------------------------------------------------------------------------------
 
+class CGenerator(list):
+    # C code generator - list of strings (=lines) or CGenerator instances (sub-generators)
+    def __init__(self, indent=0, indent_str="\t"):
+        self.indent = indent
+        self.indent_str = indent_str
+
+    def __iadd__(self, x):
+        # make `c += "int x = 0;"` append it as line, not char-by-char
+        if isinstance(x, str):
+            x = [x]
+        return super().__iadd__(x)
+
+    def header_guard(self, name):
+        self._header_guard = name
+
+    def generate_lines(self):
+        if getattr(self, "_header_guard", None) is not None:
+            self.insert(0, f"#ifndef {self._header_guard}")
+            self.insert(1, f"#define {self._header_guard}")
+            self.insert(2, "")
+            self.append("")
+            self.append(f"#endif /* {self._header_guard} */")
+            self._header_guard = None
+        lines = []
+        for entry in self:
+            if isinstance(entry, CGenerator):
+                lines.extend(entry.generate_lines())
+            else:
+                line = (self.indent * self.indent_str) + entry
+                lines.append(line.rstrip())
+        return lines
+
+    def generate(self):
+        lines = self.generate_lines()
+        return "\n".join(lines).strip() + "\n"
+
+    def include(self, path):
+        self.append(f"#include {path}")
+
+    def define(self, var, value=None):
+        if isinstance(value, (int, float)):
+            value = str(value)
+        self.append(f"#define {var}" + (f" {value}" if value is not None else ""))
+
+    def newline(self, n=1):
+        self.extend([""] * n)
+
+    @contextmanager
+    def block(self, head=None, newline=True):
+        if head is not None:
+            self.append(head + (" {" if not newline else ""))
+            if newline:
+                self.append("{")
+        else:
+            self.append("{")
+        subgenerator = CGenerator(indent=self.indent + 1, indent_str=self.indent_str)
+        yield subgenerator
+        self.append(subgenerator)
+        self.append("}")
+
+
 def get_sdram_phy_c_header(phy_settings, timing_settings):
-    r = "#ifndef __GENERATED_SDRAM_PHY_H\n#define __GENERATED_SDRAM_PHY_H\n"
-    r += "#include <hw/common.h>\n"
-    r += "#include <generated/csr.h>\n"
-    r += "\n"
+    r = CGenerator()
+    r.header_guard("__GENERATED_SDRAM_PHY_H")
+    r.include("<hw/common.h>")
+    r.include("<generated/csr.h>")
+    r.newline()
 
-    r += "#define DFII_CONTROL_SEL        0x01\n"
-    r += "#define DFII_CONTROL_CKE        0x02\n"
-    r += "#define DFII_CONTROL_ODT        0x04\n"
-    r += "#define DFII_CONTROL_RESET_N    0x08\n"
-    r += "\n"
+    r.define("DFII_CONTROL_SEL",     "0x01")
+    r.define("DFII_CONTROL_CKE",     "0x02")
+    r.define("DFII_CONTROL_ODT",     "0x04")
+    r.define("DFII_CONTROL_RESET_N", "0x08")
+    r.newline()
 
-    r += "#define DFII_COMMAND_CS         0x01\n"
-    r += "#define DFII_COMMAND_WE         0x02\n"
-    r += "#define DFII_COMMAND_CAS        0x04\n"
-    r += "#define DFII_COMMAND_RAS        0x08\n"
-    r += "#define DFII_COMMAND_WRDATA     0x10\n"
-    r += "#define DFII_COMMAND_RDDATA     0x20\n"
-    r += "\n"
+    r.define("DFII_COMMAND_CS",     "0x01")
+    r.define("DFII_COMMAND_WE",     "0x02")
+    r.define("DFII_COMMAND_CAS",    "0x04")
+    r.define("DFII_COMMAND_RAS",    "0x08")
+    r.define("DFII_COMMAND_WRDATA", "0x10")
+    r.define("DFII_COMMAND_RDDATA", "0x20")
+    r.newline()
 
     phytype = phy_settings.phytype.upper()
     nphases = phy_settings.nphases
 
     # Define PHY type and number of phases
-    r += "#define SDRAM_PHY_"+phytype+"\n"
-    r += "#define SDRAM_PHY_XDR "+str(1 if phy_settings.memtype == "SDR" else 2) + "\n"
-    r += "#define SDRAM_PHY_DATABITS "+str(phy_settings.databits) + "\n"
-    r += "#define SDRAM_PHY_PHASES "+str(nphases)+"\n"
-    if phy_settings.cl is not None:
-        r += "#define SDRAM_PHY_CL "+str(phy_settings.cl)+"\n"
-    if phy_settings.cwl is not None:
-        r += "#define SDRAM_PHY_CWL "+str(phy_settings.cwl)+"\n"
-    if phy_settings.cmd_latency is not None:
-        r += "#define SDRAM_PHY_CMD_LATENCY "+str(phy_settings.cmd_latency)+"\n"
-    if phy_settings.cmd_delay is not None:
-        r += "#define SDRAM_PHY_CMD_DELAY "+str(phy_settings.cmd_delay)+"\n"
+    r.define(f"SDRAM_PHY_{phytype}")
+    r.define("SDRAM_PHY_XDR", 1 if phy_settings.memtype == "SDR" else 2)
+    r.define("SDRAM_PHY_DATABITS", phy_settings.databits)
+    r.define("SDRAM_PHY_DFI_DATABITS", phy_settings.dfi_databits)
+    r.define("SDRAM_PHY_PHASES", nphases)
+    for setting in ["cl", "cwl", "cmd_latency", "cmd_delay"]:
+        if getattr(phy_settings, setting, None) is not None:
+            r.define(f"SDRAM_PHY_{setting.upper()}", getattr(phy_settings, setting))
 
     # Define PHY Read.Write phases
     rdphase = phy_settings.rdphase
     if isinstance(rdphase, Signal): rdphase = rdphase.reset.value
-    r += "#define SDRAM_PHY_RDPHASE "+str(rdphase)+"\n"
+    r.define("SDRAM_PHY_RDPHASE", rdphase)
     wrphase = phy_settings.wrphase
     if isinstance(wrphase, Signal): wrphase = wrphase.reset.value
-    r += "#define SDRAM_PHY_WRPHASE "+str(wrphase)+"\n"
+    r.define("SDRAM_PHY_WRPHASE", wrphase)
 
     # Define Read/Write Leveling capability
-    if phytype in ["USDDRPHY", "USPDDRPHY",
-                   "K7DDRPHY", "V7DDRPHY",
-                   "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        r += "#define SDRAM_PHY_WRITE_LEVELING_CAPABLE\n"
-    if phytype in ["K7DDRPHY", "V7DDRPHY",
-                   "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        r += "#define SDRAM_PHY_WRITE_DQ_DQS_TRAINING_CAPABLE\n"
-    if phytype in ["USDDRPHY", "USPDDRPHY",
-                   "A7DDRPHY", "K7DDRPHY", "V7DDRPHY",
-                   "A7LPDDR4PHY", "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        r += "#define SDRAM_PHY_WRITE_LATENCY_CALIBRATION_CAPABLE\n"
-        r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
-    if phytype in ["ECP5DDRPHY"]:
-        r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
-    if phytype in ["LPDDR4SIMPHY"]:
-        r += "#define SDRAM_PHY_READ_LEVELING_CAPABLE\n"
+    if phy_settings.write_leveling:
+        r.define("SDRAM_PHY_WRITE_LEVELING_CAPABLE")
+    if phy_settings.write_latency_calibration:
+        r.define("SDRAM_PHY_WRITE_LATENCY_CALIBRATION_CAPABLE")
+    if phy_settings.write_dq_dqs_training:
+        r.define("SDRAM_PHY_WRITE_DQ_DQS_TRAINING_CAPABLE")
+    if phy_settings.read_leveling:
+        r.define("SDRAM_PHY_READ_LEVELING_CAPABLE")
+
+    # Define DQ / DQS ratio
+    r.define("SDRAM_PHY_DQ_DQS_RATIO", phy_settings.databits // phy_settings.strobes)
 
     # Define number of modules/delays/bitslips
-    r += "#define SDRAM_PHY_MODULES SDRAM_PHY_DATABITS/8\n"
-    if phytype in ["USDDRPHY", "USPDDRPHY"]:
-        r += "#define SDRAM_PHY_DELAYS 512\n"
-        r += "#define SDRAM_PHY_BITSLIPS 8\n"
-    elif phytype in ["A7DDRPHY", "K7DDRPHY", "V7DDRPHY"]:
-        r += "#define SDRAM_PHY_DELAYS 32\n"
-        r += "#define SDRAM_PHY_BITSLIPS 8\n"
-    elif phytype in ["A7LPDDR4PHY", "K7LPDDR4PHY", "V7LPDDR4PHY"]:
-        r += "#define SDRAM_PHY_DELAYS 32\n"
-        r += "#define SDRAM_PHY_BITSLIPS 16\n"
-    elif phytype in ["ECP5DDRPHY"]:
-        r += "#define SDRAM_PHY_DELAYS 8\n"
-        r += "#define SDRAM_PHY_BITSLIPS 4\n"
-    elif phytype in ["LPDDR4SIMPHY"]:
-        r += "#define SDRAM_PHY_DELAYS 1\n"
-        r += "#define SDRAM_PHY_BITSLIPS 16\n"
+    r.define("SDRAM_PHY_MODULES", phy_settings.strobes)
+    if phy_settings.delays > 0:
+        r.define("SDRAM_PHY_DELAYS", phy_settings.delays)
+    if phy_settings.bitslips > 0:
+        r.define("SDRAM_PHY_BITSLIPS", phy_settings.bitslips)
 
     if phy_settings.is_rdimm:
         assert phy_settings.memtype == "DDR4"
-        r += "#define SDRAM_PHY_DDR4_RDIMM\n"
+        r.define("SDRAM_PHY_DDR4_RDIMM")
 
-    r += "\n"
+    r.newline()
 
-    r += "static void cdelay(int i);\n"
+    r += "void cdelay(int i);"
+    r.newline()
 
     # Commands functions
     for n in range(nphases):
-        r += """
-__attribute__((unused)) static void command_p{n}(int cmd)
-{{
-    sdram_dfii_pi{n}_command_write(cmd);
-    sdram_dfii_pi{n}_command_issue_write(1);
-}}""".format(n=str(n))
-    r += "\n\n"
+        with r.block(f"__attribute__((unused)) static inline void command_p{n}(int cmd)") as b:
+            b += f"sdram_dfii_pi{n}_command_write(cmd);"
+            b += f"sdram_dfii_pi{n}_command_issue_write(1);"
+    r.newline()
 
     # Write/Read functions
-    r += "#define DFII_PIX_DATA_SIZE CSR_SDRAM_DFII_PI0_WRDATA_SIZE\n"
-    sdram_dfii_pix_wrdata_addr = []
-    for n in range(nphases):
-        sdram_dfii_pix_wrdata_addr.append("CSR_SDRAM_DFII_PI{n}_WRDATA_ADDR".format(n=n))
-    r += """
-const unsigned long sdram_dfii_pix_wrdata_addr[SDRAM_PHY_PHASES] = {{
-\t{sdram_dfii_pix_wrdata_addr}
-}};
-""".format(sdram_dfii_pix_wrdata_addr=",\n\t".join(sdram_dfii_pix_wrdata_addr))
-
-    sdram_dfii_pix_rddata_addr = []
-    for n in range(nphases):
-        sdram_dfii_pix_rddata_addr.append("CSR_SDRAM_DFII_PI{n}_RDDATA_ADDR".format(n=n))
-    r += """
-const unsigned long sdram_dfii_pix_rddata_addr[SDRAM_PHY_PHASES] = {{
-\t{sdram_dfii_pix_rddata_addr}
-}};
-""".format(sdram_dfii_pix_rddata_addr=",\n\t".join(sdram_dfii_pix_rddata_addr))
-    r += "\n"
+    r.define("DFII_PIX_DATA_SIZE", "CSR_SDRAM_DFII_PI0_WRDATA_SIZE")
+    r.newline()
+    for data in ["wrdata", "rddata"]:
+        with r.block(f"static inline unsigned long sdram_dfii_pix_{data}_addr(int phase)") as b:
+            with b.block("switch (phase)", newline=False) as s:
+                for n in range(nphases):
+                    s += f"case {n}: return CSR_SDRAM_DFII_PI{n}_{data.upper()}_ADDR;"
+                s += "default: return 0;"
+    r.newline()
 
     init_sequence, mr = get_sdram_phy_init_sequence(phy_settings, timing_settings)
 
     if phy_settings.memtype in ["DDR3", "DDR4"]:
         # The value of MR1[7] needs to be modified during write leveling
-        r += "#define DDRX_MR_WRLVL_ADDRESS {}\n".format(1)
-        r += "#define DDRX_MR_WRLVL_RESET {}\n".format(mr[1])
-        r += "#define DDRX_MR_WRLVL_BIT {}\n\n".format(7)
+        r.define("DDRX_MR_WRLVL_ADDRESS", 1)
+        r.define("DDRX_MR_WRLVL_RESET", mr[1])
+        r.define("DDRX_MR_WRLVL_BIT", 7)
+        r.newline()
     elif phy_settings.memtype in ["LPDDR4"]:
         # Write leveling enabled by MR2[7]
-        r += "#define DDRX_MR_WRLVL_ADDRESS {}\n".format(2)
-        r += "#define DDRX_MR_WRLVL_RESET {}\n".format(mr[2])
-        r += "#define DDRX_MR_WRLVL_BIT {}\n\n".format(7)
+        r.define("DDRX_MR_WRLVL_ADDRESS", 2)
+        r.define("DDRX_MR_WRLVL_RESET", mr[2])
+        r.define("DDRX_MR_WRLVL_BIT", 7)
+        r.newline()
+    elif phy_settings.memtype in ["LPDDR5"]:
+        # Write leveling enabled by MR18[6]
+        r.define("DDRX_MR_WRLVL_ADDRESS", 18)
+        r.define("DDRX_MR_WRLVL_RESET", mr[18])
+        r.define("DDRX_MR_WRLVL_BIT", 6)
+        r.newline()
 
-    r += "static void init_sequence(void)\n{\n"
-    for comment, a, ba, cmd, delay in init_sequence:
-        invert_masks = [(0, 0), ]
-        if phy_settings.is_rdimm:
-            assert phy_settings.memtype == "DDR4"
-            # JESD82-31A page 38
-            #
-            # B-side chips have certain usually-inconsequential address and BA
-            # bits inverted by the RCD to reduce SSO current. For mode register
-            # writes, however, we must compensate for this. BG[1] also directs
-            # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
-            #
-            # The 'ba != 7' is because we don't do this to writes to the RCD
-            # itself.
-            if ba != 7:
-                invert_masks.append((0b10101111111000, 0b1111))
+    with r.block("static inline void init_sequence(void)") as b:
+        for comment, a, ba, cmd, delay in init_sequence:
+            invert_masks = [(0, 0), ]
+            if phy_settings.is_rdimm:
+                assert phy_settings.memtype == "DDR4"
+                # JESD82-31A page 38
+                #
+                # B-side chips have certain usually-inconsequential address and BA
+                # bits inverted by the RCD to reduce SSO current. For mode register
+                # writes, however, we must compensate for this. BG[1] also directs
+                # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
+                #
+                # The 'ba != 7' is because we don't do this to writes to the RCD
+                # itself.
+                if ba != 7:
+                    invert_masks.append((0b10101111111000, 0b1111))
 
-        for a_inv, ba_inv in invert_masks:
-            r += "\t/* {0} */\n".format(comment)
-            r += "\tsdram_dfii_pi0_address_write({0:#x});\n".format(a ^ a_inv)
-            r += "\tsdram_dfii_pi0_baddress_write({0:d});\n".format(ba ^ ba_inv)
-            if cmd[:12] == "DFII_CONTROL":
-                r += "\tsdram_dfii_control_write({0});\n".format(cmd)
-            else:
-                r += "\tcommand_p0({0});\n".format(cmd)
-            if delay:
-                r += "\tcdelay({0:d});\n".format(delay)
-            r += "\n"
-    r += "}\n"
+            for a_inv, ba_inv in invert_masks:
+                b += f"/* {comment} */"
+                b += f"sdram_dfii_pi0_address_write({a ^ a_inv:#x});"
+                b += f"sdram_dfii_pi0_baddress_write({ba ^ ba_inv:d});"
+                if cmd.startswith("DFII_CONTROL"):
+                    b += f"sdram_dfii_control_write({cmd});"
+                else:
+                    b += f"command_p0({cmd});"
+                if delay:
+                    b += f"cdelay({delay});\n"
+                b.newline()
 
-    r += "#endif\n"
-
-    return r
+    return r.generate()
 
 # Python Header ------------------------------------------------------------------------------------
 
@@ -835,6 +1041,22 @@ def get_sdram_phy_py_header(phy_settings, timing_settings):
 
     r += "init_sequence = [\n"
     for comment, a, ba, cmd, delay in init_sequence:
-        r += f"    (\"{comment}\", {a}, {ba}, {cmd.lower()}, {delay}),\n"
+        invert_masks = [(0, 0), ]
+        if phy_settings.is_rdimm:
+            assert phy_settings.memtype == "DDR4"
+            # JESD82-31A page 38
+            #
+            # B-side chips have certain usually-inconsequential address and BA
+            # bits inverted by the RCD to reduce SSO current. For mode register
+            # writes, however, we must compensate for this. BG[1] also directs
+            # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
+            #
+            # The 'ba != 7' is because we don't do this to writes to the RCD
+            # itself.
+            if ba != 7:
+                invert_masks.append((0b10101111111000, 0b1111))
+
+        for a_inv, ba_inv in invert_masks:
+            r += f"    (\"{comment}\", {a ^ a_inv:d}, {ba ^ ba_inv:d}, {cmd.lower()}, {delay}),\n"
     r += "]\n"
     return r

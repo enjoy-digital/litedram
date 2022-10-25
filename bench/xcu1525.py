@@ -12,13 +12,14 @@ import argparse
 from migen import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
 
-from litex_boards.platforms import xcu1525
+from litex_boards.platforms import xilinx_xcu1525
 
 from litex.soc.cores.clock import *
 from litex.soc.interconnect.csr import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 
+from litedram.common import PHYPadsReducer
 from litedram.modules import MT40A512M8
 from litedram.phy import usddrphy
 
@@ -37,6 +38,7 @@ class _CRG(Module, AutoCSR):
 
         # # #
 
+        # Main PLL.
         self.submodules.main_pll = main_pll = USPMMCM(speedgrade=-2)
         main_pll.register_clkin(platform.request("clk300", channel), 300e6)
         main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
@@ -44,11 +46,11 @@ class _CRG(Module, AutoCSR):
         main_pll.create_clkout(self.cd_uart,   100e6)
         main_pll.expose_drp()
 
+        # DRAM PLL.
         self.submodules.pll = pll = USPMMCM(speedgrade=-2)
         self.comb += pll.reset.eq(~main_pll.locked | self.rst)
         pll.register_clkin(self.cd_sys_pll.clk, sys_clk_freq)
         pll.create_clkout(self.cd_pll4x,  sys_clk_freq*4, buf=None, with_reset=False)
-
         self.specials += [
             Instance("BUFGCE_DIV",
                 p_BUFGCE_DIVIDE = 4,
@@ -62,24 +64,21 @@ class _CRG(Module, AutoCSR):
                 o_O  = self.cd_sys4x.clk,
             ),
         ]
-
         self.submodules.idelayctrl = USIDELAYCTRL(cd_ref=self.cd_idelay, cd_sys=self.cd_sys)
 
-        sys_clk_counter = Signal(32)
-        self.sync += sys_clk_counter.eq(sys_clk_counter + 1)
+        # Sys Clk Counter.
         self.sys_clk_counter = CSRStatus(32)
-        self.comb += self.sys_clk_counter.status.eq(sys_clk_counter)
+        self.sync += self.sys_clk_counter.status.eq(self.sys_clk_counter.status + 1)
 
 # Bench SoC ----------------------------------------------------------------------------------------
 
 class BenchSoC(SoCCore):
     def __init__(self, uart="crossover", sys_clk_freq=int(125e6), channel=0, with_bist=False, with_analyzer=False):
-        platform = xcu1525.Platform()
+        platform = xilinx_xcu1525.Platform()
 
         # SoCCore ----------------------------------------------------------------------------------
         SoCCore.__init__(self, platform, clk_freq=sys_clk_freq,
             ident               = "LiteDRAM bench on XCU1525",
-            ident_version       = True,
             integrated_rom_size = 0x10000,
             integrated_rom_mode = "rw",
             uart_name           = uart)
@@ -88,7 +87,8 @@ class BenchSoC(SoCCore):
         self.submodules.crg = _CRG(platform, sys_clk_freq, channel)
 
         # DDR4 SDRAM -------------------------------------------------------------------------------
-        self.submodules.ddrphy = usddrphy.USPDDRPHY(platform.request("ddram", channel),
+        self.submodules.ddrphy = usddrphy.USPDDRPHY(
+            pads             = PHYPadsReducer(platform.request("ddram", channel), [0, 1, 2, 3, 4, 5, 6, 7]),
             memtype          = "DDR4",
             sys_clk_freq     = sys_clk_freq,
             iodelay_clk_freq = 500e6)
@@ -136,7 +136,7 @@ def main():
     args = parser.parse_args()
 
     soc     = BenchSoC(uart=args.uart, channel=int(args.channel, 0), with_bist=args.with_bist, with_analyzer=args.with_analyzer)
-    builder = Builder(soc, output_dir=f"build/xcu1525_ch{args.channel}", csr_csv="csr.csv")
+    builder = Builder(soc, output_dir=f"build/xilinx_xcu1525_ch{args.channel}", csr_csv="csr.csv")
     builder.build(run=args.build)
 
     if args.load:
@@ -145,7 +145,7 @@ def main():
 
     if args.load_bios:
         from common import load_bios
-        load_bios(f"build/xcu1525_ch{args.channel}/software/bios/bios.bin")
+        load_bios(f"build/xilinx_xcu1525_ch{args.channel}/software/bios/bios.bin")
 
     if args.sys_clk_freq is not None:
         from common import us_set_sys_clk
@@ -158,7 +158,7 @@ def main():
             freq_max      = 180e6,
             freq_step     = 1e6,
             vco_freq      = soc.crg.pll.compute_config()["vco"],
-            bios_filename = f"build/xcu1525_ch{args.channel}/software/bios/bios.bin")
+            bios_filename = f"build/xilinx_xcu1525_ch{args.channel}/software/bios/bios.bin")
 
 if __name__ == "__main__":
     main()

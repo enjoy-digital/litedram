@@ -6,9 +6,10 @@
 
 {
     # General ------------------------------------------------------------------
-    "cpu":        "vexriscv",  # Type of CPU used for init/calib (vexriscv, lm32)
     "speedgrade": -1,          # FPGA speedgrade
+    "cpu":        "vexriscv",  # CPU type (ex vexriscv, serv, None)
     "memtype":    "DDR2",      # DRAM type
+    "uart":       "rs232",     # Type of UART interface (rs232, fifo)
 
     # PHY ----------------------------------------------------------------------
     "cmd_latency":     0,            # Command additional latency

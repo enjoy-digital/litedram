@@ -88,6 +88,7 @@ class TestECC(unittest.TestCase):
             def __init__(self):
                 eccw = LiteDRAMNativePortECCW(data_width_from=32*8, data_width_to=39*8)
                 self.submodules.eccw = eccw
+                self.comb += eccw.sink.we.eq(2**(32*8)-1)
 
         def main_generator(dut):
             yield
@@ -179,6 +180,7 @@ class TestECC(unittest.TestCase):
                 yield port.cmd.valid.eq(0)
                 yield
                 yield port.wdata.valid.eq(1)
+                yield port.wdata.we.eq(2**from_width-1)
                 yield port.wdata.data.eq(dut.wdata[i])
                 yield
                 while (yield port.wdata.ready) == 0:

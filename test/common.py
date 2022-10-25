@@ -566,6 +566,17 @@ class MemoryTestDataMixin:
                     0x0000000000000000000000000000000000000000000000000000000000000000,  # 0x60
                 ]
             ),
+            "8bit_to_256bit":  dict(
+                #       address, data
+                pattern=[(i, 0x10 + i) for i in range(128)],
+                expected=[
+                    # data, address
+                    0x2f2e2d2c2b2a292827262524232221201f1e1d1c1b1a19181716151413121110,  # 0x00
+                    0x4f4e4d4c4b4a494847464544434241403f3e3d3c3b3a39383736353433323130,  # 0x20
+                    0x6f6e6d6c6b6a696867666564636261605f5e5d5c5b5a59585756555453525150,  # 0x40
+                    0x8f8e8d8c8b8a898887868584838281807f7e7d7c7b7a79787776757473727170,  # 0x60
+                ]
+            ),
             "32bit_to_256bit_not_aligned":  dict(
                 pattern=[
                     # address, data
@@ -689,6 +700,10 @@ class MemoryTestDataMixin:
         data["32bit_to_64bit"] = dict(
             pattern  = data["32bit_to_128bit"]["pattern"].copy(),
             expected = half_width(data["32bit_to_128bit"]["expected"], from_width=128),
+        )
+        data["8bit_to_128bit"] = dict(
+            pattern  = data["8bit_to_256bit"]["pattern"].copy(),
+            expected = half_width(data["8bit_to_256bit"]["expected"], from_width=256),
         )
 
         return data

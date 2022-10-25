@@ -18,6 +18,10 @@ def build_config(name):
 
 
 class TestExamples(unittest.TestCase):
+    def test_ulx3s(self):
+        errors = build_config("ulx3s")
+        self.assertEqual(errors, 0)
+
     def test_arty(self):
         errors = build_config("arty")
         self.assertEqual(errors, 0)

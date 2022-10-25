@@ -93,6 +93,20 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
         port = LiteDRAMNativePort("both", address_width=30, data_width=64)
         self.wishbone_readback_test(data["pattern"], data["expected"], wb, port)
 
+    def test_wishbone_32bit_to_128bit(self):
+        # Verify Wishbone with 32-bit data width up-converted to 128-bit data width.
+        data = self.pattern_test_data["32bit_to_128bit"]
+        wb   = wishbone.Interface(adr_width=30, data_width=32)
+        port = LiteDRAMNativePort("both", address_width=30, data_width=128)
+        self.wishbone_readback_test(data["pattern"], data["expected"], wb, port)
+
+    def test_wishbone_32bit_to_256bit(self):
+        # Verify Wishbone with 32-bit data width up-converted to 128-bit data width.
+        data = self.pattern_test_data["32bit_to_256bit"]
+        wb   = wishbone.Interface(adr_width=30, data_width=32)
+        port = LiteDRAMNativePort("both", address_width=30, data_width=256)
+        self.wishbone_readback_test(data["pattern"], data["expected"], wb, port)
+
     def test_wishbone_32bit_base_address(self):
         # Verify Wishbone with 32-bit data width and non-zero base address.
         data   = self.pattern_test_data["32bit"]

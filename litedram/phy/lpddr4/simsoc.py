@@ -10,12 +10,10 @@ import argparse
 from migen import *
 
 from litex.build.generic_platform import Pins, Subsignal
-from litex.build.sim import SimPlatform
 from litex.build.sim.config import SimConfig
 
 from litex.soc.interconnect.csr import CSR
-from litex.soc.integration.soc_core import SoCCore
-from litex.soc.integration.soc_sdram import soc_sdram_args, soc_sdram_argdict
+from litex.soc.integration.soc_core import SoCCore, soc_core_args, soc_core_argdict
 from litex.soc.integration.builder import builder_args, builder_argdict, Builder
 from litex.soc.cores.cpu import CPUS
 
@@ -27,24 +25,15 @@ from litedram.phy.model import DFITimingsChecker, _speedgrade_timings, _technolo
 from litedram.phy.lpddr4.simphy import LPDDR4SimPHY, DoubleRateLPDDR4SimPHY
 from litedram.phy.lpddr4.sim import LPDDR4Sim
 
+from litedram.phy.sim_utils import Clocks, CRG, Platform
+
 # Platform -----------------------------------------------------------------------------------------
 
 _io = [
-    # clocks added later
-    ("sys_rst", 0, Pins(1)),
-
-    ("serial", 0,
-        Subsignal("source_valid", Pins(1)),
-        Subsignal("source_ready", Pins(1)),
-        Subsignal("source_data",  Pins(8)),
-        Subsignal("sink_valid",   Pins(1)),
-        Subsignal("sink_ready",   Pins(1)),
-        Subsignal("sink_data",    Pins(8)),
-    ),
-
+    # clocks added in main()
     ("lpddr4", 0,
-        Subsignal("clk_p",   Pins(1)),
-        Subsignal("clk_n",   Pins(1)),
+        Subsignal("clk",   Pins(1)),
+        # Subsignal("clk_n",   Pins(1)),
         Subsignal("cke",     Pins(1)),
         Subsignal("odt",     Pins(1)),
         Subsignal("reset_n", Pins(1)),
@@ -57,43 +46,7 @@ _io = [
     ),
 ]
 
-class Platform(SimPlatform):
-    def __init__(self):
-        SimPlatform.__init__(self, "SIM", _io)
-
 # Clocks -------------------------------------------------------------------------------------------
-
-class Clocks(dict):  # FORMAT: {name: {"freq_hz": _, "phase_deg": _}, ...}
-    def names(self):
-        return list(self.keys())
-
-    def add_io(self, io):
-        for name in self.names():
-            io.append((name + "_clk", 0, Pins(1)))
-
-    def add_clockers(self, sim_config):
-        for name, desc in self.items():
-            sim_config.add_clocker(name + "_clk", **desc)
-
-class _CRG(Module):
-    def __init__(self, platform, domains=None):
-        if domains is None:
-            domains = ["sys"]
-        # request() before creating domains to avoid signal renaming problem
-        domains = {name: platform.request(name + "_clk") for name in domains}
-
-        self.clock_domains.cd_por = ClockDomain(reset_less=True)
-        for name in domains.keys():
-            setattr(self.clock_domains, "cd_" + name, ClockDomain(name=name))
-
-        int_rst = Signal(reset=1)
-        self.sync.por += int_rst.eq(0)
-        self.comb += self.cd_por.clk.eq(self.cd_sys.clk)
-
-        for name, clk in domains.items():
-            cd = getattr(self, "cd_" + name)
-            self.comb += cd.clk.eq(clk)
-            self.comb += cd.rst.eq(int_rst)
 
 def get_clocks(sys_clk_freq):
     return Clocks({
@@ -116,19 +69,18 @@ class SimSoC(SoCCore):
     def __init__(self, clocks, log_level,
             auto_precharge=False, with_refresh=True, trace_reset=0, disable_delay=False,
             masked_write=True, double_rate_phy=False, finish_after_memtest=False, **kwargs):
-        platform     = Platform()
+        platform     = Platform(_io, clocks)
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
         # SoCCore ----------------------------------------------------------------------------------
         super().__init__(platform,
             clk_freq      = sys_clk_freq,
             ident         = "LiteX Simulation",
-            ident_version = True,
-            cpu_variant   = "minimal",
+            cpu_variant   = "lite",
             **kwargs)
 
         # CRG --------------------------------------------------------------------------------------
-        self.submodules.crg = _CRG(platform, clocks.names())
+        self.submodules.crg = CRG(platform, clocks)
 
         # Debugging --------------------------------------------------------------------------------
         platform.add_debug(self, reset=trace_reset)
@@ -142,12 +94,8 @@ class SimSoC(SoCCore):
             aligned_reset_zero = True,
             masked_write       = masked_write,
         )
-        # fake delays (make no nsense in simulation, but sdram.c expects them)
-        self.ddrphy._rdly_dq_rst         = CSR()
-        self.ddrphy._rdly_dq_inc         = CSR()
-        self.add_csr("ddrphy")
 
-        for p in ["clk_p", "clk_n", "cke", "odt", "reset_n", "cs", "ca", "dq", "dqs", "dmi"]:
+        for p in ["clk", "cke", "odt", "reset_n", "cs", "ca", "dq", "dqs", "dmi"]:
             self.comb += getattr(pads, p).eq(getattr(self.ddrphy.pads, p))
 
         controller_settings = ControllerSettings()
@@ -303,8 +251,8 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
         save.group([s for s in vars(soc.ddrphy.pads).values() if isinstance(s, Signal)],
             group_name = "pads",
             mappers = [
-                gtkw.regex_filter(["clk_n$", "_[io]$"], negate=True),
-                gtkw.regex_sorter(gtkw.suffixes2re(["cke", "odt", "reset_n", "clk_p", "cs", "ca", "dq", "dqs", "dmi", "oe"])),
+                gtkw.regex_filter(["_[io]$"], negate=True),
+                gtkw.regex_sorter(gtkw.suffixes2re(["cke", "odt", "reset_n", "clk", "cs", "ca", "dq", "dqs", "dmi", "oe"])),
                 gtkw.regex_colorer({
                     "yellow": gtkw.suffixes2re(["cs", "ca"]),
                     "orange": gtkw.suffixes2re(["dq", "dqs", "dmi"]),
@@ -316,7 +264,7 @@ def generate_gtkw_savefile(builder, vns, trace_fst):
 def main():
     parser = argparse.ArgumentParser(description="Generic LiteX SoC Simulation")
     builder_args(parser.add_argument_group(title="Builder"))
-    soc_sdram_args(parser.add_argument_group(title="SoC SDRAM"))
+    soc_core_args(parser.add_argument_group(title="SoC Core"))
     group = parser.add_argument_group(title="LPDDR4 simulation")
     group.add_argument("--sdram-verbosity",      default=0,               help="Set SDRAM checker verbosity")
     group.add_argument("--trace",                action="store_true",     help="Enable Tracing")
@@ -336,13 +284,12 @@ def main():
     group.add_argument("--finish-after-memtest", action="store_true",     help="Stop simulation after DRAM memory test")
     args = parser.parse_args()
 
-    soc_kwargs     = soc_sdram_argdict(args)
+    soc_kwargs     = soc_core_argdict(args)
     builder_kwargs = builder_argdict(args)
 
     sim_config = SimConfig()
     sys_clk_freq = int(float(args.sys_clk_freq))
     clocks = get_clocks(sys_clk_freq)
-    clocks.add_io(_io)
     clocks.add_clockers(sim_config)
 
     # Configuration --------------------------------------------------------------------------------

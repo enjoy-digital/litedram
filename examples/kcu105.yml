@@ -6,9 +6,10 @@
 
 {
     # General ------------------------------------------------------------------
-    "cpu":        "vexriscv", # Type of CPU used for init/calib (vexriscv, lm32)
     "speedgrade": -2,         # FPGA speedgrade
+    "cpu":        "vexriscv", # CPU type (ex vexriscv, serv, None)
     "memtype":    "DDR4",     # DRAM type
+    "uart":       "rs232",    # Type of UART interface (rs232, fifo)
 
     # PHY ----------------------------------------------------------------------
     "cmd_latency":     1,          # Command additional latency
@@ -33,8 +34,10 @@
     # User Ports ---------------------------------------------------------------
     "user_ports": {
         "axi_0" : {
-            "type": "axi",
-            "id_width": 32,
+            "type"       : "axi",
+            "ecc"        : True,
+            "data_width" : 256,
+            "id_width"   : 32,
         },
         "wishbone_0" : {
             "type": "wishbone",
