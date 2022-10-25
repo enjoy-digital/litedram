@@ -40,6 +40,9 @@ class ControllerSettings(Settings):
         refresh_cls         = TMRRefresher,
         refresh_zqcs_freq   = 1e0,
         refresh_postponing  = 1,
+        
+        # TMR
+        with_tmr            = True,
 
         # Auto-Precharge
         with_auto_precharge = True,
