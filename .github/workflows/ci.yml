@@ -32,7 +32,7 @@ jobs:
           pip3 install requests
           pip3 install pexpect
           pip3 install meson
-          pip3 install pytest
+          pip3 install pytest==7.1.0
       - name: Install pytest-parallel
         if: ${{ contains(matrix.pytest_args, 'not') }}
         run: pip install pytest-parallel
