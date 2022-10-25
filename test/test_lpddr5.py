@@ -760,6 +760,7 @@ class VerilatorLPDDR5Tests(unittest.TestCase):
                 allowed = [
                     ("WARN", "tPW_RESET violated: RESET_n held low for too short"),
                     ("WARN", "tINIT1 violated: RESET deasserted too fast"),
+                    ("WARN", "tINIT2 violated: CS LOW for too short before deasserting RESET (1/1 ck)"),
                 ]
                 self.run_test([
                     "--finish-after-memtest", "--log-level=warn",
