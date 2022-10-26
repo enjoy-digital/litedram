@@ -24,14 +24,18 @@ jobs:
       # Install Tools
       - name: Install Tools
         run: |
-          sudo apt-get install wget build-essential python3 ninja-build
-          sudo apt-get install libevent-dev libjson-c-dev flex bison
-          sudo apt-get install libfl-dev libfl2 zlib1g-dev
+          sudo apt-get update
+          sudo apt-get install wget build-essential python3 ninja-build -y
+          sudo apt-get install libevent-dev libjson-c-dev flex bison git -y
+          sudo apt-get install libfl-dev libfl2 zlib1g-dev python3-pip autoconf -y
           pip3 install setuptools
           pip3 install requests
           pip3 install pexpect
           pip3 install meson
-          pip3 install pytest
+          pip3 install pytest==7.1.0
+      - name: Install pytest-parallel
+        if: ${{ contains(matrix.pytest_args, 'not') }}
+        run: pip install pytest-parallel
 
       # Install (n)Migen / LiteX / Cores
       - name: Install LiteX
@@ -41,7 +45,7 @@ jobs:
           # temporary hack until merged to master
           git -C ../litex remote add antmicro https://github.com/antmicro/litex.git
           git -C ../litex fetch antmicro
-          git -C ../litex checkout antmicro/msieron/add-blocking-assign-back
+          git -C ../litex checkout antmicro/mdudek/liblitedram_ddr5support
 
       # Install RISC-V GCC
       - name: Install RISC-V GCC
@@ -52,10 +56,12 @@ jobs:
           sudo cp -r $PWD/../riscv64-*/* /usr/local/riscv
 
       - name: Build Verilator
+        if: ${{ !contains(matrix.pytest_args, 'not') }}
         run: |
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           git clone https://github.com/verilator/verilator
           cd verilator
+          git checkout v4.228
           autoconf
           ./configure
           make -j$(nproc)
@@ -67,6 +73,13 @@ jobs:
 
       # Test
       - name: Run Tests
+        if: ${{ contains(matrix.pytest_args, 'not') }}
+        run: |
+          export PATH=/usr/local/riscv/bin:$PATH
+          pytest ${{ matrix.pytest_args }} --verbose --workers auto
+
+      - name: Run Tests
+        if: ${{ !contains(matrix.pytest_args, 'not') }}
         run: |
           export PATH=/usr/local/riscv/bin:$PATH
           pytest ${{ matrix.pytest_args }} --verbose
