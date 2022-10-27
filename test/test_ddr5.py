@@ -73,17 +73,18 @@ class DDR5Tests(unittest.TestCase):
 
         # latencies to use in pad checkers
         # Extra '0' for unaligned ddr clk and cs clk
-        self.ca_latency:       str = self.xs + '0' * 6 + '0' + '0' * (self.NPHASES * (Serializer.LATENCY - 1)) + '0' * self.NPHASES
-        self.cs_n_latency:     str = self.xs + '0' * 6 + '0' + '0' * (self.NPHASES * (Serializer.LATENCY - 1)) + '1' * self.NPHASES
+        # delay 1 + 1 + 1/8 + (Serializer.LATENCY - 1) + 0.5 to command counted in sysclk
+        self.ca_latency:       str = self.xs + self.zeros + '0' + '0' * (self.NPHASES * (Serializer.LATENCY - 1)) + '0' * self.NPHASES
+        self.cs_n_latency:     str = self.xs + self.zeros + '0' + '0' * (self.NPHASES * (Serializer.LATENCY - 1)) + '1' * self.NPHASES
 
         # Read latency is 1 sys_clk shorter in relity, cmd has no bitslip while dq has
         # -2 preamble
-        self.dqs_t_rd_latency: str = self.xs * 2 + (self.rdphase + read_latency_in_cycles) * 'xx'
-        self.dq_rd_latency:    str = self.xs * 2 + (self.rdphase + read_latency_in_cycles + 2) * 'xx'
+        self.dqs_t_rd_latency: str = self.xs * 2 + 'xx'*(self.NPHASES * (Serializer.LATENCY - 1)) + 'x' * self.NPHASES + (self.rdphase + read_latency_in_cycles) * 'xx'
+        self.dq_rd_latency:    str = self.xs * 2 + 'xx'*(self.NPHASES * (Serializer.LATENCY - 1)) + 'x' * self.NPHASES + (self.rdphase + read_latency_in_cycles + 2) * 'xx'
         # Write latency is 1 sys_clk longer in reality, cmd has no bitslip while dq and dqs have, this force 1 extra sys_clk cycle
         # preamble is 2 ddr clocks long
-        self.dqs_t_wr_latency: str = self.xs * 2 + (self.wrphase + self.cmd_latency + write_latency_in_cycles + (4 - 2)) * 'xx'
-        self.dq_wr_latency:    str = self.xs * 2 + (self.wrphase + self.cmd_latency + write_latency_in_cycles + 4) * 'xx'
+        self.dqs_t_wr_latency: str = self.xs * 2 + 'xx'*(self.NPHASES * (Serializer.LATENCY - 1)) + 'x' * self.NPHASES + (self.wrphase + self.cmd_latency + write_latency_in_cycles + (4 - 2)) * 'xx'
+        self.dq_wr_latency:    str = self.xs * 2 + 'xx'*(self.NPHASES * (Serializer.LATENCY - 1)) + 'x' * self.NPHASES + (self.wrphase + self.cmd_latency + write_latency_in_cycles + 4) * 'xx'
 
     @staticmethod
     def process_ca(ca: str) -> int:
@@ -557,12 +558,10 @@ class DDR5Tests(unittest.TestCase):
                     err = "{}: CA = 0b{:06b}, expected = 0b{:06b}".format(i, (yield pads.ca), read[i])
                     self.test_case.assertEqual((yield pads.ca), read[i], msg=err)
 
-                # wait reset
-                for _ in range(self.test_case.NPHASES * 4):
-                    yield
-
+                old_state_cd_n = False
                 while True:
-                    while (yield pads.cs_n):
+                    while not old_state_cd_n or (yield pads.cs_n):
+                        old_state_cd_n = (yield pads.cs_n)
                         yield
                     yield from check_ca(0)
                     yield
@@ -626,7 +625,7 @@ class DDR5Tests(unittest.TestCase):
                     "ca12": self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
                     "ca13": self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
                 },
-                "sys4x_90_ddr": { #                    preamble                  postamble
+                "sys4x_90_ddr": { #                    preamble              postamble
                     "dqs_t0": self.dqs_t_rd_latency + '0010' + '10101010' + '10xxxxxx',
                 } | {
                     f'dq{i}': self.dq_rd_latency + self.dq_pattern(i, data_to_read, "rddata") + self.zeros
