@@ -199,17 +199,12 @@ class DFITimingsChecker(Module):
         return self.ns_to_ps(max(c, t))
 
     def prepare_timings(self, timings, refresh_mode, memtype):
-        CK_NS = ["tRFC", "tWTR", "tFAW", "tCCD", "tRRD", "tZQCS"]
-        REF   = ["tREFI", "tRFC"]
         self.timings = timings
         new_timings  = {}
 
         tck = self.timings["tCK"]
 
         for key, val in self.timings.items():
-            if refresh_mode is not None and key in REF:
-                val = val[refresh_mode]
-
             if val is None:
                 val = 0
             elif key == "tCK":
@@ -561,9 +556,12 @@ class SDRAMPHYModel(Module):
         # DFI timing checker -----------------------------------------------------------------------
         if verbosity > SDRAM_VERBOSE_OFF:
             timings = {"tCK": (1e9 / clk_freq) / nphases}
+            CK_NS = ["tRFC", "tWTR", "tFAW", "tCCD", "tRRD", "tZQCS"]
+            REF = ["tREFI", "tRFC"]
 
             for name in _speedgrade_timings + _technology_timings:
-                timings[name] = self.module.get(name)
+                key = self.module.timing_settings.fine_refresh_mode if name in REF else None
+                timings[name] = self.module.get(name, key)
 
             timing_checker = DFITimingsChecker(
                 dfi          = self.dfi,
