@@ -861,7 +861,7 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
     else:
         prefixes = ["a_", "b_"]
 
-    dfii_control = [f"DFII_CONTROL_{prefix.upper()}CMDINJECTOR" for prefix in prefixes]
+    dfii_control = [f"DFII_CONTROL_{prefix.upper()}CMDINJECTOR" for prefix in prefixes] + ["DFII_CONTROL_2N_MODE"]
     dfii_control = '|'.join(dfii_control)
 
     all_cs        = 2**phy_settings.nranks-1
@@ -895,7 +895,7 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
         # Perform "Reset Initialization with Stable Power"
         # We assume that loading the bistream will take at least tINIT1 (200us)
         # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
-        ("Assert reset", prefixes, 0, 0, 0, "0", ck(300e-6)),
+        ("Assert reset", prefixes, 0, 0, 0, "0", ck(3e-6)),
         ("Assert CS in reset", prefixes, all_cs, 0, all_phases, dfii_control, ck(10e-9)),
         ("Release reset", prefixes, all_cs, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N",ck(4e-3)),
         ("Release CS", prefixes, 0, 0x3FFF, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(2e-6)),
@@ -1047,6 +1047,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     r.define("SDRAM_PHY_DATABITS", phy_settings.databits)
     r.define("SDRAM_PHY_DFI_DATABITS", phy_settings.dfi_databits)
     r.define("SDRAM_PHY_PHASES", nphases)
+    r.define("SDRAM_PHY_RANKS", phy_settings.nranks)
     for setting in ["cl", "cwl", "cmd_latency", "cmd_delay"]:
         if getattr(phy_settings, setting, None) is not None:
             r.define(f"SDRAM_PHY_{setting.upper()}", getattr(phy_settings, setting))
