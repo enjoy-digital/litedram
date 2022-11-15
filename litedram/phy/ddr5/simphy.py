@@ -71,21 +71,6 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
         self.settings.read_leveling = True
         self.settings.delays = 1
 
-        common = [
-            ("ck_t", 1),
-            ("ck_c", 1),
-            ("reset_n", 1),
-            ("alert_n", 1),
-        ]
-        per_channel = [
-            ('cs_n', nranks, False),
-            ('ca', 14, False),
-            ('par', 1, False),
-            ('dq', databits, True),
-            ('dm_n',  databits // dq_dqs_ratio, True),
-            ('dqs_t',  databits // dq_dqs_ratio, True),
-            ('dqs_c',  databits // dq_dqs_ratio, True),
-        ]
         channels_prefix = [""] if not with_sub_channels else ["A_", "B_"]
         delay = lambda sig, cycles: delayed(self, sig, cycles=cycles)
 
