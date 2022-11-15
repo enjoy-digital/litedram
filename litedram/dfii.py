@@ -5,6 +5,8 @@
 # Copyright (c) 2016-2019 Florent Kermarrec <florent@enjoy-digital.fr>
 # SPDX-License-Identifier: BSD-2-Clause
 
+from operator import or_, and_, add
+from functools import reduce
 from migen import *
 
 from litedram.phy import dfi
@@ -137,7 +139,6 @@ class CmdInjector(Module, AutoCSR):
         rd_en_start = wr_mask_end = wr_mask_start + wrdata_mask_width
         rd_en_end = rd_en_start + 1
 
-
         for phase in phases:
             self.comb += [
                 phase.cs_n.eq(Replicate(1, cs_width)),
@@ -188,34 +189,130 @@ class CmdInjector(Module, AutoCSR):
                     ),
                 ]
 
-        self._wrdata_select = CSRStorage(num_phases.bit_length())
+        # Wrdata path
+
+        self._wrdata_select = CSRStorage(int(8).bit_length())
         self._wrdata = CSRStorage(wrdata_width)
         self._wrdata_store = CSR()
 
-        self.wrdata = Array(Signal(wrdata_width) for _ in range(num_phases))
+        self.wrdata = Array(Signal(wrdata_width) for _ in range(8)) # DDR5 max length BL/2
 
         self.sync += [
             If(self._wrdata_store.re,
                 self.wrdata[self._wrdata_select.storage].eq(self._wrdata.storage)
             ),
         ]
-        self.comb += [
-            phase.wrdata.eq(self.wrdata[i]) for i, phase in enumerate(phases)
+
+        for phase in phases:
+            self.comb += [
+                phase.wrdata.eq(Replicate(0, wrdata_width)),
+            ]
+
+        for i in range(max(4, num_phases)):
+            dfi_phase_num = i % num_phases
+            reg_num       = i % 4
+            counter       = i // num_phases
+            phase         = phases[dfi_phase_num]
+            self.comb += [
+                If((singleshot_issue != 2) & (continuous_counter == counter) &
+                    self._continuous_phase_signals[reg_num][wr_en_start:wr_en_end],
+                    phase.wrdata.eq(self.wrdata[reg_num]),
+                ),
+            ]
+
+        for i in range(max(8, num_phases)):
+            dfi_phase_num = i % num_phases
+            reg_num       = i % 8
+            counter       = i // num_phases
+            phase         = phases[dfi_phase_num]
+            if dfi_phase_num < 8:
+                self.comb += [
+                    If((singleshot_issue == 2) & (singleshot_counter == counter) &
+                        self._singleshot_phase_signals[reg_num][wr_en_start:wr_en_end],
+                        phase.wrdata.eq(self.wrdata[reg_num]),
+                    ),
+                ]
+            else:
+                self.comb += [
+                    If((singleshot_issue == 2) & (singleshot_counter == counter),
+                        phase.wrdata.eq(Replicate(0, wrdata_width)),
+                    ),
+                ]
+
+        # Continuous DQ sampling
+
+        self._setup = CSRStorage(fields=[
+            CSRField("initial_state", size=1,  description="Initial value of all bits"),
+            CSRField("operation",     size=1,  description="0 - `or` (default), 1 -`and`"),
+        ])
+
+        self._sample = CSRStorage()
+        self._result = CSRStatus()
+        self._reset = CSR()
+
+        op = Signal()
+
+        self._sample_memory = Array(Signal(rddata_width) for  _ in range(num_phases))
+        self.sync += [
+            If(self._reset.re,
+                *[mem.eq(Replicate(self._setup.fields.initial_state, rddata_width)) for mem in self._sample_memory],
+                op.eq(self._setup.fields.operation),
+            ).Elif(self._sample.storage,
+                *[If(op,
+                    self._sample_memory[i].eq(self._sample_memory[i] & phase.rddata)
+                  ).Else(
+                    self._sample_memory[i].eq(self._sample_memory[i] | phase.rddata)
+                  ) for i, phase in enumerate(phases)],
+            ).Else(
+                If(op,
+                    self._result.status.eq(reduce(and_,[reduce(and_, self._sample_memory[i]) for i in range(num_phases)])),
+                ).Else(
+                    self._result.status.eq(reduce(or_,[reduce(or_, self._sample_memory[i]) for i in range(num_phases)])),
+                )
+            )
         ]
 
-        self._rddata_select = CSRStorage(num_phases.bit_length())
-        self._rddata = CSRStatus(rddata_width)
-        self._rddata_capture = CSR() # force capture of rddata bus
+        # Rddata path
 
-        self.rddata = Array(Signal(rddata_width) for _ in range(num_phases))
+        self._rddata_select      = CSRStorage(int(8).bit_length())
+        self._rddata_capture_cnt = CSRStorage(4)
+        self._rddata = CSRStatus(rddata_width)
+
+        self.rddata = Array(Signal(rddata_width) for _ in range(8)) # DDR5 max length BL/2
 
         self.sync += [
             self._rddata.status.eq(self.rddata[self._rddata_select.storage])
         ]
-        self.sync += [
-            If(phase.rddata_valid | self._rddata_capture.re,
-                self.rddata[i].eq(phase.rddata)) for i, phase in enumerate(phases)
-        ]
+
+        rddata_valids = [phase.rddata_valid for phase in phases]
+        any_rddata_valid = reduce(or_, rddata_valids)
+
+        self.read_fsm = read_fsm = FSM()
+        read_cnt = Signal(max=9)
+        read_counts_tmp = Array(Signal(max=9) for _ in range(8))
+        read_fsm.act("IDLE",
+            If(any_rddata_valid,
+                *[read_counts_tmp[i].eq(read_cnt + reduce(add, rddata_valids[:i], 0)) for i, _ in enumerate(phases)],
+                *[If(phase.rddata_valid,
+                    NextValue(self.rddata[read_counts_tmp[i]], phases[i].rddata)
+                ) for i, phase in enumerate(phases)],
+                NextValue(read_cnt, reduce(add, rddata_valids)),
+                NextState("CAPTURE"),
+            ),
+        )
+        read_fsm.act("CAPTURE",
+            If(any_rddata_valid,
+                *[read_counts_tmp[i].eq(read_cnt + reduce(add, rddata_valids[:i], 0)) for i, _ in enumerate(phases)],
+                *[If(phase.rddata_valid,
+                    NextValue(self.rddata[read_counts_tmp[i]], phase.rddata),
+                ) for i, phase in enumerate(phases)],
+                NextValue(read_cnt, (read_cnt + reduce(add, rddata_valids))),
+            ),
+            If((self._rddata_capture_cnt.storage == read_cnt),
+                NextState("IDLE"),
+            ),
+        )
+        read_fsm.finalize()
 
 # DFIInjector --------------------------------------------------------------------------------------
 
