@@ -11,9 +11,10 @@ import os
 def build_config(name):
     errors = 0
     os.system(f"rm -rf examples/{name}")
-    os.system(f"mkdir -p examples/{name} && cd examples/{name} && python3 ../../litedram/gen.py ../{name}.yml")
+    os.system(f"mkdir -p examples/{name} && cd examples/{name} && python3 ../../litedram/gen.py ../{name}.yml --lto")
     errors += not os.path.isfile(f"examples/{name}/build/gateware/litedram_core.v")
-    os.system(f"rm -rf examples/{name}")
+    if errors == 0:
+        os.system(f"rm -rf examples/{name}")
     return errors
 
 
