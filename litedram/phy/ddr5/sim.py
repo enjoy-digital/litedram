@@ -69,17 +69,24 @@ class DDR5Sim(Module, AutoCSR):
             cd_from=cd_cmd,
             cd_to=cd_dq_wr)
 
+        direct_dq_controll = Signal()
+        dq_value = Signal()
+
         cmd = CommandsSim(pads,
-            data_cdc      = self.data_cdc,
-            clk_freq      = 4*sys_clk_freq,
-            log_level     = log_level("cmd"),
-            geom_settings = geom_settings,
-            bl_max        = bl_max,
-            prefix        = prefix,
+            data_cdc          = self.data_cdc,
+            direct_dq_control = direct_dq_controll,
+            dq_value          = dq_value,
+            clk_freq          = 4*sys_clk_freq,
+            log_level         = log_level("cmd"),
+            geom_settings     = geom_settings,
+            bl_max            = bl_max,
+            prefix            = prefix,
         )
         self.submodules.cmd = ClockDomainsRenamer(cd_cmd)(cmd)
 
         data = DataSim(pads, self.cmd,
+            direct_dq_control = direct_dq_controll,
+            dq_value          = dq_value,
             cd_dq_wr      = cd_dq_wr,
             cd_dqs_wr     = cd_dqs_wr,
             cd_dq_rd      = cd_dq_rd,
@@ -106,7 +113,8 @@ class CommandsSim(Module, AutoCSR):
 
     Command simulator should work in the clock domain of `pads.clk_p` (SDR).
     """
-    def __init__(self, pads, data_cdc, *, clk_freq, log_level, geom_settings, bl_max, prefix):
+    def __init__(self, pads, data_cdc, direct_dq_control, dq_value, *,
+                 clk_freq, log_level, geom_settings, bl_max, prefix):
         self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
         self.log.add_csrs()
 
@@ -146,6 +154,8 @@ class CommandsSim(Module, AutoCSR):
         self.mr13_set   = Signal()
         self.mpc_op     = Signal(8)
         self.bl_max     = bl_max
+        self.cs_training_start  = Signal()
+        self.cs_training_end    = Signal()
 
         cmds_enabled = Signal()
         cmd_handlers = OrderedDict(
@@ -340,6 +350,38 @@ class CommandsSim(Module, AutoCSR):
             })
         )
 
+        self.submodules.cs_training = cs_training = ResetInserter()(FSM())
+        cs_training_counter = Signal(2)
+        last_sampled_value  = Signal()
+        curent_sample       = Signal()
+        cs_training.act("IDLE",
+            If(self.cs_training_start,
+                NextState("SAMPLE"),
+                NextValue(cs_training_counter, 0),
+                NextValue(last_sampled_value, 1),
+                NextValue(curent_sample, 1),
+            ),
+        )
+        cs_training.act("SAMPLE",
+            direct_dq_control.eq(1),
+            dq_value.eq(last_sampled_value),
+            If(cs_training_counter == 3,
+                NextValue(last_sampled_value, ~(
+                    curent_sample &
+                    (cs_training_counter[0] == getattr(pads, prefix+'cs_n'))
+                )),
+                NextValue(curent_sample, 1),
+            ).Else(
+                NextValue(curent_sample, curent_sample & (cs_training_counter[0] == getattr(pads, prefix+'cs_n')))
+            ),
+            NextValue(cs_training_counter, cs_training_counter + 1),
+            If(self.cs_training_end,
+                NextState("IDLE"),
+            ),
+        )
+        cs_training.finalize()
+
+
     def cmd_one_step(self, name, cond, comb, handle_cmd, sync=None):
         matched = Signal()
         self.comb += If(handle_cmd & cond,
@@ -379,7 +421,7 @@ class CommandsSim(Module, AutoCSR):
         return self.cmd_one_step("NOP",
             cond = self.cs_n_low[:5] == 0b11111,
             comb = [
-                self.log.info(prefix+"NOP"),
+                self.log.debug(prefix+"NOP"),
             ],
             handle_cmd = self.handle_1_tick_cmd | self.handle_2_tick_cmd,
         )
@@ -449,6 +491,8 @@ class CommandsSim(Module, AutoCSR):
 
     def mpc_handler(self, prefix):
         cases = {value: self.log.info(prefix+f"MPC: {name}") for name, value in MPC.__members__.items()}
+        cases[0b00000000] = [self.log.info(prefix+"MPC: Exit CS"),  self.cs_training_end.eq(1)]
+        cases[0b00000001] = [self.log.info(prefix+"MPC: Enter CS"), self.cs_training_start.eq(1)]
         cases[0b00001000] = [self.log.info(prefix+"MPC: 2N")]
         cases[0b00001001] = [self.log.info(prefix+"MPC: 1N")]
         base = 0b10000000
@@ -580,6 +624,8 @@ class CommandsSim(Module, AutoCSR):
         )
 # Data ---------------------------------------------------------------------------------------------
 
+# sys4x_n_dimm
+
 class DataSim(Module, AutoCSR):
     """Data simulator
 
@@ -589,7 +635,8 @@ class DataSim(Module, AutoCSR):
 
     This module runs with DDR clocks (simulation clocks with double the frequency of `pads.clk_p`).
     """
-    def __init__(self, pads, cmds_sim, *, cd_dq_wr, cd_dq_rd, cd_dqs_wr, cd_dqs_rd, cl, cwl, clk_freq, log_level, geom_settings, bl_max, prefix):
+    def __init__(self, pads, cmds_sim, direct_dq_control, dq_value, *, cd_dq_wr, cd_dq_rd, cd_dqs_wr,
+                 cd_dqs_rd, cl, cwl, clk_freq, log_level, geom_settings, bl_max, prefix):
         self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
         self.log.add_csrs()
 
@@ -613,15 +660,36 @@ class DataSim(Module, AutoCSR):
             log_level=log_level, clk_freq=clk_freq, prefix=prefix)
         dqs_kwargs = dict(bl_max=bl_max, log_level=log_level, clk_freq=clk_freq, prefix=prefix)
 
-        self.submodules.dq_wr = ClockDomainsRenamer(cd_dq_wr)(DQWrite(dq=getattr(pads, prefix+'dq'),dmi=getattr(pads, prefix+'dm_n'),
-                                                                      bl_width=bl_width, ports=ports, negedge_domain="sys4x_n_dimm", **dq_kwargs))
-        self.submodules.dq_rd = ClockDomainsRenamer(cd_dq_rd)(DQRead(dq=getattr(pads, prefix+'dq_i'),
-                                                                     bl_width=bl_width, ports=ports, negedge_domain="sys4x_n_dimm", **dq_kwargs)) # Acording to JEDEC DQS and DQ for reads are edge alligned
-        self.submodules.dqs_wr = ClockDomainsRenamer(cd_dqs_wr)(DQSWrite(dqs=getattr(pads, prefix+'dqs_t'),
-                                                                         bl_width=bl_width, negedge_domain="sys4x_n_dimm", **dqs_kwargs))
-        self.submodules.dqs_rd = ClockDomainsRenamer(cd_dqs_rd)(DQSRead(dqs_t=getattr(pads, prefix+'dqs_t_i'),
-                                                                        dqs_c=getattr(pads, prefix+'dqs_c_i'),
-                                                                        bl_width=bl_width, negedge_domain="sys4x_n_dimm", **dqs_kwargs))
+        self.submodules.dq_wr = ClockDomainsRenamer(cd_dq_wr)(
+            DQWrite(dq=getattr(pads, prefix+'dq'),
+                    dmi=getattr(pads, prefix+'dm_n'),
+                    bl_width=bl_width,
+                    ports=ports,
+                    negedge_domain="sys4x_n_dimm",
+                    **dq_kwargs)
+        )
+        self.submodules.dq_rd = ClockDomainsRenamer(cd_dq_rd)(
+            DQRead(dq=getattr(pads, prefix+'dq_i'),
+                   bl_width=bl_width,
+                   ports=ports,
+                   direct_dq_control=direct_dq_control,
+                   dq_value=dq_value,
+                   negedge_domain="sys4x_n_dimm",
+                   **dq_kwargs)
+        ) # Acording to JEDEC DQS and DQ for reads are edge alligned
+        self.submodules.dqs_wr = ClockDomainsRenamer(cd_dqs_wr)(
+            DQSWrite(dqs=getattr(pads, prefix+'dqs_t'),
+                     bl_width=bl_width,
+                     negedge_domain="sys4x_n_dimm",
+                     **dqs_kwargs)
+        )
+        self.submodules.dqs_rd = ClockDomainsRenamer(cd_dqs_rd)(
+            DQSRead(dqs_t=getattr(pads, prefix+'dqs_t_i'),
+                    dqs_c=getattr(pads, prefix+'dqs_c_i'),
+                    bl_width=bl_width,
+                    negedge_domain="sys4x_n_dimm",
+                    **dqs_kwargs)
+        )
 
         write        = Signal()
         masked       = Signal()
@@ -830,7 +898,8 @@ class DQWrite(DQBurst):
         )
 
 class DQRead(DQBurst):
-    def __init__(self, *, dq, ports, nrows, ncols, bank, row, col, prefix, **kwargs):
+    def __init__(self, *, dq, ports, direct_dq_control, dq_value,
+                 nrows, ncols, bank, row, col, prefix, **kwargs):
         super().__init__(nrows=nrows, ncols=ncols, row=row, col=col, **kwargs)
         self.add_fsm(
             ops = [
@@ -852,6 +921,11 @@ class DQRead(DQBurst):
                 ),
             ]
         )
+        self.comb += [
+            If(direct_dq_control,
+                dq.eq(Replicate(dq_value, len(dq))),
+            ),
+        ]
 
 class DQSWrite(DataBurst):
     def __init__(self, *, dqs, prefix, **kwargs):
