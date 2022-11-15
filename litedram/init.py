@@ -840,7 +840,6 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
     mr[10] = reg([(0, 8, 0b00101101)])
     mr[11] = reg([(0, 8, 0b00101101)])
     mr[12] = reg([(0, 8, 0b00101101)])
-    mr[13] = reg([(0, 4, 0)])
     mr[15] = reg([(0, 3, 0b011)])
     mr[23] = reg([(0, 2, 0b00)])
     mr[34] = reg([
@@ -887,7 +886,7 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
 
     def ck(sec):
         # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
-        fmax = 50e6 # as we perform active waiting we can assume multiple singlecycle operations
+        fmax = 250e6 # as we perform active waiting we can assume multiple singlecycle operations
         return int(math.ceil(sec * fmax))
 
     # comment, prefixes, cs, ca, phases, cmd, delay/single
@@ -912,12 +911,12 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
         ("Reset DLL", prefixes, 0, 0xf|(MPC.DLL_RST<<5), 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 1),
         ("Reset DLL", prefixes, all_cs, 0xf|(MPC.DLL_RST<<5), 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -2),
         ("Reset Single Shot", prefixes, 0, 0, 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -1),
-        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
+        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", ck(10e-3)),
 
         ("ZQ Calibration start", prefixes, 0, 0xf|(MPC.ZQC_START<<5), 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 1),
         ("ZQ Calibration start", prefixes, all_cs, 0xf|(MPC.ZQC_START<<5), 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -2),
         ("Reset Single Shot", prefixes, 0, 0, 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -1),
-        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
+        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", ck(10e-6)),
 
         ("ZQ Calibration latch", prefixes, 0, 0xf|(MPC.ZQC_LATCH<<5), 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 1),
         ("ZQ Calibration latch", prefixes, all_cs, 0xf|(MPC.ZQC_LATCH<<5), 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -2),
@@ -1225,26 +1224,29 @@ def get_sdram_phy_py_header(phy_settings, timing_settings):
         r += "\n"
 
     r += "init_sequence = [\n"
-    for comment, a, ba, cmd, delay in init_sequence:
-        # required so comment injection in DDR5 init sequence works
-        comment = comment.encode("unicode_escape").decode()
+    if phy_settings.memtype != "DDR5":
+        for comment, a, ba, cmd, delay in init_sequence:
+            # required so comment injection in DDR5 init sequence works
+            comment = comment.encode("unicode_escape").decode()
 
-        invert_masks = [(0, 0), ]
-        if phy_settings.is_rdimm:
-            assert phy_settings.memtype == "DDR4"
-            # JESD82-31A page 38
-            #
-            # B-side chips have certain usually-inconsequential address and BA
-            # bits inverted by the RCD to reduce SSO current. For mode register
-            # writes, however, we must compensate for this. BG[1] also directs
-            # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
-            #
-            # The 'ba != 7' is because we don't do this to writes to the RCD
-            # itself.
-            if ba != 7:
-                invert_masks.append((0b10101111111000, 0b1111))
+            invert_masks = [(0, 0), ]
+            if phy_settings.is_rdimm:
+                assert phy_settings.memtype == "DDR4"
+                # JESD82-31A page 38
+                #
+                # B-side chips have certain usually-inconsequential address and BA
+                # bits inverted by the RCD to reduce SSO current. For mode register
+                # writes, however, we must compensate for this. BG[1] also directs
+                # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
+                #
+                # The 'ba != 7' is because we don't do this to writes to the RCD
+                # itself.
+                if ba != 7:
+                    invert_masks.append((0b10101111111000, 0b1111))
 
-        for a_inv, ba_inv in invert_masks:
-            r += f"    (\"{comment}\", {a ^ a_inv:d}, {ba ^ ba_inv:d}, {cmd.lower()}, {delay}),\n"
+            for a_inv, ba_inv in invert_masks:
+                r += f"    (\"{comment}\", {a ^ a_inv:d}, {ba ^ ba_inv:d}, {cmd.lower()}, {delay}),\n"
+        else:
+            pass # to be filled out for DDR5
     r += "]\n"
     return r
