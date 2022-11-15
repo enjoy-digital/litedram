@@ -74,8 +74,8 @@ class DDR5Tests(unittest.TestCase):
         # latencies to use in pad checkers
         # Extra '0' for unaligned ddr clk and cs clk
         # delay 1 + 1 + 1/8 + (Serializer.LATENCY - 1) + 0.5 to command counted in sysclk
-        self.ca_latency:       str = self.xs + self.zeros + '0' + '0' * (self.NPHASES * (Serializer.LATENCY - 1)) + '0' * self.NPHASES
-        self.cs_n_latency:     str = self.xs + self.zeros + '0' + '0' * (self.NPHASES * (Serializer.LATENCY - 1)) + '1' * self.NPHASES
+        self.ca_latency:       str = self.xs + self.zeros + '0' * (self.NPHASES * (Serializer.LATENCY - 1)) + '0' * self.NPHASES
+        self.cs_n_latency:     str = self.xs + self.zeros + '0' * (self.NPHASES * (Serializer.LATENCY - 1)) + '1' * self.NPHASES
 
         # Read latency is 1 sys_clk shorter in relity, cmd has no bitslip while dq has
         # -2 preamble
@@ -92,6 +92,66 @@ class DDR5Tests(unittest.TestCase):
         ca = ca.replace(' ', '') # remove readability spaces
         ca = ca[::-1]            # reverse bit order (also readability)
         return int(ca, 2)        # convert to int
+
+    # Test that bank/address for different commands are correctly serialized to CA pads
+    read_0       = dict(cs_n=0, address=process_ca.__func__('10111 0 10100 000'))  # RD p0
+    read_1       = dict(cs_n=1, address=process_ca.__func__('001100110 01000'))    # RD p1
+    write_0      = dict(cs_n=0, address=process_ca.__func__('10110 0 11100 000'))  # WR p0
+    write_1      = dict(cs_n=1, address=process_ca.__func__('000000001 01100'))    # WR p1
+    activate_0   = dict(cs_n=0, address=process_ca.__func__('00 1000 01000 000'))  # ACT p0
+    activate_1   = dict(cs_n=1, address=process_ca.__func__('0111100001111 0'))    # ACT p1
+    refresh_ab   = dict(cs_n=0, address=process_ca.__func__('11001 0 00010 000'))  # REFab
+    precharge_ab = dict(cs_n=0, address=process_ca.__func__('11010 0 0000 0 000')) # PREab
+    mrw_0        = dict(cs_n=0, address=process_ca.__func__('10100 11001100 0'))   # MRW p0
+    mrw_1        = dict(cs_n=1, address=process_ca.__func__('01010101 00 0 000'))  # MRW p1
+    zqc_start    = dict(cs_n=0, address=process_ca.__func__('11110 10100000'))     # MPC + ZQCAL START op
+    zqc_latch    = dict(cs_n=0, address=process_ca.__func__('11110 00100000'))     # MPC + ZQCAL LATCH op
+    mrr_0        = dict(cs_n=0, address=process_ca.__func__('10101 10110100 0'))   # MRR p0
+    mrr_1        = dict(cs_n=1, address=process_ca.__func__('0000000000 0 000'))   # MRR p1
+
+    two_cycle_commands = ['10111', '10110', '00', '10100', '10101']
+
+    @classmethod
+    def to_2N_mode(cls, instructions):
+        ret = {}
+        two_cycles = False
+        for cycle, instruction in enumerate(instructions):
+            for phase, value in instruction.items():
+                idx = idx0 = (cycle, phase)
+                if two_cycles:
+                    two_cycles = False
+                    new_dfi_cycle = cycle * cls.NPHASES + phase + 1
+                    idx0 = (new_dfi_cycle//cls.NPHASES, new_dfi_cycle % cls.NPHASES)
+                elif 'address' in value:
+                    for pre in cls.two_cycle_commands:
+                        _cmd = f'{value["address"]:014b}'
+                        if _cmd[::-1].startswith(pre):
+                            two_cycles=True
+                idx1 = idx0[0] + (idx0[1] + 1) // cls.NPHASES, (idx0[1] + 1) % cls.NPHASES
+                if idx0 not in ret:
+                    ret[idx0] = {}
+                if idx1 not in ret:
+                    ret[idx1] = {}
+                for key, word in value.items():
+                    if "address" in key:
+                        ret[idx0]['mode_2n'] = 1
+                        ret[idx1]['mode_2n'] = 1
+                        ret[idx0][key]       = word
+                        ret[idx1][key]       = word
+                    elif "cs" in key:
+                        ret[idx0]['mode_2n'] = 1
+                        ret[idx1]['mode_2n'] = 1
+                        ret[idx0][key]       = word
+                        ret[idx1][key]       = 1
+                    else:
+                        ret[idx][key ]      = word
+        flatten = []
+        for key, value in sorted(ret.items(), reverse=True):
+            cycle, phase = key
+            while len(flatten) <= cycle:
+                flatten.append({})
+            flatten[cycle][phase] = value
+        return flatten
 
     @classmethod
     def dq_pattern(cls, *args, **kwargs) -> str:
@@ -135,28 +195,52 @@ class DDR5Tests(unittest.TestCase):
         PadChecker.assert_ok(self, checkers)
         dfi.assert_ok(self)
 
-    def test_ddr5_cs_n_phase_0(self):
+    def test_ddr5_cs_n_phase_0_1N(self):
         # Test that CS_n is serialized correctly when sending command on phase 0
         self.run_test(
             dfi_sequence = [
                 {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},  # p0: READ
             ],
-            pad_checkers = {"sys4x": {
+            pad_checkers = {"sys4x_180": {
                 'cs_n': self.cs_n_latency + '01111111',
             }},
-            vcd_name="ddr5_cs_n_phase_0.vcd"
+            vcd_name="ddr5_cs_n_phase_0_1N.vcd"
         )
 
-    def test_ddr5_cs_n_phase_3(self):
+    def test_ddr5_cs_n_phase_0_2N(self):
+        # Test that CS_n is serialized correctly when sending command on phase 0
+        self.run_test(
+            dfi_sequence = [
+                {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, mode_2n=1)},  # p0: READ
+            ],
+            pad_checkers = {"sys4x": {
+                'cs_n': 'x' + self.cs_n_latency + '01111111',
+            }},
+            vcd_name="ddr5_cs_n_phase_0_2N.vcd"
+        )
+
+    def test_ddr5_cs_n_phase_3_1N(self):
         # Test that CS_n is serialized correctly when sending command on phase 3
         self.run_test(
             dfi_sequence = [
                 {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=0)},  # p3: WRITE
             ],
-            pad_checkers = {"sys4x": {
+            pad_checkers = {"sys4x_180": {
                 'cs_n': self.cs_n_latency + '11101111',
             }},
-            vcd_name="ddr5_cs_n_phase_3.vcd"
+            vcd_name="ddr5_cs_n_phase_3_1N.vcd"
+        )
+
+    def test_ddr5_cs_n_phase_3_2N(self):
+        # Test that CS_n is serialized correctly when sending command on phase 3
+        self.run_test(
+            dfi_sequence = [
+                {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=0, mode_2n=1)},  # p3: WRITE
+            ],
+            pad_checkers = {"sys4x": {
+                'cs_n': 'x' + self.cs_n_latency + '11101111',
+            }},
+            vcd_name="ddr5_cs_n_phase_3_2N.vcd"
         )
 
     def test_ddr5_clk(self):
@@ -171,7 +255,7 @@ class DDR5Tests(unittest.TestCase):
             vcd_name="ddr5_clk.vcd"
         )
 
-    def test_ddr5_cs_n_overlapping_commands(self):
+    def test_ddr5_cs_n_overlapping_commands_1N(self):
         # Test that overlapping commands in same cycle aren't handled
         self.run_test(
             dfi_sequence = [
@@ -182,17 +266,38 @@ class DDR5Tests(unittest.TestCase):
                 },
                 {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1)},
             ],
-            pad_checkers = {"sys4x": {
+            pad_checkers = {"sys4x_180": {
                 'cs_n': self.cs_n_latency + ''.join([
                     '0111',  # p0
                     '1100',  # p2, p3 wasn't ignored
                     '0111',  # p0
                 ])
             }},
-            vcd_name="ddr5_cs_n_overlapping_commands.vcd"
+            vcd_name="ddr5_cs_n_overlapping_commands_1N.vcd"
         )
 
-    def test_ddr5_cs_n_multiple_phases(self):
+    def test_ddr5_cs_n_overlapping_commands_2N(self):
+        # Test that overlapping commands in same cycle aren't handled
+        self.run_test(
+            dfi_sequence = [
+                {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, mode_2n=1)},
+                {
+                    2: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, mode_2n=1),
+                    3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, mode_2n=1), # right now it shouldn't be ignored
+                },
+                {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, mode_2n=1)},
+            ],
+            pad_checkers = {"sys4x": {
+                'cs_n': 'x' + self.cs_n_latency + ''.join([
+                    '0111',  # p0
+                    '1100',  # p2, p3 wasn't ignored
+                    '0111',  # p0
+                ])
+            }},
+            vcd_name="ddr5_cs_n_overlapping_commands_2N.vcd"
+        )
+
+    def test_ddr5_cs_n_multiple_phases_1N(self):
         # Test that CS_n is serialized on different phases
         self.run_test(
             dfi_sequence = [
@@ -204,7 +309,7 @@ class DDR5Tests(unittest.TestCase):
                 {0: dict(cs_n=0, cas_n=1, ras_n=0, we_n=0)},  # should be ignored due to command on previous cycle
                 {2: dict(cs_n=1, cas_n=0, ras_n=1, we_n=1)},  # ignored due to cs_n=1
             ],
-            pad_checkers = {"sys4x": {
+            pad_checkers = {"sys4x_180": {
                 'cs_n': self.cs_n_latency + ''.join([
                     '0111',  # p0
                     '1110',  # p3
@@ -215,14 +320,40 @@ class DDR5Tests(unittest.TestCase):
                     '1111',  # p2 ignored
                 ])
             }},
-            vcd_name="ddr5_cs_n_multiple_phases.vcd"
+            vcd_name="ddr5_cs_n_multiple_phases_1N.vcd"
+        )
+
+    def test_ddr5_cs_n_multiple_phases_2N(self):
+        # Test that CS_n is serialized on different phases
+        self.run_test(
+            dfi_sequence = [
+                {0: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, mode_2n=1)},
+                {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, mode_2n=1)},
+                {1: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, mode_2n=1)},
+                {},
+                {3: dict(cs_n=0, cas_n=0, ras_n=1, we_n=1, mode_2n=1)},
+                {0: dict(cs_n=0, cas_n=1, ras_n=0, we_n=0, mode_2n=1)},  # should be ignored due to command on previous cycle
+                {2: dict(cs_n=1, cas_n=0, ras_n=1, we_n=1, mode_2n=1)},  # ignored due to cs_n=1
+            ],
+            pad_checkers = {"sys4x": {
+                'cs_n': 'x' + self.cs_n_latency + ''.join([
+                    '0111',  # p0
+                    '1110',  # p3
+                    '1011',  # p1
+                    '1111',  # empty cycle
+                    '1110',  # p3 (1st part)
+                    '0111',  # (2nd part of the previous command), p0 ignored
+                    '1111',  # p2 ignored
+                ])
+            }},
+            vcd_name="ddr5_cs_n_multiple_phases_2N.vcd"
         )
 
     def test_ddr5_empty_command_sequence(self):
         # Test CS_n/CA values for empty dfi commands sequence
         self.run_test(
             dfi_sequence = [],
-            pad_checkers = {"sys4x": {
+            pad_checkers = {"sys4x_180": {
                 'cs_n': self.cs_n_latency,
                 'ca0':  self.ca_latency,
                 'ca1':  self.ca_latency,
@@ -242,7 +373,7 @@ class DDR5Tests(unittest.TestCase):
             vcd_name="ddr5_empty_command_sequence.vcd"
         )
 
-    def test_ddr5_ca_addressing(self):
+    def test_ddr5_ca_1N_addressing(self):
         # Test that bank/address for different commands are correctly serialized to CA pads
         read_0       = dict(cs_n=0, address=self.process_ca('10111 0 10100 000'))  # RD p0
         read_1       = dict(cs_n=1, address=self.process_ca('001100110 01000'))    # RD p1
@@ -261,17 +392,17 @@ class DDR5Tests(unittest.TestCase):
 
         self.run_test(
             dfi_sequence = [
-                {0: read_0, 1: read_1},
-                {0: write_0, 1: write_1},
-                {0: activate_0, 1: activate_1},
-                {0: refresh_ab},
-                {0: precharge_ab},
-                {0: mrw_0, 1: mrw_1},
-                {0: zqc_start},
-                {0: zqc_latch},
-                {0: mrr_0, 1: mrr_1},
+                {0: self.read_0, 1: self.read_1},
+                {0: self.write_0, 1: self.write_1},
+                {0: self.activate_0, 1: self.activate_1},
+                {0: self.refresh_ab},
+                {0: self.precharge_ab},
+                {0: self.mrw_0, 1: self.mrw_1},
+                {0: self.zqc_start},
+                {0: self.zqc_latch},
+                {0: self.mrr_0, 1: self.mrr_1},
             ],
-            pad_checkers = {"sys4x": {
+            pad_checkers = {"sys4x_180": {
                 #                            rd     wr       act    ref      pre    mrw      zqcs   zqcl     mrr
                 'cs_n': self.cs_n_latency + '0111'+'0111' + '0111'+'0111' + '0111'+'0111' + '0111'+'0111' + '0111'+'1111',
                 'ca0':  self.ca_latency   + '1000'+'1x00' + '0000'+'1000' + '1000'+'1000' + '1000'+'1000' + '1000'+'0000',
@@ -378,7 +509,7 @@ class DDR5Tests(unittest.TestCase):
             vcd_name="ddr5_dqs.vcd"
         )
 
-    def test_ddr5_cmd_write(self):
+    def test_ddr5_cmd_write_2N(self):
         # Test whole WRITE command sequence verifying data on pads and write_latency from MC perspective
 
         dfi_data = [
@@ -417,27 +548,35 @@ class DDR5Tests(unittest.TestCase):
             {},
         ]
 
+        for i, _d in enumerate(dfi_data):
+            for key, value in _d.items():
+                if key not in dfi_sequence[i]:
+                    dfi_sequence[i][key] = {}
+                dfi_sequence[i][key] |= value
+
+        dfi_sequence = self.to_2N_mode(dfi_sequence)
+
         self.run_test(
             dfi_sequence = dfi_sequence,
             pad_checkers = {
                 "sys4x": {
-                    "cs_n": self.cs_n_latency + "11011101" + self.ones,
-                    "ca0":  self.ca_latency   + "00100010" + self.zeros,
-                    "ca1":  self.ca_latency   + "00000000" + self.zeros,
-                    "ca2":  self.ca_latency   + "00100010" + self.zeros,
-                    "ca3":  self.ca_latency   + "00100010" + self.zeros,
-                    "ca4":  self.ca_latency   + "00000000" + self.zeros,
-                    "ca5":  self.ca_latency   + "00000000" + self.zeros,
-                    "ca6":  self.ca_latency   + "00000000" + self.zeros,
-                    "ca7":  self.ca_latency   + "00000000" + self.zeros,
-                    "ca8":  self.ca_latency   + "00000000" + self.zeros,
-                    "ca9":  self.ca_latency   + "00000000" + self.zeros,
-                    "ca10": self.ca_latency   + "00010001" + self.zeros,
-                    "ca11": self.ca_latency   + "00010001" + self.zeros,
-                    "ca12": self.ca_latency   + "00000000" + self.zeros,
-                    "ca13": self.ca_latency   + "00000000" + self.zeros,
+                    "cs_n": 'x' + self.cs_n_latency + "110x1x0x1x" + self.ones,
+                    "ca0":  'x' + self.ca_latency   + "001x0x1x0x" + self.zeros,
+                    "ca1":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
+                    "ca2":  'x' + self.ca_latency   + "001x0x1x0x" + self.zeros,
+                    "ca3":  'x' + self.ca_latency   + "001x0x1x0x" + self.zeros,
+                    "ca4":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
+                    "ca5":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
+                    "ca6":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
+                    "ca7":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
+                    "ca8":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
+                    "ca9":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
+                    "ca10": 'x' + self.ca_latency   + "000x1x0x1x" + self.zeros,
+                    "ca11": 'x' + self.ca_latency   + "000x1x0x1x" + self.zeros,
+                    "ca12": 'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
+                    "ca13": 'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
                 },
-                "sys4x_90_ddr": { #                    preamble                           postamble
+                "sys4x_90_ddr": { #                   preamble                           postamble
                     "dqs_t0": self.dqs_t_wr_latency + '0010' + '10101010' + '10101010' + '0xxxxxxx',
                 },
                 "sys4x_ddr": {
@@ -446,7 +585,7 @@ class DDR5Tests(unittest.TestCase):
                         self.zeros for i in range(self.BURST_LENGTH)
                 }
             },
-            vcd_name="ddr5_cmd_write.vcd"
+            vcd_name="ddr5_cmd_write_2N.vcd"
         )
 
     def test_ddr5_dq_in_rddata_valid(self):
@@ -515,7 +654,7 @@ class DDR5Tests(unittest.TestCase):
             vcd_name="ddr5_dq_in_rddata.vcd"
         )
 
-    def test_ddr5_cmd_read(self):
+    def test_ddr5_cmd_read_2N_mode(self):
         # Test whole READ command sequence simulating DRAM response and verifying read_latency from MC perspective
 
         data_to_read = {
@@ -524,6 +663,14 @@ class DDR5Tests(unittest.TestCase):
             2: dict(rddata=0x5566, rddata_valid=1),
             3: dict(rddata=0x7788, rddata_valid=1),
         }
+
+        dfi_data_to_read = [{
+            1: dict(rddata=0x1122, rddata_valid=1),
+            2: dict(rddata=0x3344, rddata_valid=1),
+            3: dict(rddata=0x5566, rddata_valid=1),
+        },{
+            0: dict(rddata=0x7788, rddata_valid=1),
+        }]
 
         read_0 = dict(cs_n=0, address=self.process_ca('10111 0 00000 000'))  # RD p0
         read_1 = dict(cs_n=1, address=self.process_ca('000000000 01000'))    # RD p1
@@ -538,6 +685,8 @@ class DDR5Tests(unittest.TestCase):
             {},
             {},
         ]
+
+        dfi_sequence = self.to_2N_mode(dfi_sequence)
 
         class Simulator:
             def __init__(self, data, test_case, cl):
@@ -565,6 +714,7 @@ class DDR5Tests(unittest.TestCase):
                         yield
                     yield from check_ca(0)
                     yield
+                    yield
                     yield from check_ca(1)
                     self.read_cmd = True
 
@@ -575,7 +725,7 @@ class DDR5Tests(unittest.TestCase):
                     while not self.read_cmd:
                         yield
                     data = self.data.pop(0)
-                    for _ in range(2*self.cl - 1):
+                    for _ in range(2*self.cl - 3):
                         yield
                     self.read_cmd = False
                     for cyc in range(self.test_case.BURST_LENGTH):
@@ -592,16 +742,19 @@ class DDR5Tests(unittest.TestCase):
                     while not self.read_cmd:
                         yield
                     preamble = "0010"
-                    for _ in range(2*self.cl - len(preamble) - 1):  # wait CL without DQS preamble
+                    for _ in range(2*self.cl - len(preamble) - 3):  # wait CL without DQS preamble read path cannot compensate for 2N mode
                         yield
                     for bit in preamble: # send DQS preamble
                         yield pads.dqs_t_i.eq(int(bit))
+                        yield pads.dqs_c_i.eq(~int(bit))
                         yield
                     for cyc in range(1, self.test_case.BURST_LENGTH):  # send a burst of data on pads
                         yield pads.dqs_t_i.eq(cyc % 2)
+                        yield pads.dqs_c_i.eq((cyc +1) % 2)
                         yield
                     for bit in "010": # send DQS postamble
                         yield pads.dqs_t_i.eq(int(bit))
+                        yield pads.dqs_c_i.eq(~int(bit))
                         yield
 
         sim = Simulator([data_to_read], self, cl=22)
@@ -609,21 +762,21 @@ class DDR5Tests(unittest.TestCase):
             dfi_sequence = dfi_sequence,
             pad_checkers = {
                 "sys4x": {
-                    "cs_n": self.cs_n_latency + self.rdphase * "1" + "0111" + self.ones,
-                    "ca0":  self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
-                    "ca1":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
-                    "ca2":  self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
-                    "ca3":  self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
-                    "ca4":  self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
-                    "ca5":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
-                    "ca6":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
-                    "ca7":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
-                    "ca8":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
-                    "ca9":  self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
-                    "ca10": self.ca_latency   + self.rdphase * "0" + "0100" + self.zeros,
-                    "ca11": self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
-                    "ca12": self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
-                    "ca13": self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "cs_n": 'x' + self.cs_n_latency + self.rdphase * "1" + "0x1x11" + self.ones,
+                    "ca0":  'x' + self.ca_latency   + self.rdphase * "0" + "1x0x00" + self.zeros,
+                    "ca1":  'x' + self.ca_latency   + self.rdphase * "0" + "0x0x00" + self.zeros,
+                    "ca2":  'x' + self.ca_latency   + self.rdphase * "0" + "1x0x00" + self.zeros,
+                    "ca3":  'x' + self.ca_latency   + self.rdphase * "0" + "1x0x00" + self.zeros,
+                    "ca4":  'x' + self.ca_latency   + self.rdphase * "0" + "1x0x00" + self.zeros,
+                    "ca5":  'x' + self.ca_latency   + self.rdphase * "0" + "0x0x00" + self.zeros,
+                    "ca6":  'x' + self.ca_latency   + self.rdphase * "0" + "0x0x00" + self.zeros,
+                    "ca7":  'x' + self.ca_latency   + self.rdphase * "0" + "0x0x00" + self.zeros,
+                    "ca8":  'x' + self.ca_latency   + self.rdphase * "0" + "0x0x00" + self.zeros,
+                    "ca9":  'x' + self.ca_latency   + self.rdphase * "0" + "0x0x00" + self.zeros,
+                    "ca10": 'x' + self.ca_latency   + self.rdphase * "0" + "0x1x00" + self.zeros,
+                    "ca11": 'x' + self.ca_latency   + self.rdphase * "0" + "0x0x00" + self.zeros,
+                    "ca12": 'x' + self.ca_latency   + self.rdphase * "0" + "0x0x00" + self.zeros,
+                    "ca13": 'x' + self.ca_latency   + self.rdphase * "0" + "0x0x00" + self.zeros,
                 },
                 "sys4x_90_ddr": { #                    preamble              postamble
                     "dqs_t0": self.dqs_t_rd_latency + '0010' + '10101010' + '10xxxxxx',
@@ -636,7 +789,7 @@ class DDR5Tests(unittest.TestCase):
                 "sys4x_ddr": [sim.dq_generator, sim.dqs_generator],
                 "sys4x_90": sim.cmd_checker,
             },
-            vcd_name="ddr5_cmd_read.vcd"
+            vcd_name="ddr5_cmd_read_2N_mode.vcd"
         )
 
 
