@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 import math
-from operator import or_, and_
+from operator import or_, and_, xor
 from functools import reduce
 from collections import defaultdict, OrderedDict
 
@@ -156,6 +156,8 @@ class CommandsSim(Module, AutoCSR):
         self.bl_max     = bl_max
         self.cs_training_start  = Signal()
         self.cs_training_end    = Signal()
+        self.ca_training_start  = Signal()
+        self.ca_training_in_prg = Signal()
 
         cmds_enabled = Signal()
         cmd_handlers = OrderedDict(
@@ -173,19 +175,19 @@ class CommandsSim(Module, AutoCSR):
             If(cmds_enabled,
                 If(~self.mode_regs[2][2],
                     If(Cat(cs_n.taps) == 0b011 | (Cat(cs_n.taps) == 0b001),
-                        self.handle_2_tick_cmd.eq(1),
+                        self.handle_2_tick_cmd.eq(1 & ~self.ca_training_in_prg),
                         self.cs_n_low.eq(ca.taps[2]),
                         self.cs_n_high.eq(ca.taps[0]),
                     ).Elif((Cat(cs_n.taps) == 0b010) | (Cat(cs_n.taps) == 0b000),
-                        self.handle_1_tick_cmd.eq(1),
+                        self.handle_1_tick_cmd.eq(1 & ~self.ca_training_in_prg),
                         self.cs_n_low.eq(ca.taps[2]),
                     ),
                 ).Elif(Cat(cs_n.taps)[0:2] == 0b00,
-                    self.handle_1_tick_cmd.eq(1),
+                    self.handle_1_tick_cmd.eq(1 & ~self.ca_training_in_prg),
                     self.cs_n_low.eq(ca.taps[1]),
                 ).Elif(Cat(cs_n.taps)[0:2] == 0b01,
                     self.handle_2_tick_cmd.eq(1),
-                    self.cs_n_low.eq(ca.taps[1]),
+                    self.cs_n_low.eq(ca.taps[1 & ~self.ca_training_in_prg]),
                     self.cs_n_high.eq(ca.taps[0]),
                 )
             ),
@@ -350,11 +352,61 @@ class CommandsSim(Module, AutoCSR):
             })
         )
 
+        self.submodules.ca_training = ca_training = ResetInserter()(FSM())
+        ca_direct_control      = Signal()
+        ca_direct_value        = Signal()
+        ca_training_counter    = Signal(2)
+        ca_last_sampled_value  = Signal()
+        ca_nop_sample_cnt      = Signal(4)
+        ca_training.act("IDLE",
+            ca_direct_control.eq(0),
+            ca_direct_value.eq(0),
+            If(self.ca_training_start,
+                NextState("SAMPLE"),
+                NextValue(ca_training_counter, 0),
+                NextValue(ca_last_sampled_value, 0),
+            ),
+        )
+        ca_training.act("SAMPLE",
+            ca_direct_control.eq(1),
+            ca_direct_value.eq(ca_last_sampled_value),
+            self.ca_training_in_prg.eq(1),
+            If(~getattr(pads, prefix+'cs_n'),
+                If(ca_training_counter == 0,
+                    NextValue(ca_training_counter, 1),
+                    NextValue(ca_last_sampled_value, reduce(xor, getattr(pads, prefix+'ca'))),
+                    If(getattr(pads, prefix+'ca') == 0x1f,
+                        NextValue(ca_nop_sample_cnt, ca_nop_sample_cnt+1),
+                    ),
+                ).Elif((getattr(pads, prefix+'ca') != 0x1f) | (ca_nop_sample_cnt == 0),
+                    self.log.warn("Recived multiple commands in single sample window that aren't continuous NOPs"),
+                ).Else(
+                    NextValue(ca_nop_sample_cnt, ca_nop_sample_cnt+1),
+                )
+            ).Else(
+                NextValue(ca_nop_sample_cnt, 0),
+                If(ca_nop_sample_cnt > 1,
+                    NextState("IDLE"),
+                )
+            ),
+            If(ca_nop_sample_cnt > 8,
+                self.log.warn("Series of NOPs can only be at most 8 cycles long"),
+            ),
+            If(ca_training_counter > 0,
+                NextValue(ca_training_counter, ca_training_counter+1),
+            )
+        )
+        ca_training.finalize()
+
         self.submodules.cs_training = cs_training = ResetInserter()(FSM())
+        cs_direct_control   = Signal()
+        cs_direct_value     = Signal()
         cs_training_counter = Signal(2)
         last_sampled_value  = Signal()
         curent_sample       = Signal()
         cs_training.act("IDLE",
+            cs_direct_control.eq(0),
+            cs_direct_value.eq(1),
             If(self.cs_training_start,
                 NextState("SAMPLE"),
                 NextValue(cs_training_counter, 0),
@@ -363,8 +415,8 @@ class CommandsSim(Module, AutoCSR):
             ),
         )
         cs_training.act("SAMPLE",
-            direct_dq_control.eq(1),
-            dq_value.eq(last_sampled_value),
+            cs_direct_control.eq(1),
+            cs_direct_value.eq(last_sampled_value),
             If(cs_training_counter == 3,
                 NextValue(last_sampled_value, ~(
                     curent_sample &
@@ -380,6 +432,10 @@ class CommandsSim(Module, AutoCSR):
             ),
         )
         cs_training.finalize()
+        self.comb += [
+            dq_value.eq((cs_direct_control & cs_direct_value) | (ca_direct_control & ca_direct_value)),
+            direct_dq_control.eq(cs_direct_control | ca_direct_control),
+        ]
 
 
     def cmd_one_step(self, name, cond, comb, handle_cmd, sync=None):
@@ -493,6 +549,7 @@ class CommandsSim(Module, AutoCSR):
         cases = {value: self.log.info(prefix+f"MPC: {name}") for name, value in MPC.__members__.items()}
         cases[0b00000000] = [self.log.info(prefix+"MPC: Exit CS"),  self.cs_training_end.eq(1)]
         cases[0b00000001] = [self.log.info(prefix+"MPC: Enter CS"), self.cs_training_start.eq(1)]
+        cases[0b00000011] = [self.log.info(prefix+"MPC: Enter CA"), self.ca_training_start.eq(1)]
         cases[0b00001000] = [self.log.info(prefix+"MPC: 2N")]
         cases[0b00001001] = [self.log.info(prefix+"MPC: 1N")]
         base = 0b10000000
@@ -672,9 +729,9 @@ class DataSim(Module, AutoCSR):
             DQRead(dq=getattr(pads, prefix+'dq_i'),
                    bl_width=bl_width,
                    ports=ports,
+                   negedge_domain="sys4x_n_dimm",
                    direct_dq_control=direct_dq_control,
                    dq_value=dq_value,
-                   negedge_domain="sys4x_n_dimm",
                    **dq_kwargs)
         ) # Acording to JEDEC DQS and DQ for reads are edge alligned
         self.submodules.dqs_wr = ClockDomainsRenamer(cd_dqs_wr)(
