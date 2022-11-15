@@ -82,11 +82,11 @@ class CmdInjector(Module, AutoCSR):
         # There are limited number of commands that make sens to be emitted continuously: DES, NOP. MPC, CS training pattern,
         self._singleshot_phase_signals = Array(Signal(16 + cs_width + wrdata_mask_width) for _ in range(8)) # BL 16 needs at most 8 DFI transactions (2 for command and 8 for wrdata/rddata)
 
-        continuous_max = max(4 // num_phases, 2)
-        singleshot_max = max(8 // num_phases, 2)
+        continuous_max = max(4 // num_phases, 1)
+        singleshot_max = max(8 // num_phases, 1)
 
-        continuous_counter = Signal(max = continuous_max, reset=0)
-        singleshot_counter = Signal(max = singleshot_max, reset=0)
+        continuous_counter = Signal(max = continuous_max, reset=0) if continuous_max > 1 else Signal()
+        singleshot_counter = Signal(max = singleshot_max, reset=0) if singleshot_max > 1 else Signal()
 
         singleshot_issue = Signal(2)
 
@@ -355,8 +355,8 @@ class DFIInjector(Module, AutoCSR):
                         phase.address.eq(phase.address | adapter.ca[0]),
                         phase.cs_n.eq(phase.cs_n & adapter.cs_n[0]),
                     ),
-                    phase.reset_n.eq(adapter.reset_n[0]),
-                    phase.mode_2n.eq(adapter.mode_2n[0]),
+                    phase.reset_n.eq(self._control.fields.reset_n),
+                    phase.mode_2n.eq(self._control.fields.mode_2n),
                 ]
 
                 phase_num = (i+1) % nphases
