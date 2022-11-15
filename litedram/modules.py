@@ -1250,8 +1250,12 @@ class MT53E256M16D1(SDRAMModule):
     speedgrade_timings["default"] = speedgrade_timings["1866"]
 
 # DDR5 -------------------------------------------------------------------------------------------
-class DDR5Module(SDRAMModule):                     memtype = "DDR5"
-class DDR5RegisteredModule(SDRAMRegisteredModule): memtype = "DDR5"
+class DDR5Module(SDRAMModule):
+    memtype = "DDR5"
+    address_bits = 13
+class DDR5RegisteredModule(SDRAMRegisteredModule):
+    memtype = "DDR5"
+    address_bits = 14
 
 class MT60B2G8HB48B(DDR5Module):
     #geometry
