@@ -395,7 +395,7 @@ class DDR5PHY(Module, AutoCSR):
 
         self._rst           = CSRStorage()
         self._rst_cdc       = cdc(self._rst.storage)
-        self._ddr_mode      = CSRStorage()
+        self._rdimm_mode    = CSRStorage()
 
         self._rdphase = CSRStorage(log2_int(nphases), reset=rdphase)
         self._wrphase = CSRStorage(log2_int(nphases), reset=wrphase)
