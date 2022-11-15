@@ -318,14 +318,12 @@ class DDR5PHY(Module, AutoCSR):
         Used to force cmd delay during initialization in BIOS.
     masked_write : bool
         Use masked variant of WRITE command.
-    extended_overlaps_check : bool
-        Include additional command overlap checks. Makes no sense during normal operation
-        (when the DRAM controller works correctly), so use `False` to avoid wasting resources.
     """
     def __init__(self, pads, *,
                  sys_clk_freq, ser_latency, des_latency, phytype, with_sub_channels=False,
                  cmd_delay=None, masked_write=False, extended_overlaps_check=False,
-                 with_odelay=False, csr_cdc=None, rd_extra_delay=Latency(sys=0)):
+                 with_odelay=False, csr_cdc=None, rd_extra_delay=Latency(sys=0), address_lines=13):
+
         self.pads        = pads
         self.memtype     = memtype     = "DDR5"
         self.nranks      = nranks      = len(pads.cs_n) if hasattr(pads, "cs_n") else len(pads.A_cs_n) if hasattr(pads, "A_cs_n") else 1
@@ -492,7 +490,8 @@ class DDR5PHY(Module, AutoCSR):
             cmd_delay     = cmd_delay,
             bitslips      = 8,
             strobes       = combined_strobes,
-            with_sub_channels  = with_sub_channels,
+            address_lines       = address_lines,
+            with_sub_channels   = with_sub_channels,
         )
 
         # DFI Interface ----------------------------------------------------------------------------
