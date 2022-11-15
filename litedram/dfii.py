@@ -514,6 +514,8 @@ class DFIInjector(Module, AutoCSR):
                         }) for prefix in prefixes
                     ] + [
                         phase.reset_n.eq(self._control.fields.reset_n) for phase in self.master.phases if hasattr(phase, "reset_n")
+                    ] + [
+                        phase.mode_2n.eq(self._control.fields.mode_2n) for phase in self.master.phases if hasattr(phase, "mode_2n")
                     ],
                     # Hardware Control.
                     # -----------------
