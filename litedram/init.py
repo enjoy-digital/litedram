@@ -840,6 +840,7 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
     mr[10] = reg([(0, 8, 0b00101101)])
     mr[11] = reg([(0, 8, 0b00101101)])
     mr[12] = reg([(0, 8, 0b00101101)])
+    mr[13] = reg([(0, 4, 0)])
     mr[15] = reg([(0, 3, 0b011)])
     mr[23] = reg([(0, 2, 0b00)])
     mr[34] = reg([
@@ -855,88 +856,73 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
 
     from litedram.phy.ddr5.commands import SpecialCmd, MPC
 
+    if not phy_settings.with_sub_channels:
+        prefixes = [""]
+    else:
+        prefixes = ["a_", "b_"]
+
+    dfii_control = [f"DFII_CONTROL_{prefix.upper()}CMDINJECTOR" for prefix in prefixes]
+    dfii_control = '|'.join(dfii_control)
+
+    all_cs        = 2**phy_settings.nranks-1
+    all_phases    = 2**phy_settings.nphases-1
+
     def cmd_mr(ma):
         # Convert Mode Register Write command to DFI as expected by PHY
         op = mr[ma]
         assert ma < 2**8, "MR address too big: {}".format(ma)
         assert op < 2**8, "MR opcode too big: {}".format(op)
-        a = op
-        ba = ma
-        return ("Load Mode Register {}".format(ma), a, ba, cmds["MODE_REGISTER"], 200)
+        # we are running in 2N mode
+        CA = [5 | (ma << 5), op]
+        cmds = []
+        assert phy_settings.nphases >= 4, "CMDInjector doesn't support commands over multiple DFI cycles"
+        cmds.append((f"Load Mode Register {ma}", prefixes, all_cs, CA[0], 1, dfii_control+"|DFII_CONTROL_RESET_N", -1))
+        cmds.append((f"Load Mode Register {ma}", prefixes, 0, CA[0], 2, dfii_control+"|DFII_CONTROL_RESET_N", -1))
+        cmds.append((f"Load Mode Register {ma}", prefixes, 0, CA[1], 4|8, dfii_control+"|DFII_CONTROL_RESET_N", -1))
+        cmds.append((f"Issue load mode register command", prefixes, 0, 0, 0, dfii_control+"|DFII_CONTROL_RESET_N", -2))
+        cmds.append(("Reset Single Shot", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -1))
+        cmds.append((f"Wait after load mode register command", prefixes, 0, 0, 0, dfii_control+"|DFII_CONTROL_RESET_N", 200))
+
+        return cmds
 
     def ck(sec):
         # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
         fmax = 50e6 # as we perform active waiting we can assume multiple singlecycle operations
         return int(math.ceil(sec * fmax))
 
-    if not phy_settings.with_sub_channels:
-        init_sequence = [
-            # Perform "Reset Initialization with Stable Power"
-            # We assume that loading the bistream will take at least tINIT1 (200us)
-            # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
-            ("Assert reset", 0x0000, 0, "DFII_CONTROL_ODT", ck(1e-6)),  # ??
-            ("Assert CS */\n"
-             "\tsdram_dfii_constinjector_command_write(0x1);\n"
-             "\t/*^UberHack",
-             0x0000,
-             0,
-             "DFII_CONTROL_DDR5|DFII_CONTROL_CONSTINJECTOR",
-             ck(10e-9)),
-            ("Release reset",
-             0x0000,
-             0,
-             "DFII_CONTROL_DDR5|DFII_CONTROL_CONSTINJECTOR|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
-             ck(4e-3)),
-            ("Release CS */\n"
-             "\tsdram_dfii_constinjector_command_write(0x7FFE);\n"
-             "\t/*^UberHack",
-             0x0000,
-             0,
-             "DFII_CONTROL_DDR5|DFII_CONTROL_CONSTINJECTOR|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
-             ck(2e-6)),
-            ("NOPs", 0x0000, 0, "DFII_CONTROL_DDR5|DFII_CONTROL_NOPINJECTOR|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N", 1),
-            ("Return Control", 0x0000, 0, "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N", 1),
-            *[cmd_mr(ma) for ma in sorted(mr.keys())],
-            ("ZQ Calibration start", MPC.ZQC_START, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
-            ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
-        ]
-    else:
-        init_sequence = [
-            # Perform "Reset Initialization with Stable Power"
-            # We assume that loading the bistream will take at least tINIT1 (200us)
-            # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
-            ("Assert reset", 0x0000, 0, "DFII_CONTROL_ODT", ck(1e-6)),  # ??
-            ("Assert CS */\n"
-             "\tsdram_dfii_a_constinjector_command_write(0x1);\n"
-             "\tsdram_dfii_b_constinjector_command_write(0x1);\n"
-             "\t/*^UberHack",
-             0x0000,
-             0,
-             "DFII_CONTROL_DDR5|DFII_CONTROL_A_CONSTINJECTOR|DFII_CONTROL_B_CONSTINJECTOR",
-             ck(10e-9)),
-            ("Release reset",
-             0x0000,
-             0,
-             "DFII_CONTROL_DDR5|DFII_CONTROL_A_CONSTINJECTOR|DFII_CONTROL_B_CONSTINJECTOR|"
-             "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
-             ck(4e-3)),
-            ("Release CS */\n"
-             "\tsdram_dfii_a_constinjector_command_write(0x7FFE);\n"
-             "\tsdram_dfii_b_constinjector_command_write(0x7FFE);\n"
-             "\t/*^UberHack",
-             0x0000,
-             0,
-             "DFII_CONTROL_DDR5|DFII_CONTROL_A_CONSTINJECTOR|DFII_CONTROL_B_CONSTINJECTOR|"
-             "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N",
-             ck(2e-6)),
-            ("NOPs", 0x0000, 0,
-             "DFII_CONTROL_DDR5|DFII_CONTROL_A_NOPINJECTOR|DFII_CONTROL_B_NOPINJECTOR|"
-             "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N", 1),
-            ("Return Control", 0x0000, 0, "DFII_CONTROL_ODT|DFII_CONTROL_RESET_N", 1),
-            *[cmd_mr(ma) for ma in sorted(mr.keys())],
-            ("ZQ Calibration start", MPC.ZQC_START, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", ck(1e-6)),
-            ("ZQ Calibration latch", MPC.ZQC_LATCH, SpecialCmd.MPC, "DFII_COMMAND_WE|DFII_COMMAND_CS", max(8, ck(30e-9))),
-        ]
+    # comment, prefixes, cs, ca, phases, cmd, delay/single
+    init_sequence = [
+        # Perform "Reset Initialization with Stable Power"
+        # We assume that loading the bistream will take at least tINIT1 (200us)
+        # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
+        ("Assert reset", prefixes, 0, 0, 0, "0", ck(1e-6)),
+        ("Assert CS in reset", prefixes, all_cs, 0, all_phases, dfii_control, ck(10e-9)),
+        ("Release reset", prefixes, all_cs, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N",ck(4e-3)),
+        ("Release CS", prefixes, 0, 0x3FFF, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(2e-6)),
+        ("Prep NOPs", prefixes, 0, 0x1F, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", 4),
+        ("NOPs", prefixes, all_cs, 0x1F, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", 3),
+        ("Zeros", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
+        # 2N  mode by default
+        *cmd_mr(13),
+        ("Zeros", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
+        ("Reset DLL", prefixes, 0, 0xf|(MPC.DLL_RST<<5), all_phases, dfii_control+"|DFII_CONTROL_RESET_N", 1),
+        ("Reset DLL", prefixes, all_cs, 0xf|(MPC.DLL_RST<<5), 1, dfii_control+"|DFII_CONTROL_RESET_N", -1),
+        ("Reset DLL", prefixes, 0, 0xf|(MPC.DLL_RST<<5), 2, dfii_control+"|DFII_CONTROL_RESET_N", -2),
+        ("Reset Single Shot", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -1),
+        ("Zeros", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
+        ("ZQ Calibration start", prefixes, 0, 0xf|(MPC.ZQC_START<<5), all_phases, dfii_control+"|DFII_CONTROL_RESET_N", 1),
+        ("ZQ Calibration start", prefixes, all_cs, 0xf|(MPC.ZQC_START<<5), 1, dfii_control+"|DFII_CONTROL_RESET_N", -1),
+        ("ZQ Calibration start", prefixes, 0, 0xf|(MPC.ZQC_START<<5), 2, dfii_control+"|DFII_CONTROL_RESET_N", -2),
+        ("Reset Single Shot", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -1),
+        ("Zeros", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
+        ("ZQ Calibration latch", prefixes, 0, 0xf|(MPC.ZQC_LATCH<<5), 2, dfii_control+"|DFII_CONTROL_RESET_N", 1),
+        ("ZQ Calibration latch", prefixes, all_cs, 0xf|(MPC.ZQC_LATCH<<5), 1, dfii_control+"|DFII_CONTROL_RESET_N", -1),
+        ("ZQ Calibration latch", prefixes, 0, 0xf|(MPC.ZQC_LATCH<<5), 2, dfii_control+"|DFII_CONTROL_RESET_N", -2),
+        ("Reset Single Shot", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -1),
+        ("Zeros", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", max(8, ck(30e-9))),
+    ]
+    for cmds in (cmd_mr(ma) for ma in sorted(mr.keys()) if ma != 13):
+        init_sequence.extend(cmds)
 
     return init_sequence, mr
 
@@ -1026,32 +1012,29 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     r.include("<generated/csr.h>")
     r.newline()
 
+    r.define(f"MEMORY_TYPE_{phy_settings.memtype.upper()}")
+
     r.define("DFII_CONTROL_SEL",     "0x01")
     r.define("DFII_CONTROL_CKE",     "0x02")
     r.define("DFII_CONTROL_ODT",     "0x04")
     r.define("DFII_CONTROL_RESET_N", "0x08")
     if phy_settings.memtype == "DDR5":
-        r.define("DFII_CONTROL_DDR5", "0x10")
+        r.define("DFII_CONTROL_2N_MODE", "0x10")
         if not phy_settings.with_sub_channels:
-            r.define("DFII_CONTROL_CONSTINJECTOR", "0x20")
-            r.define("DFII_CONTROL_NOPINJECTOR", "0x40")
-            r.define("DFII_CONTROL_CMDINJECTOR", "0x60")
+            r.define("DFII_CONTROL_CMDINJECTOR", "0x20")
         else:
-            r.define("DFII_CONTROL_A_CONSTINJECTOR", "0x20")
-            r.define("DFII_CONTROL_A_NOPINJECTOR", "0x40")
-            r.define("DFII_CONTROL_A_CMDINJECTOR", "0x60")
-            r.define("DFII_CONTROL_B_CONSTINJECTOR", "0x80")
-            r.define("DFII_CONTROL_B_NOPINJECTOR", "0x100")
-            r.define("DFII_CONTROL_B_CMDINJECTOR", "0x180")
+            r.define("DFII_CONTROL_A_CMDINJECTOR", "0x20")
+            r.define("DFII_CONTROL_B_CMDINJECTOR", "0x40")
     r.newline()
 
-    r.define("DFII_COMMAND_CS",     "0x01")
-    r.define("DFII_COMMAND_WE",     "0x02")
-    r.define("DFII_COMMAND_CAS",    "0x04")
-    r.define("DFII_COMMAND_RAS",    "0x08")
-    r.define("DFII_COMMAND_WRDATA", "0x10")
-    r.define("DFII_COMMAND_RDDATA", "0x20")
-    r.newline()
+    if phy_settings.memtype != "DDR5":
+        r.define("DFII_COMMAND_CS",     "0x01")
+        r.define("DFII_COMMAND_WE",     "0x02")
+        r.define("DFII_COMMAND_CAS",    "0x04")
+        r.define("DFII_COMMAND_RAS",    "0x08")
+        r.define("DFII_COMMAND_WRDATA", "0x10")
+        r.define("DFII_COMMAND_RDDATA", "0x20")
+        r.newline()
 
     phytype = phy_settings.phytype.upper()
     nphases = phy_settings.nphases
@@ -1109,22 +1092,24 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     r.newline()
 
     # Commands functions
-    for n in range(nphases):
-        with r.block(f"__attribute__((unused)) static inline void command_p{n}(int cmd)") as b:
-            b += f"sdram_dfii_pi{n}_command_write(cmd);"
-            b += f"sdram_dfii_pi{n}_command_issue_write(1);"
-    r.newline()
+    if phy_settings.memtype != "DDR5":
+        for n in range(nphases):
+            with r.block(f"__attribute__((unused)) static inline void command_p{n}(int cmd)") as b:
+                b += f"sdram_dfii_pi{n}_command_write(cmd);"
+                b += f"sdram_dfii_pi{n}_command_issue_write(1);"
+        r.newline()
 
     # Write/Read functions
     r.define("DFII_PIX_DATA_SIZE", "CSR_SDRAM_DFII_PI0_WRDATA_SIZE")
     r.newline()
-    for data in ["wrdata", "rddata"]:
-        with r.block(f"static inline unsigned long sdram_dfii_pix_{data}_addr(int phase)") as b:
-            with b.block("switch (phase)", newline=False) as s:
-                for n in range(nphases):
-                    s += f"case {n}: return CSR_SDRAM_DFII_PI{n}_{data.upper()}_ADDR;"
-                s += "default: return 0;"
-    r.newline()
+    if phy_settings.memtype != "DDR5":
+        for data in ["wrdata", "rddata"]:
+            with r.block(f"static inline unsigned long sdram_dfii_pix_{data}_addr(int phase)") as b:
+                with b.block("switch (phase)", newline=False) as s:
+                    for n in range(nphases):
+                        s += f"case {n}: return CSR_SDRAM_DFII_PI{n}_{data.upper()}_ADDR;"
+                    s += "default: return 0;"
+        r.newline()
 
     init_sequence, mr = get_sdram_phy_init_sequence(phy_settings, timing_settings)
 
@@ -1148,31 +1133,57 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
         r.newline()
 
     with r.block("static inline void init_sequence(void)") as b:
-        for comment, a, ba, cmd, delay in init_sequence:
-            invert_masks = [(0, 0), ]
-            if phy_settings.is_rdimm:
-                assert phy_settings.memtype == "DDR4"
-                # JESD82-31A page 38
-                #
-                # B-side chips have certain usually-inconsequential address and BA
-                # bits inverted by the RCD to reduce SSO current. For mode register
-                # writes, however, we must compensate for this. BG[1] also directs
-                # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
-                #
-                # The 'ba != 7' is because we don't do this to writes to the RCD
-                # itself.
-                if ba != 7:
-                    invert_masks.append((0b10101111111000, 0b1111))
+        if phy_settings.memtype != "DDR5":
+            for comment, a, ba, cmd, delay in init_sequence:
+                invert_masks = [(0, 0), ]
+                if phy_settings.is_rdimm:
+                    assert phy_settings.memtype == "DDR4"
+                    # JESD82-31A page 38
+                    #
+                    # B-side chips have certain usually-inconsequential address and BA
+                    # bits inverted by the RCD to reduce SSO current. For mode register
+                    # writes, however, we must compensate for this. BG[1] also directs
+                    # writes either to the A side (BG[1]=0) or B side (BG[1]=1)
+                    #
+                    # The 'ba != 7' is because we don't do this to writes to the RCD
+                    # itself.
+                    if ba != 7:
+                        invert_masks.append((0b10101111111000, 0b1111))
 
-            for a_inv, ba_inv in invert_masks:
+                for a_inv, ba_inv in invert_masks:
+                    b += f"/* {comment} */"
+                    b += f"sdram_dfii_pi0_address_write({a ^ a_inv:#x});"
+                    b += f"sdram_dfii_pi0_baddress_write({ba ^ ba_inv:d});"
+                    if cmd.startswith("DFII_CONTROL"):
+                        b += f"sdram_dfii_control_write({cmd});"
+                    else:
+                        b += f"command_p0({cmd});"
+                    if delay:
+                        b += f"cdelay({delay});\n"
+                    b.newline()
+        else:
+            for comment, prefixes, cs, ca, phases, cmd, delay in init_sequence:
                 b += f"/* {comment} */"
-                b += f"sdram_dfii_pi0_address_write({a ^ a_inv:#x});"
-                b += f"sdram_dfii_pi0_baddress_write({ba ^ ba_inv:d});"
-                if cmd.startswith("DFII_CONTROL"):
-                    b += f"sdram_dfii_control_write({cmd});"
+                if delay > -1:
+                    for prefix in prefixes:
+                        b += f"sdram_dfii_{prefix}cmdinjector_command_storage_write(" \
+                             f"{cs} << CSR_SDRAM_DFII_{prefix.upper()}CMDINJECTOR_COMMAND_STORAGE_CS_OFFSET " \
+                             f"| {ca} << CSR_SDRAM_DFII_{prefix.upper()}CMDINJECTOR_COMMAND_STORAGE_CA_OFFSET);"
+                        b += f"sdram_dfii_{prefix}cmdinjector_phase_addr_write({phases});"
+                        b += f"sdram_dfii_{prefix}cmdinjector_store_continuous_cmd_write(1);"
                 else:
-                    b += f"command_p0({cmd});"
-                if delay:
+                    for prefix in prefixes:
+                        b += f"sdram_dfii_{prefix}cmdinjector_command_storage_write(" \
+                             f"{cs} << CSR_SDRAM_DFII_{prefix.upper()}CMDINJECTOR_COMMAND_STORAGE_CS_OFFSET " \
+                             f"| {ca} << CSR_SDRAM_DFII_{prefix.upper()}CMDINJECTOR_COMMAND_STORAGE_CA_OFFSET);"
+                        b += f"sdram_dfii_{prefix}cmdinjector_phase_addr_write({phases});"
+                        b += f"sdram_dfii_{prefix}cmdinjector_store_singleshot_cmd_write(1);"
+                        if delay == -2:
+                            b += f"sdram_dfii_{prefix}cmdinjector_single_shot_write(1);"
+                            b += f"sdram_dfii_{prefix}cmdinjector_issue_command_write(1);"
+                            b += f"sdram_dfii_{prefix}cmdinjector_single_shot_write(0);"
+                b += f"sdram_dfii_control_write({cmd});"
+                if delay > 0:
                     b += f"cdelay({delay});\n"
                 b.newline()
 
@@ -1187,26 +1198,21 @@ def get_sdram_phy_py_header(phy_settings, timing_settings):
     r += "dfii_control_odt     = 0x04\n"
     r += "dfii_control_reset_n = 0x08\n"
     if phy_settings.memtype == "DDR5":
-        r += "dfii_control_ddr5    = 0x10\n"
+        r += "dfii_control_2n_mode   = 0x10\n"
         if not phy_settings.with_sub_channels:
-            r += "dfii_control_constinjector = 0x20\n"
-            r += "dfii_control_nopinjector   = 0x40\n"
-            r += "dfii_control_cmdinjector   = 0x60\n"
+            r += "dfii_control_cmdinjector   = 0x20\n"
         else:
-            r += "dfii_control_a_constinjector = 0x20\n"
-            r += "dfii_control_a_nopinjector   = 0x40\n"
-            r += "dfii_control_a_cmdinjector   = 0x60\n"
-            r += "dfii_control_b_constinjector = 0x80\n"
-            r += "dfii_control_b_nopinjector   = 0x100\n"
-            r += "dfii_control_b_cmdinjector   = 0x180\n"
+            r += "dfii_control_a_cmdinjector   = 0x20\n"
+            r += "dfii_control_b_cmdinjector   = 0x40\n"
     r += "\n"
-    r += "dfii_command_cs     = 0x01\n"
-    r += "dfii_command_we     = 0x02\n"
-    r += "dfii_command_cas    = 0x04\n"
-    r += "dfii_command_ras    = 0x08\n"
-    r += "dfii_command_wrdata = 0x10\n"
-    r += "dfii_command_rddata = 0x20\n"
-    r += "\n"
+    if phy_settings.memtype != "DDR5":
+        r += "dfii_command_cs     = 0x01\n"
+        r += "dfii_command_we     = 0x02\n"
+        r += "dfii_command_cas    = 0x04\n"
+        r += "dfii_command_ras    = 0x08\n"
+        r += "dfii_command_wrdata = 0x10\n"
+        r += "dfii_command_rddata = 0x20\n"
+        r += "\n"
 
     init_sequence, mr = get_sdram_phy_init_sequence(phy_settings, timing_settings)
 
