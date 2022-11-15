@@ -115,7 +115,18 @@ class CommandsSim(Module, AutoCSR):
         self.log.add_csrs()
 
         # Mode Registers storage
-        self.mode_regs = Array([Signal(8) if i != 8 else Signal(8, reset=8) for i in range(256)])
+        registers = []
+        for i in range(256):
+            if i == 2:
+                registers.append(Signal(8, reset=4))
+            elif i == 8:
+                registers.append(Signal(8, reset=8))
+            elif i == 15:
+                registers.append(Signal(8, reset=3))
+            else:
+                registers.append(Signal(8))
+
+        self.mode_regs = Array(registers)
         # Active banks
         self.number_of_banks = 2 ** geom_settings.bankbits;
         self.active_banks = Array([Signal() for _ in range(self.number_of_banks)])
@@ -127,8 +138,8 @@ class CommandsSim(Module, AutoCSR):
         self.submodules += self.data, self.data_en
 
         # CS_n/CA shift registers
-        cs_n = TappedDelayLine(getattr(pads, prefix+'cs_n'), ntaps=2)
-        ca = TappedDelayLine(getattr(pads, prefix+'ca'), ntaps=2)
+        cs_n = TappedDelayLine(getattr(pads, prefix+'cs_n'), ntaps=3)
+        ca = TappedDelayLine(getattr(pads, prefix+'ca'), ntaps=3)
         self.submodules += cs_n, ca
 
         self.cs_n_low   = Signal(14)
@@ -136,6 +147,7 @@ class CommandsSim(Module, AutoCSR):
         self.handle_1_tick_cmd  = Signal()
         self.handle_2_tick_cmd  = Signal()
         self.handled_1_tick_cmd = Signal()
+        self.mr13_set   = Signal()
         self.mpc_op     = Signal(8)
         self.bl_max     = bl_max
 
@@ -153,10 +165,19 @@ class CommandsSim(Module, AutoCSR):
 
         self.comb += [
             If(cmds_enabled,
-                If(Cat(cs_n.taps) == 0b00,
+                If(self.mode_regs[2][2],
+                    If(Cat(cs_n.taps) == 0b011,
+                        self.handle_2_tick_cmd.eq(1),
+                        self.cs_n_low.eq(ca.taps[2]),
+                        self.cs_n_high.eq(ca.taps[0]),
+                    ).Elif((Cat(cs_n.taps) == 0b010) | (Cat(cs_n.taps) == 0b000),
+                        self.handle_1_tick_cmd.eq(1),
+                        self.cs_n_low.eq(ca.taps[2]),
+                    ),
+                ).Elif(Cat(cs_n.taps)[0:2] == 0b00,
                     self.handle_1_tick_cmd.eq(1),
                     self.cs_n_low.eq(ca.taps[1]),
-                ).Elif(Cat(cs_n.taps) == 0b01,
+                ).Elif(Cat(cs_n.taps)[0:2] == 0b01,
                     self.handle_2_tick_cmd.eq(1),
                     self.cs_n_low.eq(ca.taps[1]),
                     self.cs_n_high.eq(ca.taps[0]),
@@ -271,6 +292,18 @@ class CommandsSim(Module, AutoCSR):
                 self.log.warn(prefix+"Unexpected command: cs_n_low=0b%14b cs_n_high=0b%14b", self.cs_n_low, self.cs_n_high)
             ),
             If(cmd_handlers["MPC"],
+                If(self.mpc_op != MPC.DLL_RST,
+                    self.log.error(prefix+"DLL-RESET expected, got op=0b%07b", self.mpc_op),
+                ).Elif(~self.mr13_set,
+                    self.log.error(prefix+"DLL-RESET before write to MR13")
+                ).Else(
+                    NextState("DLL_RESET")  # Tf
+                )
+            ),
+        )
+        fsm.act("DLL_RESET",
+            cmds_enabled.eq(1),
+            If(cmd_handlers["MPC"],
                 If(self.mpc_op != MPC.ZQC_START,
                     self.log.error(prefix+"ZQC-START expected, got op=0b%07b", self.mpc_op)
                 ).Else(
@@ -281,7 +314,7 @@ class CommandsSim(Module, AutoCSR):
         fsm.act("ZQC",
             self.tzqcal.trigger.eq(1),
             cmds_enabled.eq(1),
-            If(self.handle_2_tick_cmd,
+            If(self.handle_2_tick_cmd | self.handle_1_tick_cmd,
                 If(~(cmd_handlers["MPC"] & (self.mpc_op == MPC.ZQC_LATCH)),
                     self.log.error(prefix+"Expected ZQC-LATCH")
                 ).Else(
@@ -339,9 +372,17 @@ class CommandsSim(Module, AutoCSR):
                 self.log.info(prefix+"MRW: MR[%d] = 0x%02x", ma, op),
                 op.eq(self.cs_n_high[:8]),
                 ma.eq(self.cs_n_low[5:13]),
-                NextValue(self.mode_regs[ma], op),
             ],
             handle_cmd = self.handle_2_tick_cmd,
+            sync = [
+                If(ma == 13,
+                    self.mr13_set.eq(1),
+                ).Elif(ma == 2,
+                    self.mode_regs[2].eq(Cat(op[0:2], self.mode_regs[2][2], op[3:])),
+                ).Else(
+                    self.mode_regs[ma].eq(op),
+                ),
+            ],
         )
 
     def nop_handler(self, prefix):
@@ -420,6 +461,8 @@ class CommandsSim(Module, AutoCSR):
 
     def mpc_handler(self, prefix):
         cases = {value: self.log.info(prefix+f"MPC: {name}") for name, value in MPC.__members__.items()}
+        cases[0b00001000] = NextValue(self.mode_regs[2][2], 1)
+        cases[0b00001001] = NextValue(self.mode_regs[2][2], 0)
         cases["default"] = self.log.error(prefix+"Invalid MPC op=0b%08b", self.mpc_op)
         return self.cmd_one_step("MPC",
             cond = self.cs_n_low[:5] == 0b01111,
@@ -427,7 +470,7 @@ class CommandsSim(Module, AutoCSR):
                 self.mpc_op.eq(self.cs_n_low[5:13]),
                 Case(self.mpc_op, cases)
             ],
-            handle_cmd = self.handle_2_tick_cmd,
+            handle_cmd = self.handle_2_tick_cmd | self.handle_1_tick_cmd,
         )
 
     def read_handler(self, prefix):
