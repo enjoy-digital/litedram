@@ -887,7 +887,7 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
 
     def ck(sec):
         # FIXME: use sys_clk_freq (should be added e.g. to TimingSettings), using arbitrary value for now
-        fmax = 250e6 # as we perform active waiting we can assume multiple singlecycle operations
+        fmax = 50e6 # as we perform active waiting we can assume multiple singlecycle operations
         return int(math.ceil(sec * fmax))
 
     # comment, prefixes, cs, ca, phases, cmd, delay/single
@@ -896,32 +896,33 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
         # We assume that loading the bistream will take at least tINIT1 (200us)
         # Because LiteDRAM will start with reset_n=1 during hw control, first reset the chip (for tPW_RESET)
         ("Assert reset", prefixes, 0, 0, 0, "0", ck(3e-6)),
-        ("Assert CS in reset", prefixes, all_cs, 0, all_phases, dfii_control, ck(10e-9)),
-        ("Release reset", prefixes, all_cs, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N",ck(4e-3)),
-        ("Release CS", prefixes, 0, 0x3FFF, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(2e-6)),
-        ("NOPs", prefixes, all_cs, 0x1F, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", 3),
-        ("Zeros", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
+        ("Assert CS in reset", prefixes, all_cs, 0, 2**4-1, dfii_control, ck(10e-9)),
+        ("Release reset", prefixes, all_cs, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N",ck(4e-3)),
+        ("Release CS", prefixes, 0, 0x3FFF, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", ck(2e-6)),
+        ("NOPs", prefixes, all_cs, 0x1F, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 3),
+        ("NOPs end", prefixes, 0, 0x1F, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 3),
+        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
         # 2N  mode by default
 
-        ("Setup MR13", prefixes, 0, 0xf|(((0b1000<<4)|0)<<5), all_phases, dfii_control+"|DFII_CONTROL_RESET_N", 1),
-        ("Setup MR13", prefixes, all_cs, 0xf|(((0b1000<<4)|0)<<5), all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -2),
-        ("Reset Single Shot", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -1),
-        ("Zeros", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
+        ("Setup MR13", prefixes, 0, 0xf|(((0b1000<<4)|0)<<5), 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 1),
+        ("Setup MR13", prefixes, all_cs, 0xf|(((0b1000<<4)|0)<<5), 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -2),
+        ("Reset Single Shot", prefixes, 0, 0, 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -1),
+        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
 
-        ("Reset DLL", prefixes, 0, 0xf|(MPC.DLL_RST<<5), all_phases, dfii_control+"|DFII_CONTROL_RESET_N", 1),
-        ("Reset DLL", prefixes, all_cs, 0xf|(MPC.DLL_RST<<5), all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -2),
-        ("Reset Single Shot", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -1),
-        ("Zeros", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
+        ("Reset DLL", prefixes, 0, 0xf|(MPC.DLL_RST<<5), 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 1),
+        ("Reset DLL", prefixes, all_cs, 0xf|(MPC.DLL_RST<<5), 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -2),
+        ("Reset Single Shot", prefixes, 0, 0, 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -1),
+        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
 
-        ("ZQ Calibration start", prefixes, 0, 0xf|(MPC.ZQC_START<<5), all_phases, dfii_control+"|DFII_CONTROL_RESET_N", 1),
-        ("ZQ Calibration start", prefixes, all_cs, 0xf|(MPC.ZQC_START<<5), all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -2),
-        ("Reset Single Shot", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -1),
-        ("Zeros", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
+        ("ZQ Calibration start", prefixes, 0, 0xf|(MPC.ZQC_START<<5), 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 1),
+        ("ZQ Calibration start", prefixes, all_cs, 0xf|(MPC.ZQC_START<<5), 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -2),
+        ("Reset Single Shot", prefixes, 0, 0, 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -1),
+        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", ck(1e-6)),
 
-        ("ZQ Calibration latch", prefixes, 0, 0xf|(MPC.ZQC_LATCH<<5), 2, dfii_control+"|DFII_CONTROL_RESET_N", 1),
-        ("ZQ Calibration latch", prefixes, all_cs, 0xf|(MPC.ZQC_LATCH<<5), all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -2),
-        ("Reset Single Shot", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", -1),
-        ("Zeros", prefixes, 0, 0, all_phases, dfii_control+"|DFII_CONTROL_RESET_N", max(8, ck(30e-9))),
+        ("ZQ Calibration latch", prefixes, 0, 0xf|(MPC.ZQC_LATCH<<5), 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 1),
+        ("ZQ Calibration latch", prefixes, all_cs, 0xf|(MPC.ZQC_LATCH<<5), 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -2),
+        ("Reset Single Shot", prefixes, 0, 0, 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -1),
+        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", max(8, ck(30e-9))),
     ]
     for cmds in (cmd_mr(ma) for ma in sorted(mr.keys()) if ma != 13):
         init_sequence.extend(cmds)
