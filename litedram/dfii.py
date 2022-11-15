@@ -78,8 +78,9 @@ class CmdInjector(Module, AutoCSR):
         self._single_shot = CSRStorage(reset=0b0)
         self._issue_command = CSR() # Only used when in single shot
 
-        self._continuous_phase_signals = Array(Signal(16 + cs_width + wrdata_mask_width, reset=0b11111) for _ in range(num_phases))
-        self._singleshot_phase_signals = Array(Signal(16 + cs_width + wrdata_mask_width) for _ in range(num_phases))
+        self._continuous_phase_signals = Array(Signal(16 + cs_width + wrdata_mask_width, reset=0b11111) for _ in range(2))
+        # There are limited number of commands that make sens to be emitted continuously: DES, NOP. MPC, CS training pattern,
+        self._singleshot_phase_signals = Array(Signal(16 + cs_width + wrdata_mask_width) for _ in range(8)) # BL 16 needs at most 8 DFI transactions (2 for command and 8 for wrdata/rddata)
 
         ca_start = 0
         cs_start = ca_end = 0 + 14
@@ -294,7 +295,7 @@ class DFIInjector(Module, AutoCSR):
                 if delay:
                     _input, _ = delays[delay-1][phase_num]
                     self.comb += If(self._control.fields.mode_2n & adapter.valid,
-                        _input.eq(Cat(adapter.cs_n[0], adapter.ca[0])),
+                        _input.eq(Cat(adapter.cs_n[1], adapter.ca[0])),
                     ).Elif(adapter.valid,
                         _input.eq(Cat(adapter.cs_n[1], adapter.ca[1])),
                     ).Else(
@@ -304,7 +305,7 @@ class DFIInjector(Module, AutoCSR):
                     phase = ddr5_dfi.phases[phase_num]
                     self.comb += If(self._control.fields.mode_2n & adapter.valid,
                         phase.address.eq(phase.address | adapter.ca[0]),
-                        phase.cs_n.eq(phase.cs_n & adapter.cs_n[0]),
+                        phase.cs_n.eq(phase.cs_n & adapter.cs_n[1]),
                     ).Elif(adapter.valid,
                         phase.address.eq(phase.address | adapter.ca[1]),
                         phase.cs_n.eq(phase.cs_n & adapter.cs_n[1]),
@@ -343,7 +344,7 @@ class DFIInjector(Module, AutoCSR):
                     0: [
                         Case(getattr(self._control.fields, prefix+"control"), {
                             1: [cp.connect(mp) for cp, mp in zip(csr2_dfi.get_subchannel(prefix), self.master.get_subchannel(prefix))],
-                            0: [cp.connect(mp) for cp, mp in zip(ddr5_dfi.get_subchannel(prefix), self.master.get_subchannel(prefix))], # Use Hardware control for unselected channel
+                            0: [mp.cs_n.eq(Replicate(1, nranks)) for mp in self.master.get_subchannel(prefix)], # Use DES on unselected channels
                         }) for prefix in prefixes
                     ] + [
                         phase.reset_n.eq(self._control.fields.reset_n) for phase in self.master.phases if hasattr(phase, "reset_n")
