@@ -287,25 +287,21 @@ class CommandsSim(Module, AutoCSR):
         fsm.act("MRW",
             cmds_enabled.eq(1),
             If(self.handle_2_tick_cmd & ~cmd_handlers["MRW"] & ~cmd_handlers["MPC"] & ~self.handled_1_tick_cmd,
-                self.log.warn(prefix+"Only MRW/MRR commands expected before ZQ calibration"),
+                self.log.warn(prefix+"Only MPC/MRW/MRR commands expected before ZQ calibration"),
                 self.log.warn(" ".join("{}=%d".format(cmd) for cmd in cmd_handlers.keys()), *cmd_handlers.values()),
                 self.log.warn(prefix+"Unexpected command: cs_n_low=0b%14b cs_n_high=0b%14b", self.cs_n_low, self.cs_n_high)
             ),
             If(cmd_handlers["MPC"],
-                If(self.mpc_op != MPC.DLL_RST,
-                    self.log.error(prefix+"DLL-RESET expected, got op=0b%07b", self.mpc_op),
-                ).Elif(~self.mr13_set,
-                    self.log.error(prefix+"DLL-RESET before write to MR13")
-                ).Else(
+                If((self.mpc_op == MPC.DLL_RST) & self.mr13_set,
                     NextState("DLL_RESET")  # Tf
-                )
+                ),
             ),
         )
         fsm.act("DLL_RESET",
             cmds_enabled.eq(1),
             If(cmd_handlers["MPC"],
-                If(self.mpc_op != MPC.ZQC_START,
-                    self.log.error(prefix+"ZQC-START expected, got op=0b%07b", self.mpc_op)
+                If((self.mpc_op != MPC.ZQC_START) & (self.mpc_op != MPC.DLL_RST),
+                    self.log.error(prefix+"DLL-RESET OR ZQC-START expected, got op=0b%07b", self.mpc_op)
                 ).Else(
                     NextState("ZQC")  # Tf
                 )
@@ -315,7 +311,8 @@ class CommandsSim(Module, AutoCSR):
             self.tzqcal.trigger.eq(1),
             cmds_enabled.eq(1),
             If(self.handle_2_tick_cmd | self.handle_1_tick_cmd,
-                If(~(cmd_handlers["MPC"] & (self.mpc_op == MPC.ZQC_LATCH)),
+                If(~(cmd_handlers["MPC"] &
+                   ((self.mpc_op == MPC.ZQC_LATCH) | (self.mpc_op == MPC.ZQC_START))),
                     self.log.error(prefix+"Expected ZQC-LATCH")
                 ).Else(
                     If(~self.tzqcal.ready,
@@ -375,9 +372,7 @@ class CommandsSim(Module, AutoCSR):
             ],
             handle_cmd = self.handle_2_tick_cmd,
             sync = [
-                If(ma == 13,
-                    self.mr13_set.eq(1),
-                ).Elif(ma == 2,
+                If(ma == 2,
                     self.mode_regs[2].eq(Cat(op[0:2], self.mode_regs[2][2], op[3:])),
                 ).Else(
                     self.mode_regs[ma].eq(op),
@@ -461,8 +456,11 @@ class CommandsSim(Module, AutoCSR):
 
     def mpc_handler(self, prefix):
         cases = {value: self.log.info(prefix+f"MPC: {name}") for name, value in MPC.__members__.items()}
-        cases[0b00001000] = NextValue(self.mode_regs[2][2], 1)
-        cases[0b00001001] = NextValue(self.mode_regs[2][2], 0)
+        cases[0b00001000] = [self.log.info(prefix+"MPC: 2N")]
+        cases[0b00001001] = [self.log.info(prefix+"MPC: 1N")]
+        base = 0b10000000
+        for i  in range(16):
+            cases[base+i] = [self.log.info(prefix+f"MPC: tCCD_L {i}")]
         cases["default"] = self.log.error(prefix+"Invalid MPC op=0b%08b", self.mpc_op)
         return self.cmd_one_step("MPC",
             cond = self.cs_n_low[:5] == 0b01111,
@@ -471,6 +469,14 @@ class CommandsSim(Module, AutoCSR):
                 Case(self.mpc_op, cases)
             ],
             handle_cmd = self.handle_2_tick_cmd | self.handle_1_tick_cmd,
+            sync = [
+                If(self.mpc_op[1:] == 0b0000100,
+                    self.mode_regs[2][2].eq(self.mpc_op[0]),
+                ).Elif(self.mpc_op[4:] == 0b1000,
+                    self.mr13_set.eq(1),
+                    self.mode_regs[13][0:4].eq(self.mpc_op[0:4]),
+                ),
+            ],
         )
 
     def read_handler(self, prefix):
