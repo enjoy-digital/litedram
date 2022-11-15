@@ -72,15 +72,63 @@ class CmdInjector(Module, AutoCSR):
             CSRField("wrdata_mask", size=wrdata_mask_width),
             CSRField("rddata_en",   size=1),
         ], description="DDR5 command and control signals")
-        self._phase_addr = CSRStorage(num_phases)
+        self._phase_addr = CSRStorage(8)
         self._store_continuous_cmd = CSR()
         self._store_singleshot_cmd = CSR()
         self._single_shot = CSRStorage(reset=0b0)
         self._issue_command = CSR() # Only used when in single shot
 
-        self._continuous_phase_signals = Array(Signal(16 + cs_width + wrdata_mask_width, reset=0b11111) for _ in range(2))
+        self._continuous_phase_signals = Array(Signal(16 + cs_width + wrdata_mask_width, reset=0b11111) for _ in range(4))
         # There are limited number of commands that make sens to be emitted continuously: DES, NOP. MPC, CS training pattern,
         self._singleshot_phase_signals = Array(Signal(16 + cs_width + wrdata_mask_width) for _ in range(8)) # BL 16 needs at most 8 DFI transactions (2 for command and 8 for wrdata/rddata)
+
+        continuous_max = max(4 // num_phases, 2)
+        singleshot_max = max(8 // num_phases, 2)
+
+        continuous_counter = Signal(max = continuous_max, reset=0)
+        singleshot_counter = Signal(max = singleshot_max, reset=0)
+
+        singleshot_issue = Signal(2)
+
+        self.sync += [
+            If((singleshot_issue == 0) & self._issue_command.re & self._single_shot.storage,
+                singleshot_issue.eq(1),
+            ).Elif((singleshot_issue == 1) & singleshot_counter == singleshot_max-1,
+                singleshot_issue.eq(2),
+            ).Elif((singleshot_issue == 2) & singleshot_counter == singleshot_max-1,
+                singleshot_issue.eq(0),
+            ),
+
+            If(singleshot_counter == (singleshot_max - 1),
+                singleshot_counter.eq(0),
+            ).Else(
+                singleshot_counter.eq(singleshot_counter + 1),
+            ),
+
+            If(continuous_counter == (continuous_max - 1),
+                continuous_counter.eq(0),
+            ).Else(
+                continuous_counter.eq(continuous_counter + 1),
+            ),
+        ]
+
+        for i in range(4):
+            self.sync += [
+                If(self._store_continuous_cmd.re,
+                    If(self._phase_addr.storage[i],
+                        self._continuous_phase_signals[i].eq(self._command_storage.storage),
+                    ),
+                ),
+            ]
+
+        for i in range(8):
+            self.sync += [
+                If(self._store_singleshot_cmd.re,
+                    If(self._phase_addr.storage[i],
+                        self._singleshot_phase_signals[i].eq(self._command_storage.storage),
+                    ),
+                ),
+            ]
 
         ca_start = 0
         cs_start = ca_end = 0 + 14
@@ -89,35 +137,56 @@ class CmdInjector(Module, AutoCSR):
         rd_en_start = wr_mask_end = wr_mask_start + wrdata_mask_width
         rd_en_end = rd_en_start + 1
 
-        for i, phase in enumerate(phases):
-            self.sync += [
-                If(self._store_continuous_cmd.re,
-                    If(self._phase_addr.storage[i],
-                        self._continuous_phase_signals[i].eq(self._command_storage.storage),
-                    ),
-                ),
-                If(self._store_singleshot_cmd.re,
-                    If(self._phase_addr.storage[i],
-                        self._singleshot_phase_signals[i].eq(self._command_storage.storage),
-                    ),
+
+        for phase in phases:
+            self.comb += [
+                phase.cs_n.eq(Replicate(1, cs_width)),
+                phase.address.eq(Replicate(0, 14)),
+                phase.wrdata_en.eq(0),
+                phase.wrdata_mask.eq(Replicate(0, wrdata_mask_width)),
+                phase.rddata_en.eq(0),
+            ]
+
+        for i in range(max(4, num_phases)):
+            dfi_phase_num = i % num_phases
+            reg_num       = i % 4
+            counter       = i // num_phases
+            phase         = phases[dfi_phase_num]
+            self.comb += [
+                If((singleshot_issue != 2) & (continuous_counter == counter),
+                    phase.cs_n.eq(~self._continuous_phase_signals[reg_num][cs_start:cs_end]),
+                    phase.address.eq(self._continuous_phase_signals[reg_num][ca_start:ca_end]),
+                    phase.wrdata_en.eq(self._continuous_phase_signals[reg_num][wr_en_start:wr_en_end]),
+                    phase.wrdata_mask.eq(self._continuous_phase_signals[reg_num][wr_mask_start:wr_mask_end]),
+                    phase.rddata_en.eq(self._continuous_phase_signals[reg_num][rd_en_start:rd_en_end]),
                 ),
             ]
 
-            self.comb += [
-                If(self._single_shot.storage & self._issue_command.re,
-                    phase.cs_n.eq(~self._singleshot_phase_signals[i][cs_start:cs_end]),
-                    phase.address.eq(self._singleshot_phase_signals[i][ca_start:ca_end]),
-                    phase.wrdata_en.eq(self._singleshot_phase_signals[i][wr_en_start:wr_en_end]),
-                    phase.wrdata_mask.eq(self._singleshot_phase_signals[i][wr_mask_start:wr_mask_end]),
-                    phase.rddata_en.eq(self._singleshot_phase_signals[i][rd_en_start:rd_en_end]),
-                ).Else(
-                    phase.cs_n.eq(~self._continuous_phase_signals[i][cs_start:cs_end]),
-                    phase.address.eq(self._continuous_phase_signals[i][ca_start:ca_end]),
-                    phase.wrdata_en.eq(self._continuous_phase_signals[i][wr_en_start:wr_en_end]),
-                    phase.wrdata_mask.eq(self._continuous_phase_signals[i][wr_mask_start:wr_mask_end]),
-                    phase.rddata_en.eq(self._continuous_phase_signals[i][rd_en_start:rd_en_end]),
-                ),
-            ]
+        for i in range(max(8, num_phases)):
+            dfi_phase_num = i % num_phases
+            reg_num       = i % 8
+            counter       = i // num_phases
+            phase         = phases[dfi_phase_num]
+            if dfi_phase_num < 8:
+                self.comb += [
+                    If((singleshot_issue == 2) & (singleshot_counter == counter),
+                        phase.cs_n.eq(~self._singleshot_phase_signals[reg_num][cs_start:cs_end]),
+                        phase.address.eq(self._singleshot_phase_signals[reg_num][ca_start:ca_end]),
+                        phase.wrdata_en.eq(self._singleshot_phase_signals[reg_num][wr_en_start:wr_en_end]),
+                        phase.wrdata_mask.eq(self._singleshot_phase_signals[reg_num][wr_mask_start:wr_mask_end]),
+                        phase.rddata_en.eq(self._singleshot_phase_signals[reg_num][rd_en_start:rd_en_end]),
+                    ),
+                ]
+            else:
+                self.comb += [
+                    If((singleshot_issue == 2) & (singleshot_counter == counter),
+                        phase.cs_n.eq(Replicate(1, cs_width)),
+                        phase.address.eq(Replicate(0, 14)),
+                        phase.wrdata_en.eq(Replicate(0, 1)),
+                        phase.wrdata_mask.eq(Replicate(0, wrdata_mask_width)),
+                        phase.rddata_en.eq(Replicate(0,1)),
+                    ),
+                ]
 
         self._wrdata_select = CSRStorage(num_phases.bit_length())
         self._wrdata = CSRStorage(wrdata_width)
