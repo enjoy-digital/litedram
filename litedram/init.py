@@ -911,7 +911,7 @@ def get_ddr5_phy_init_sequence(phy_settings, timing_settings):
         ("Reset DLL", prefixes, 0, 0xf|(MPC.DLL_RST<<5), 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 1),
         ("Reset DLL", prefixes, all_cs, 0xf|(MPC.DLL_RST<<5), 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -2),
         ("Reset Single Shot", prefixes, 0, 0, 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -1),
-        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", ck(10e-3)),
+        ("Zeros", prefixes, 0, 0, 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 1024),
 
         ("ZQ Calibration start", prefixes, 0, 0xf|(MPC.ZQC_START<<5), 2**4-1, dfii_control+"|DFII_CONTROL_RESET_N", 1),
         ("ZQ Calibration start", prefixes, all_cs, 0xf|(MPC.ZQC_START<<5), 2**8-1, dfii_control+"|DFII_CONTROL_RESET_N", -2),
