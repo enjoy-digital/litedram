@@ -559,7 +559,7 @@ class DDR5PHY(Module, AutoCSR):
                 for j, phase in enumerate(dfi.phases):
                     self.comb += [
                         If(self._rdimm_mode.storage,
-                            If(getattr(phase, prefix).mode_2n,
+                            If(phase.mode_2n,
                                 If(~reduce(and_, getattr(phase, prefix).cs_n) | stage_cnt == 0,
                                     getattr(self.out, prefix+'ca')[bit].eq(Replicate(getattr(phase, prefix).address[bit], 2))
                                 ).Else(

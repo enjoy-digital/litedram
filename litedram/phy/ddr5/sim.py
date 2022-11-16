@@ -324,10 +324,6 @@ class CommandsSim(Module, AutoCSR):
         )
         fsm.act("NORMAL",
             cmds_enabled.eq(1),
-            self.tzqlat.trigger.eq(1),
-            If(self.handle_2_tick_cmd & ~self.tzqlat.ready,
-                self.log.warn(prefix+"tZQLAT violated")
-            ),
         )
 
         # Log state transitions
