@@ -118,7 +118,7 @@ class CommandsSim(Module, AutoCSR):
         registers = []
         for i in range(256):
             if i == 2:
-                registers.append(Signal(8, reset=4))
+                registers.append(Signal(8, reset=0))
             elif i == 8:
                 registers.append(Signal(8, reset=8))
             elif i == 15:
@@ -165,7 +165,7 @@ class CommandsSim(Module, AutoCSR):
 
         self.comb += [
             If(cmds_enabled,
-                If(self.mode_regs[2][2],
+                If(~self.mode_regs[2][2],
                     If(Cat(cs_n.taps) == 0b011,
                         self.handle_2_tick_cmd.eq(1),
                         self.cs_n_low.eq(ca.taps[2]),
@@ -302,7 +302,7 @@ class CommandsSim(Module, AutoCSR):
             If(cmd_handlers["MPC"],
                 If((self.mpc_op != MPC.ZQC_START) & (self.mpc_op != MPC.DLL_RST),
                     self.log.error(prefix+"DLL-RESET OR ZQC-START expected, got op=0b%07b", self.mpc_op)
-                ).Else(
+                ).Elif(self.mpc_op == MPC.ZQC_START,
                     NextState("ZQC")  # Tf
                 )
             ),
@@ -314,7 +314,7 @@ class CommandsSim(Module, AutoCSR):
                 If(~(cmd_handlers["MPC"] &
                    ((self.mpc_op == MPC.ZQC_LATCH) | (self.mpc_op == MPC.ZQC_START))),
                     self.log.error(prefix+"Expected ZQC-LATCH")
-                ).Else(
+                ).Elif((self.mpc_op == MPC.ZQC_LATCH),
                     If(~self.tzqcal.ready,
                         self.log.warn(prefix+"tZQCAL violated")
                     ),
@@ -639,6 +639,9 @@ class DataSim(Module, AutoCSR):
         wr_preamble_trigger = Signal()
         wr_preamble_width   = Signal(max=9)
 
+        # SimPHY does not support DQ/DQS traning yet, when in 2N mode reduce CL and CLW latency by 1
+        n2_mode      = Signal()
+
         read = Signal()
 
         self.submodules.write_delay    = ClockDomainsRenamer(cd_dq_wr)(TappedDelayLine(write, ntaps=1))
@@ -666,13 +669,17 @@ class DataSim(Module, AutoCSR):
                 0: wr_postamble.eq(0b0),
                 1: wr_postamble.eq(0b000),
             }),
-            write.eq(cmds_sim.data_en.taps[cwl-2] & cmds_sim.data.source.valid & cmds_sim.data.source.we),
-            wr_preamble_trigger.eq(cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 2] &
-                                   ~cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 1] &
+            Case(cmds_sim.mode_regs[2][2], {
+                0: n2_mode.eq(0b1),
+                1: n2_mode.eq(0b0),
+            }),
+            write.eq(cmds_sim.data_en.taps[cwl - 2 - n2_mode] & cmds_sim.data.source.valid & cmds_sim.data.source.we),
+            wr_preamble_trigger.eq(cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 2 - n2_mode] &
+                                   ~cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 1 - n2_mode] &
                                    cmds_sim.data.source.valid &
                                    cmds_sim.data.source.we),
 
-            read.eq(cmds_sim.data_en.taps[cl-2] & cmds_sim.data.source.valid & ~cmds_sim.data.source.we),
+            read.eq(cmds_sim.data_en.taps[cl - 2 - n2_mode] & cmds_sim.data.source.valid & ~cmds_sim.data.source.we),
 
             cmds_sim.data.source.ready.eq(write | read),
             masked.eq(write & cmds_sim.data.source.masked),
