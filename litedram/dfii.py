@@ -438,7 +438,9 @@ class DFIInjector(Module, AutoCSR):
             for i in range(depth):
                 for _ in range(nphases):
                     _input = Signal(14+nranks)
-                    delays[i].append((_input, TappedDelayLine(signal=_input, ntaps=i+1)))
+                    tap_line = TappedDelayLine(signal=_input, ntaps=i+1)
+                    self.submodules += tap_line
+                    delays[i].append((_input, tap_line))
 
             for i, adapter in enumerate(adapters):
                 # 0 CA0 always
@@ -464,8 +466,6 @@ class DFIInjector(Module, AutoCSR):
                         _input.eq(Cat(adapter.cs_n[1], adapter.ca[0])),
                     ).Elif(adapter.valid,
                         _input.eq(Cat(adapter.cs_n[1], adapter.ca[1])),
-                    ).Else(
-                        _input.eq(0),
                     )
                 else:
                     phase = ddr5_dfi.phases[phase_num]
@@ -484,8 +484,6 @@ class DFIInjector(Module, AutoCSR):
                         _input, _ = delays[delay-1][phase_num]
                         self.comb += If(self._control.fields.mode_2n & adapter.valid,
                             _input.eq(Cat(adapter.cs_n[j//2], adapter.ca[j//2])),
-                        ).Else(
-                            _input.eq(0),
                         )
                     else:
                         phase = ddr5_dfi.phases[phase_num]
@@ -496,8 +494,8 @@ class DFIInjector(Module, AutoCSR):
 
             for i in range(depth):
                 for (_, delay_out), phase in zip(delays[i], ddr5_dfi.phases):
-                    phase.cs_n.eq(   phase.cs_n    | delay_out.output[0:nranks])
-                    phase.address.eq(phase.address | delay_out.output[nranks:-1])
+                    self.comb += phase.cs_n.eq(   phase.cs_n    | delay_out.output[0:nranks])
+                    self.comb += phase.address.eq(phase.address | delay_out.output[nranks:-1])
 
             if with_sub_channels:
                 ddr5_dfi.create_sub_channels()
