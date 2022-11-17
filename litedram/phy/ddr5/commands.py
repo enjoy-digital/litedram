@@ -180,23 +180,25 @@ class Command(Module):
         assert len(ca_pins_high.split()) == 14, (cmd, ca_pins_high)
 
     def __init__(self, dfi_phase, masked_write):
-        self.cs_n = Array([Signal(), Signal()])
+        self.cs_n_width = cs_n_width = len(dfi_phase.cs_n)
+        self.cs_n = Array([Signal(cs_n_width), Signal(cs_n_width)])
         self.ca = Array([Signal(14), Signal(14)])  # CS_n low, CS_n high
         self.dfi = dfi_phase
         self.masked_write = masked_write
 
     def set(self, cmd):
         ops = []
+        cs_n_width = self.cs_n_width
         for cyc, description in enumerate(self.TRUTH_TABLE[cmd]):
             for bit, bit_desc in enumerate(description.split()):
                 ops.append(self.ca[cyc][bit].eq(self.parse_bit(bit_desc, is_mrw=(cmd == "MRW"))))
 
         if cmd == "DESELECT":
-            ops.append(self.cs_n[0].eq(1))
-            ops.append(self.cs_n[1].eq(1))
+            ops.append(self.cs_n[0].eq(Replicate(1, cs_n_width)))
+            ops.append(self.cs_n[1].eq(Replicate(1, cs_n_width)))
         else:
-            ops.append(self.cs_n[0].eq(0)) # CS_n needs to be low on the first cycle
-            ops.append(self.cs_n[1].eq(1)) # CS_n needs to be high on the second cycle
+            ops.append(self.cs_n[0].eq(self.dfi.cs_n)) # CS_n needs to be low on the first cycle
+            ops.append(self.cs_n[1].eq(Replicate(1, cs_n_width))) # CS_n needs to be high on the second cycle
 
         return ops
 

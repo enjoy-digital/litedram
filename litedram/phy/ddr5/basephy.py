@@ -4,7 +4,7 @@
 # Copyright (c) 2022 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
-from operator import or_, xor
+from operator import or_, and_, xor
 from functools import reduce
 
 from litedram.phy.sim_utils import SimLogger, log_level_getter
@@ -35,7 +35,7 @@ class DDR5Output:
         prefixes = [""] if not with_sub_channels else ["A_", "B_"]
 
         for prefix in prefixes:
-            setattr(self, prefix+'cs_n', [Signal(nphases, name=name and f"{name}_{i}_cs_n") for i in range(nranks)])
+            setattr(self, prefix+'cs_n', [Signal(2*nphases, reset=2*nphases-1, name=name and f"{name}_{i}_cs_n") for i in range(nranks)])
             setattr(self, prefix+'ca',   [Signal(2*nphases, name=name and f"{name}_{i}_ca") for i in range(14)]) # 2*nphases, as phy will run in ddr mode
             setattr(self, prefix+'par',  Signal(2*nphases, name=name and name+"par_n"))
 
@@ -395,7 +395,7 @@ class DDR5PHY(Module, AutoCSR):
 
         self._rst           = CSRStorage()
         self._rst_cdc       = cdc(self._rst.storage)
-        self._ddr_mode      = CSRStorage()
+        self._rdimm_mode    = CSRStorage()
 
         self._rdphase = CSRStorage(log2_int(nphases), reset=rdphase)
         self._wrphase = CSRStorage(log2_int(nphases), reset=wrphase)
@@ -515,20 +515,65 @@ class DDR5PHY(Module, AutoCSR):
             # DDR5 Commands --------------------------------------------------------------------------
 
             for rank in range(nranks):
-                self.comb += getattr(self.out, prefix + 'cs_n')[rank].eq(Cat([getattr(phase, prefix).cs_n[rank] for phase in dfi.phases]))
+                carry_cs_n = Signal(reset=1)
+                self.sync += [
+                    If(dfi.phases[-1].mode_2n,
+                        carry_cs_n.eq(getattr(dfi.phases[-1], prefix).cs_n[rank])
+                    ).Else(
+                        carry_cs_n.eq(1)
+                    )
+                ]
+
+                for j, phase in enumerate(dfi.phases):
+                    self.comb += [
+                        If(~phase.mode_2n,
+                            getattr(self.out, prefix + 'cs_n')[rank][2*j].eq(
+                                getattr(phase, prefix).cs_n[rank] & (carry_cs_n if j == 0 else 1)
+                            ),
+                            getattr(self.out, prefix + 'cs_n')[rank][2*j+1].eq(
+                                getattr(phase, prefix).cs_n[rank]
+                            ),
+                        ).Else(
+                            getattr(self.out, prefix + 'cs_n')[rank][2*j].eq(
+                                carry_cs_n if j == 0 else getattr(dfi.phases[j-1], prefix).cs_n[rank]
+                            ),
+                            getattr(self.out, prefix + 'cs_n')[rank][2*j+1].eq(
+                                getattr(phase, prefix).cs_n[rank]
+                            ),
+                        ),
+                    ]
+
             self.comb += getattr(self.out, prefix + 'par').eq(
                 Cat([reduce(xor, getattr(phase, prefix).address[7*i:7+7*i])] for phase in dfi.phases for i in range(2)))
 
-            for bit in range(7):
-                self.comb += (
-                    If(self._ddr_mode.storage,
-                        getattr(self.out, prefix+'ca')[bit].eq(
-                            Cat([getattr(phase, prefix).address[bit + 7*i] for phase in dfi.phases for i in range (2)]))
-                    ).Else(
-                        getattr(self.out, prefix+'ca')[bit].eq(
-                            Cat([getattr(phase, prefix).address[bit] for phase in dfi.phases for _ in range (2)]))
-                    )
+            stage_cnt = Signal()
+            self.sync += [
+                If(~reduce(and_, getattr(phase, prefix).cs_n),
+                    stage_cnt.eq(0),
+                ).Else(
+                    stage_cnt.eq(~stage_cnt),
                 )
+            ]
+
+            for bit in range(7):
+                for j, phase in enumerate(dfi.phases):
+                    self.comb += [
+                        If(self._rdimm_mode.storage,
+                            If(phase.mode_2n,
+                                If(~reduce(and_, getattr(phase, prefix).cs_n) | stage_cnt == 0,
+                                    getattr(self.out, prefix+'ca')[bit].eq(Replicate(getattr(phase, prefix).address[bit], 2))
+                                ).Else(
+                                    getattr(self.out, prefix+'ca')[bit].eq(Replicate(getattr(phase, prefix).address[bit + 7], 2))
+                                )
+                            ).Else(
+                                getattr(self.out, prefix+'ca')[bit].eq(
+                                    Cat([getattr(phase, prefix).address[bit + 7*i] for phase in dfi.phases for i in range (2)]))
+                            ),
+                        ).Else(
+                            getattr(self.out, prefix+'ca')[bit].eq(
+                                Cat([getattr(phase, prefix).address[bit] for phase in dfi.phases for _ in range (2)]))
+                        ),
+                    ]
             for bit in range(7, 14):
                 self.comb += getattr(self.out, prefix+'ca')[bit].eq(
                     Cat([getattr(phase, prefix).address[bit] for phase in dfi.phases for _ in range (2)]))

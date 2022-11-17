@@ -46,6 +46,7 @@ jobs:
           git -C ../litex remote add antmicro https://github.com/antmicro/litex.git
           git -C ../litex fetch antmicro
           git -C ../litex checkout antmicro/mdudek/liblitedram_ddr5support
+          git -C ../litex-boards checkout 6c05ddae1ba4d2b363e80001919e4682745cc3cf
 
       # Install RISC-V GCC
       - name: Install RISC-V GCC
@@ -61,7 +62,6 @@ jobs:
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           git clone https://github.com/verilator/verilator
           cd verilator
-          git checkout v4.228
           autoconf
           ./configure
           make -j$(nproc)

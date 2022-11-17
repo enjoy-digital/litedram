@@ -115,7 +115,18 @@ class CommandsSim(Module, AutoCSR):
         self.log.add_csrs()
 
         # Mode Registers storage
-        self.mode_regs = Array([Signal(8) if i != 8 else Signal(8, reset=8) for i in range(256)])
+        registers = []
+        for i in range(256):
+            if i == 2:
+                registers.append(Signal(8, reset=0))
+            elif i == 8:
+                registers.append(Signal(8, reset=8))
+            elif i == 15:
+                registers.append(Signal(8, reset=3))
+            else:
+                registers.append(Signal(8))
+
+        self.mode_regs = Array(registers)
         # Active banks
         self.number_of_banks = 2 ** geom_settings.bankbits;
         self.active_banks = Array([Signal() for _ in range(self.number_of_banks)])
@@ -127,8 +138,8 @@ class CommandsSim(Module, AutoCSR):
         self.submodules += self.data, self.data_en
 
         # CS_n/CA shift registers
-        cs_n = TappedDelayLine(getattr(pads, prefix+'cs_n'), ntaps=2)
-        ca = TappedDelayLine(getattr(pads, prefix+'ca'), ntaps=2)
+        cs_n = TappedDelayLine(getattr(pads, prefix+'cs_n'), ntaps=3)
+        ca = TappedDelayLine(getattr(pads, prefix+'ca'), ntaps=3)
         self.submodules += cs_n, ca
 
         self.cs_n_low   = Signal(14)
@@ -136,6 +147,7 @@ class CommandsSim(Module, AutoCSR):
         self.handle_1_tick_cmd  = Signal()
         self.handle_2_tick_cmd  = Signal()
         self.handled_1_tick_cmd = Signal()
+        self.mr13_set   = Signal()
         self.mpc_op     = Signal(8)
         self.bl_max     = bl_max
 
@@ -153,10 +165,19 @@ class CommandsSim(Module, AutoCSR):
 
         self.comb += [
             If(cmds_enabled,
-                If(Cat(cs_n.taps) == 0b00,
+                If(~self.mode_regs[2][2],
+                    If(Cat(cs_n.taps) == 0b011,
+                        self.handle_2_tick_cmd.eq(1),
+                        self.cs_n_low.eq(ca.taps[2]),
+                        self.cs_n_high.eq(ca.taps[0]),
+                    ).Elif((Cat(cs_n.taps) == 0b010) | (Cat(cs_n.taps) == 0b000),
+                        self.handle_1_tick_cmd.eq(1),
+                        self.cs_n_low.eq(ca.taps[2]),
+                    ),
+                ).Elif(Cat(cs_n.taps)[0:2] == 0b00,
                     self.handle_1_tick_cmd.eq(1),
                     self.cs_n_low.eq(ca.taps[1]),
-                ).Elif(Cat(cs_n.taps) == 0b01,
+                ).Elif(Cat(cs_n.taps)[0:2] == 0b01,
                     self.handle_2_tick_cmd.eq(1),
                     self.cs_n_low.eq(ca.taps[1]),
                     self.cs_n_high.eq(ca.taps[0]),
@@ -266,14 +287,22 @@ class CommandsSim(Module, AutoCSR):
         fsm.act("MRW",
             cmds_enabled.eq(1),
             If(self.handle_2_tick_cmd & ~cmd_handlers["MRW"] & ~cmd_handlers["MPC"] & ~self.handled_1_tick_cmd,
-                self.log.warn(prefix+"Only MRW/MRR commands expected before ZQ calibration"),
+                self.log.warn(prefix+"Only MPC/MRW/MRR commands expected before ZQ calibration"),
                 self.log.warn(" ".join("{}=%d".format(cmd) for cmd in cmd_handlers.keys()), *cmd_handlers.values()),
                 self.log.warn(prefix+"Unexpected command: cs_n_low=0b%14b cs_n_high=0b%14b", self.cs_n_low, self.cs_n_high)
             ),
             If(cmd_handlers["MPC"],
-                If(self.mpc_op != MPC.ZQC_START,
-                    self.log.error(prefix+"ZQC-START expected, got op=0b%07b", self.mpc_op)
-                ).Else(
+                If((self.mpc_op == MPC.DLL_RST) & self.mr13_set,
+                    NextState("DLL_RESET")  # Tf
+                ),
+            ),
+        )
+        fsm.act("DLL_RESET",
+            cmds_enabled.eq(1),
+            If(cmd_handlers["MPC"],
+                If((self.mpc_op != MPC.ZQC_START) & (self.mpc_op != MPC.DLL_RST),
+                    self.log.error(prefix+"DLL-RESET OR ZQC-START expected, got op=0b%07b", self.mpc_op)
+                ).Elif(self.mpc_op == MPC.ZQC_START,
                     NextState("ZQC")  # Tf
                 )
             ),
@@ -281,10 +310,11 @@ class CommandsSim(Module, AutoCSR):
         fsm.act("ZQC",
             self.tzqcal.trigger.eq(1),
             cmds_enabled.eq(1),
-            If(self.handle_2_tick_cmd,
-                If(~(cmd_handlers["MPC"] & (self.mpc_op == MPC.ZQC_LATCH)),
+            If(self.handle_2_tick_cmd | self.handle_1_tick_cmd,
+                If(~(cmd_handlers["MPC"] &
+                   ((self.mpc_op == MPC.ZQC_LATCH) | (self.mpc_op == MPC.ZQC_START))),
                     self.log.error(prefix+"Expected ZQC-LATCH")
-                ).Else(
+                ).Elif((self.mpc_op == MPC.ZQC_LATCH),
                     If(~self.tzqcal.ready,
                         self.log.warn(prefix+"tZQCAL violated")
                     ),
@@ -294,10 +324,6 @@ class CommandsSim(Module, AutoCSR):
         )
         fsm.act("NORMAL",
             cmds_enabled.eq(1),
-            self.tzqlat.trigger.eq(1),
-            If(self.handle_2_tick_cmd & ~self.tzqlat.ready,
-                self.log.warn(prefix+"tZQLAT violated")
-            ),
         )
 
         # Log state transitions
@@ -339,9 +365,15 @@ class CommandsSim(Module, AutoCSR):
                 self.log.info(prefix+"MRW: MR[%d] = 0x%02x", ma, op),
                 op.eq(self.cs_n_high[:8]),
                 ma.eq(self.cs_n_low[5:13]),
-                NextValue(self.mode_regs[ma], op),
             ],
             handle_cmd = self.handle_2_tick_cmd,
+            sync = [
+                If(ma == 2,
+                    self.mode_regs[2].eq(Cat(op[0:2], self.mode_regs[2][2], op[3:])),
+                ).Else(
+                    self.mode_regs[ma].eq(op),
+                ),
+            ],
         )
 
     def nop_handler(self, prefix):
@@ -420,6 +452,11 @@ class CommandsSim(Module, AutoCSR):
 
     def mpc_handler(self, prefix):
         cases = {value: self.log.info(prefix+f"MPC: {name}") for name, value in MPC.__members__.items()}
+        cases[0b00001000] = [self.log.info(prefix+"MPC: 2N")]
+        cases[0b00001001] = [self.log.info(prefix+"MPC: 1N")]
+        base = 0b10000000
+        for i  in range(16):
+            cases[base+i] = [self.log.info(prefix+f"MPC: tCCD_L {i}")]
         cases["default"] = self.log.error(prefix+"Invalid MPC op=0b%08b", self.mpc_op)
         return self.cmd_one_step("MPC",
             cond = self.cs_n_low[:5] == 0b01111,
@@ -427,7 +464,15 @@ class CommandsSim(Module, AutoCSR):
                 self.mpc_op.eq(self.cs_n_low[5:13]),
                 Case(self.mpc_op, cases)
             ],
-            handle_cmd = self.handle_2_tick_cmd,
+            handle_cmd = self.handle_2_tick_cmd | self.handle_1_tick_cmd,
+            sync = [
+                If(self.mpc_op[1:] == 0b0000100,
+                    self.mode_regs[2][2].eq(self.mpc_op[0]),
+                ).Elif(self.mpc_op[4:] == 0b1000,
+                    self.mr13_set.eq(1),
+                    self.mode_regs[13][0:4].eq(self.mpc_op[0:4]),
+                ),
+            ],
         )
 
     def read_handler(self, prefix):
@@ -590,6 +635,9 @@ class DataSim(Module, AutoCSR):
         wr_preamble_trigger = Signal()
         wr_preamble_width   = Signal(max=9)
 
+        # SimPHY does not support DQ/DQS traning yet, when in 2N mode reduce CL and CLW latency by 1
+        n2_mode      = Signal()
+
         read = Signal()
 
         self.submodules.write_delay    = ClockDomainsRenamer(cd_dq_wr)(TappedDelayLine(write, ntaps=1))
@@ -617,13 +665,17 @@ class DataSim(Module, AutoCSR):
                 0: wr_postamble.eq(0b0),
                 1: wr_postamble.eq(0b000),
             }),
-            write.eq(cmds_sim.data_en.taps[cwl-2] & cmds_sim.data.source.valid & cmds_sim.data.source.we),
-            wr_preamble_trigger.eq(cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 2] &
-                                   ~cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 1] &
+            Case(cmds_sim.mode_regs[2][2], {
+                0: n2_mode.eq(0b1),
+                1: n2_mode.eq(0b0),
+            }),
+            write.eq(cmds_sim.data_en.taps[cwl - 2 - n2_mode] & cmds_sim.data.source.valid & cmds_sim.data.source.we),
+            wr_preamble_trigger.eq(cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 2 - n2_mode] &
+                                   ~cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 1 - n2_mode] &
                                    cmds_sim.data.source.valid &
                                    cmds_sim.data.source.we),
 
-            read.eq(cmds_sim.data_en.taps[cl-2] & cmds_sim.data.source.valid & ~cmds_sim.data.source.we),
+            read.eq(cmds_sim.data_en.taps[cl - 2 - n2_mode] & cmds_sim.data.source.valid & ~cmds_sim.data.source.we),
 
             cmds_sim.data.source.ready.eq(write | read),
             masked.eq(write & cmds_sim.data.source.masked),

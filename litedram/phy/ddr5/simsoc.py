@@ -8,6 +8,7 @@ import os
 import argparse
 from random import randrange
 
+from operator import or_, and_
 from migen import *
 
 from litex.build.generic_platform import Pins, Subsignal
@@ -225,17 +226,20 @@ class SimSoC(SoCCore):
 
         # DDR5 Sim -------------------------------------------------------------------------------
         prefixes = [""] if not with_sub_channels else ["A_", "B_"]
+        alerts = {}
         for prefix in prefixes:
+            alerts[prefix+"alert"] = Signal()
             setattr(self.submodules, prefix+'ddr5sim', DDR5Sim(
-                pads          = self.ddrphy.pads,
-                cl            = self.sdram.controller.settings.phy.cl,
-                cwl           = self.sdram.controller.settings.phy.cwl,
-                sys_clk_freq  = sys_clk_freq,
-                log_level     = log_level,
-                geom_settings = sdram_module.geom_settings,
-                prefix        = prefix
+                    pads          = self.ddrphy.pads,
+                    cl            = self.sdram.controller.settings.phy.cl,
+                    cwl           = self.sdram.controller.settings.phy.cwl,
+                    sys_clk_freq  = sys_clk_freq,
+                    log_level     = log_level,
+                    geom_settings = sdram_module.geom_settings,
+                    prefix        = prefix
             ))
             self.add_csr(prefix+"ddr5sim")
+            self.comb += self.ddrphy.pads.alert_n.eq(reduce(and_, alerts.values()))
 
         self.add_constant("CONFIG_SIM_DISABLE_BIOS_PROMPT")
         if finish_after_memtest:
@@ -248,16 +252,6 @@ class SimSoC(SoCCore):
         timings = {"tCK": (1e9 / sys_clk_freq) / nphases}
         for name in _speedgrade_timings + _technology_timings:
             timings[name] = sdram_module.get(name)
-
-        #self.submodules.dfi_timings_checker = DFITimingsChecker(
-        #    dfi          = self.ddrphy.dfi,
-        #    nbanks       = 2**self.sdram.controller.settings.geom.bankbits,
-        #    nphases      = nphases,
-        #    timings      = timings,
-        #    refresh_mode = sdram_module.timing_settings.fine_refresh_mode,
-        #    memtype      = self.sdram.controller.settings.phy.memtype,
-        #    verbose      = False,
-        #)
 
         # Debug info -------------------------------------------------------------------------------
         def dump(obj):

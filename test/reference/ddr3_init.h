@@ -4,6 +4,7 @@
 #include <hw/common.h>
 #include <generated/csr.h>
 
+#define MEMORY_TYPE_DDR3
 #define DFII_CONTROL_SEL 0x01
 #define DFII_CONTROL_CKE 0x02
 #define DFII_CONTROL_ODT 0x04
@@ -21,6 +22,7 @@
 #define SDRAM_PHY_DATABITS 64
 #define SDRAM_PHY_DFI_DATABITS 128
 #define SDRAM_PHY_PHASES 4
+#define SDRAM_PHY_RANKS 1
 #define SDRAM_PHY_CL 7
 #define SDRAM_PHY_CWL 6
 #define SDRAM_PHY_CMD_LATENCY 0

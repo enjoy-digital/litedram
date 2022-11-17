@@ -71,26 +71,11 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
         self.settings.read_leveling = True
         self.settings.delays = 1
 
-        common = [
-            ("ck_t", 1),
-            ("ck_c", 1),
-            ("reset_n", 1),
-            ("alert_n", 1),
-        ]
-        per_channel = [
-            ('cs_n', nranks, False),
-            ('ca', 14, False),
-            ('par', 1, False),
-            ('dq', databits, True),
-            ('dm_n',  databits // dq_dqs_ratio, True),
-            ('dqs_t',  databits // dq_dqs_ratio, True),
-            ('dqs_c',  databits // dq_dqs_ratio, True),
-        ]
         channels_prefix = [""] if not with_sub_channels else ["A_", "B_"]
         delay = lambda sig, cycles: delayed(self, sig, cycles=cycles)
 
-        cs      = dict(clkdiv="sys2x", clk="sys4x_180", xilinx=True)
-        cmd     = dict(clkdiv="sys2x", clk="sys4x_90_ddr", xilinx=True)
+        cs      = dict(clkdiv="sys2x", clk="sys4x_ddr", xilinx=True)
+        cmd     = dict(clkdiv="sys2x", clk="sys4x_ddr", xilinx=True)
         ddr     = dict(clkdiv="sys2x", clk="sys4x_ddr", xilinx=True)
         ddr_90  = dict(clkdiv="sys2x", clk="sys4x_90_ddr", xilinx=True)
 
@@ -98,6 +83,10 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
         if aligned_reset_zero:
             ddr["reset_cnt"] = 0
             ddr["aligned"] = True
+            cs["reset_cnt"] = 0
+            cs["aligned"] = True
+            cmd["reset_cnt"] = 0
+            cmd["aligned"] = True
 
         # Clock is shifted 180 degrees to get rising edge in the middle of SDR signals.
         # To achieve that we send negated clock on clk (clk_p).
@@ -143,13 +132,11 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
 
             # Command/address
             for it, (basephy_cs, pad) in enumerate(zip(getattr(self.out, prefix+'cs_n'), getattr(self.pads, prefix+'cs_n'))):
-                delay_out = Signal.like(basephy_cs)
-                self.sync += delay_out.eq(basephy_cs)
-                cdc_out = Signal(len(delay_out)//2)
+                cdc_out = Signal(len(basephy_cs)//2)
                 simple_cdc = SimpleCDC(
                     clkdiv="sys", clk="sys2x",
-                    i_dw=len(delay_out), o_dw=len(cdc_out),
-                    i=delay_out, o=cdc_out,
+                    i_dw=len(basephy_cs), o_dw=len(cdc_out),
+                    i=basephy_cs, o=cdc_out,
                     name=f"{prefix}cs_n_{it}",
                     register=True,
                 )
@@ -157,15 +144,11 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
                 self.ser(i=cdc_out, o=pad, name=f'{prefix}cs_n_{it}', **cs)
 
             for it, (basephy_ca, pad) in enumerate(zip(getattr(self.out, prefix+'ca'), getattr(self.pads, prefix+'ca'))):
-                delay_ca = Signal()
-                out_ca = Signal.like(basephy_ca)
-                self.sync += delay_ca.eq(basephy_ca[-1])
-                self.sync += out_ca.eq(Cat(delay_ca, basephy_ca[0:-1]))
-                cdc_out_ca = Signal(len(out_ca)//2)
+                cdc_out_ca = Signal(len(basephy_ca)//2)
                 simple_cdc = SimpleCDC(
                     clkdiv="sys", clk="sys2x",
-                    i_dw=len(out_ca), o_dw=len(cdc_out_ca),
-                    i=out_ca, o=cdc_out_ca,
+                    i_dw=len(basephy_ca), o_dw=len(cdc_out_ca),
+                    i=basephy_ca, o=cdc_out_ca,
                     name=f"{prefix}ca_{it}",
                     register=True,
                 )
@@ -175,15 +158,11 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
             basephy_par = getattr(self.out, prefix+'par')
             pad = getattr(self.pads, prefix+'par')
 
-            delay_par = Signal()
-            out_par = Signal.like(basephy_par)
-            self.sync += delay_par.eq(basephy_par[-1])
-            self.sync += out_par.eq(Cat(delay_par, basephy_par[0:-1]))
             cdc_out_par = Signal(len(basephy_par)//2)
             simple_cdc = SimpleCDC(
                 clkdiv="sys", clk="sys2x",
-                i_dw=len(out_par), o_dw=len(cdc_out_par),
-                i=out_par, o=cdc_out_par,
+                i_dw=len(basephy_par), o_dw=len(cdc_out_par),
+                i=basephy_par, o=cdc_out_par,
                 name=f"{prefix}par_{it}",
                 register=True,
             )
