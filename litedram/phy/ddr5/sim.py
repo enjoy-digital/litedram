@@ -11,7 +11,7 @@ from collections import defaultdict, OrderedDict
 
 from migen import *
 
-from litex.soc.interconnect.stream import ClockDomainCrossing
+from litex.soc.interconnect.stream import AsyncFIFO
 from litex.soc.interconnect.csr import AutoCSR
 
 from litedram.common import TappedDelayLine
@@ -58,16 +58,19 @@ class DDR5Sim(Module, AutoCSR):
         cd_dq_rd  = "sys4x_p_dimm"
         cd_dqs_rd = "sys4x_p_dimm"
 
-        self.submodules.data_cdc = ClockDomainCrossing(
-            [("we", 1),
-             ("masked", 1),
-             ("bank", geom_settings.bankbits),
-             ("row", geom_settings.rowbits),
-             ("col", geom_settings.colbits),
-             ("bl_width", bl_max.bit_length()),
-            ],
-            cd_from=cd_cmd,
-            cd_to=cd_dq_wr)
+        self.submodules.data_cdc = ClockDomainsRenamer(
+            {"write": cd_cmd,"read": cd_dq_wr}
+        )(
+            AsyncFIFO(
+                [("we", 1),
+                 ("masked", 1),
+                 ("bank", geom_settings.bankbits),
+                 ("row", geom_settings.rowbits),
+                 ("col", geom_settings.colbits),
+                 ("bl_width", bl_max.bit_length()),
+                ],
+                depth=64)
+        )
 
         direct_dq_controll = Signal()
         dq_value = Signal()
@@ -750,11 +753,11 @@ class DataSim(Module, AutoCSR):
 
         write        = Signal()
         masked       = Signal()
-        wr_postamble = Signal(3)
+        wr_postamble         = Signal(3)
         wr_postamble_trigger = Signal()
         wr_postamble_width   = Signal(max=4)
 
-        wr_preamble  = Signal(8)
+        wr_preamble         = Signal(8)
         wr_preamble_trigger = Signal()
         wr_preamble_width   = Signal(max=9)
 
@@ -762,43 +765,80 @@ class DataSim(Module, AutoCSR):
         n2_mode      = Signal()
 
         read = Signal()
+        rd_postamble         = Signal(3)
+        rd_postamble_trigger = Signal()
+        rd_postamble_width   = Signal(max=4)
+
+        rd_pre_sel          = Signal(3)
+        rd_preamble         = Signal(8)
+        rd_preamble_trigger = Signal()
+        rd_preamble_width   = Signal(max=9)
 
         self.submodules.write_delay    = ClockDomainsRenamer(cd_dq_wr)(TappedDelayLine(write, ntaps=1))
         self.submodules.masked_delay   = ClockDomainsRenamer(cd_dq_wr)(TappedDelayLine(masked, ntaps=1))
         self.submodules.read_delay     = ClockDomainsRenamer(cd_dq_rd)(TappedDelayLine(read, ntaps=1))
 
         self.comb += [
-            Case(cmds_sim.mode_regs[8][3:5] , {
+            rd_pre_sel.eq(cmds_sim.mode_regs[8][:3]),
+            Case(cmds_sim.mode_regs[8][:3], {
+                0: rd_preamble_width.eq(2), # nCLK * 2 as we are working with 2*dram freq
+                1: rd_preamble_width.eq(4), #
+                2: rd_preamble_width.eq(4), #
+                3: rd_preamble_width.eq(6), #
+                4: rd_preamble_width.eq(8), #
+                "default": self.log.error(prefix+"Read Preamble %d is reserved", rd_pre_sel),
+            }),
+            Case(cmds_sim.mode_regs[8][:3], {
+                0: rd_preamble.eq(0b01),
+                1: rd_preamble.eq(0b0100),
+                2: rd_preamble.eq(0b0111),
+                3: rd_preamble.eq(0b010000),
+                4: rd_preamble.eq(0b01010000),
+                "default": self.log.error(prefix+"Read Preamble %d is reserved", rd_pre_sel),
+            }),
+            Case(cmds_sim.mode_regs[8][3:5], {
                 0: self.log.error(prefix+"Write Preamble 0b00 is reserved"),
                 1: wr_preamble_width.eq(4), # nCLK * 2 as we are working with 2*dram freq
                 2: wr_preamble_width.eq(6), #
                 3: wr_preamble_width.eq(8), #
             }),
-            Case(cmds_sim.mode_regs[8][3:5] , {
+            Case(cmds_sim.mode_regs[8][3:5], {
                 0: self.log.error(prefix+"Write Preamble 0b00 is reserved"),
                 1: wr_preamble.eq(0b0100),
                 2: wr_preamble.eq(0b010000),
                 3: wr_preamble.eq(0b01010000),
             }),
-            Case(cmds_sim.mode_regs[8][7] , {
-                0: wr_postamble_width.eq(1),
-                1: wr_postamble_width.eq(3),
+            Case(cmds_sim.mode_regs[8][6], {
+                0: rd_postamble_width.eq(0),
+                1: rd_postamble_width.eq(2),
             }),
-            Case(cmds_sim.mode_regs[8][7] , {
-                0: wr_postamble.eq(0b0),
-                1: wr_postamble.eq(0b000),
+            Case(cmds_sim.mode_regs[8][6], {
+                0: rd_postamble.eq(0),
+                1: rd_postamble.eq(0b10),
+            }),
+            Case(cmds_sim.mode_regs[8][7], {
+                0: wr_postamble_width.eq(0),
+                1: wr_postamble_width.eq(2),
+            }),
+            Case(cmds_sim.mode_regs[8][7], {
+                0: wr_postamble.eq(0),
+                1: wr_postamble.eq(0b00),
             }),
             Case(cmds_sim.mode_regs[2][2], {
                 0: n2_mode.eq(0b1),
                 1: n2_mode.eq(0b0),
             }),
-            write.eq(cmds_sim.data_en.taps[cwl - 2 - n2_mode] & cmds_sim.data.source.valid & cmds_sim.data.source.we),
-            wr_preamble_trigger.eq(cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 2 - n2_mode] &
-                                   ~cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 1 - n2_mode] &
+            write.eq(cmds_sim.data_en.taps[cwl - 3 - n2_mode] & cmds_sim.data.source.valid & cmds_sim.data.source.we),
+            wr_preamble_trigger.eq(cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 3 - n2_mode] &
+                                   ~cmds_sim.data_en.taps[cwl - wr_preamble_width[1:] - 2 - n2_mode] &
                                    cmds_sim.data.source.valid &
                                    cmds_sim.data.source.we),
 
             read.eq(cmds_sim.data_en.taps[cl - 2 - n2_mode] & cmds_sim.data.source.valid & ~cmds_sim.data.source.we),
+            rd_preamble_trigger.eq(cmds_sim.data_en.taps[cl - rd_preamble_width[1:] - 2 - n2_mode] &
+                                   ~cmds_sim.data_en.taps[cl - rd_preamble_width[1:] - 1 - n2_mode] &
+                                   cmds_sim.data.source.valid &
+                                   ~cmds_sim.data.source.we),
 
             cmds_sim.data.source.ready.eq(write | read),
             masked.eq(write & cmds_sim.data.source.masked),
@@ -816,6 +856,11 @@ class DataSim(Module, AutoCSR):
             [self.dqs_wr.postamble[i].eq(wr_postamble[i]) for i in range(3)],
 
             self.dqs_rd.trigger.eq(read),
+            self.dqs_rd.preamble_width.eq(rd_preamble_width),
+            [self.dqs_rd.preamble[i].eq(rd_preamble[i]) for i in range(8)],
+
+            self.dqs_rd.postamble_width.eq(rd_postamble_width),
+            [self.dqs_rd.postamble[i].eq(rd_postamble[i]) for i in range(3)],
         ]
 
         self.comb += [
@@ -846,7 +891,6 @@ class DataBurst(Module, AutoCSR):
         self.trigger  = Signal()
         self.burst_counter = Signal(max=bl_max - 1)
         self.burst_counter_n = Signal(max=bl_max - 1)
-        self.comb += self.burst_counter_n.eq(self.burst_counter-1)
         self.cd_negedge = negedge_domain
 
     def add_fsm(self, ops, n_ops, on_trigger=[], n_on_trigger=[]):
@@ -870,16 +914,21 @@ class DataBurst(Module, AutoCSR):
             ),
         )
         n_fsm.act("IDLE",
-            If(fsm.ongoing("BURST"),
+            NextValue(self.burst_counter_n, 1),
+            If(self.trigger,
                 *n_on_trigger,
                 NextState("BURST")
             )
         )
         n_fsm.act("BURST",
             *n_ops,
-            If(fsm.ongoing("IDLE"),
-                NextState("IDLE"),
-            )
+            NextValue(self.burst_counter_n, self.burst_counter_n + 2),
+            If(self.burst_counter_n == self.bl - 1 & ~self.trigger,
+                NextState("IDLE")
+            ).Elif(self.burst_counter_n == self.bl - 1, # Back to back burst
+                *n_on_trigger,
+                NextValue(self.burst_counter, 1),
+            ),
         )
 
 class DQBurst(DataBurst):
@@ -918,17 +967,6 @@ class DQWrite(DQBurst):
                 NextValue(self.burst_counter, 2),
                 self.log.debug(prefix+"P_WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%02x, dm=0x%01b",
                     self.burst_counter, bank, row, self.col_burst, dq, dmi, once=False),
-            ],
-            n_on_trigger = [
-                self.log.debug(prefix+"N_WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%02x, dm=0x%01b",
-                    self.burst_counter_n, bank, row, self.col_burst, dq, dmi, once=False),
-                If(masked,
-                    ports[bank][1].we.eq(~dmi),  # DMI high masks the beat
-                ).Else(
-                    ports[bank][1].we.eq(2**len(ports[bank][0].we) - 1),
-                ),
-                ports[bank][1].adr.eq(self.addr_n),
-                ports[bank][1].dat_w.eq(dq),
             ],
             ops = [
                 self.log.debug(prefix+"P_WRITE[%d]: bank=%d, row=%d, col=%d, dq=0x%02x, dm=0x%01b",
@@ -1067,20 +1105,24 @@ class DQSWrite(DataBurst):
         )
 
 class DQSRead(DataBurst):
-    def __init__(self, *, dqs_t, dqs_c, prefix, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, *, dqs_t, dqs_c, prefix, negedge_domain, **kwargs):
+        super().__init__(**kwargs, negedge_domain=negedge_domain)
         dqs0 = Signal()
+
+        self.preamble_trigger   = Signal()
+        self.preamble_width     = Signal(max=9)
+        self.preamble           = Array(Signal() for _ in range(8))
+
+        self.postamble_width    = Signal(max=4)
+        self.postamble          = Array(Signal() for _ in range(3))
+
+        clk = ClockSignal()
+        n_clk = ClockSignal(negedge_domain)
+
+        self.comb += [i.eq(clk|n_clk) for i in dqs_t] + \
+                     [i.eq(~(clk|n_clk)) for i in dqs_c]
+
         self.add_fsm(
-            ops = [
-                *[i.eq(self.burst_counter[0]) for i in dqs_t],
-                *[i.eq(~self.burst_counter[0]) for i in dqs_c],
-            ],
-            n_ops = [
-                *[i.eq((self.burst_counter_n)[0]) for i in dqs_t],
-                *[i.eq(~(self.burst_counter_n)[0]) for i in dqs_c],
-            ],
-            on_trigger = [
-                *[i.eq(self.burst_counter[0]) for i in dqs_t],
-                *[i.eq(~self.burst_counter[0]) for i in dqs_c],
-            ],
+            ops = [],
+            n_ops = [],
         )
