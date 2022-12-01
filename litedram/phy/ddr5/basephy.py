@@ -363,10 +363,10 @@ class DDR5PHY(Module, AutoCSR):
         cwl_sys_latency = get_sys_latency(nphases, cwl)
         # For reads we need to account for ser+des+(1 full MC clock delay to accomodate latency from write) to make sure we get the data in-phase with sys clock
         # BitSlip adds delay
-        rdphase = get_sys_phase(nphases, cl_sys_latency, cl + cmd_latency +
-                                ser_latency.sys4x + des_latency.sys4x + 2 * 4 + rd_extra_delay.sys4x)
+        rdphase = get_sys_phase(nphases, cl_sys_latency, cmd_latency + rd_extra_delay.sys4x +
+                                ser_latency.sys4x + cl + des_latency.sys4x + 4 + 4)
         # BitSlip applies at least 1 cycle of delay to DQS and DQ lines, make MC think it need to send data earlier
-        wrphase = get_sys_phase(nphases, cwl_sys_latency, cwl + cmd_latency - 4)
+        wrphase = get_sys_phase(nphases, cwl_sys_latency, cwl - 1 + cmd_latency - 4)
 
         # When the calculated phase is negative, it means that we need to increase sys latency
         def updated_latency(phase, sys_latency):
@@ -599,9 +599,9 @@ class DDR5PHY(Module, AutoCSR):
 
             # wrtap is at least 5
             self.comb += [
-                old_tap.eq( Cat(wrdata_en.taps[wrtap + 1][1:], wrdata_en.taps[wrtap    ][0])),
-                now_tap.eq( Cat(wrdata_en.taps[wrtap    ][1:], wrdata_en.taps[wrtap - 1][0])),
-                next_tap.eq(Cat(wrdata_en.taps[wrtap - 1][1:], wrdata_en.taps[wrtap - 2][0])),
+                old_tap.eq( Cat(wrdata_en.taps[wrtap + 1])),
+                now_tap.eq( Cat(wrdata_en.taps[wrtap    ])),
+                next_tap.eq(Cat(wrdata_en.taps[wrtap - 1])),
             ]
 
             dqs_oe        = Signal(2*nphases)
