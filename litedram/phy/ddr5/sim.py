@@ -16,7 +16,7 @@ from litex.soc.interconnect.csr import AutoCSR
 
 from litedram.common import TappedDelayLine
 from litedram.phy.utils import delayed, edge
-from litedram.phy.sim_utils import SimLogger, PulseTiming, log_level_getter
+from litedram.phy.sim_utils import SimLogger, PulseTiming, log_level_getter, SimLoggerComb
 from litedram.phy.ddr5.commands import MPC
 from litedram import modules
 
@@ -68,6 +68,8 @@ class DDR5Sim(Module, AutoCSR):
                  ("row", geom_settings.rowbits),
                  ("col", geom_settings.colbits),
                  ("bl_width", bl_max.bit_length()),
+                 ("mrr", 1),
+                 ("mrr_data", 8),
                 ],
                 depth=64)
         )
@@ -118,7 +120,7 @@ class CommandsSim(Module, AutoCSR):
     """
     def __init__(self, pads, data_cdc, direct_dq_control, dq_value, *,
                  clk_freq, log_level, geom_settings, bl_max, prefix):
-        self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
+        self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq, clk_freq_cd="sys4x")
         self.log.add_csrs()
 
         # Mode Registers storage
@@ -282,7 +284,7 @@ class CommandsSim(Module, AutoCSR):
                     self.tinit5.trigger.eq(1),
                     NextState("EXIT-PD")
                 ),
-            ).Elif(~reduce(and_, getattr(pads, prefix+'ca')),
+            ).Elif(~reduce(and_, getattr(pads, prefix+'ca')) & ~self.tinit4.ready,
                 self.log.error(prefix+"CMD bus must be held high")
             ),
         )
@@ -364,7 +366,7 @@ class CommandsSim(Module, AutoCSR):
         ca_training.act("IDLE",
             ca_direct_control.eq(0),
             ca_direct_value.eq(0),
-            If(self.ca_training_start,
+            If(self.ca_training_start & self.handle_2_tick_cmd,
                 NextState("SAMPLE"),
                 NextValue(ca_training_counter, 0),
                 NextValue(ca_last_sampled_value, 0),
@@ -697,7 +699,8 @@ class DataSim(Module, AutoCSR):
     """
     def __init__(self, pads, cmds_sim, direct_dq_control, dq_value, *, cd_dq_wr, cd_dq_rd, cd_dqs_wr,
                  cd_dqs_rd, cl, cwl, clk_freq, log_level, geom_settings, bl_max, prefix):
-        self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
+        self.submodules.log   = log   = SimLogger(log_level=log_level, clk_freq=clk_freq)
+        self.submodules.log_n = log_n = SimLogger(log_level=log_level, clk_freq=clk_freq, clk_freq_cd="sys4x_n_dimm")
         self.log.add_csrs()
 
         nbanks = 2 ** geom_settings.bankbits
@@ -739,6 +742,7 @@ class DataSim(Module, AutoCSR):
         ) # Acording to JEDEC DQS and DQ for reads are edge alligned
         self.submodules.dqs_wr = ClockDomainsRenamer(cd_dqs_wr)(
             DQSWrite(dqs=getattr(pads, prefix+'dqs_t'),
+                     dqs_oe=getattr(pads, prefix+'dqs_t_oe'),
                      bl_width=bl_width,
                      negedge_domain="sys4x_n_dimm",
                      **dqs_kwargs)
@@ -846,21 +850,21 @@ class DataSim(Module, AutoCSR):
             self.dq_wr.trigger.eq(self.write_delay.output),
             self.dq_rd.trigger.eq(self.read_delay.output),
 
-            self.dqs_wr.trigger.eq(write),
+            self.dqs_wr.trigger.eq(self.write_delay.output),
 
             self.dqs_wr.preamble_trigger.eq(wr_preamble_trigger),
             self.dqs_wr.preamble_width.eq(wr_preamble_width),
             [self.dqs_wr.preamble[i].eq(wr_preamble[i]) for i in range(8)],
 
             self.dqs_wr.postamble_width.eq(wr_postamble_width),
-            [self.dqs_wr.postamble[i].eq(wr_postamble[i]) for i in range(3)],
+            [self.dqs_wr.postamble[i].eq(wr_postamble[i]) for i in range(2)],
 
             self.dqs_rd.trigger.eq(read),
             self.dqs_rd.preamble_width.eq(rd_preamble_width),
             [self.dqs_rd.preamble[i].eq(rd_preamble[i]) for i in range(8)],
 
             self.dqs_rd.postamble_width.eq(rd_postamble_width),
-            [self.dqs_rd.postamble[i].eq(rd_postamble[i]) for i in range(3)],
+            [self.dqs_rd.postamble[i].eq(rd_postamble[i]) for i in range(2)],
         ]
 
         self.comb += [
@@ -884,7 +888,7 @@ class DataSim(Module, AutoCSR):
 
 class DataBurst(Module, AutoCSR):
     def __init__(self, *, bl_width, bl_max, log_level, clk_freq, negedge_domain):
-        self.submodules.log = log = SimLogger(log_level=log_level, clk_freq=clk_freq)
+        self.submodules.log = log = SimLoggerComb(log_level=log_level, use_time=True)
         self.log.add_csrs()
 
         self.bl       = bl_width
@@ -997,6 +1001,16 @@ class DQRead(DQBurst):
                  nrows, ncols, bank, row, col, prefix, **kwargs):
         super().__init__(nrows=nrows, ncols=ncols, row=row, col=col, **kwargs)
         self.add_fsm(
+            on_trigger = [
+                self.log.debug(prefix+"READ[%d]: bank=%d, row=%d, col=%d, dq=0x%02x",
+                    self.burst_counter, bank, row, self.col_burst, dq, once=False),
+                ports[bank][0].we.eq(0),
+                ports[bank][0].adr.eq(self.addr_p),
+                NextValue(self.burst_counter, 2),
+                If(ClockSignal(),
+                    dq.eq(ports[bank][0].dat_r),
+                )
+            ],
             ops = [
                 self.log.debug(prefix+"READ[%d]: bank=%d, row=%d, col=%d, dq=0x%02x",
                     self.burst_counter, bank, row, self.col_burst, dq, once=False),
@@ -1014,7 +1028,7 @@ class DQRead(DQBurst):
                 If(ClockSignal(self.cd_negedge),
                     dq.eq(ports[bank][1].dat_r),
                 ),
-            ]
+            ],
         )
         self.comb += [
             If(direct_dq_control,
@@ -1023,86 +1037,240 @@ class DQRead(DQBurst):
         ]
 
 class DQSWrite(DataBurst):
-    def __init__(self, *, dqs, prefix, **kwargs):
+    def __init__(self, *, dqs, dqs_oe, prefix, **kwargs):
         super().__init__(**kwargs)
-        dqs0       = Signal()
-        postamble0 = Signal()
-        post_dqs0  = Signal()
-        preamble0  = Signal()
-        pre_dqs0   = Signal()
         self.preamble_trigger   = Signal()
         self.preamble_width     = Signal(max=9)
         self.preamble           = Array(Signal() for _ in range(8))
 
-        self.postamble_width    = Signal(max=4)
-        self.postamble          = Array(Signal() for _ in range(3))
+        preamble_sampled        = Array(Signal() for _ in range(8))
+        preamble_oe_sampled     = Array(Signal() for _ in range(8))
+        preamble_good           = Signal(reset=1)
+
+        preamble_               = [Signal(i) for i in range(2,9,2)]
+        preamble_sampled_       = [Signal(i) for i in range(2,9,2)]
+        preamble_oe_sampled_    = [Signal(i) for i in range(2,9,2)]
+
+        p_pre_dqs0      = Signal(reset=1)
+        n_pre_dqs0      = Signal(reset=0)
+        p_pre_dqs0_oe   = Signal()
+        n_pre_dqs0_oe   = Signal()
+        p_pre_counter = Signal(max=8)
+        n_pre_counter = Signal(max=8)
+
+        self.submodules.p_pre = p_pre = FSM()
+        self.submodules.n_pre = n_pre = ClockDomainsRenamer(self.cd_negedge)(FSM())
+        p_pre.act("IDLE",
+            NextValue(p_pre_counter, 0),
+            If(self.preamble_trigger,
+                NextState("PRECOUNT"),
+            )
+        )
+        p_pre.act("PRECOUNT",
+            p_pre_dqs0.eq(dqs[0]),
+            p_pre_dqs0_oe.eq(dqs_oe[0]),
+            self.log.info(prefix+"PREAMBLE_P: DQS preamble on bit=%d, dqs %d dqs_oe %d",
+                          p_pre_counter, p_pre_dqs0, p_pre_dqs0_oe),
+            NextValue(preamble_sampled[p_pre_counter], p_pre_dqs0),
+            NextValue(preamble_oe_sampled[p_pre_counter], p_pre_dqs0_oe),
+            NextValue(p_pre_counter, p_pre_counter + 2),
+            If((p_pre_counter == self.preamble_width - 2),
+                NextValue(p_pre_counter, 0),
+                NextState("CHECK"),
+            ),
+        )
+        pre_cases_= {}
+        for i in range(2,9,2):
+            signals = [(preamble_sampled[j]==self.preamble[j]) & preamble_oe_sampled[j] for j in range(i)]
+            pre_cases_[i] = NextValue(preamble_good, reduce(and_, signals));
+
+        p_pre.act("CHECK",
+            Case(self.preamble_width,
+                pre_cases_
+            ),
+            *[NextValue(preamble_sampled[i], 0) for i in range(8)],
+            *[NextValue(preamble_oe_sampled[i], 0) for i in range(8)],
+            NextState("IDLE"),
+        )
+        n_pre.act("IDLE",
+            NextValue(n_pre_counter, 1),
+            If(self.preamble_trigger,
+                NextState("DELAY"),
+            ),
+        )
+        n_pre.act("DELAY",
+            NextState("PRECOUNT"),
+        )
+        n_pre.act("PRECOUNT",
+            n_pre_dqs0.eq(dqs[0]),
+            n_pre_dqs0_oe.eq(dqs_oe[0]),
+            self.log.info(prefix+"PREAMBLE_N: DQS preamble on bit=%d, dqs %d dqs_oe %d",
+                          n_pre_counter, n_pre_dqs0, n_pre_dqs0_oe),
+            NextValue(preamble_sampled[n_pre_counter], n_pre_dqs0),
+            NextValue(preamble_oe_sampled[n_pre_counter], n_pre_dqs0_oe),
+            NextValue(n_pre_counter, n_pre_counter + 2),
+            If((n_pre_counter == self.preamble_width - 1),
+                NextValue(n_pre_counter, 0),
+                NextState("IDLE"),
+            ),
+        )
+        pre_error_cases_ = {}
+        for i in range(2,9,2):
+            pre_error_cases_[i] = [
+                preamble_[i//2-1].eq(Cat([self.preamble[j] for j in range(i)])),
+                preamble_sampled_[i//2-1].eq(Cat([preamble_sampled[j] for j in range(i)])),
+                preamble_oe_sampled_[i//2-1].eq(Cat([preamble_oe_sampled[j] for j in range(i)])),
+                self.log.error(prefix+"INCORRECT PREAMBLE: Expected preamble %b, got %b, DQS_oe %b",
+                    preamble_[i//2-1], preamble_sampled_[i//2-1], preamble_oe_sampled_[i//2-1],
+                ),
+            ]
+        self.sync += If(~preamble_good,
+            Case(self.preamble_width,
+                pre_error_cases_
+            ),
+            Finish()
+        )
+
+        p_dqs_sample    = Signal()
+        n_dqs_sample    = Signal()
+        p_dqs_sample_oe = Signal()
+        n_dqs_sample_oe = Signal()
+        n_dqs_skip      = Signal()
+        n_dqs_check     = Signal()
+        n_counter       = Signal.like(self.burst_counter_n)
 
         self.add_fsm(
             ops = [
-                dqs0.eq(dqs[0]),
-                If(dqs[0] != self.burst_counter[0],
-                    self.log.warn(prefix+"Wrong DQS=%d for cycle=%d", dqs0, self.burst_counter, once=False)
+                If((p_dqs_sample != 1) | ~p_dqs_sample_oe,
+                    self.log.warn(prefix+"DQS_P:Wrong DQS=%d for cycle=%d", p_dqs_sample, self.burst_counter),
                 ),
+                NextValue(p_dqs_sample, dqs[0]),
+                NextValue(p_dqs_sample_oe, dqs_oe[0]),
             ],
             n_ops = [
-                dqs0.eq(dqs[0]),
-                If(dqs[0] != (self.burst_counter_n)[0],
-                    self.log.warn(prefix+"Wrong DQS=%d for cycle=%d", dqs0, self.burst_counter, once=False)
+                n_counter.eq(self.burst_counter_n - 2),
+                If(((n_dqs_sample != 0) | ~n_dqs_sample_oe) & ~n_dqs_skip,
+                    self.log.warn(prefix+"DQS_N:Wrong DQS=%d for cycle=%d", n_dqs_sample, n_counter),
                 ),
+                NextValue(n_dqs_skip, 0),
+                NextValue(n_dqs_check, 1),
+                NextValue(n_dqs_sample, dqs[0]),
+                NextValue(n_dqs_sample_oe, dqs_oe[0]),
             ],
+            on_trigger = [
+                NextValue(p_dqs_sample, dqs[0]),
+                NextValue(p_dqs_sample_oe, dqs_oe[0]),
+            ],
+            n_on_trigger = [
+                NextValue(n_dqs_skip, 1),
+            ]
         )
+        self.n_fsm.actions["IDLE"] += [
+            If(n_dqs_check,
+                n_counter.eq(self.burst_counter_n - 2),
+                If((n_dqs_sample != 0) & ~n_dqs_skip,
+                    self.log.warn(prefix+"DQS_N:Wrong DQS=%d for cycle=%d", n_dqs_sample, n_counter),
+                ),
+            ),
+            NextValue(n_dqs_check, 0),
+        ]
 
-        post_counter = Signal(max=3)
-        self.submodules.post = post = FSM()
-        post.act("IDLE",
-            NextValue(post_counter, 0),
-            If(self.burst_counter == self.bl - 1 & ~self.trigger,
+        self.postamble_width    = Signal(max=3)
+        self.postamble          = Array(Signal() for _ in range(2))
+
+        postamble_sampled       = Array(Signal() for _ in range(2))
+        postamble_oe_sampled    = Array(Signal() for _ in range(2))
+        postamble_good          = Signal(reset=1)
+
+        postamble_              = [Signal(i) for i in range(2,3,2)]
+        postamble_sampled_      = [Signal(i) for i in range(2,3,2)]
+        postamble_oe_sampled_   = [Signal(i) for i in range(2,3,2)]
+
+        p_post_dqs0    = Signal(reset=1)
+        n_post_dqs0    = Signal(reset=0)
+        p_post_dqs0_oe = Signal()
+        n_post_dqs0_oe = Signal()
+
+        p_post_counter = Signal(max=3)
+        n_post_counter = Signal(max=3)
+        self.submodules.p_post = p_post = FSM()
+        self.submodules.n_post = n_post = ClockDomainsRenamer(self.cd_negedge)(FSM())
+        p_post.act("IDLE",
+            NextValue(p_post_counter, 0),
+            If((self.burst_counter == self.bl - 2) & ~self.trigger & (self.postamble_width  != 0),
+                p_post_dqs0.eq(dqs[0]),
+                p_post_dqs0_oe.eq(dqs_oe[0]),
+                self.log.info(prefix+"POSTAMBLE_P: DQS postamble on bit=%d, dqs %d dqs_oe %d",
+                              p_post_counter, p_post_dqs0, p_post_dqs0_oe),
+                NextValue(postamble_sampled[p_post_counter], p_post_dqs0),
+                NextValue(postamble_oe_sampled[p_post_counter], p_post_dqs0_oe),
+                NextValue(p_post_counter, p_post_counter + 2),
                 NextState("POSTCOUNT"),
             )
         )
-        post.act("POSTCOUNT",
-            NextValue(post_counter, post_counter + 1),
-            post_dqs0.eq(dqs[0]),
-            postamble0.eq(self.postamble[post_counter]),
-            If(~self.fsm.ongoing("BURST") &
-               dqs[0] != self.postamble[post_counter],
-                self.log.error(prefix+"Incorrect DQS postamble on bit=%d, expected:%d, got:%d",
-                                post_counter, postamble0, post_dqs0),
-                Finish()
-            ),
-            If(post_counter == self.postamble_width - 1,
-                NextState("IDLE")
+        p_post.act("POSTCOUNT",
+            p_post_dqs0.eq(dqs[0]),
+            p_post_dqs0_oe.eq(dqs_oe[0]),
+            self.log.info(prefix+"POSTAMBLE_P: DQS postamble on bit=%d, dqs %d dqs_oe %d",
+                          p_post_counter, p_post_dqs0, p_post_dqs0_oe),
+            NextValue(postamble_sampled[p_post_counter], p_post_dqs0),
+            NextValue(postamble_oe_sampled[p_post_counter], p_post_dqs0_oe),
+            NextValue(p_post_counter, p_post_counter + 2),
+            If((p_post_counter == self.postamble_width - 2),
+                NextValue(p_post_counter, 0),
+                NextState("CHECK"),
             ),
         )
-
-        pre_counter = Signal(max=8)
-        self.submodules.pre = pre = FSM()
-        pre.act("IDLE",
-            NextValue(pre_counter, 0),
-            If(self.preamble_trigger,
-                NextState("DELAY1")
+        post_cases_= {}
+        for i in range(0,3,2):
+            signals = [(postamble_sampled[j]==self.postamble[j]) & postamble_oe_sampled[j] for j in range(i)]
+            post_cases_[i] = NextValue(postamble_good, reduce(and_, signals, 1));
+        p_post.act("CHECK",
+            Case(self.postamble_width,
+                post_cases_
+            ),
+            NextState("IDLE"),
+        )
+        n_post.act("IDLE",
+            NextValue(n_post_counter, 1),
+            If((self.burst_counter_n == self.bl - 1) & ~self.trigger & (self.postamble_width  != 0),
+                NextState("POSTCOUNT"),
             )
         )
-        pre.act("DELAY1",
-            NextState("PRECOUNT"),
-        )
-        pre.act("PRECOUNT",
-            NextValue(pre_counter, pre_counter + 1),
-            pre_dqs0.eq(dqs[0]),
-            preamble0.eq(self.preamble[pre_counter]),
-            If(~self.fsm.ongoing("BURST") &
-               ~self.post.ongoing("POSTCOUNT") &
-               dqs[0] != self.preamble[pre_counter],
-                self.log.error(prefix+"Incorrect DQS preamble on bit=%d, expected:%d, got:%d",
-                                pre_counter, preamble0, pre_dqs0),
-                Finish()
-            ),
-            If(pre_counter == self.preamble_width - 1 & ~self.preamble_trigger,
-                NextState("IDLE")
-            ).Elif( self.burst_counter == self.bl -1, # Back to back burst, can happen only if preamble is 4 clock long and transfers are BL8
-                NextValue(pre_counter, 0),
+        n_post.act("POSTCOUNT",
+            n_post_dqs0.eq(dqs[0]),
+            n_post_dqs0_oe.eq(dqs_oe[0]),
+            self.log.info(prefix+"POSTAMBLE_N: DQS postamble on bit=%d, dqs %d dqs_oe %d",
+                          n_post_counter, n_post_dqs0, n_post_dqs0_oe),
+            NextValue(postamble_sampled[n_post_counter], n_post_dqs0),
+            NextValue(postamble_oe_sampled[n_post_counter], n_post_dqs0_oe),
+            NextValue(n_post_counter, n_post_counter + 2),
+            If((n_post_counter == self.postamble_width - 1),
+                NextValue(n_post_counter, 0),
+                NextState("IDLE"),
             ),
         )
+        post_error_cases_ = {}
+        for i in range(2,3,2):
+            post_error_cases_[i] = [
+                postamble_[i//2-1].eq(Cat([self.postamble[j] for j in range(i)])),
+                postamble_sampled_[i//2-1].eq(Cat([postamble_sampled[j] for j in range(i)])),
+                postamble_oe_sampled_[i//2-1].eq(Cat([postamble_oe_sampled[j] for j in range(i)])),
+                self.log.error(prefix+"INCORRECT POSTAMBLE: Expected postamble %b, got %b, DQS_oe %b",
+                    postamble_[i//2-1], postamble_sampled_[i//2-1], postamble_oe_sampled_[i//2-1],
+                ),
+            ]
+        self.sync += If(~postamble_good,
+            Case(self.postamble_width,
+                post_error_cases_
+            ),
+            Finish()
+        )
+
+        self.fsm.finalize()
+        self.n_fsm.finalize()
+        p_pre.finalize()
+        n_pre.finalize()
 
 class DQSRead(DataBurst):
     def __init__(self, *, dqs_t, dqs_c, prefix, negedge_domain, **kwargs):
@@ -1110,19 +1278,20 @@ class DQSRead(DataBurst):
         dqs0 = Signal()
 
         self.preamble_trigger   = Signal()
-        self.preamble_width     = Signal(max=9)
+        self.preamble_width     = Signal(max=8)
         self.preamble           = Array(Signal() for _ in range(8))
 
-        self.postamble_width    = Signal(max=4)
-        self.postamble          = Array(Signal() for _ in range(3))
+        self.postamble_width    = Signal(max=2)
+        self.postamble          = Array(Signal() for _ in range(2))
 
         clk = ClockSignal()
         n_clk = ClockSignal(negedge_domain)
 
-        self.comb += [i.eq(clk|n_clk) for i in dqs_t] + \
-                     [i.eq(~(clk|n_clk)) for i in dqs_c]
-
         self.add_fsm(
             ops = [],
             n_ops = [],
+            on_trigger = [],
         )
+
+        self.comb += [If(self.trigger|self.fsm.ongoing("BURST"),i.eq(clk)) for i in dqs_t] +\
+                     [If(self.trigger|self.fsm.ongoing("BURST"),i.eq(~clk)) for i in dqs_c]
