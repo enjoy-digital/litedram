@@ -101,7 +101,7 @@ class BenchController:
 
     def load_rom(self, filename, delay=0):
         from litex.soc.integration.common import get_mem_data
-        rom_data = get_mem_data(filename, "little")
+        rom_data = get_mem_data(filename, endianness="little")
         for i, data in enumerate(rom_data):
             self.bus.write(self.bus.mems.rom.base + 4*i, data)
             print(f"{(i+1)*4}/{len(rom_data*4)} bytes\r", end="")

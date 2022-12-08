@@ -346,7 +346,7 @@ def reboot(wb):
 
 def load_rom(wb, filename):
     from litex.soc.integration.common import get_mem_data
-    rom_data = get_mem_data(filename, "little")
+    rom_data = get_mem_data(filename, endianness="little")
     print(f"load bios from: {filename} starting at 0x{wb.mems.rom.base:08x}")
     for i, data in enumerate(rom_data):
         wb.write(wb.mems.rom.base + 4*i, data)

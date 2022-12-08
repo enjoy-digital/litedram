@@ -315,7 +315,7 @@ def main():
         soc_kwargs["uart_name"] = "sim"
         sim_config.add_module("serial2console", "serial")
     if args.rom_init:
-        soc_kwargs["integrated_rom_init"] = get_mem_data(args.rom_init, cpu.endianness)
+        soc_kwargs["integrated_rom_init"] = get_mem_data(args.rom_init, endianness=cpu.endianness)
     args.with_sdram = True
     soc_kwargs["integrated_main_ram_size"] = 0x0
     soc_kwargs["sdram_verbosity"]          = int(args.sdram_verbosity)
@@ -326,7 +326,7 @@ def main():
         trace_reset    = args.trace_reset,
         auto_precharge = args.auto_precharge,
         with_refresh   = not args.no_refresh,
-        sdram_init     = [] if args.sdram_init is None else get_mem_data(args.sdram_init, cpu.endianness),
+        sdram_init     = [] if args.sdram_init is None else get_mem_data(args.sdram_init, endianness=cpu.endianness),
         l2_size        = args.l2_size,
         **soc_kwargs)
 
