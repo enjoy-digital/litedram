@@ -33,10 +33,7 @@ jobs:
       # Install RISC-V GCC
       - name: Install RISC-V GCC
         run: |
-          wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
-          python3 litex_setup.py gcc
-          sudo mkdir /usr/local/riscv
-          sudo cp -r $PWD/../riscv64-*/* /usr/local/riscv
+          sudo python3 litex_setup.py --gcc=riscv
 
       # Build / Install Verilator
       - name: Build Verilator
