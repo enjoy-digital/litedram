@@ -52,7 +52,9 @@ jobs:
       - name: Install RISC-V GCC
         run: |
           wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
-          python3 litex_setup.py gcc
+          # python3 litex_setup.py gcc
+          curl -L https://static.dev.sifive.com/dev-tools/freedom-tools/v2020.08/riscv64-unknown-elf-gcc-10.1.0-2020.08.2-x86_64-linux-ubuntu14.tar.gz | tar -xzf -
+          mv riscv64-unknown-elf-gcc-10.1.0-2020.08.2-x86_64-linux-ubuntu14 ../riscv64-unknown-elf-gcc
           sudo mkdir /usr/local/riscv
           sudo cp -r $PWD/../riscv64-*/* /usr/local/riscv
 
