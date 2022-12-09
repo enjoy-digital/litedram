@@ -33,6 +33,7 @@ jobs:
       # Install RISC-V GCC
       - name: Install RISC-V GCC
         run: |
+          sudo apt-get update
           sudo python3 litex_setup.py --gcc=riscv
 
       # Build / Install Verilator
