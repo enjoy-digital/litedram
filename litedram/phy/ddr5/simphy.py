@@ -61,10 +61,10 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
         self.submodules += pads
         super().__init__(pads,
             ser_latency       = Latency(sys2x=Serializer.LATENCY),
-            des_latency       = Latency(sys=(Deserializer.LATENCY-1 if aligned_reset_zero else Deserializer.LATENCY)),
+            des_latency       = Latency(sys=Deserializer.LATENCY),
             phytype           = "DDR5SimPHY",
             with_sub_channels = with_sub_channels,
-            rd_extra_delay    = Latency(sys2x=3),
+            rd_extra_delay    = Latency(sys2x=2),
             **kwargs)
 
         # fake delays (make no sense in simulation, but sdram.c expects them)
@@ -78,11 +78,15 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
         cmd     = dict(clkdiv="sys2x", clk="sys4x_ddr", xilinx=True)
         ddr     = dict(clkdiv="sys2x", clk="sys4x_ddr", xilinx=True)
         ddr_90  = dict(clkdiv="sys2x", clk="sys4x_90_ddr", xilinx=True)
+        recv_ddr     = dict(clkdiv="sys", clk="sys4x_ddr", xilinx=True)
+        recv_ddr_90  = dict(clkdiv="sys", clk="sys4x_90_ddr", xilinx=True)
 
         # This configuration mimics Xilinx 7-series serdes behavior
         if aligned_reset_zero:
             ddr["reset_cnt"] = 0
             ddr["aligned"] = True
+            recv_ddr["reset_cnt"] = 0
+            recv_ddr["aligned"] = True
             cs["reset_cnt"] = 0
             cs["aligned"] = True
             cmd["reset_cnt"] = 0
@@ -186,7 +190,7 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
                          name=f'{prefix}dqs_t_o{it}', **ddr)
                 self.des(o=getattr(self.out, prefix+'dqs_t_i')[it],
                          i=getattr(self.pads, prefix+'dqs_t')[it],
-                         name=f'{prefix}dqs_t_i{it}', **ddr)
+                         name=f'{prefix}dqs_t_i{it}', **recv_ddr)
 
                 dqs_c_o = getattr(self.out, prefix+'dqs_c_o')[it]
                 cdc_dqs_c_o = Signal(len(dqs_c_o)//2)
@@ -203,7 +207,7 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
                          name=f'{prefix}dqs_c_o{it}', **ddr)
                 self.des(o=getattr(self.out, prefix+'dqs_c_i')[it],
                          i=getattr(self.pads, prefix+'dqs_c')[it],
-                         name=f'{prefix}dqs_c_i{it}', **ddr)
+                         name=f'{prefix}dqs_c_i{it}', **recv_ddr)
 
                 basephy_dm = getattr(self.out, prefix+'dm_n_o')[it]
                 delay_dm = Signal.like(basephy_dm)
@@ -225,7 +229,7 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
                 basephy_dm_i =  getattr(self.out, prefix+'dm_n_i')[it]
                 in_dm = Signal.like(basephy_dm_i)
                 self.des(o=in_dm, i=getattr(self.pads, prefix+'dm_n')[it],
-                         name=f'{prefix}dm_n_i{it}', **ddr_90)
+                         name=f'{prefix}dm_n_i{it}', **recv_ddr_90)
                 delay_dm_i = Signal(2)
                 self.sync += delay_dm_i.eq(in_dm[-2:])
                 self.comb += basephy_dm_i.eq(Cat(delay_dm_i, in_dm[:-2]))
@@ -251,10 +255,8 @@ class DDR5SimPHY(SimSerDesMixin, DDR5PHY):
                 basephy_dq_i =  getattr(self.out, prefix+'dq_i')[it]
                 in_dq = Signal.like(basephy_dq_i)
                 self.des(o=in_dq, i=getattr(self.pads, prefix+'dq')[it],
-                         name=f'{prefix}dq_i{it}', reset_cnt=-2, **ddr_90)
-                delay_dq_i = Signal(2)
-                self.sync += delay_dq_i.eq(in_dq[-2:])
-                self.comb += basephy_dq_i.eq(Cat(delay_dq_i, in_dq[:-2]))
+                         name=f'{prefix}dq_i{it}', reset_cnt=-2, **recv_ddr_90)
+                self.comb += basephy_dq_i.eq(in_dq)
 
             # Output enable signals can be and should be serialized as well
             out_dqs_t_oe = getattr(self.out, prefix+'dqs_oe')[0]

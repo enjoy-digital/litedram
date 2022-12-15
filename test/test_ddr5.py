@@ -1,6 +1,3 @@
-#
-# This file is part of LiteDRAM.
-#
 # Copyright (c) 2022 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
@@ -63,7 +60,7 @@ class DDR5Tests(unittest.TestCase):
         self.cmd_latency:   int = self.phy.settings.cmd_latency
         self.read_latency:  int = self.phy.settings.read_latency
         self.write_latency: int = self.phy.settings.write_latency
-        read_latency_in_cycles = self.NPHASES * (self.read_latency - Deserializer.LATENCY - 1) # read latency has to account for bitslips after dq deser
+        read_latency_in_cycles = self.NPHASES * (self.read_latency - Deserializer.LATENCY - 1 - 1) # read latency has to account for bitslips after dq deserializer
         write_latency_in_cycles = self.NPHASES * self.phy.settings.write_latency + 6
 
         # 0s, 1s and Xs for 1 sys_clk in `*_ddr` clock domain
@@ -79,12 +76,14 @@ class DDR5Tests(unittest.TestCase):
 
         # Read latency is 1 sys_clk shorter in relity, cmd has no bitslip while dq has
         # -2 preamble
-        self.dqs_t_rd_latency: str = self.xs * 2 + 'xx'*(self.NPHASES * (Serializer.LATENCY - 1)) + 'x' * self.NPHASES + (self.rdphase + read_latency_in_cycles) * 'xx'
-        self.dq_rd_latency:    str = self.xs * 2 + 'xx'*(self.NPHASES * (Serializer.LATENCY - 1)) + 'x' * self.NPHASES + (self.rdphase + read_latency_in_cycles + 2) * 'xx'
+        self.dqs_t_rd_latency: str = self.xs * 3 + 'xx' * (self.NPHASES * (Serializer.LATENCY - 1)) + \
+                                     (self.NPHASES - self.rdphase) * 'x' + (read_latency_in_cycles - 2) * 'xx'
+        self.dq_rd_latency:    str = self.xs * 3 + 'xx' * (self.NPHASES * (Serializer.LATENCY - 1)) + \
+                                     (self.NPHASES - self.rdphase) * 'x' + (read_latency_in_cycles) * 'xx'
         # Write latency is 1 sys_clk longer in reality, cmd has no bitslip while dq and dqs have, this force 1 extra sys_clk cycle
         # preamble is 2 ddr clocks long
-        self.dqs_t_wr_latency: str = self.xs * 2 + 'xx'*(self.NPHASES * (Serializer.LATENCY - 1)) + 'x' * self.NPHASES + (self.wrphase + self.cmd_latency + write_latency_in_cycles + (4 - 2)) * 'xx'
-        self.dq_wr_latency:    str = self.xs * 2 + 'xx'*(self.NPHASES * (Serializer.LATENCY - 1)) + 'x' * self.NPHASES + (self.wrphase + self.cmd_latency + write_latency_in_cycles + 4) * 'xx'
+        self.dqs_t_wr_latency: str = self.xs * 2 + 'xx'*(self.NPHASES * (Serializer.LATENCY - 1)) + 'x' * self.NPHASES + (self.wrphase + self.cmd_latency + write_latency_in_cycles - 1 + (4 - 2)) * 'xx'
+        self.dq_wr_latency:    str = self.xs * 2 + 'xx'*(self.NPHASES * (Serializer.LATENCY - 1)) + 'x' * self.NPHASES + (self.wrphase + self.cmd_latency + write_latency_in_cycles - 1 + 4) * 'xx'
 
     @staticmethod
     def process_ca(ca: str) -> int:
@@ -440,7 +439,7 @@ class DDR5Tests(unittest.TestCase):
                 3: dict(wrdata=0xff00),
             },
         ]
-        dfi_wrdata_en = {self.wrphase: dict(wrdata_en=1)}  # wrdata_en=1 required on any single phase
+        dfi_wrdata_en = {self.wrphase: dict(wrdata_en=1, cs_n=0)}  # wrdata_en=1 required on any single phase
 
         self.run_test(
             dfi_sequence = [
@@ -560,21 +559,21 @@ class DDR5Tests(unittest.TestCase):
             dfi_sequence = dfi_sequence,
             pad_checkers = {
                 "sys4x": {
-                    "cs_n": 'x' + self.cs_n_latency + "110x1x0x1x" + self.ones,
-                    "ca0":  'x' + self.ca_latency   + "001x0x1x0x" + self.zeros,
-                    "ca1":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
-                    "ca2":  'x' + self.ca_latency   + "001x0x1x0x" + self.zeros,
-                    "ca3":  'x' + self.ca_latency   + "001x0x1x0x" + self.zeros,
-                    "ca4":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
-                    "ca5":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
-                    "ca6":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
-                    "ca7":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
-                    "ca8":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
-                    "ca9":  'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
-                    "ca10": 'x' + self.ca_latency   + "000x1x0x1x" + self.zeros,
-                    "ca11": 'x' + self.ca_latency   + "000x1x0x1x" + self.zeros,
-                    "ca12": 'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
-                    "ca13": 'x' + self.ca_latency   + "000x0x0x0x" + self.zeros,
+                    "cs_n": 'x' + self.cs_n_latency + self.wrphase * "1" + "0x1x0x1x" + self.ones,
+                    "ca0":  'x' + self.ca_latency   + self.wrphase * "0" + "1x0x1x0x" + self.zeros,
+                    "ca1":  'x' + self.ca_latency   + self.wrphase * "0" + "0x0x0x0x" + self.zeros,
+                    "ca2":  'x' + self.ca_latency   + self.wrphase * "0" + "1x0x1x0x" + self.zeros,
+                    "ca3":  'x' + self.ca_latency   + self.wrphase * "0" + "1x0x1x0x" + self.zeros,
+                    "ca4":  'x' + self.ca_latency   + self.wrphase * "0" + "0x0x0x0x" + self.zeros,
+                    "ca5":  'x' + self.ca_latency   + self.wrphase * "0" + "0x0x0x0x" + self.zeros,
+                    "ca6":  'x' + self.ca_latency   + self.wrphase * "0" + "0x0x0x0x" + self.zeros,
+                    "ca7":  'x' + self.ca_latency   + self.wrphase * "0" + "0x0x0x0x" + self.zeros,
+                    "ca8":  'x' + self.ca_latency   + self.wrphase * "0" + "0x0x0x0x" + self.zeros,
+                    "ca9":  'x' + self.ca_latency   + self.wrphase * "0" + "0x0x0x0x" + self.zeros,
+                    "ca10": 'x' + self.ca_latency   + self.wrphase * "0" + "0x1x0x1x" + self.zeros,
+                    "ca11": 'x' + self.ca_latency   + self.wrphase * "0" + "0x1x0x1x" + self.zeros,
+                    "ca12": 'x' + self.ca_latency   + self.wrphase * "0" + "0x0x0x0x" + self.zeros,
+                    "ca13": 'x' + self.ca_latency   + self.wrphase * "0" + "0x0x0x0x" + self.zeros,
                 },
                 "sys4x_90_ddr": { #                   preamble                           postamble
                     "dqs_t0": self.dqs_t_wr_latency + '0010' + '10101010' + '10101010' + '0xxxxxxx',
@@ -617,10 +616,11 @@ class DDR5Tests(unittest.TestCase):
 
         expected_data = [
             {
-                0: dict(rddata=0x1122),
-                1: dict(rddata=0x3344),
-                2: dict(rddata=0x5566),
-                3: dict(rddata=0x7788),
+                3: dict(rddata=0x1122),
+            },{
+                0: dict(rddata=0x3344),
+                1: dict(rddata=0x5566),
+                2: dict(rddata=0x7788),
             }
         ]
 
@@ -652,6 +652,140 @@ class DDR5Tests(unittest.TestCase):
                 "sys4x_ddr": sim_dq,
             },
             vcd_name="ddr5_dq_in_rddata.vcd"
+        )
+
+    def test_ddr5_cmd_read_1N_mode(self):
+        # Test whole READ command sequence simulating DRAM response and verifying read_latency from MC perspective
+
+        data_to_read = {
+            0: dict(rddata=0x1122, rddata_valid=1),
+            1: dict(rddata=0x3344, rddata_valid=1),
+            2: dict(rddata=0x5566, rddata_valid=1),
+            3: dict(rddata=0x7788, rddata_valid=1),
+        }
+
+        dfi_data_to_read = [{
+            0: dict(rddata=0x1122, rddata_valid=1),
+            1: dict(rddata=0x3344, rddata_valid=1),
+            2: dict(rddata=0x5566, rddata_valid=1),
+            3: dict(rddata=0x7788, rddata_valid=1),
+        }]
+
+        read_0 = dict(cs_n=0, address=self.process_ca('10111 0 00000 000'))  # RD p0
+        read_1 = dict(cs_n=1, address=self.process_ca('000000000 01000'))    # RD p1
+        dfi_sequence = [
+            {
+                self.rdphase:     read_0 | dict(rddata_en=1),
+                self.rdphase + 1: read_1,
+            },
+            *[{} for _ in range(self.read_latency - 1)],
+            data_to_read,
+            {},
+            {},
+            {},
+        ]
+
+        class Simulator:
+            def __init__(self, data, test_case, cl):
+                self.data = data
+                self.read_cmd = False
+                self.test_case = test_case
+                self.cl = cl
+
+            @passive
+            def cmd_checker(self, pads):
+                # Monitors CA/CS_n for a READ command
+                read = [
+                    0b00000000011101,  # READ-1 (1) BL=0, BA=0, BG=0, CID=0
+                    0b00010000000000,  # READ-1 (2) BA=0, C=0, AP=0, CID3=0
+                ]
+
+                def check_ca(i):
+                    err = "{}: CA = 0b{:06b}, expected = 0b{:06b}".format(i, (yield pads.ca), read[i])
+                    self.test_case.assertEqual((yield pads.ca), read[i], msg=err)
+
+                old_state_cd_n = False
+                while True:
+                    while not old_state_cd_n or (yield pads.cs_n):
+                        old_state_cd_n = (yield pads.cs_n)
+                        yield
+                    yield from check_ca(0)
+                    yield
+                    yield from check_ca(1)
+                    self.read_cmd = True
+
+            @passive
+            def dq_generator(self, pads):
+                # After a READ command is received, wait CL and send data
+                while True:
+                    while not self.read_cmd:
+                        yield
+                    data = self.data.pop(0)
+                    for _ in range(2*self.cl - 1):
+                        yield
+                    self.read_cmd = False
+                    for cyc in range(self.test_case.BURST_LENGTH):
+                        for bit in range(self.test_case.DATABITS):
+                            yield pads.dq_i[bit].eq(int(self.test_case.dq_pattern(bit, data, "rddata")[cyc]))
+                        yield
+                    for bit in range(self.test_case.DATABITS):
+                        yield pads.dq_i[bit].eq(0)
+
+            @passive
+            def dqs_generator(self, pads):
+                # After a READ command is received, wait CL and send data strobe
+                while True:
+                    while not self.read_cmd:
+                        yield
+                    preamble = "0010"
+                    for _ in range(2*self.cl - len(preamble) - 1):  # wait CL without DQS preamble read
+                        yield
+                    for bit in preamble: # send DQS preamble
+                        yield pads.dqs_t_i.eq(int(bit))
+                        yield pads.dqs_c_i.eq(~int(bit))
+                        yield
+                    for cyc in range(1, self.test_case.BURST_LENGTH):  # send a burst of data on pads
+                        yield pads.dqs_t_i.eq(cyc % 2)
+                        yield pads.dqs_c_i.eq((cyc +1) % 2)
+                        yield
+                    for bit in "010": # send DQS postamble
+                        yield pads.dqs_t_i.eq(int(bit))
+                        yield pads.dqs_c_i.eq(~int(bit))
+                        yield
+
+        sim = Simulator([data_to_read], self, cl=22)
+        self.run_test(
+            dfi_sequence = dfi_sequence,
+            pad_checkers = {
+                "sys4x": {
+                    "cs_n": 'x' + self.cs_n_latency + self.rdphase * "1" + "0111" + self.ones,
+                    "ca0":  'x' + self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
+                    "ca1":  'x' + self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca2":  'x' + self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
+                    "ca3":  'x' + self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
+                    "ca4":  'x' + self.ca_latency   + self.rdphase * "0" + "1000" + self.zeros,
+                    "ca5":  'x' + self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca6":  'x' + self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca7":  'x' + self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca8":  'x' + self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca9":  'x' + self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca10": 'x' + self.ca_latency   + self.rdphase * "0" + "0100" + self.zeros,
+                    "ca11": 'x' + self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca12": 'x' + self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                    "ca13": 'x' + self.ca_latency   + self.rdphase * "0" + "0000" + self.zeros,
+                },
+                "sys4x_90_ddr": { #                    preamble              postamble
+                    "dqs_t0": self.dqs_t_rd_latency + '0010' + '10101010' + '10xxxxxx',
+                } | {
+                    f'dq{i}': self.dq_rd_latency + self.dq_pattern(i, data_to_read, "rddata") + self.zeros
+                    for i in range(self.DATABITS)
+                },
+            },
+            pad_generators = {
+                "sys4x_ddr": [sim.dq_generator, sim.dqs_generator],
+                "sys4x_90": sim.cmd_checker,
+            },
+            vcd_name="ddr5_cmd_read_1N_mode.vcd"
         )
 
     def test_ddr5_cmd_read_2N_mode(self):
@@ -725,7 +859,7 @@ class DDR5Tests(unittest.TestCase):
                     while not self.read_cmd:
                         yield
                     data = self.data.pop(0)
-                    for _ in range(2*self.cl - 3):
+                    for _ in range(2*self.cl - 5):
                         yield
                     self.read_cmd = False
                     for cyc in range(self.test_case.BURST_LENGTH):
@@ -742,7 +876,7 @@ class DDR5Tests(unittest.TestCase):
                     while not self.read_cmd:
                         yield
                     preamble = "0010"
-                    for _ in range(2*self.cl - len(preamble) - 3):  # wait CL without DQS preamble read path cannot compensate for 2N mode
+                    for _ in range(2*self.cl - len(preamble) - 5):  # wait CL without DQS preamble read path cannot compensate for 2N mode
                         yield
                     for bit in preamble: # send DQS preamble
                         yield pads.dqs_t_i.eq(int(bit))

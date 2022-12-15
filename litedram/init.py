@@ -1086,6 +1086,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
         assert phy_settings.memtype == "DDR4"
         r.define("SDRAM_PHY_DDR4_RDIMM")
     if phy_settings.memtype == "DDR5":
+        r.define("SDRAM_PHY_ADDRESS_LINES", phy_settings.address_lines)
         if phy_settings.with_sub_channels:
             r.define("SDRAM_PHY_SUBCHANNELS")
 

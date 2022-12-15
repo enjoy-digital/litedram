@@ -232,6 +232,8 @@ class PhySettings(Settings):
             write_latency_calibration: bool = False,
             read_leveling: bool = False,
             with_sub_channels: bool = False,
+            # DDR5 specific
+            address_lines: int = 13,
         ):
         if strobes is None:
             strobes = databits // 8

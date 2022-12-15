@@ -210,6 +210,18 @@ class SimSoC(SoCCore):
         controller_settings.auto_precharge = auto_precharge
         controller_settings.with_refresh = with_refresh
 
+        # CLK for sdram module, originates from phy
+        setattr(self.clock_domains, "cd_sys4x_p_dimm",
+            ClockDomain("sys4x_p_dimm"))
+        setattr(self.clock_domains, "cd_sys4x_n_dimm",
+            ClockDomain("sys4x_n_dimm"))
+        self.comb += [
+            ClockSignal("sys4x_p_dimm").eq(self.ddrphy.pads.ck_t),
+            ResetSignal("sys4x_p_dimm").eq(~self.ddrphy.pads.reset_n),
+            ClockSignal("sys4x_n_dimm").eq(self.ddrphy.pads.ck_c),
+            ResetSignal("sys4x_n_dimm").eq(~self.ddrphy.pads.reset_n),
+        ]
+
         self.add_sdram("sdram",
             phy                     = self.ddrphy,
             module                  = sdram_module,
@@ -426,6 +438,7 @@ def main():
         trace_start = int(args.trace_start),
         trace_end   = int(args.trace_end),
         pre_run_callback = pre_run_callback,
+        opt_level   = "O3",
         jobs="$(nproc)", # so CI doesn't get killed by OOM
     )
     builder.build(run=not args.no_run, **build_kwargs)
