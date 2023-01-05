@@ -200,8 +200,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             raise NotImplementedError
 
         # FIFO -------------------------------------------------------------------------------------
-        fifo = stream.SyncFIFO([("data", port.data_width)], fifo_depth, fifo_buffered)
-        self.submodules += fifo
+        self.submodules.fifo = fifo = stream.SyncFIFO([("data", port.data_width)], fifo_depth, fifo_buffered)
 
         if is_native:
             self.comb += cmd.we.eq(1)

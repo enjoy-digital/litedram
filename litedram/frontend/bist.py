@@ -186,12 +186,17 @@ class _LiteDRAMBISTGenerator(Module):
                 addr_gen.ce.eq(1),
                 NextValue(cmd_counter, cmd_counter + 1),
                 If(cmd_counter == (self.length[ashift:] - 1),
-                    NextState("DONE")
+                    NextState("AWAIT_FIFO_EMPTY")
                 ).Elif(~self.run_cascade_in,
                     NextState("WAIT")
                 )
             ),
             NextValue(self.ticks, self.ticks + 1)
+        )
+        fsm.act("AWAIT_FIFO_EMPTY",
+            If(~dma.fifo.source.valid,
+                NextState("DONE"),
+            ),
         )
         fsm.act("DONE",
             self.run_cascade_out.eq(1),
