@@ -937,6 +937,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     if phy_settings.bitslips > 0:
         r.define("SDRAM_PHY_BITSLIPS", phy_settings.bitslips)
 
+    r.define(f"SDRAM_PHY_{phy_settings.memtype}")
     if phy_settings.is_rdimm:
         assert phy_settings.memtype == "DDR4"
         r.define("SDRAM_PHY_DDR4_RDIMM")
