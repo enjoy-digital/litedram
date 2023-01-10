@@ -29,8 +29,15 @@ class TestInit(unittest.TestCase):
     def test_sdr(self):
         from litex_boards.targets.scarabhardware_minispartan6 import BaseSoC
         soc       = BaseSoC()
-        c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
-        py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
+        c_header  = get_sdram_phy_c_header(
+            phy_settings    = soc.sdram.controller.settings.phy,
+            timing_settings = soc.sdram.controller.settings.timing,
+            geom_settings   = soc.sdram.controller.settings.geom,
+        )
+        py_header = get_sdram_phy_py_header(
+            phy_settings    = soc.sdram.controller.settings.phy,
+            timing_settings = soc.sdram.controller.settings.timing
+        )
         #update_c_reference(c_header, "sdr_init.h")
         compare_with_reference(self, c_header, "sdr_init.h")
         compare_with_reference(self, py_header, "sdr_init.py")
@@ -38,8 +45,15 @@ class TestInit(unittest.TestCase):
     def test_ddr3(self):
         from litex_boards.targets.xilinx_kc705 import BaseSoC
         soc       = BaseSoC()
-        c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
-        py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
+        c_header  = get_sdram_phy_c_header(
+            phy_settings    = soc.sdram.controller.settings.phy,
+            timing_settings = soc.sdram.controller.settings.timing,
+            geom_settings   = soc.sdram.controller.settings.geom,
+        )
+        py_header = get_sdram_phy_py_header(
+            phy_settings    = soc.sdram.controller.settings.phy,
+            timing_settings = soc.sdram.controller.settings.timing
+        )
         #update_c_reference(c_header, "ddr3_init.h")
         compare_with_reference(self, c_header, "ddr3_init.h")
         compare_with_reference(self, py_header, "ddr3_init.py")
@@ -47,8 +61,15 @@ class TestInit(unittest.TestCase):
     def test_ddr4(self):
         from litex_boards.targets.xilinx_kcu105 import BaseSoC
         soc       = BaseSoC(max_sdram_size=0x4000000)
-        c_header  = get_sdram_phy_c_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
-        py_header = get_sdram_phy_py_header(soc.sdram.controller.settings.phy, soc.sdram.controller.settings.timing)
+        c_header  = get_sdram_phy_c_header(
+            phy_settings    = soc.sdram.controller.settings.phy,
+            timing_settings = soc.sdram.controller.settings.timing,
+            geom_settings   = soc.sdram.controller.settings.geom,
+        )
+        py_header = get_sdram_phy_py_header(
+            phy_settings    = soc.sdram.controller.settings.phy,
+            timing_settings = soc.sdram.controller.settings.timing
+        )
         #update_c_reference(c_header, "ddr4_init.h")
         compare_with_reference(self, c_header, "ddr4_init.h")
         compare_with_reference(self, py_header, "ddr4_init.py")
