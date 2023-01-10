@@ -875,7 +875,7 @@ class CGenerator(list):
         self.append("}")
 
 
-def get_sdram_phy_c_header(phy_settings, timing_settings):
+def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
     r = CGenerator()
     r.header_guard("__GENERATED_SDRAM_PHY_H")
     r.include("<hw/common.h>")
@@ -937,9 +937,16 @@ def get_sdram_phy_c_header(phy_settings, timing_settings):
     if phy_settings.bitslips > 0:
         r.define("SDRAM_PHY_BITSLIPS", phy_settings.bitslips)
 
+    r.define(f"SDRAM_PHY_{phy_settings.memtype}")
     if phy_settings.is_rdimm:
         assert phy_settings.memtype == "DDR4"
         r.define("SDRAM_PHY_DDR4_RDIMM")
+
+    # litedram doesn't support multiple ranks
+    supported_memory = 2 ** (geom_settings.bankbits +
+                        geom_settings.rowbits +
+                        geom_settings.colbits) * phy_settings.databits // 8
+    r.define("SDRAM_PHY_SUPPORTED_MEMORY", f"0x{supported_memory:016x}ULL")
 
     r.newline()
 
