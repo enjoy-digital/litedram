@@ -8,6 +8,7 @@
 """Built In Self Test (BIST) modules for testing LiteDRAM functionality."""
 
 from functools import reduce
+from math import ceil
 from operator import xor
 
 from migen import *
@@ -51,10 +52,8 @@ class LFSR(Module):
             curval.insert(0, nv)
             curval.pop()
 
-        self.sync += [
-            state.eq(Cat(*curval[:n_state])),
-            self.o.eq(Cat(*curval))
-        ]
+        self.sync += state.eq(Cat(*curval[:n_state]))
+        self.comb += self.o.eq(Cat(*curval))
 
 # Counter ------------------------------------------------------------------------------------------
 
@@ -211,7 +210,12 @@ class _LiteDRAMBISTGenerator(Module):
             raise NotImplementedError
 
         self.comb += dma_sink_addr.eq(self.base[ashift:] + (addr_gen.o & addr_mask))
-        self.comb += dma.sink.data.eq(data_gen.o)
+        self.comb += dma.sink.data.eq(
+            Replicate(
+                data_gen.o,
+                ceil(dram_port.data_width / len(data_gen.o)),
+            )[:dram_port.data_width],
+        )
 
 
 @ResetInserter()
@@ -511,7 +515,10 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
             If(dma.source.valid,
                 data_gen.ce.eq(1),
                 NextValue(data_counter, data_counter + 1),
-                If(dma.source.data != data_gen.o[:min(len(data_gen.o), dram_port.data_width)],
+                If(dma.source.data != Replicate(
+                                          data_gen.o,
+                                          ceil(dram_port.data_width / len(data_gen.o)),
+                                      )[:dram_port.data_width],
                     NextValue(self.errors, self.errors + 1)
                 ),
                 If(data_counter == (self.length[ashift:] - 1),
