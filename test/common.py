@@ -354,6 +354,21 @@ class MemoryTestDataMixin:
         )
         expected = data["32bit_long_sequential"]["expected"]
         expected[16//4:(16 + 64)//4] = list(range(64//4))
+
+        lfsr_out_width = 31
+        # replicate LFSR output to fill the data_width
+        for test_case, config in data.items():
+            expected = config["expected"]
+
+            # extract data width from test case name
+            data_width = int(test_case.split("bit")[0])
+
+            for i, value in enumerate(expected):
+                for _ in range(data_width, lfsr_out_width - 1, -lfsr_out_width):
+                    value |= value << lfsr_out_width
+                    value &= (1 << data_width) - 1
+                expected[i] = value
+
         return data
 
     @property
