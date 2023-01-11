@@ -52,10 +52,8 @@ class LFSR(Module):
             curval.insert(0, nv)
             curval.pop()
 
-        self.sync += [
-            state.eq(Cat(*curval[:n_state])),
-            self.o.eq(Cat(*curval))
-        ]
+        self.sync += state.eq(Cat(*curval[:n_state]))
+        self.comb += self.o.eq(Cat(*curval))
 
 # Counter ------------------------------------------------------------------------------------------
 
