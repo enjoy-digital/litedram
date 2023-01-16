@@ -104,7 +104,7 @@ class LiteDRAMDMAReader(Module, AutoCSR):
         self.submodules += fifo
 
         self.comb += [
-            rdata.connect(fifo.sink, omit={"id", "resp"}),
+            rdata.connect(fifo.sink, omit={"id", "resp", "dest", "user"}),
             fifo.source.connect(source, omit={"ready"}),
             fifo.source.ready.eq(source.ready | ~enable), # Flush FIFO/Reservation counter when disabled.
             data_dequeued.eq(fifo.source.valid & fifo.source.ready)
