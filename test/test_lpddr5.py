@@ -746,6 +746,7 @@ class VerilatorLPDDR5Tests(unittest.TestCase):
             with self.subTest(wck_ck_ratio=wck_ck_ratio):
                 self.run_test([
                     "--finish-after-memtest", "--log-level=warn",
+                    "--output-dir", "build/test_lpddr5_sim_no_delays",
                     "--disable-delay",
                     f"--wck-ck-ratio={wck_ck_ratio}",
                     "--no-refresh",  # FIXME: avoids warnings before initialization
@@ -764,6 +765,7 @@ class VerilatorLPDDR5Tests(unittest.TestCase):
                 ]
                 self.run_test([
                     "--finish-after-memtest", "--log-level=warn",
+                    "--output-dir", "build/test_lpddr5_sim_delays_no_cache",
                     "--l2-size=0",
                     f"--wck-ck-ratio={wck_ck_ratio}",
                     "--no-refresh",  # FIXME: LiteDRAM sends refresh commands when only MRW/MRR are allowed

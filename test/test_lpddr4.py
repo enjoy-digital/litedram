@@ -687,6 +687,7 @@ class VerilatorLPDDR4Tests(unittest.TestCase):
         # refresh and no L2 cache (masked write must work)
         self.run_test([
             "--finish-after-memtest", "--log-level", "warn",
+            "--output-dir", "build/test_lpddr4_sim_x2rate_no_cache",
             "--double-rate-phy",
             "--l2-size", "0",
             "--no-refresh",  # FIXME: LiteDRAM sends refresh commands when only MRW/MRR are allowed
@@ -696,6 +697,7 @@ class VerilatorLPDDR4Tests(unittest.TestCase):
         # Fast test of simulation with L2 cache (so no data masking is required)
         self.run_test([
             "--finish-after-memtest", "--log-level", "warn",
+            "--output-dir", "build/test_lpddr4_sim_fast",
             "--disable-delay",
             "--no-refresh",
         ])
