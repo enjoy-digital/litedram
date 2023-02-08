@@ -25,6 +25,8 @@ from litex.soc.interconnect.csr import *
 from litedram.common import *
 from litedram.phy.dfi import *
 
+class Open(Signal): pass
+
 # BitSlip ------------------------------------------------------------------------------------------
 
 # FIXME: Use BitSlip from litedram.common.
@@ -201,7 +203,8 @@ class GW2DDRPHY(Module, AutoCSR):
                     i_FCLK  = ClockSignal("sys2x"),
                     **{f"i_TX{n}": 0b0 for n in range(2)}, # CHECKME: Polarity
                     **{f"i_D{n}": (clk_pattern >> n) & 0b1 for n in range(4)},
-                    o_Q0    = pad_oddrx2f
+                    o_Q0    = pad_oddrx2f,
+                    o_Q1    = Open()
                 )
                 self.specials += Instance("IODELAY",
                     p_C_STATIC_DLY = cmd_delay,
@@ -209,6 +212,7 @@ class GW2DDRPHY(Module, AutoCSR):
                     i_SETN  = 0,
                     i_VALUE = 0,
                     i_DI    = pad_oddrx2f,
+                    o_DF    = Open(),
                     o_DO    = pad_clk,
                 )
                 self.specials += Instance("ELVDS_OBUF",
@@ -245,7 +249,8 @@ class GW2DDRPHY(Module, AutoCSR):
                         i_FCLK = ClockSignal("sys2x"),
                         **{f"i_TX{n}": 0b0 for n in range(2)}, # CHECKME: Polarity
                         **{f"i_D{n}": getattr(dfi.phases[n//2], dfi_name)[i] for n in range(4)},
-                        o_Q0   = pad_oddrx2f
+                        o_Q0   = pad_oddrx2f,
+                        o_Q1   = Open()
                     )
                     self.specials += Instance("IODELAY",
                         p_C_STATIC_DLY = cmd_delay,
@@ -253,6 +258,7 @@ class GW2DDRPHY(Module, AutoCSR):
                         i_SETN      = 0,
                         i_VALUE     = 0,
                         i_DI        = pad_oddrx2f,
+                        o_DF        = Open(),
                         o_DO        = pad[i]
                     )
 
@@ -293,6 +299,8 @@ class GW2DDRPHY(Module, AutoCSR):
                 i_WLOADN   = 0,
                 i_WMOVE    = 0,
                 i_WDIR     = 1,
+                o_RFLAG    = Open(),
+                o_WFLAG    = Open(),
 
                 # Reads (generate shifted DQS clock for reads)
                 i_READ     = Replicate(dqs_re, 4),
@@ -305,7 +313,7 @@ class GW2DDRPHY(Module, AutoCSR):
                 o_RBURST   = burstdet,
 
                 # Writes (generate shifted ECLK clock for writes)
-                i_WSTEP    = 0, # CHECKME: Useful?
+                i_WSTEP    = Constant(0, 8), # CHECKME: Useful?
                 o_DQSW270  = dqsw270,
                 o_DQSW0    = dqsw
             )
@@ -362,7 +370,8 @@ class GW2DDRPHY(Module, AutoCSR):
                 i_TCLK  = dqsw270,
                 **{f"i_TX{n}": 0b0 for n in range(2)}, # CHECKME: Polarity
                 **{f"i_D{n}": dm_o_data_muxed[n] for n in range(4)},
-                o_Q0    = pads.dm[i]
+                o_Q0    = pads.dm[i],
+                o_Q1    = Open()
             )
 
             # DQ -----------------------------------------------------------------------------------
