@@ -10,11 +10,11 @@ with open("README.md", "r") as fp:
 
 setup(
     name="litedram",
+    version="2022.12",
     description="Small footprint and configurable DRAM core",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Florent Kermarrec",
-    version="2022.12",
     author_email="florent@enjoy-digital.fr",
     url="http://enjoy-digital.fr",
     download_url="https://github.com/enjoy-digital/litedram",
