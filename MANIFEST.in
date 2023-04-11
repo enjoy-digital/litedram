@@ -1,0 +1,9 @@
+graft litedram
+
+include CONTRIBUTORS
+include LICENSE
+
+graft doc
+
+prune examples
+prune test
