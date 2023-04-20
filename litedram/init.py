@@ -902,8 +902,9 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
     r.define("DFII_COMMAND_RAS",    "0x08")
     r.define("DFII_COMMAND_WRDATA", "0x10")
     r.define("DFII_COMMAND_RDDATA", "0x20")
-    r.define("DFII_COMMAND_CS_TOP",  "0x40")
-    r.define("DFII_COMMAND_CS_BOTTOM",  "0x80")
+    if phy_settings.is_clam_shell:
+        r.define("DFII_COMMAND_CS_TOP",  "0x40")
+        r.define("DFII_COMMAND_CS_BOTTOM",  "0x80")
     r.newline()
 
     phytype = phy_settings.phytype.upper()
@@ -1023,20 +1024,18 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
                     invert_masks.append((0b10101111111000, 0b1111))
 
             for a_inv, ba_inv in invert_masks:
-                if "Load Mode Register" in comment:
-                    b += f"/* {comment} */"
+                # handle clam shell topology
+                if cmd == cmds["MODE_REGISTER"] and phy_settings.is_clam_shell:
+                    b += f"/* {comment} for top */"
                     b += f"sdram_dfii_pi0_address_write({a ^ a_inv:#x});"
                     b += f"sdram_dfii_pi0_baddress_write({ba ^ ba_inv:d});"
-                    if cmd.startswith("DFII_CONTROL"):
-                        b += f"sdram_dfii_control_write({cmd}|DFII_COMMAND_CS_TOP);"
-                    else:
-                        b += f"command_p0({cmd}|DFII_COMMAND_CS_TOP);"
+                    b += f"sdram_dfii_control_write({cmd}|DFII_COMMAND_CS_TOP);"
                     if delay:
                         b += f"cdelay({delay});\n"
                     b.newline()
 
                     # swap addr and pass to bottom
-                    b += f"/* {comment} */"
+                    b += f"/* {comment} for bottom */"
                     addr = a ^ a_inv
                     addr = swap_bit(addr, 3, 4)
                     addr = swap_bit(addr, 5, 6)
@@ -1046,10 +1045,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
                     baddr = ba ^ ba_inv
                     baddr = swap_bit(baddr, 0, 1)
                     b += f"sdram_dfii_pi0_baddress_write({baddr:d});"
-                    if cmd.startswith("DFII_CONTROL"):
-                        b += f"sdram_dfii_control_write({cmd}|DFII_COMMAND_CS_BOTTOM);"
-                    else:
-                        b += f"command_p0({cmd}|DFII_COMMAND_CS_BOTTOM);"
+                    b += f"sdram_dfii_control_write({cmd}|DFII_COMMAND_CS_BOTTOM);"
                     if delay:
                         b += f"cdelay({delay});\n"
                     b.newline()
