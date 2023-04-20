@@ -97,7 +97,8 @@ class USDDRPHY(Module, AutoCSR):
             memtype                   = memtype,
             databits                  = databits,
             dfi_databits              = 2*databits,
-            nranks                    = nranks,
+            # nranks                    = nranks,
+            nranks                    = 1, # Pretend to be one-rank
             nphases                   = nphases,
             rdphase                   = self._rdphase.storage,
             wrphase                   = self._wrphase.storage,

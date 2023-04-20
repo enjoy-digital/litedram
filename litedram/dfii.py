@@ -21,6 +21,8 @@ class PhaseInjector(Module, AutoCSR):
             CSRField("ras",  size=1, description="DFI row address strobe bus"),
             CSRField("wren", size=1, description="DFI write data enable bus"),
             CSRField("rden", size=1, description="DFI read data enable bus"),
+            CSRField("cs_top",   size=1, description="DFI chip select bus for top half only"),
+            CSRField("cs_bottom",   size=1, description="DFI chip select bus for bottom half only"),
         ], description="Control DFI signals on a single phase")
 
         self._command_issue = CSR() # description="The command gets commited on a write to this register"
@@ -33,7 +35,15 @@ class PhaseInjector(Module, AutoCSR):
 
         self.comb += [
             If(self._command_issue.re,
-                phase.cs_n.eq(Replicate(~self._command.fields.cs, len(phase.cs_n))),
+                If(self._command.fields.cs_top,
+                    phase.cs_n.eq(2), # cs_n=0b10
+                ).Else(
+                    If(self._command.fields.cs_bottom,
+                        phase.cs_n.eq(1), # cs_n=0b01
+                    ).Else(
+                        phase.cs_n.eq(Replicate(~self._command.fields.cs, len(phase.cs_n))),
+                    ),
+                ),
                 phase.we_n.eq(~self._command.fields.we),
                 phase.cas_n.eq(~self._command.fields.cas),
                 phase.ras_n.eq(~self._command.fields.ras)
@@ -56,9 +66,9 @@ class PhaseInjector(Module, AutoCSR):
 
 class DFIInjector(Module, AutoCSR):
     def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
-        self.slave   = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
-        self.master  = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
-        csr_dfi      = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        self.slave   = dfi.Interface(addressbits, bankbits, 1, databits, nphases)
+        self.master  = dfi.Interface(addressbits, bankbits, 2, databits, nphases)
+        csr_dfi      = dfi.Interface(addressbits, bankbits, 2, databits, nphases)
 
         self.ext_dfi     = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.ext_dfi_sel = Signal()
@@ -87,7 +97,11 @@ class DFIInjector(Module, AutoCSR):
                     self.ext_dfi.connect(self.master)
                 # Through LiteDRAM controller.
                 ).Else(
-                    self.slave.connect(self.master)
+                    self.slave.connect(self.master),
+                    self.master.phases[0].cs_n.eq(Replicate(self.slave.phases[0].cs_n, 2)),
+                    self.master.phases[1].cs_n.eq(Replicate(self.slave.phases[1].cs_n, 2)),
+                    self.master.phases[2].cs_n.eq(Replicate(self.slave.phases[2].cs_n, 2)),
+                    self.master.phases[3].cs_n.eq(Replicate(self.slave.phases[3].cs_n, 2)),
                 )
             # Software Control (through CSRs).
             # --------------------------------
