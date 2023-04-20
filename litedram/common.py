@@ -229,13 +229,13 @@ class PhySettings(Settings):
             write_dq_dqs_training: bool = False,
             write_latency_calibration: bool = False,
             read_leveling: bool = False,
+            is_clam_shell: bool = False,
         ):
         if strobes is None:
             strobes = databits // 8
         self.set_attributes(locals())
         self.cwl = cl if cwl is None else cwl
         self.is_rdimm = False
-        self.is_clam_shell = False
 
     # Optional DDR3/DDR4 electrical settings:
     # rtt_nom: Non-Writes on-die termination impedance
@@ -258,11 +258,6 @@ class PhySettings(Settings):
         assert self.memtype == "DDR4"
         self.is_rdimm = True
         self.set_attributes(locals())
-
-    # Optional Clam Shell configuration
-    def set_clam_shell(self):
-        assert self.memtype == "DDR4"
-        self.is_clam_shell = True
 
 class GeomSettings(Settings):
     def __init__(self, bankbits, rowbits, colbits):

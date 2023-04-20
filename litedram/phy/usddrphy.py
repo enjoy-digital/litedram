@@ -98,8 +98,7 @@ class USDDRPHY(Module, AutoCSR):
             memtype                   = memtype,
             databits                  = databits,
             dfi_databits              = 2*databits,
-            # nranks                    = nranks,
-            nranks                    = 1, # Pretend to be one-rank
+            nranks                    = nranks//2 if is_clam_shell else nranks,
             nphases                   = nphases,
             rdphase                   = self._rdphase.storage,
             wrphase                   = self._wrphase.storage,
@@ -114,6 +113,7 @@ class USDDRPHY(Module, AutoCSR):
             read_leveling             = True,
             delays                    = 512,
             bitslips                  = 8,
+            is_clam_shell             = is_clam_shell,
         )
 
         if is_rdimm:
@@ -125,8 +125,6 @@ class USDDRPHY(Module, AutoCSR):
                 rcd_odt_cke_drive = 0x5,
                 rcd_clk_drive     = 0x5
             )
-        if is_clam_shell:
-            self.settings.set_clam_shell()
 
         # DFI Interface ----------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)

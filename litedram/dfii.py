@@ -65,10 +65,10 @@ class PhaseInjector(Module, AutoCSR):
 # DFIInjector --------------------------------------------------------------------------------------
 
 class DFIInjector(Module, AutoCSR):
-    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1):
-        self.slave   = dfi.Interface(addressbits, bankbits, 1, databits, nphases)
-        self.master  = dfi.Interface(addressbits, bankbits, 2, databits, nphases)
-        csr_dfi      = dfi.Interface(addressbits, bankbits, 2, databits, nphases)
+    def __init__(self, addressbits, bankbits, nranks, databits, nphases=1, is_clam_shell=False):
+        self.slave   = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
+        self.master  = dfi.Interface(addressbits, bankbits, nranks*2 if is_clam_shell else nranks, databits, nphases)
+        csr_dfi      = dfi.Interface(addressbits, bankbits, nranks*2 if is_clam_shell else nranks, databits, nphases)
 
         self.ext_dfi     = dfi.Interface(addressbits, bankbits, nranks, databits, nphases)
         self.ext_dfi_sel = Signal()
@@ -98,10 +98,7 @@ class DFIInjector(Module, AutoCSR):
                 # Through LiteDRAM controller.
                 ).Else(
                     self.slave.connect(self.master),
-                    self.master.phases[0].cs_n.eq(Replicate(self.slave.phases[0].cs_n, 2)),
-                    self.master.phases[1].cs_n.eq(Replicate(self.slave.phases[1].cs_n, 2)),
-                    self.master.phases[2].cs_n.eq(Replicate(self.slave.phases[2].cs_n, 2)),
-                    self.master.phases[3].cs_n.eq(Replicate(self.slave.phases[3].cs_n, 2)),
+                    [self.master.phases[i].cs_n.eq(Replicate(self.slave.phases[i].cs_n, 2)) for i in range(nphases)],
                 )
             # Software Control (through CSRs).
             # --------------------------------
