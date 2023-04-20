@@ -1029,7 +1029,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
                     b += f"/* {comment} for top */"
                     b += f"sdram_dfii_pi0_address_write({a ^ a_inv:#x});"
                     b += f"sdram_dfii_pi0_baddress_write({ba ^ ba_inv:d});"
-                    b += f"sdram_dfii_control_write({cmd}|DFII_COMMAND_CS_TOP);"
+                    b += f"command_p0({cmd}|DFII_COMMAND_CS_TOP);"
                     if delay:
                         b += f"cdelay({delay});\n"
                     b.newline()
@@ -1045,7 +1045,7 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
                     baddr = ba ^ ba_inv
                     baddr = swap_bit(baddr, 0, 1)
                     b += f"sdram_dfii_pi0_baddress_write({baddr:d});"
-                    b += f"sdram_dfii_control_write({cmd}|DFII_COMMAND_CS_BOTTOM);"
+                    b += f"command_p0({cmd}|DFII_COMMAND_CS_BOTTOM);"
                     if delay:
                         b += f"cdelay({delay});\n"
                     b.newline()
