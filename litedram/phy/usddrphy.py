@@ -32,7 +32,8 @@ class USDDRPHY(Module, AutoCSR):
         cwl              = None,
         cmd_latency      = 0,
         cmd_delay        = None,
-        is_rdimm         = False):
+        is_rdimm         = False,
+        is_clam_shell    = False):
         phytype     = self.__class__.__name__
         device      = {"USDDRPHY": "ULTRASCALE", "USPDDRPHY": "ULTRASCALE_PLUS"}[phytype]
         pads        = PHYPadsCombiner(pads)
@@ -124,6 +125,8 @@ class USDDRPHY(Module, AutoCSR):
                 rcd_odt_cke_drive = 0x5,
                 rcd_clk_drive     = 0x5
             )
+        if is_clam_shell:
+            self.settings.set_clam_shell()
 
         # DFI Interface ----------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)

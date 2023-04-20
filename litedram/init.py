@@ -951,6 +951,9 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
     if phy_settings.is_rdimm:
         assert phy_settings.memtype == "DDR4"
         r.define("SDRAM_PHY_DDR4_RDIMM")
+    if phy_settings.is_clam_shell:
+        assert phy_settings.memtype == "DDR4"
+        r.define("SDRAM_PHY_CLAM_SHELL")
 
     # litedram doesn't support multiple ranks
     supported_memory = 2 ** (geom_settings.bankbits +
