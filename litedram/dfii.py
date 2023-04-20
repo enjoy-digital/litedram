@@ -21,6 +21,7 @@ class PhaseInjector(Module, AutoCSR):
             CSRField("ras",  size=1, description="DFI row address strobe bus"),
             CSRField("wren", size=1, description="DFI write data enable bus"),
             CSRField("rden", size=1, description="DFI read data enable bus"),
+            # Separate cs for clam shell topology
             CSRField("cs_top",   size=1, description="DFI chip select bus for top half only"),
             CSRField("cs_bottom",   size=1, description="DFI chip select bus for bottom half only"),
         ], description="Control DFI signals on a single phase")
@@ -98,7 +99,10 @@ class DFIInjector(Module, AutoCSR):
                 # Through LiteDRAM controller.
                 ).Else(
                     self.slave.connect(self.master),
-                    [self.master.phases[i].cs_n.eq(Replicate(self.slave.phases[i].cs_n, 2)) for i in range(nphases)],
+                    # Broadcast cs_n for clam shell topology
+                    If(is_clam_shell,
+                        [self.master.phases[i].cs_n.eq(Replicate(self.slave.phases[i].cs_n, 2)) for i in range(nphases)],
+                    )
                 )
             # Software Control (through CSRs).
             # --------------------------------
