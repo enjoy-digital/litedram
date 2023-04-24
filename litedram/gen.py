@@ -224,7 +224,7 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
             Subsignal("awaddr",  Pins(aw)),
             Subsignal("awburst", Pins(2)),
             Subsignal("awlen",   Pins(8)),
-            Subsignal("awsize",  Pins(4)),
+            Subsignal("awsize",  Pins(3)),
             Subsignal("awid",    Pins(iw)),
 
             # w
@@ -246,7 +246,7 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
             Subsignal("araddr",  Pins(aw)),
             Subsignal("arburst", Pins(2)),
             Subsignal("arlen",   Pins(8)),
-            Subsignal("arsize",  Pins(4)),
+            Subsignal("arsize",  Pins(3)),
             Subsignal("arid",    Pins(iw)),
 
             # r
