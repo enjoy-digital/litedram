@@ -65,12 +65,23 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         port = LiteDRAMNativePort("both", address_width=30, data_width=64)
         self.avalon_readback_test(data["pattern"], data["expected"], avl, port)
 
+    @unittest.skip
     def test_avalon_64bit_to_32bit(self):
         # Verify AvalonMM with 64-bit data width down-converted to 32-bit data width.
         data = self.pattern_test_data["64bit_to_32bit"]
         avl  = avalon.AvalonMMInterface(adr_width=30, data_width=64)
         port = LiteDRAMNativePort("both", address_width=30, data_width=32)
         self.avalon_readback_test(data["pattern"], data["expected"], avl, port)
+
+    @unittest.skip
+    def test_avalon_64bit_to_32bit_base_address(self):
+        # Verify AvalonMM with 64-bit data width down-converted to 32-bit data width and non-zero base address.
+        data    = self.pattern_test_data["64bit_to_32bit"]
+        avl     = avalon.AvalonMMInterface(adr_width=30, data_width=64)
+        port    = LiteDRAMNativePort("both", address_width=30, data_width=32)
+        origin  = 0x10000000
+        pattern = [(adr + origin//(64//8), data) for adr, data in data["pattern"]]
+        self.avalon_readback_test(pattern, data["expected"], avl, port, base_address=origin)
 
     def test_avalon_32bit_to_8bit(self):
         # Verify AvalonMM with 32-bit data width down-converted to 8-bit data width.
@@ -80,6 +91,15 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         self.avalon_readback_test(data["pattern"], data["expected"], avl, port)
 
     @unittest.skip
+    def test_avalon_32bit_to_8bit_base_address(self):
+        # Verify AvalonMM with 32-bit data width down-converted to 8-bit data width and non-zero base address.
+        data    = self.pattern_test_data["32bit_to_8bit"]
+        avl     = avalon.AvalonMMInterface(adr_width=30, data_width=32)
+        port    = LiteDRAMNativePort("both", address_width=30, data_width=8)
+        origin  = 0x10000000
+        pattern = [(adr + origin//(32//8), data) for adr, data in data["pattern"]]
+        self.avalon_readback_test(pattern, data["expected"], avl, port, base_address=origin)
+
     def test_avalon_8bit_to_32bit(self):
         # Verify AvalonMM with 8-bit data width up-converted to 32-bit data width.
         data = self.pattern_test_data["8bit_to_32bit"]
@@ -87,7 +107,6 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         port = LiteDRAMNativePort("both", address_width=30, data_width=32)
         self.avalon_readback_test(data["pattern"], data["expected"], avl, port)
 
-    @unittest.skip
     def test_avalon_32bit_to_64bit(self):
         # Verify AvalonMM with 32-bit data width up-converted to 64-bit data width.
         data = self.pattern_test_data["32bit_to_64bit"]
@@ -95,7 +114,6 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         port = LiteDRAMNativePort("both", address_width=30, data_width=64)
         self.avalon_readback_test(data["pattern"], data["expected"], avl, port)
 
-    @unittest.skip
     def test_avalon_32bit_to_128bit(self):
         # Verify AvalonMM with 32-bit data width up-converted to 128-bit data width.
         data = self.pattern_test_data["32bit_to_128bit"]
@@ -103,7 +121,6 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         port = LiteDRAMNativePort("both", address_width=30, data_width=128)
         self.avalon_readback_test(data["pattern"], data["expected"], avl, port)
 
-    @unittest.skip
     def test_avalon_32bit_to_256bit(self):
         # Verify AvalonMM with 32-bit data width up-converted to 128-bit data width.
         data = self.pattern_test_data["32bit_to_256bit"]
@@ -118,23 +135,5 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         port   = LiteDRAMNativePort("both", address_width=30, data_width=32)
         origin = 0x10000000
         # add offset (in data words)
-        pattern = [(adr + origin//(32//8), data) for adr, data in data["pattern"]]
-        self.avalon_readback_test(pattern, data["expected"], avl, port, base_address=origin)
-
-    def test_avalon_64bit_to_32bit_base_address(self):
-        # Verify AvalonMM with 64-bit data width down-converted to 32-bit data width and non-zero base address.
-        data    = self.pattern_test_data["64bit_to_32bit"]
-        avl     = avalon.AvalonMMInterface(adr_width=30, data_width=64)
-        port    = LiteDRAMNativePort("both", address_width=30, data_width=32)
-        origin  = 0x10000000
-        pattern = [(adr + origin//(64//8), data) for adr, data in data["pattern"]]
-        self.avalon_readback_test(pattern, data["expected"], avl, port, base_address=origin)
-
-    def test_avalon_32bit_to_8bit_base_address(self):
-        # Verify AvalonMM with 32-bit data width down-converted to 8-bit data width and non-zero base address.
-        data    = self.pattern_test_data["32bit_to_8bit"]
-        avl     = avalon.AvalonMMInterface(adr_width=30, data_width=32)
-        port    = LiteDRAMNativePort("both", address_width=30, data_width=8)
-        origin  = 0x10000000
         pattern = [(adr + origin//(32//8), data) for adr, data in data["pattern"]]
         self.avalon_readback_test(pattern, data["expected"], avl, port, base_address=origin)

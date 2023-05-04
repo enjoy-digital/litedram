@@ -38,45 +38,91 @@ class LiteDRAMAvalonMM2Native(Module):
 
         # # #
 
-        aborted = Signal()
         offset  = base_address >> log2_int(port.data_width//8)
 
+        burstcounter      = Signal(9)
+        active_burst      = Signal()
+        address           = Signal(avalon_data_width)
+        byteenable        = Signal.like(avalon.byteenable)
+        writedata         = Signal(avalon_data_width)
+        start_transaction = Signal()
+        cmd               = Signal()
+
+        self.comb += active_burst.eq(2 <= burstcounter)
+        self.sync += [
+            If(start_transaction,
+                byteenable.eq(avalon.byteenable),
+                burstcounter.eq(avalon.burstcount),
+                address.eq(avalon.address))
+        ]
+
         self.submodules.fsm = fsm = FSM(reset_state="CMD")
-        self.comb += [
-            port.cmd.addr.eq(avalon.address - offset),
-            port.cmd.we.eq(avalon.write),
-            port.cmd.last.eq(~avalon.write), # Always wait for reads.
-            port.flush.eq(~(avalon.write | avalon.read)),    # Flush writes when transaction ends.
-        ]
         fsm.act("CMD",
-            port.cmd.valid.eq(avalon.read | avalon.write),
-            If(port.cmd.valid & port.cmd.ready & avalon.write, NextState("WRITE")),
-            If(port.cmd.valid & port.cmd.ready & avalon.read,  NextState("READ")),
             avalon.waitrequest.eq(1),
-            NextValue(aborted, 0),
-        )
-        self.comb += [
-            If(ratio <= 1, If(~fsm.ongoing("WRITE"), port.wdata.valid.eq(0))),
-            port.wdata.data.eq(avalon.writedata),
-            port.wdata.we.eq(avalon.byteenable),
-            port.wdata.valid.eq(avalon.write),
-        ]
+            port.cmd.addr.eq(avalon.address),
+            port.cmd.we.eq(avalon.write),
+            port.cmd.valid   .eq(avalon.read | avalon.write),
+            start_transaction.eq(avalon.read | avalon.write),
+
+            If(port.cmd.ready & start_transaction,
+                avalon.waitrequest.eq(0),
+                If (avalon.write,
+                    NextValue(writedata, avalon.writedata),
+                    NextValue(port.cmd.last, 0),
+                    NextValue(cmd, 0),
+                    NextState("WRITE"))
+
+                .Elif(avalon.read,
+                    NextValue(cmd, 0),
+                    NextState("READ"))))
+
         fsm.act("WRITE",
-            avalon.waitrequest.eq(~port.wdata.ready),
-            NextValue(aborted, ~avalon.write | aborted),
-            If(port.wdata.valid & port.wdata.ready,
-                avalon.waitrequest.eq(~(avalon.write & ~aborted)),
-                NextState("CMD")
-            ),
-        )
-        self.comb += port.rdata.ready.eq(1)
+            avalon.waitrequest.eq(1),
+            port.rdata.ready.eq(0),
+            If(cmd,
+                port.cmd.addr.eq(address),
+                port.cmd.we.eq(1),
+                port.cmd.valid.eq(1),
+
+                If(port.cmd.ready,
+                    NextValue(cmd, ~cmd)))
+            .Else(
+                port.wdata.data.eq(writedata),
+                port.wdata.valid.eq(1),
+                port.wdata.we.eq(byteenable),
+
+                If(port.wdata.ready,
+                    avalon.waitrequest.eq(~active_burst),
+                    NextValue(writedata, avalon.writedata),
+                    NextValue(cmd, ~cmd),
+
+                    If(~active_burst,
+                        port.flush.eq(1),
+                        NextValue(burstcounter, 0),
+                        NextValue(byteenable, 0),
+                        # this marks the end of a write cycle
+                        NextValue(port.cmd.last, 1),
+                        NextState("CMD"))
+                    .Else(
+                        # TODO: increment address NextValue(address, address + 4),
+                        NextValue(burstcounter, burstcounter - 1)))))
+
         fsm.act("READ",
-            NextValue(aborted, ~avalon.read | aborted),
-            avalon.waitrequest.eq(~(port.rdata.ready & ~aborted)),
-            If(port.rdata.valid,
-                avalon.waitrequest.eq(~(avalon.read & ~aborted)),
-                avalon.readdata.eq(port.rdata.data),
-                avalon.readdatavalid.eq(1),
-                NextState("CMD")
-            )
-        )
+            avalon.waitrequest.eq(1),
+            port.rdata.ready.eq(1),
+
+            If(cmd,
+                If(port.cmd.ready,
+                    port.cmd.addr.eq(address),
+                    port.cmd.we.eq(0),
+                    port.cmd.valid.eq(1),
+                    NextValue(cmd, ~cmd)))
+            .Else(
+                If(port.rdata.valid,
+                    avalon.readdata.eq(port.rdata.data),
+                    avalon.readdatavalid.eq(1),
+
+                    If(~active_burst,
+                        NextValue(burstcounter, 0),
+                        NextState("CMD"))
+                    .Else(NextValue(burstcounter, burstcounter - 1)))))
