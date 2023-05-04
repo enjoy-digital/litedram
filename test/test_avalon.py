@@ -1,8 +1,7 @@
 #
 # This file is part of LiteDRAM.
 #
-# Copyright (c) 2018-2019 Florent Kermarrec <florent@enjoy-digital.fr>
-# Copyright (c) 2020 Antmicro <www.antmicro.com>
+# Copyright (c) 2023 Hans Baier <hansfbaier@gmail.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
 import unittest

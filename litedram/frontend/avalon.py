@@ -1,7 +1,7 @@
 #
 # This file is part of LiteDRAM.
 #
-# Copyright (c) 2016-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2023 Hans Baier <hansfbaier@gmail.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
 """Wishbone frontend for LiteDRAM"""
