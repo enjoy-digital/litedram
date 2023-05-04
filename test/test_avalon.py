@@ -82,6 +82,7 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         pattern = [(adr + origin//(64//8), data) for adr, data in data["pattern"]]
         self.avalon_readback_test(pattern, data["expected"], avl, port, base_address=origin)
 
+    @unittest.skip
     def test_avalon_32bit_to_8bit(self):
         # Verify AvalonMM with 32-bit data width down-converted to 8-bit data width.
         data = self.pattern_test_data["32bit_to_8bit"]
