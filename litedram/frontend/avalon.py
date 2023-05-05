@@ -55,8 +55,8 @@ class LiteDRAMAvalonMM2Native(Module):
                 address.eq(avalon.address))
         ]
 
-        self.submodules.fsm = fsm = FSM(reset_state="CMD")
-        fsm.act("CMD",
+        self.submodules.fsm = fsm = FSM(reset_state="START")
+        fsm.act("START",
             avalon.waitrequest.eq(1),
             port.cmd.addr.eq(avalon.address),
             port.cmd.we.eq(avalon.write),
@@ -102,7 +102,7 @@ class LiteDRAMAvalonMM2Native(Module):
                     NextValue(byteenable, 0),
                     # this marks the end of a write cycle
                     NextValue(port.cmd.last, 1),
-                    NextState("CMD"))
+                    NextState("START"))
                 .Else(
                     # TODO: increment address NextValue(address, address + 4),
                     NextValue(burstcounter, burstcounter - 1),
@@ -128,6 +128,6 @@ class LiteDRAMAvalonMM2Native(Module):
 
                 If(~active_burst,
                     NextValue(burstcounter, 0),
-                    NextState("CMD"))
+                    NextState("START"))
                 .Else(NextValue(burstcounter, burstcounter - 1),
                       NextState("READ_CMD"))))
