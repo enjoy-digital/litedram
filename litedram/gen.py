@@ -48,6 +48,7 @@ from litex.soc.cores.clock import *
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 from litex.soc.interconnect import wishbone
+from litex.soc.interconnect import avalon
 from litex.soc.cores.uart import *
 
 from litedram import modules as litedram_modules
@@ -60,6 +61,7 @@ from litedram.core.controller import ControllerSettings
 
 from litedram.frontend.axi import *
 from litedram.frontend.wishbone import *
+from litedram.frontend.avalon import *
 from litedram.frontend.bist import LiteDRAMBISTGenerator
 from litedram.frontend.bist import LiteDRAMBISTChecker
 from litedram.frontend.fifo import LiteDRAMFIFO
@@ -212,6 +214,21 @@ def get_wishbone_user_port_ios(_id, aw, dw):
             Subsignal("ack",   Pins(1)),
             Subsignal("we",    Pins(1)),
             Subsignal("err",   Pins(1)),
+        ),
+    ]
+
+def get_avalon_user_port_ios(_id, aw, dw):
+    return [
+        ("user_port_{}".format(_id), 0,
+            Subsignal("address",          Pins(aw)),
+            Subsignal("writedata",        Pins(dw)),
+            Subsignal("readdata",         Pins(dw)),
+            Subsignal("readdatavalid",    Pins(1)),
+            Subsignal("byteenable",       Pins(dw//8)),
+            Subsignal("read",             Pins(1)),
+            Subsignal("write",            Pins(1)),
+            Subsignal("waitrequest",      Pins(1)),
+            Subsignal("burstcount",       Pins(8)),
         ),
     ]
 
@@ -667,7 +684,7 @@ class LiteDRAMCore(SoCCore):
                 self.comb += user_enable.eq(1)
 
             # Request user port on crossbar and add optional ECC.
-            if port["type"] in ["native", "wishbone", "axi"]:
+            if port["type"] in ["native", "wishbone", "avalon", "axi"]:
                 # With ECC.
                 if port.get("ecc", False):
                     assert port.get("data_width", None) is not None
@@ -728,6 +745,28 @@ class LiteDRAMCore(SoCCore):
                     _wb_port_io.ack.eq(wb_port.ack & user_enable),
                     wb_port.we.eq(_wb_port_io.we),
                     _wb_port_io.err.eq(wb_port.err),
+                ]
+            # Avalon -----------------------------------------------------------------------------
+            elif port["type"] == "avalon":
+                avalon_port = avalon.AvalonMMInterface(
+                    user_port.data_width,
+                    user_port.address_width)
+                avalon2native = LiteDRAMAvalonMM2Native(avalon_port, user_port)
+                self.submodules += avalon2native
+                platform.add_extension(get_avalon_user_port_ios(name,
+                        len(avalon_port.address),
+                        len(avalon_port.writedata)))
+                _avalon_port_io = platform.request("user_port_{}".format(name))
+                self.comb += [
+                    avalon_port.address.eq(_avalon_port_io.address),
+                    avalon_port.writedata.eq(_avalon_port_io.writedata),
+                    _avalon_port_io.readdata.eq(avalon_port.readdata),
+                    _avalon_port_io.readdatavalid.eq(avalon_port.readdatavalid),
+                    avalon_port.burstcount.eq(_avalon_port_io.burstcount),
+                    avalon_port.byteenable.eq(_avalon_port_io.byteenable),
+                    avalon_port.write.eq(_avalon_port_io.write & user_enable),
+                    avalon_port.read.eq(_avalon_port_io.read & user_enable),
+                    _avalon_port_io.waitrequest.eq(avalon_port.waitrequest | ~user_enable),
                 ]
             # AXI ----------------------------------------------------------------------------------
             elif port["type"] == "axi":

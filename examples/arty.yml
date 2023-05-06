@@ -41,6 +41,9 @@
             "type":  "wishbone",
             "block_until_ready": True,
         },
+        "avalon_0" : {
+            "type":  "avalon",
+        },
         "native_0" : {
             "type": "native",
         },
