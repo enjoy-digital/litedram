@@ -15,26 +15,25 @@ from litedram.common import LiteDRAMNativePort
 
 from test.common import DRAMMemory, MemoryTestDataMixin
 
+class DUT(Module):
+    def __init__(self, port, avalon, base_address=0x0, mem_expected=[]):
+        self.port   = port
+        self.avalon = avalon
+        self.submodules += LiteDRAMAvalonMM2Native(
+            avalon       = self.avalon,
+            port         = self.port,
+            base_address = base_address)
+        self.mem = DRAMMemory(port.data_width, len(mem_expected))
 
 class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
     def avalon_readback_test(self, pattern, mem_expected, avalon, port, base_address=0):
-        class DUT(Module):
-            def __init__(self):
-                self.port   = port
-                self.avalon = avalon
-                self.submodules += LiteDRAMAvalonMM2Native(
-                    avalon       = self.avalon,
-                    port         = self.port,
-                    base_address = base_address)
-                self.mem = DRAMMemory(port.data_width, len(mem_expected))
-
         def main_generator(dut):
             for adr, data in pattern:
                 yield from dut.avalon.bus_write(adr, data)
                 data_r = (yield from dut.avalon.bus_read(adr))
                 self.assertEqual(data_r, data)
 
-        dut = DUT()
+        dut = DUT(port, avalon, base_address, mem_expected)
         generators = [
             main_generator(dut),
             dut.mem.write_handler(dut.port),
@@ -133,3 +132,35 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         # add offset (in data words)
         pattern = [(adr + origin//(32//8), data) for adr, data in data["pattern"]]
         self.avalon_readback_test(pattern, data["expected"], avl, port, base_address=origin)
+
+    @unittest.skip
+    def test_avalon_burst(self):
+        def generator(dut):
+            yield from dut.avalon.bus_write(0x0, [0x01234567, 0x89abcdef, 0xdeadbeef, 0xc0ffee00, 0x76543210])
+            yield
+            self.assertEqual((yield from dut.avl.bus_read(0x0000, burstcount=5)), 0x01234567)
+            self.assertEqual((yield dut.avl.readdatavalid), 1)
+            self.assertEqual((yield from dut.avl.continue_read_burst()), 0x89abcdef)
+            self.assertEqual((yield dut.avl.readdatavalid), 1)
+            self.assertEqual((yield from dut.avl.continue_read_burst()), 0xdeadbeef)
+            self.assertEqual((yield dut.avl.readdatavalid), 1)
+            self.assertEqual((yield from dut.avl.continue_read_burst()), 0xc0ffee00)
+            self.assertEqual((yield dut.avl.readdatavalid), 1)
+            self.assertEqual((yield from dut.avl.continue_read_burst()), 0x76543210)
+            yield
+            yield
+            yield
+            yield
+            self.assertEqual((yield from dut.avalon.bus_read(0x0000)), 0x01234567)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0004)), 0x89abcdef)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0008)), 0xdeadbeef)
+            self.assertEqual((yield from dut.avalon.bus_read(0x000c)), 0xc0ffee00)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0010)), 0x76543210)
+            yield
+            yield
+
+        avl  = avalon.AvalonMMInterface(adr_width=30, data_width=32)
+        port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+
+        dut = DUT(port, avl)
+        run_simulation(dut, generator(dut), vcd_name='sim.vcd')

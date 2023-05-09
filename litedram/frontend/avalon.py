@@ -18,11 +18,12 @@ from litedram.frontend.adapter import LiteDRAMNativePortConverter
 # LiteDRAMWishbone2Native --------------------------------------------------------------------------
 
 class LiteDRAMAvalonMM2Native(Module):
-    def __init__(self, avalon, port, base_address=0x00000000):
+    def __init__(self, avalon, port, base_address=0x00000000, burst_increment=1):
         avalon_data_width = len(avalon.writedata)
         port_data_width     = 2**int(log2(len(port.wdata.data))) # Round to lowest power 2
         ratio               = avalon_data_width/port_data_width
         downconvert         = ratio > 1
+        upconvert           = ratio < 1
 
         if avalon_data_width != port_data_width:
             if avalon_data_width > port_data_width:
@@ -124,7 +125,7 @@ class LiteDRAMAvalonMM2Native(Module):
                     # this marks the end of a write cycle
                     NextState("START"))
                 .Else(
-                    # TODO: increment address NextValue(address, address + 4),
+                    NextValue(address, address + burst_increment),
                     NextValue(burstcounter, burstcounter - 1),
                     NextState("WRITE_CMD"))))
 
