@@ -133,20 +133,21 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         pattern = [(adr + origin//(32//8), data) for adr, data in data["pattern"]]
         self.avalon_readback_test(pattern, data["expected"], avl, port, base_address=origin)
 
-    @unittest.skip
     def test_avalon_burst(self):
-        def generator(dut):
-            yield from dut.avalon.bus_write(0x0, [0x01234567, 0x89abcdef, 0xdeadbeef, 0xc0ffee00, 0x76543210])
+        data = [0x01234567, 0x89abcdef, 0xdeadbeef, 0xc0ffee00, 0x76543210]
+
+        def main_generator(dut):
+            yield from dut.avalon.bus_write(0x0, data)
             yield
-            self.assertEqual((yield from dut.avl.bus_read(0x0000, burstcount=5)), 0x01234567)
-            self.assertEqual((yield dut.avl.readdatavalid), 1)
-            self.assertEqual((yield from dut.avl.continue_read_burst()), 0x89abcdef)
-            self.assertEqual((yield dut.avl.readdatavalid), 1)
-            self.assertEqual((yield from dut.avl.continue_read_burst()), 0xdeadbeef)
-            self.assertEqual((yield dut.avl.readdatavalid), 1)
-            self.assertEqual((yield from dut.avl.continue_read_burst()), 0xc0ffee00)
-            self.assertEqual((yield dut.avl.readdatavalid), 1)
-            self.assertEqual((yield from dut.avl.continue_read_burst()), 0x76543210)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0000, burstcount=5)), 0x01234567)
+            self.assertEqual((yield dut.avalon.readdatavalid), 1)
+            self.assertEqual((yield from dut.avalon.continue_read_burst()), 0x89abcdef)
+            self.assertEqual((yield dut.avalon.readdatavalid), 1)
+            self.assertEqual((yield from dut.avalon.continue_read_burst()), 0xdeadbeef)
+            self.assertEqual((yield dut.avalon.readdatavalid), 1)
+            self.assertEqual((yield from dut.avalon.continue_read_burst()), 0xc0ffee00)
+            self.assertEqual((yield dut.avalon.readdatavalid), 1)
+            self.assertEqual((yield from dut.avalon.continue_read_burst()), 0x76543210)
             yield
             yield
             yield
@@ -161,6 +162,12 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
 
         avl  = avalon.AvalonMMInterface(adr_width=30, data_width=32)
         port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+        dut = DUT(port, avl, base_address=0x0, mem_expected=data)
+        generators = [
+            main_generator(dut),
+            dut.mem.write_handler(dut.port),
+            dut.mem.read_handler(dut.port),
+        ]
 
-        dut = DUT(port, avl)
-        run_simulation(dut, generator(dut), vcd_name='sim.vcd')
+        run_simulation(dut, generators, vcd_name='sim.vcd')
+        self.assertEqual(dut.mem.mem, data)
