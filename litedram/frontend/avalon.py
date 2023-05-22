@@ -78,10 +78,10 @@ class LiteDRAMAvalonMM2Native(Module):
                     ] if downconvert else [],
                     NextValue(writedata, avalon.writedata),
                     [] if downconvert else [NextValue(port.cmd.last, 0)],
-                    NextState("WRITE_DATA"))
-
-                .Elif(avalon.read,
-                      NextState("READ_DATA"))))
+                    NextState("WRITE_DATA")
+                ).Elif(avalon.read,
+                      NextState("READ_DATA")))
+                )
 
         fsm.act("WRITE_CMD",
             avalon.waitrequest.eq(1),
@@ -91,8 +91,7 @@ class LiteDRAMAvalonMM2Native(Module):
             port.cmd.we.eq(1),
             port.cmd.valid.eq(1),
 
-            If(port.cmd.ready,
-                NextState("WRITE_DATA")))
+            If(port.cmd.ready, NextState("WRITE_DATA")))
 
         fsm.act("WRITE_DATA",
             avalon.waitrequest.eq(1),
@@ -106,7 +105,8 @@ class LiteDRAMAvalonMM2Native(Module):
                 If(port.cmd.ready, NextValue(cmd_ready_seen, 1)),
                 If(cmd_ready_seen,
                     port.cmd.valid.eq(0),
-                    port.cmd.we.eq(0)),
+                    port.cmd.we.eq(0)
+                ),
             ] if downconvert else [],
 
             port.wdata.data.eq(writedata),
@@ -123,11 +123,12 @@ class LiteDRAMAvalonMM2Native(Module):
                     NextValue(burstcounter, 0),
                     NextValue(byteenable, 0),
                     # this marks the end of a write cycle
-                    NextState("START"))
-                .Else(
+                    NextState("START")
+                ).Else(
                     NextValue(address, address + burst_increment),
                     NextValue(burstcounter, burstcounter - 1),
-                    NextState("WRITE_CMD"))))
+                    NextState("WRITE_CMD")))
+                )
 
         if downconvert:
             self.comb += port.cmd.last.eq(~(fsm.ongoing("WRITE_CMD") | fsm.ongoing("WRITE_DATA") | avalon.write))
@@ -154,7 +155,8 @@ class LiteDRAMAvalonMM2Native(Module):
                 If(port.cmd.ready, NextValue(cmd_ready_seen, 1)),
                 If(cmd_ready_seen,
                     port.cmd.valid.eq(0),
-                    port.cmd.we.eq(0)),
+                    port.cmd.we.eq(0)
+                ),
             ] if downconvert else [],
 
             If(port.rdata.valid,
@@ -168,7 +170,9 @@ class LiteDRAMAvalonMM2Native(Module):
                         NextValue(cmd_ready_seen, 0),
                     ] if downconvert else [],
                     NextValue(burstcounter, 0),
-                    NextState("START"))
-                .Else(NextValue(address, address + burst_increment),
+                    NextState("START")
+
+                ).Else(NextValue(address, address + burst_increment),
                       NextValue(burstcounter, burstcounter - 1),
-                      NextState("READ_CMD"))))
+                      NextState("READ_CMD")))
+                )
