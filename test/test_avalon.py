@@ -153,10 +153,10 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
             yield
             yield
             self.assertEqual((yield from dut.avalon.bus_read(0x0000)), 0x01234567)
-            self.assertEqual((yield from dut.avalon.bus_read(0x0004)), 0x89abcdef)
-            self.assertEqual((yield from dut.avalon.bus_read(0x0008)), 0xdeadbeef)
-            self.assertEqual((yield from dut.avalon.bus_read(0x000c)), 0xc0ffee00)
-            self.assertEqual((yield from dut.avalon.bus_read(0x0010)), 0x76543210)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0001)), 0x89abcdef)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0002)), 0xdeadbeef)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0003)), 0xc0ffee00)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0004)), 0x76543210)
             yield
             yield
 

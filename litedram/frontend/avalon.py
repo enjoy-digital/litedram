@@ -135,11 +135,11 @@ class LiteDRAMAvalonMM2Native(Module):
         fsm.act("READ_CMD",
             avalon.waitrequest.eq(1),
             port.rdata.ready.eq(1),
+            port.cmd.addr.eq(address),
+            port.cmd.we.eq(0),
+            port.cmd.valid.eq(1),
 
             If(port.cmd.ready,
-                port.cmd.addr.eq(address),
-                port.cmd.we.eq(0),
-                port.cmd.valid.eq(1),
                 NextState("READ_DATA")))
 
         fsm.act("READ_DATA",
@@ -169,5 +169,6 @@ class LiteDRAMAvalonMM2Native(Module):
                     ] if downconvert else [],
                     NextValue(burstcounter, 0),
                     NextState("START"))
-                .Else(NextValue(burstcounter, burstcounter - 1),
+                .Else(NextValue(address, address + burst_increment),
+                      NextValue(burstcounter, burstcounter - 1),
                       NextState("READ_CMD"))))
