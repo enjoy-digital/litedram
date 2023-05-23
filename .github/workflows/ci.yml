@@ -13,6 +13,10 @@ jobs:
       - name: Setup CCache
         uses: hendrikmuhs/ccache-action@v1.2
 
+      - uses: ghdl/setup-ghdl-ci@master
+        with:
+          backend: llvm
+
       # Install Tools
       - name: Install Tools
         run: |
@@ -20,7 +24,7 @@ jobs:
           sudo apt-get install libevent-dev libjson-c-dev flex bison
           sudo apt-get install libfl-dev libfl2 zlib1g-dev
 
-      - name: Set up Python 3.9
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: "3.9"
@@ -35,10 +39,10 @@ jobs:
       - name: Install LiteX
         run: |
           wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
-          python3 litex_setup.py init install --user
+          python3 litex_setup.py --init --install --user
 
-      # Install RISC-V GCC
-      - name: Install RISC-V GCC
+      # Install GCC Toolchains
+      - name: Install GCC Toolchains
         run: |
           sudo python3 litex_setup.py --gcc=riscv
 
