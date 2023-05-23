@@ -104,7 +104,7 @@ class LiteDRAMCrossbar(Module):
             self.submodules += LiteDRAMNativePortCDC(new_port, port)
             port = new_port
 
-        # Data width convertion --------------------------------------------------------------------
+        # Data width conversion --------------------------------------------------------------------
         if data_width != self.controller.data_width:
             if data_width > self.controller.data_width:
                 addr_shift = -log2_int(data_width//self.controller.data_width)
