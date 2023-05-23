@@ -4,18 +4,19 @@
 # Copyright (c) 2023 Hans Baier <hansfbaier@gmail.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
-"""Wishbone frontend for LiteDRAM"""
+"""AvalonMM frontend for LiteDRAM"""
 
 from math import log2
 
 from migen import *
 
 from litex.soc.interconnect import stream
+
 from litedram.common import LiteDRAMNativePort
 from litedram.frontend.adapter import LiteDRAMNativePortConverter
 
 
-# LiteDRAMWishbone2Native --------------------------------------------------------------------------
+# LiteDRAMAvalongMM2Native --------------------------------------------------------------------------
 
 class LiteDRAMAvalonMM2Native(Module):
     def __init__(self, avalon, port, base_address=0x00000000, burst_increment=1):
@@ -152,7 +153,9 @@ class LiteDRAMAvalonMM2Native(Module):
                 port.cmd.we.eq(0),
                 port.cmd.valid.eq(1),
 
-                If(port.cmd.ready, NextValue(cmd_ready_seen, 1)),
+                If(port.cmd.ready,
+                    NextValue(cmd_ready_seen, 1)
+                ),
                 If(cmd_ready_seen,
                     port.cmd.valid.eq(0),
                     port.cmd.we.eq(0)
@@ -172,7 +175,8 @@ class LiteDRAMAvalonMM2Native(Module):
                     NextValue(burstcounter, 0),
                     NextState("START")
 
-                ).Else(NextValue(address, address + burst_increment),
-                      NextValue(burstcounter, burstcounter - 1),
-                      NextState("READ_CMD")))
+                ).Else(
+                    NextValue(address, address + burst_increment),
+                    NextValue(burstcounter, burstcounter - 1),
+                    NextState("READ_CMD")))
                 )
