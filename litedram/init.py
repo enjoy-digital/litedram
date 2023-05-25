@@ -23,6 +23,14 @@ cmds = {
     "CKE":           "DFII_CONTROL_CKE|DFII_CONTROL_ODT|DFII_CONTROL_RESET_N"
 }
 
+# Swap two bits in num
+# https://www.techiedelight.com/swap-two-bits-given-position-integer/
+def swap_bit(num, a, b):
+    if ((num >> a) & 1) != ((num >> b) & 1):
+        num = num ^ (1 << a)
+        num = num ^ (1 << b)
+    return num
+
 def reg(fields):
     # takes a list of tuples: [(bit_offset, bit_width, value), ...]
     regval = 0
@@ -894,6 +902,9 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
     r.define("DFII_COMMAND_RAS",    "0x08")
     r.define("DFII_COMMAND_WRDATA", "0x10")
     r.define("DFII_COMMAND_RDDATA", "0x20")
+    if phy_settings.is_clam_shell:
+        r.define("DFII_COMMAND_CS_TOP",  "0x40")
+        r.define("DFII_COMMAND_CS_BOTTOM",  "0x80")
     r.newline()
 
     phytype = phy_settings.phytype.upper()
@@ -941,6 +952,9 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
     if phy_settings.is_rdimm:
         assert phy_settings.memtype == "DDR4"
         r.define("SDRAM_PHY_DDR4_RDIMM")
+    if phy_settings.is_clam_shell:
+        assert phy_settings.memtype == "DDR4"
+        r.define("SDRAM_PHY_CLAM_SHELL")
 
     # litedram doesn't support multiple ranks
     supported_memory = 2 ** (geom_settings.bankbits +
@@ -1010,6 +1024,33 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
                     invert_masks.append((0b10101111111000, 0b1111))
 
             for a_inv, ba_inv in invert_masks:
+                # handle clam shell topology
+                if cmd == cmds["MODE_REGISTER"] and phy_settings.is_clam_shell:
+                    b += f"/* {comment} for top */"
+                    b += f"sdram_dfii_pi0_address_write({a ^ a_inv:#x});"
+                    b += f"sdram_dfii_pi0_baddress_write({ba ^ ba_inv:d});"
+                    b += f"command_p0({cmd}|DFII_COMMAND_CS_TOP);"
+                    if delay:
+                        b += f"cdelay({delay});\n"
+                    b.newline()
+
+                    # swap addr and pass to bottom
+                    b += f"/* {comment} for bottom */"
+                    addr = a ^ a_inv
+                    addr = swap_bit(addr, 3, 4)
+                    addr = swap_bit(addr, 5, 6)
+                    addr = swap_bit(addr, 7, 8)
+                    addr = swap_bit(addr, 11, 13)
+                    b += f"sdram_dfii_pi0_address_write({addr:#x});"
+                    baddr = ba ^ ba_inv
+                    baddr = swap_bit(baddr, 0, 1)
+                    b += f"sdram_dfii_pi0_baddress_write({baddr:d});"
+                    b += f"command_p0({cmd}|DFII_COMMAND_CS_BOTTOM);"
+                    if delay:
+                        b += f"cdelay({delay});\n"
+                    b.newline()
+                    continue
+
                 b += f"/* {comment} */"
                 b += f"sdram_dfii_pi0_address_write({a ^ a_inv:#x});"
                 b += f"sdram_dfii_pi0_baddress_write({ba ^ ba_inv:d});"
