@@ -51,13 +51,11 @@ class LiteDRAMAvalonMM2Native(Module):
         start_transaction = Signal()
         cmd_ready_seen    = Signal()
 
-        write_layout = [
-            ("address", len(address)),
+        cmd_layout = [("address", len(address))]
+        wdata_layout = [
             ("data", avalon_data_width),
             ("byteenable", len(avalon.byteenable))
         ]
-
-        self.submodules.write_fifo = write_fifo = stream.SyncFIFO(write_layout, max_burst_length)
 
         self.comb += [
             start_burst .eq(2 <= avalon.burstcount),
@@ -169,34 +167,42 @@ class LiteDRAMAvalonMM2Native(Module):
             )
         )
 
+        self.submodules.cmd_fifo   = cmd_fifo   = stream.SyncFIFO(cmd_layout,   max_burst_length)
+        self.submodules.wdata_fifo = wdata_fifo = stream.SyncFIFO(wdata_layout, max_burst_length)
+
         fsm.act("BURST_WRITE",
             # FIFO producer
-            avalon.waitrequest.eq(~(write_fifo.sink.ready & active_burst)),
-            write_fifo.sink.payload.address.eq(address),
-            write_fifo.sink.payload.data.eq(avalon.writedata),
-            write_fifo.sink.payload.byteenable.eq(avalon.byteenable),
-            write_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
-            write_fifo.sink.last.eq(burstcounter == 1),
+            avalon.waitrequest.eq(~(cmd_fifo.sink.ready & wdata_fifo.sink.ready)),
+            cmd_fifo.sink.payload.address.eq(address),
+            cmd_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
+
+            wdata_fifo.sink.payload.data.eq(avalon.writedata),
+            wdata_fifo.sink.payload.byteenable.eq(avalon.byteenable),
+            wdata_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
 
             If (avalon.write & active_burst,
-                If (write_fifo.sink.ready & write_fifo.sink.valid,
+                If (cmd_fifo.sink.ready & cmd_fifo.sink.valid,
                     NextValue(burstcounter, burstcounter - 1),
                     NextValue(address, address + burst_increment))
             ).Else(
                 avalon.waitrequest.eq(1),
                 # wait for the FIFO to be empty
-                If (write_fifo.source.last & port.wdata.ready, NextState("START"))
+                If ((cmd_fifo  .level == 0) & 
+                    (wdata_fifo.level == 1) & port.wdata.ready,
+                    NextState("START")
+                )
             ),
 
             # FIFO consumer
-            port.cmd.addr.eq(write_fifo.source.payload.address),
-            port.cmd.we.eq(1),
-            port.cmd.valid.eq(write_fifo.source.valid),
+            port.cmd.addr.eq(cmd_fifo.source.payload.address),
+            port.cmd.we.eq(port.cmd.valid),
+            port.cmd.valid.eq(cmd_fifo.source.valid & (0 < wdata_fifo.level)),
+            cmd_fifo.source.ready.eq(port.cmd.ready),
 
-            port.wdata.data.eq(write_fifo.source.payload.data),
-            port.wdata.we.eq(write_fifo.source.payload.byteenable),
-            port.wdata.valid.eq(write_fifo.source.valid),
-            write_fifo.source.ready.eq(port.wdata.ready),
+            port.wdata.data.eq(wdata_fifo.source.payload.data),
+            port.wdata.we.eq(wdata_fifo.source.payload.byteenable),
+            port.wdata.valid.eq(wdata_fifo.source.valid),
+            wdata_fifo.source.ready.eq(port.wdata.ready),
         )
 
         fsm.act("BURST_READ",
