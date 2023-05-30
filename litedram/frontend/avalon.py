@@ -92,7 +92,16 @@ class LiteDRAMAvalonMM2Native(Module):
             port.cmd.we.eq(1),
             port.cmd.valid.eq(1),
 
-            If(port.cmd.ready, NextState("WRITE_DATA")))
+            [
+                port.wdata.data.eq(avalon.writedata),
+                NextValue(writedata, avalon.writedata),
+                port.wdata.valid.eq(1),
+                port.wdata.we.eq(byteenable),
+            ] if downconvert else [],
+
+            If(port.cmd.ready,
+                NextValue(cmd_ready_seen, 1) if downconvert else [],
+                NextState("WRITE_DATA")))
 
         fsm.act("WRITE_DATA",
             avalon.waitrequest.eq(1),
@@ -126,6 +135,8 @@ class LiteDRAMAvalonMM2Native(Module):
                     # this marks the end of a write cycle
                     NextState("START")
                 ).Else(
+                    avalon.waitrequest.eq(0),
+                    NextValue(cmd_ready_seen, 0) if downconvert else [],
                     NextValue(address, address + burst_increment),
                     NextValue(burstcounter, burstcounter - 1),
                     NextState("WRITE_CMD")))
