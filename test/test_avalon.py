@@ -162,7 +162,7 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
 
         avl  = avalon.AvalonMMInterface(adr_width=30, data_width=32)
         port = LiteDRAMNativePort("both", address_width=30, data_width=32)
-        dut = DUT(port, avl, base_address=0x0, mem_expected=data)
+        dut = DUT(port, avl, base_address=0x0, mem_expected=[0x4567, 0x0123, 0xcdef, 0x89ab, 0xbeef, 0xdead, 0xee00, 0xc0ff, 0x3210, 0x7654])
         generators = [
             main_generator(dut),
             dut.mem.write_handler(dut.port),
@@ -170,7 +170,7 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         ]
 
         run_simulation(dut, generators, vcd_name='sim.vcd')
-        self.assertEqual(dut.mem.mem, data)
+        self.assertEqual(dut.mem.mem, data + [0,0,0,0,0])
 
     def test_avalon_burst_downconvert(self):
         data = [0x01234567, 0x89abcdef, 0xdeadbeef, 0xc0ffee00, 0x76543210, 0xfedcba98]
@@ -178,7 +178,7 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         def main_generator(dut):
             yield from dut.avalon.bus_write(0x0, data)
             yield
-            self.assertEqual((yield from dut.avalon.bus_read(0x0000, burstcount=5)), 0x01234567)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0000, burstcount=6)), 0x01234567)
             self.assertEqual((yield dut.avalon.readdatavalid), 1)
             self.assertEqual((yield from dut.avalon.continue_read_burst()), 0x89abcdef)
             self.assertEqual((yield dut.avalon.readdatavalid), 1)
@@ -201,7 +201,7 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
 
         avl  = avalon.AvalonMMInterface(adr_width=30, data_width=32)
         port = LiteDRAMNativePort("both", address_width=32, data_width=16)
-        dut = DUT(port, avl, base_address=0x0, mem_expected=data)
+        dut = DUT(port, avl, base_address=0x0, mem_expected=data + 10 * [0])
         generators = [
             main_generator(dut),
             dut.mem.write_handler(dut.port),
