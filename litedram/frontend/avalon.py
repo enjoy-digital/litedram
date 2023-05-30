@@ -44,6 +44,7 @@ class LiteDRAMAvalonMM2Native(Module):
         offset  = base_address >> log2_int(port.data_width//8)
 
         burstcounter      = Signal(9)
+        start_burst       = Signal()
         active_burst      = Signal()
         address           = Signal(avalon_data_width)
         byteenable        = Signal.like(avalon.byteenable)
@@ -51,7 +52,10 @@ class LiteDRAMAvalonMM2Native(Module):
         start_transaction = Signal()
         cmd_ready_seen    = Signal()
 
-        self.comb += active_burst.eq(2 <= burstcounter)
+        self.comb += [
+            start_burst .eq(2 <= avalon.burstcount),
+            active_burst.eq(2 <= burstcounter)
+        ]
         self.sync += [
             If(start_transaction,
                 byteenable.eq(avalon.byteenable),
@@ -63,7 +67,8 @@ class LiteDRAMAvalonMM2Native(Module):
 
         self.submodules.fsm = fsm = FSM(reset_state="START")
         fsm.act("START",
-            avalon.waitrequest.eq(1),
+            [avalon.waitrequest.eq(~(avalon.read & start_burst))] if downconvert else
+                [avalon.waitrequest.eq(1)],
             port.cmd.addr.eq(avalon.address - offset),
             port.cmd.we.eq(avalon.write),
             port.cmd.valid   .eq(avalon.read | avalon.write),
@@ -81,7 +86,7 @@ class LiteDRAMAvalonMM2Native(Module):
                     [] if downconvert else [NextValue(port.cmd.last, 0)],
                     NextState("WRITE_DATA")
                 ).Elif(avalon.read,
-                      NextState("READ_DATA")))
+                    NextState("READ_DATA")))
                 )
 
         fsm.act("WRITE_CMD",

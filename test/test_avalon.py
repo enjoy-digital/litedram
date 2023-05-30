@@ -187,21 +187,23 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
             self.assertEqual((yield from dut.avalon.continue_read_burst()), 0xc0ffee00)
             self.assertEqual((yield dut.avalon.readdatavalid), 1)
             self.assertEqual((yield from dut.avalon.continue_read_burst()), 0x76543210)
+            self.assertEqual((yield dut.avalon.readdatavalid), 1)
+            self.assertEqual((yield from dut.avalon.continue_read_burst()), 0xfedcba98)
             yield
             yield
             yield
             yield
             self.assertEqual((yield from dut.avalon.bus_read(0x0000)), 0x01234567)
-            self.assertEqual((yield from dut.avalon.bus_read(0x0002)), 0x89abcdef)
-            self.assertEqual((yield from dut.avalon.bus_read(0x0004)), 0xdeadbeef)
-            self.assertEqual((yield from dut.avalon.bus_read(0x0006)), 0xc0ffee00)
-            self.assertEqual((yield from dut.avalon.bus_read(0x0008)), 0x76543210)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0001)), 0x89abcdef)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0002)), 0xdeadbeef)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0003)), 0xc0ffee00)
+            self.assertEqual((yield from dut.avalon.bus_read(0x0004)), 0x76543210)
             yield
             yield
 
         avl  = avalon.AvalonMMInterface(adr_width=30, data_width=32)
         port = LiteDRAMNativePort("both", address_width=32, data_width=16)
-        dut = DUT(port, avl, base_address=0x0, mem_expected=data + 10 * [0])
+        dut = DUT(port, avl, base_address=0x0, mem_expected=data + 6 * [0])
         generators = [
             main_generator(dut),
             dut.mem.write_handler(dut.port),
@@ -209,8 +211,7 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
         ]
 
         run_simulation(dut, generators, vcd_name="avalon_" + self._testMethodName + ".vcd")
-        dut.mem.show_content()
-        self.assertEqual(dut.mem.mem, data)
+        self.assertEqual(dut.mem.mem, [0x4567, 0x0123, 0xcdef, 0x89ab, 0xbeef, 0xdead, 0xee00, 0xc0ff, 0x3210, 0x7654, 0xba98, 0xfedc])
 
     def test_avalon_burst_upconvert(self):
         data = [0x01234567, 0x89abcdef, 0xdeadbeef, 0xc0ffee00, 0x76543210, 0xfedcba98]
