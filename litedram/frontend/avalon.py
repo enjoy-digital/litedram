@@ -55,7 +55,6 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         self.comb += address_offset.eq(base_address >> log2_int(port.data_width//8))
 
         # Layouts.
-        cmd_layout   = [("address", len(address))]
         wdata_layout = [
             ("data",       avalon_data_width),
             ("byteenable", avalon_data_width//8),
@@ -136,34 +135,26 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             wdata_fifo.source.ready.eq(port.wdata.ready),
         ]
 
-        self.cmd_fifo   = cmd_fifo   = stream.SyncFIFO(cmd_layout,   max_burst_length)
-
         fsm.act("BURST_WRITE",
-            # FIFO producer
-            avalon.waitrequest.eq(~(cmd_fifo.sink.ready & wdata_fifo.sink.ready)),
-            cmd_fifo.sink.payload.address.eq(address),
-            cmd_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
-
-            If(avalon.write & (burst_count > 0),
-                If(cmd_fifo.sink.ready & cmd_fifo.sink.valid,
+            avalon.waitrequest.eq(1),
+            port.cmd.addr.eq(address),
+            port.cmd.we.eq(1),
+            port.cmd.valid.eq(avalon.write & wdata_fifo.sink.ready),
+            If(port.cmd.valid & port.cmd.ready,
+                avalon.waitrequest.eq(0)
+            ),
+            If(burst_count > 0,
+                If(port.cmd.valid & port.cmd.ready,
                     NextValue(burst_count, burst_count - 1),
                     NextValue(address, address + burst_increment)
                 )
             ).Else(
                 avalon.waitrequest.eq(1),
                 # Wait for the FIFO to be empty
-                If((cmd_fifo.level == 0) & (wdata_fifo.level == 1) & port.wdata.ready,
+                If((~port.cmd.valid) & (~wdata_fifo.source.valid),
                     NextState("START")
                 )
             ),
-
-            # FIFO consumer
-            port.cmd.addr.eq(cmd_fifo.source.payload.address),
-            port.cmd.we.eq(port.cmd.valid),
-            port.cmd.valid.eq(cmd_fifo.source.valid & (0 < wdata_fifo.level)),
-            cmd_fifo.source.ready.eq(port.cmd.ready),
-
-
         )
 
         fsm.act("BURST_READ",
