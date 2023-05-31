@@ -187,7 +187,7 @@ class LiteDRAMAvalonMM2Native(Module):
             ).Else(
                 avalon.waitrequest.eq(1),
                 # wait for the FIFO to be empty
-                If ((cmd_fifo  .level == 0) & 
+                If ((cmd_fifo  .level == 0) &
                     (wdata_fifo.level == 1) & port.wdata.ready,
                     NextState("START")
                 )
@@ -209,18 +209,21 @@ class LiteDRAMAvalonMM2Native(Module):
             avalon.waitrequest.eq(1),
             port.cmd.addr.eq(address),
             port.cmd.we.eq(0),
-            port.cmd.valid.eq(1),
+            port.cmd.valid.eq(~cmd_ready_seen),
 
             port.rdata.ready.eq(1),
             avalon.readdata.eq(port.rdata.data),
             avalon.readdatavalid.eq(port.rdata.valid),
 
             If (port.cmd.ready,
+                If (burstcounter == 1, NextValue(cmd_ready_seen, 1)),
                 NextValue(address, address + burst_increment)
             ),
 
             If (port.rdata.valid,
-                If (burstcounter == 1, NextState("START")),
+                If (burstcounter == 1,
+                    NextValue(cmd_ready_seen, 0),
+                    NextState("START")),
                 NextValue(burstcounter, burstcounter - 1)
             )
         )
