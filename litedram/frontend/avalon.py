@@ -96,8 +96,8 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                     port.cmd.we.eq(avalon.write),
                     port.cmd.valid.eq(1),
                     port.cmd.last.eq(1),
-                    If((downconvert == True) | port.cmd.ready,
-                        avalon.waitrequest.eq(downconvert == True),
+                    If(port.cmd.ready,
+                        avalon.waitrequest.eq(0),
                         If(port.cmd.we,
                             NextState("SINGLE_WRITE")
                         ).Else(
@@ -112,28 +112,11 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             avalon.waitrequest.eq(1),
             port.rdata.ready.eq(0),
 
-            If((downconvert == True),
-                port.cmd.addr.eq(address),
-                port.cmd.we.eq(1),
-                port.cmd.valid.eq(1),
-
-                If(port.cmd.ready,
-                    NextValue(cmd_ready_seen, 1)
-                ),
-                If(cmd_ready_seen,
-                    port.cmd.valid.eq(0),
-                    port.cmd.we.eq(0)
-                ),
-            ),
-
             port.wdata.data.eq(writedata),
             port.wdata.valid.eq(1),
             port.wdata.we.eq(byteenable),
 
             If(port.wdata.ready,
-                If((downconvert == True),
-                    avalon.waitrequest.eq(0)
-                ),
                 NextState("START")
             )
         )
@@ -142,28 +125,9 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             avalon.waitrequest.eq(1),
             port.rdata.ready.eq(1),
 
-            If((downconvert == True),
-                port.cmd.addr.eq(address),
-                port.cmd.we.eq(0),
-                port.cmd.valid.eq(1),
-
-                If(port.cmd.ready,
-                    NextValue(cmd_ready_seen, 1)
-                ),
-                If(cmd_ready_seen,
-                    port.cmd.valid.eq(0),
-                    port.cmd.we.eq(0)
-                ),
-            ),
-
             If(port.rdata.valid,
                 avalon.readdata.eq(port.rdata.data),
                 avalon.readdatavalid.eq(1),
-
-                If((downconvert == True),
-                    port.cmd.valid.eq(0),
-                    avalon.waitrequest.eq(0),
-                ),
 
                 NextState("START")
             )
