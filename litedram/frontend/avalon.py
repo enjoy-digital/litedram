@@ -103,6 +103,7 @@ class LiteDRAMAvalonMM2Native(Module):
                         NextValue(cmd_ready_counter, avalon.burstcount),
                         NextState("BURST_READ")
                     ).Else(
+                        port.cmd.last.eq(1),
                         NextState("SINGLE_READ")
                     )
                 )
