@@ -134,12 +134,6 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 If((downconvert == True),
                     avalon.waitrequest.eq(0)
                 ),
-                NextValue(writedata, avalon.writedata),
-
-                port.flush.eq(1),
-                If((downconvert == False),
-                    NextValue(port.cmd.last, 1)
-                ),
                 NextState("START")
             )
         )
