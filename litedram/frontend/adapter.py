@@ -70,7 +70,7 @@ class LiteDRAMNativePortDownConverter(Module):
     - A read from the user generates N reads to the controller and returned
       datas are regrouped in a single data presented to the user.
     """
-    def __init__(self, port_from, port_to, reverse=False):
+    def __init__(self, port_from, port_to, reverse=False, early_cmd_ready=False):
         assert port_from.clock_domain == port_to.clock_domain
         assert port_from.data_width    > port_to.data_width
         assert port_from.mode         == port_to.mode
@@ -88,7 +88,7 @@ class LiteDRAMNativePortDownConverter(Module):
 
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
-            port_from.cmd.ready.eq(1),
+            port_from.cmd.ready.eq(early_cmd_ready),
             If(port_from.cmd.valid,
                 NextValue(cmd_count, 0),
                 NextValue(cmd_addr,  port_from.cmd.addr),
@@ -103,6 +103,7 @@ class LiteDRAMNativePortDownConverter(Module):
             If(port_to.cmd.ready,
                 NextValue(cmd_count, cmd_count + 1),
                 If(cmd_count == (ratio - 1),
+                    port_from.cmd.ready.eq(~early_cmd_ready),
                     NextState("IDLE")
                 )
             )
@@ -362,7 +363,7 @@ class LiteDRAMNativePortUpConverter(Module):
 # LiteDRAMNativePortConverter ----------------------------------------------------------------------
 
 class LiteDRAMNativePortConverter(Module):
-    def __init__(self, port_from, port_to, reverse=False):
+    def __init__(self, port_from, port_to, reverse=False, early_cmd_ready=False):
         assert port_from.clock_domain == port_to.clock_domain
         assert port_from.mode         == port_to.mode
 
@@ -372,7 +373,7 @@ class LiteDRAMNativePortConverter(Module):
 
         if ratio > 1:
             # DownConverter
-            self.submodules.converter = LiteDRAMNativePortDownConverter(port_from, port_to, reverse)
+            self.submodules.converter = LiteDRAMNativePortDownConverter(port_from, port_to, reverse, early_cmd_ready)
         elif ratio < 1:
             # UpConverter
             self.submodules.converter = LiteDRAMNativePortUpConverter(port_from, port_to, reverse)

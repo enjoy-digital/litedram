@@ -44,7 +44,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 address_width = port.address_width + addr_shift,
                 data_width    = avalon_data_width
             )
-            self.converter = LiteDRAMNativePortConverter(new_port, port)
+            self.converter = LiteDRAMNativePortConverter(new_port, port, early_cmd_ready=True)
             port = new_port
 
         # # #
