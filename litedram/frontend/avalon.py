@@ -76,6 +76,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         self.fsm = fsm = FSM(reset_state="START")
         fsm.act("START",
             avalon.waitrequest.eq(1),
+            NextValue(cmd_ready_seen, 0),
             # Start of Access.
             If(avalon.read | avalon.write,
                 latch.eq(1),
@@ -136,12 +137,9 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 NextValue(writedata, avalon.writedata),
 
                 port.flush.eq(1),
-                If((downconvert == True),
-                    NextValue(cmd_ready_seen, 0)
-                ).Else(
+                If((downconvert == False),
                     NextValue(port.cmd.last, 1)
                 ),
-                NextValue(byteenable, 0),
                 NextState("START")
             )
         )
@@ -171,7 +169,6 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 If((downconvert == True),
                     port.cmd.valid.eq(0),
                     avalon.waitrequest.eq(0),
-                    NextValue(cmd_ready_seen, 0),
                 ),
 
                 NextState("START")
@@ -236,7 +233,6 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
 
             If(port.rdata.valid,
                 If(burst_count == 1,
-                    NextValue(cmd_ready_seen, 0),
                     NextState("START")
                 ),
                 NextValue(burst_count, burst_count - 1)
