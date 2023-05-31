@@ -11,15 +11,14 @@ from math import log2
 from migen import *
 
 from litex.soc.interconnect import stream
-
 from litedram.common import LiteDRAMNativePort
 from litedram.frontend.adapter import LiteDRAMNativePortConverter
 
 
-# LiteDRAMAvalongMM2Native --------------------------------------------------------------------------
+# LiteDRAMAvalonMM2Native --------------------------------------------------------------------------
 
 class LiteDRAMAvalonMM2Native(Module):
-    def __init__(self, avalon, port, base_address=0x00000000, burst_increment=1):
+    def __init__(self, avalon, port, *, max_burst_length=16, base_address=0x00000000, burst_increment=1):
         avalon_data_width = len(avalon.writedata)
         port_data_width     = 2**int(log2(len(port.wdata.data))) # Round to lowest power 2
         ratio               = avalon_data_width/port_data_width
@@ -44,14 +43,25 @@ class LiteDRAMAvalonMM2Native(Module):
         offset  = base_address >> log2_int(port.data_width//8)
 
         burstcounter      = Signal(9)
+        start_burst       = Signal()
         active_burst      = Signal()
-        address           = Signal(avalon_data_width)
+        address           = Signal.like(port.cmd.addr)
         byteenable        = Signal.like(avalon.byteenable)
         writedata         = Signal(avalon_data_width)
         start_transaction = Signal()
         cmd_ready_seen    = Signal()
+        cmd_ready_counter = Signal.like(burstcounter)
 
-        self.comb += active_burst.eq(2 <= burstcounter)
+        cmd_layout = [("address", len(address))]
+        wdata_layout = [
+            ("data", avalon_data_width),
+            ("byteenable", len(avalon.byteenable))
+        ]
+
+        self.comb += [
+            start_burst .eq(2 <= avalon.burstcount),
+            active_burst.eq(1 <= burstcounter)
+        ]
         self.sync += [
             If(start_transaction,
                 byteenable.eq(avalon.byteenable),
@@ -59,42 +69,48 @@ class LiteDRAMAvalonMM2Native(Module):
                 address.eq(avalon.address - offset))
         ]
 
-        start_condition = start_transaction if downconvert else (start_transaction & port.cmd.ready)
+        start_condition = start_transaction if downconvert else (start_transaction & (start_burst | port.cmd.ready))
 
         self.submodules.fsm = fsm = FSM(reset_state="START")
         fsm.act("START",
             avalon.waitrequest.eq(1),
-            port.cmd.addr.eq(avalon.address - offset),
-            port.cmd.we.eq(avalon.write),
-            port.cmd.valid   .eq(avalon.read | avalon.write),
+            If (~start_burst,
+                port.cmd.addr.eq(avalon.address - offset),
+                port.cmd.we.eq(avalon.write),
+                port.cmd.valid.eq(avalon.read | avalon.write)
+            ),
+
             start_transaction.eq(avalon.read | avalon.write),
 
             If(start_condition,
-                [] if downconvert else [avalon.waitrequest.eq(0)],
+                [] if downconvert else [If (~start_burst, avalon.waitrequest.eq(0))],
                 If (avalon.write,
-                    [
-                        port.wdata.data.eq(avalon.writedata),
-                        port.wdata.valid.eq(1),
-                        port.wdata.we.eq(avalon.byteenable),
-                    ] if downconvert else [],
-                    NextValue(writedata, avalon.writedata),
-                    [] if downconvert else [NextValue(port.cmd.last, 0)],
-                    NextState("WRITE_DATA")
+                    If (start_burst,
+                        NextState("BURST_WRITE")
+                    ).Else(
+                        [
+                            port.wdata.data.eq(avalon.writedata),
+                            port.wdata.valid.eq(1),
+                            port.wdata.we.eq(avalon.byteenable),
+                        ] if downconvert else [],
+                        NextValue(writedata, avalon.writedata),
+                        port.cmd.last.eq(1),
+                        NextState("SINGLE_WRITE")
+                    )
                 ).Elif(avalon.read,
-                      NextState("READ_DATA")))
+                    If (start_burst,
+                        avalon.waitrequest.eq(0),
+                        NextValue(cmd_ready_counter, avalon.burstcount),
+                        NextState("BURST_READ")
+                    ).Else(
+                        port.cmd.last.eq(1),
+                        NextState("SINGLE_READ")
+                    )
                 )
+            )
+        )
 
-        fsm.act("WRITE_CMD",
-            avalon.waitrequest.eq(1),
-            port.rdata.ready.eq(0),
-
-            port.cmd.addr.eq(address),
-            port.cmd.we.eq(1),
-            port.cmd.valid.eq(1),
-
-            If(port.cmd.ready, NextState("WRITE_DATA")))
-
-        fsm.act("WRITE_DATA",
+        fsm.act("SINGLE_WRITE",
             avalon.waitrequest.eq(1),
             port.rdata.ready.eq(0),
 
@@ -115,36 +131,17 @@ class LiteDRAMAvalonMM2Native(Module):
             port.wdata.we.eq(byteenable),
 
             If(port.wdata.ready,
-                avalon.waitrequest.eq(active_burst if downconvert else ~active_burst),
+                avalon.waitrequest.eq(0 if downconvert else 1),
                 NextValue(writedata, avalon.writedata),
 
-                If(~active_burst,
-                    port.flush.eq(1),
-                    NextValue(cmd_ready_seen, 0) if downconvert else NextValue(port.cmd.last, 1),
-                    NextValue(burstcounter, 0),
-                    NextValue(byteenable, 0),
-                    # this marks the end of a write cycle
-                    NextState("START")
-                ).Else(
-                    NextValue(address, address + burst_increment),
-                    NextValue(burstcounter, burstcounter - 1),
-                    NextState("WRITE_CMD")))
-                )
+                port.flush.eq(1),
+                NextValue(cmd_ready_seen, 0) if downconvert else NextValue(port.cmd.last, 1),
+                NextValue(byteenable, 0),
+                NextState("START")
+            )
+        )
 
-        if downconvert:
-            self.comb += port.cmd.last.eq(~(fsm.ongoing("WRITE_CMD") | fsm.ongoing("WRITE_DATA") | avalon.write))
-
-        fsm.act("READ_CMD",
-            avalon.waitrequest.eq(1),
-            port.rdata.ready.eq(1),
-            port.cmd.addr.eq(address),
-            port.cmd.we.eq(0),
-            port.cmd.valid.eq(1),
-
-            If(port.cmd.ready,
-                NextState("READ_DATA")))
-
-        fsm.act("READ_DATA",
+        fsm.act("SINGLE_READ",
             avalon.waitrequest.eq(1),
             port.rdata.ready.eq(1),
 
@@ -153,9 +150,7 @@ class LiteDRAMAvalonMM2Native(Module):
                 port.cmd.we.eq(0),
                 port.cmd.valid.eq(1),
 
-                If(port.cmd.ready,
-                    NextValue(cmd_ready_seen, 1)
-                ),
+                If(port.cmd.ready, NextValue(cmd_ready_seen, 1)),
                 If(cmd_ready_seen,
                     port.cmd.valid.eq(0),
                     port.cmd.we.eq(0)
@@ -166,17 +161,73 @@ class LiteDRAMAvalonMM2Native(Module):
                 avalon.readdata.eq(port.rdata.data),
                 avalon.readdatavalid.eq(1),
 
-                If(~active_burst,
-                    [
-                        port.cmd.valid.eq(0),
-                        avalon.waitrequest.eq(0),
-                        NextValue(cmd_ready_seen, 0),
-                    ] if downconvert else [],
-                    NextValue(burstcounter, 0),
-                    NextState("START")
+                [
+                    port.cmd.valid.eq(0),
+                    avalon.waitrequest.eq(0),
+                    NextValue(cmd_ready_seen, 0),
+                ] if downconvert else [],
+                NextState("START")
+            )
+        )
 
-                ).Else(
-                    NextValue(address, address + burst_increment),
+        self.submodules.cmd_fifo   = cmd_fifo   = stream.SyncFIFO(cmd_layout,   max_burst_length)
+        self.submodules.wdata_fifo = wdata_fifo = stream.SyncFIFO(wdata_layout, max_burst_length)
+
+        fsm.act("BURST_WRITE",
+            # FIFO producer
+            avalon.waitrequest.eq(~(cmd_fifo.sink.ready & wdata_fifo.sink.ready)),
+            cmd_fifo.sink.payload.address.eq(address),
+            cmd_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
+
+            wdata_fifo.sink.payload.data.eq(avalon.writedata),
+            wdata_fifo.sink.payload.byteenable.eq(avalon.byteenable),
+            wdata_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
+
+            If (avalon.write & active_burst,
+                If (cmd_fifo.sink.ready & cmd_fifo.sink.valid,
                     NextValue(burstcounter, burstcounter - 1),
-                    NextState("READ_CMD")))
+                    NextValue(address, address + burst_increment))
+            ).Else(
+                avalon.waitrequest.eq(1),
+                # wait for the FIFO to be empty
+                If ((cmd_fifo  .level == 0) &
+                    (wdata_fifo.level == 1) & port.wdata.ready,
+                    NextState("START")
                 )
+            ),
+
+            # FIFO consumer
+            port.cmd.addr.eq(cmd_fifo.source.payload.address),
+            port.cmd.we.eq(port.cmd.valid),
+            port.cmd.valid.eq(cmd_fifo.source.valid & (0 < wdata_fifo.level)),
+            cmd_fifo.source.ready.eq(port.cmd.ready),
+
+            port.wdata.data.eq(wdata_fifo.source.payload.data),
+            port.wdata.we.eq(wdata_fifo.source.payload.byteenable),
+            port.wdata.valid.eq(wdata_fifo.source.valid),
+            wdata_fifo.source.ready.eq(port.wdata.ready),
+        )
+
+        fsm.act("BURST_READ",
+            avalon.waitrequest.eq(1),
+            port.cmd.addr.eq(address),
+            port.cmd.we.eq(0),
+            port.cmd.valid.eq(~cmd_ready_seen),
+
+            port.rdata.ready.eq(1),
+            avalon.readdata.eq(port.rdata.data),
+            avalon.readdatavalid.eq(port.rdata.valid),
+
+            If (port.cmd.ready,
+                If (cmd_ready_counter == 1, NextValue(cmd_ready_seen, 1)),
+                NextValue(cmd_ready_counter, cmd_ready_counter - 1),
+                NextValue(address, address + burst_increment)
+            ),
+
+            If (port.rdata.valid,
+                If (burstcounter == 1,
+                    NextValue(cmd_ready_seen, 0),
+                    NextState("START")),
+                NextValue(burstcounter, burstcounter - 1)
+            )
+        )
