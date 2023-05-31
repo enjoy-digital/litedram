@@ -2,9 +2,14 @@
 # This file is part of LiteDRAM.
 #
 # Copyright (c) 2023 Hans Baier <hansfbaier@gmail.com>
+# Copyright (c) 2023 Florent Kermarrec <florent@enjoy-digital.fr>
 # SPDX-License-Identifier: BSD-2-Clause
 
 """AvalonMM frontend for LiteDRAM"""
+
+# TODO:
+# - Try to merge SINGLE-WRITE/BURST-WRITE (Consider single access as a 1 word burst).
+# - Try to merge SINGLE-READ /BURST-READ  (Consider single access as a 1 word burst).
 
 from math import log2
 
@@ -48,81 +53,15 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         burst_count     = Signal(9)
         address         = Signal(port.address_width)
         address_offset  = Signal(port.address_width)
-        latch           = Signal()
         cmd_ready_seen  = Signal()
         cmd_ready_count = Signal(9)
-
         self.comb += address_offset.eq(base_address >> log2_int(port.data_width//8))
 
-        # Layouts.
+        # Write Data-path.
         wdata_layout = [
             ("data",       avalon_data_width),
             ("byteenable", avalon_data_width//8),
         ]
-
-        self.sync += [
-            If(latch,
-                burst_count.eq(avalon.burstcount),
-                address.eq(avalon.address - address_offset),
-            )
-        ]
-
-        # FSM.
-        self.fsm = fsm = FSM(reset_state="START")
-        fsm.act("START",
-            avalon.waitrequest.eq(1),
-            NextValue(cmd_ready_seen, 0),
-            # Start of Access.
-            If(avalon.read | avalon.write,
-                latch.eq(1),
-                # Burst Access.
-                If(avalon.burstcount > 1,
-                    If(avalon.write,
-                        NextState("BURST_WRITE")
-                    ),
-                    If(avalon.read,
-                        avalon.waitrequest.eq(0),
-                        NextValue(cmd_ready_count, avalon.burstcount),
-                        NextState("BURST_READ")
-                    )
-                # Single Access.
-                ).Else(
-                    port.cmd.addr.eq(avalon.address - address_offset),
-                    port.cmd.we.eq(avalon.write),
-                    port.cmd.valid.eq(1),
-                    port.cmd.last.eq(1),
-                    If(port.cmd.ready,
-                        avalon.waitrequest.eq(0),
-                        If(port.cmd.we,
-                            NextState("SINGLE_WRITE")
-                        ).Else(
-                            NextState("SINGLE_READ")
-                        )
-                    )
-                )
-            )
-        )
-
-        fsm.act("SINGLE_WRITE",
-            avalon.waitrequest.eq(1),
-            If(port.wdata.valid & port.wdata.ready,
-                NextState("START")
-            )
-        )
-
-        fsm.act("SINGLE_READ",
-            avalon.waitrequest.eq(1),
-            port.rdata.ready.eq(1),
-            If(port.rdata.valid,
-                avalon.readdata.eq(port.rdata.data),
-                avalon.readdatavalid.eq(1),
-
-                NextState("START")
-            )
-        )
-
-
-        # Write Data-Path.
         self.wdata_fifo = wdata_fifo = stream.SyncFIFO(wdata_layout, max_burst_length)
         self.comb += [
             wdata_fifo.sink.payload.data.eq(avalon.writedata),
@@ -135,7 +74,65 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             wdata_fifo.source.ready.eq(port.wdata.ready),
         ]
 
-        fsm.act("BURST_WRITE",
+        # Read Data-path.
+        self.comb += [
+            port.rdata.ready.eq(1),
+            avalon.readdata.eq(port.rdata.data),
+            avalon.readdatavalid.eq(port.rdata.valid),
+        ]
+
+        # Control-Path.
+        self.fsm = fsm = FSM(reset_state="IDLE")
+        fsm.act("IDLE",
+            avalon.waitrequest.eq(1),
+            NextValue(cmd_ready_seen, 0),
+            # Start of Access.
+            If(avalon.read | avalon.write,
+                NextValue(burst_count, avalon.burstcount),
+                NextValue(address, avalon.address - address_offset),
+                # Burst Access.
+                If(avalon.burstcount > 1,
+                    If(avalon.write,
+                        NextState("BURST-WRITE")
+                    ),
+                    If(avalon.read,
+                        avalon.waitrequest.eq(0),
+                        NextValue(cmd_ready_count, avalon.burstcount),
+                        NextState("BURST-READ")
+                    )
+                # Single Access.
+                ).Else(
+                    port.cmd.addr.eq(avalon.address - address_offset),
+                    port.cmd.we.eq(avalon.write),
+                    port.cmd.valid.eq(1),
+                    port.cmd.last.eq(1),
+                    If(port.cmd.ready,
+                        avalon.waitrequest.eq(0),
+                        If(port.cmd.we,
+                            NextState("SINGLE-WRITE")
+                        ).Else(
+                            NextState("SINGLE-READ")
+                        )
+                    )
+                )
+            )
+        )
+
+        fsm.act("SINGLE-WRITE",
+            avalon.waitrequest.eq(1),
+            If(port.wdata.valid & port.wdata.ready,
+                NextState("IDLE")
+            )
+        )
+
+        fsm.act("SINGLE-READ",
+            avalon.waitrequest.eq(1),
+            If(port.rdata.valid,
+                NextState("IDLE")
+            )
+        )
+
+        fsm.act("BURST-WRITE",
             avalon.waitrequest.eq(1),
             port.cmd.addr.eq(address),
             port.cmd.we.eq(1),
@@ -152,21 +149,16 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 avalon.waitrequest.eq(1),
                 # Wait for the FIFO to be empty
                 If((~port.cmd.valid) & (~wdata_fifo.source.valid),
-                    NextState("START")
+                    NextState("IDLE")
                 )
             ),
         )
 
-        fsm.act("BURST_READ",
+        fsm.act("BURST-READ",
             avalon.waitrequest.eq(1),
             port.cmd.addr.eq(address),
             port.cmd.we.eq(0),
             port.cmd.valid.eq(~cmd_ready_seen),
-
-            port.rdata.ready.eq(1),
-            avalon.readdata.eq(port.rdata.data),
-            avalon.readdatavalid.eq(port.rdata.valid),
-
             If(port.cmd.ready,
                 If(cmd_ready_count == 1,
                     NextValue(cmd_ready_seen, 1)
@@ -177,7 +169,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
 
             If(port.rdata.valid,
                 If(burst_count == 1,
-                    NextState("START")
+                    NextState("IDLE")
                 ),
                 NextValue(burst_count, burst_count - 1)
             )
