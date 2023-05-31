@@ -94,7 +94,7 @@ class LiteDRAMAvalonMM2Native(Module):
                             port.wdata.we.eq(avalon.byteenable),
                         ] if downconvert else [],
                         NextValue(writedata, avalon.writedata),
-                        [] if downconvert else [NextValue(port.cmd.last, 0)],
+                        port.cmd.last.eq(1),
                         NextState("SINGLE_WRITE")
                     )
                 ).Elif(avalon.read,
