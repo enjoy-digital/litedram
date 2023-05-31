@@ -50,6 +50,7 @@ class LiteDRAMAvalonMM2Native(Module):
         writedata         = Signal(avalon_data_width)
         start_transaction = Signal()
         cmd_ready_seen    = Signal()
+        cmd_ready_counter = Signal.like(burstcounter)
 
         cmd_layout = [("address", len(address))]
         wdata_layout = [
@@ -99,6 +100,7 @@ class LiteDRAMAvalonMM2Native(Module):
                 ).Elif(avalon.read,
                     If (start_burst,
                         avalon.waitrequest.eq(0),
+                        NextValue(cmd_ready_counter, avalon.burstcount),
                         NextState("BURST_READ")
                     ).Else(
                         NextState("SINGLE_READ")
@@ -216,7 +218,8 @@ class LiteDRAMAvalonMM2Native(Module):
             avalon.readdatavalid.eq(port.rdata.valid),
 
             If (port.cmd.ready,
-                If (burstcounter == 1, NextValue(cmd_ready_seen, 1)),
+                If (cmd_ready_counter == 1, NextValue(cmd_ready_seen, 1)),
+                NextValue(cmd_ready_counter, cmd_ready_counter - 1),
                 NextValue(address, address + burst_increment)
             ),
 
