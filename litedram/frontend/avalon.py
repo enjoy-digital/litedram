@@ -28,7 +28,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         downconvert       = ratio > 1
         upconvert         = ratio < 1
 
-        # DownConverter (Optional).
+        # Data-Width Converter (Optional).
         if avalon_data_width != port_data_width:
             if avalon_data_width > port_data_width:
                 addr_shift = -log2_int(avalon_data_width//port_data_width)
@@ -39,23 +39,23 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 address_width = port.address_width + addr_shift,
                 data_width    = avalon_data_width
             )
-            self.submodules += LiteDRAMNativePortConverter(new_port, port)
+            self.converter = LiteDRAMNativePortConverter(new_port, port)
             port = new_port
 
         # # #
 
         # Internal Signals.
-        offset  = (base_address >> log2_int(port.data_width//8))
+        burst_count     = Signal(9)
+        burst_start     = Signal()
+        address         = Signal(port.address_width)
+        address_offset  = Signal(port.address_width)
+        byteenable      = Signal(avalon_data_width//8)
+        writedata       = Signal(avalon_data_width)
+        start           = Signal()
+        cmd_ready_seen  = Signal()
+        cmd_ready_count = Signal(9)
 
-        burst_count       = Signal(9)
-        burst_start       = Signal()
-        burst_active      = Signal()
-        address           = Signal(port.address_width)
-        byteenable        = Signal(avalon_data_width//8)
-        writedata         = Signal(avalon_data_width)
-        start             = Signal()
-        cmd_ready_seen    = Signal()
-        cmd_ready_count   = Signal(9)
+        self.comb += address_offset.eq(base_address >> log2_int(port.data_width//8))
 
         # Layouts.
         cmd_layout   = [("address", len(address))]
@@ -64,64 +64,46 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             ("byteenable", avalon_data_width//8),
         ]
 
-        self.comb += [
-            burst_start .eq(avalon.burstcount > 1),
-            burst_active.eq(burst_count       > 0),
-        ]
         self.sync += [
             If(start,
                 byteenable.eq(avalon.byteenable),
+                writedata.eq(avalon.writedata),
                 burst_count.eq(avalon.burstcount),
-                address.eq(avalon.address - offset),
+                address.eq(avalon.address - address_offset),
             )
         ]
 
         # FSM.
-        self.submodules.fsm = fsm = FSM(reset_state="START")
+        self.fsm = fsm = FSM(reset_state="START")
         fsm.act("START",
             avalon.waitrequest.eq(1),
-            If(~burst_start,
-                port.cmd.addr.eq(avalon.address - offset),
+            If(avalon.burstcount <= 1,
+                port.cmd.addr.eq(avalon.address - address_offset),
                 port.cmd.we.eq(avalon.write),
                 port.cmd.valid.eq(avalon.read | avalon.write)
             ),
-
             If(avalon.read | avalon.write,
-                If(downconvert,
-                    start.eq(1)
-                ).Else(
-                    start.eq(burst_start | port.cmd.ready)
-                )
-            ),
-            If(start,
-                If(downconvert,
-                    avalon.waitrequest.eq(1)
-                ).Else(
-                    If(~burst_start,
+                If((avalon.burstcount > 1) | (downconvert == True) | port.cmd.ready,
+                    start.eq(1),
+                    If((downconvert == False) & (avalon.burstcount <= 1),
                         avalon.waitrequest.eq(0)
-                    )
-                ),
-                If(avalon.write,
-                    If(burst_start,
-                        NextState("BURST_WRITE")
-                    ).Else(
-                        If(downconvert,
-                            port.wdata.data.eq(avalon.writedata),
-                            port.wdata.valid.eq(1),
-                            port.wdata.we.eq(avalon.byteenable),
-                        ),
-                        NextValue(writedata, avalon.writedata),
-                        port.cmd.last.eq(1),
-                        NextState("SINGLE_WRITE")
-                    )
-                ).Elif(avalon.read,
-                    If(burst_start,
-                        avalon.waitrequest.eq(0),
-                        NextValue(cmd_ready_count, avalon.burstcount),
-                        NextState("BURST_READ")
-                    ).Else(
-                        port.cmd.last.eq(1),
-                        NextState("SINGLE_READ")
+                    ),
+                    If(avalon.write,
+                        If(avalon.burstcount > 1,
+                            NextState("BURST_WRITE")
+                        ).Else(
+                            port.cmd.last.eq(1),
+                            NextState("SINGLE_WRITE")
+                        )
+                    ).Elif(avalon.read,
+                        If(avalon.burstcount > 1,
+                            avalon.waitrequest.eq(0),
+                            NextValue(cmd_ready_count, avalon.burstcount),
+                            NextState("BURST_READ")
+                        ).Else(
+                            port.cmd.last.eq(1),
+                            NextState("SINGLE_READ")
+                        )
                     )
                 )
             )
@@ -131,7 +113,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             avalon.waitrequest.eq(1),
             port.rdata.ready.eq(0),
 
-            If(downconvert,
+            If((downconvert == True),
                 port.cmd.addr.eq(address),
                 port.cmd.we.eq(1),
                 port.cmd.valid.eq(1),
@@ -150,13 +132,13 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             port.wdata.we.eq(byteenable),
 
             If(port.wdata.ready,
-                If(downconvert,
+                If((downconvert == True),
                     avalon.waitrequest.eq(0)
                 ),
                 NextValue(writedata, avalon.writedata),
 
                 port.flush.eq(1),
-                If(downconvert,
+                If((downconvert == True),
                     NextValue(cmd_ready_seen, 0)
                 ).Else(
                     NextValue(port.cmd.last, 1)
@@ -170,7 +152,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             avalon.waitrequest.eq(1),
             port.rdata.ready.eq(1),
 
-            If(downconvert,
+            If((downconvert == True),
                 port.cmd.addr.eq(address),
                 port.cmd.we.eq(0),
                 port.cmd.valid.eq(1),
@@ -188,7 +170,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 avalon.readdata.eq(port.rdata.data),
                 avalon.readdatavalid.eq(1),
 
-                If(downconvert,
+                If((downconvert == True),
                     port.cmd.valid.eq(0),
                     avalon.waitrequest.eq(0),
                     NextValue(cmd_ready_seen, 0),
@@ -211,7 +193,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             wdata_fifo.sink.payload.byteenable.eq(avalon.byteenable),
             wdata_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
 
-            If(avalon.write & burst_active,
+            If(avalon.write & (burst_count > 0),
                 If(cmd_fifo.sink.ready & cmd_fifo.sink.valid,
                     NextValue(burst_count, burst_count - 1),
                     NextValue(address, address + burst_increment)
