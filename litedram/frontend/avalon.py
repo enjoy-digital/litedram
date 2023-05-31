@@ -53,8 +53,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         address           = Signal(port.address_width)
         byteenable        = Signal(avalon_data_width//8)
         writedata         = Signal(avalon_data_width)
-        start_transaction = Signal()
-        start_condition   = Signal()
+        start             = Signal()
         cmd_ready_seen    = Signal()
         cmd_ready_count   = Signal(9)
 
@@ -66,11 +65,11 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         ]
 
         self.comb += [
-            burst_start .eq(avalon.burstcount >= 2),
-            burst_active.eq(burst_count       >= 1),
+            burst_start .eq(avalon.burstcount > 1),
+            burst_active.eq(burst_count       > 0),
         ]
         self.sync += [
-            If(start_transaction,
+            If(start,
                 byteenable.eq(avalon.byteenable),
                 burst_count.eq(avalon.burstcount),
                 address.eq(avalon.address - offset),
@@ -87,17 +86,20 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 port.cmd.valid.eq(avalon.read | avalon.write)
             ),
 
-            start_transaction.eq(avalon.read | avalon.write),
-            If(downconvert,
-                start_condition.eq(start_transaction)
-            ).Else(
-                start_condition.eq(start_transaction & (burst_start | port.cmd.ready))
+            If(avalon.read | avalon.write,
+                If(downconvert,
+                    start.eq(1)
+                ).Else(
+                    start.eq(burst_start | port.cmd.ready)
+                )
             ),
-            If(start_condition,
+            If(start,
                 If(downconvert,
                     avalon.waitrequest.eq(1)
                 ).Else(
-                    If(~burst_start, avalon.waitrequest.eq(0))
+                    If(~burst_start,
+                        avalon.waitrequest.eq(0)
+                    )
                 ),
                 If(avalon.write,
                     If(burst_start,
