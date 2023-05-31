@@ -46,12 +46,11 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
 
         # Internal Signals.
         burst_count     = Signal(9)
-        burst_start     = Signal()
         address         = Signal(port.address_width)
         address_offset  = Signal(port.address_width)
         byteenable      = Signal(avalon_data_width//8)
         writedata       = Signal(avalon_data_width)
-        start           = Signal()
+        latch           = Signal()
         cmd_ready_seen  = Signal()
         cmd_ready_count = Signal(9)
 
@@ -65,7 +64,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         ]
 
         self.sync += [
-            If(start,
+            If(latch,
                 byteenable.eq(avalon.byteenable),
                 writedata.eq(avalon.writedata),
                 burst_count.eq(avalon.burstcount),
@@ -77,31 +76,30 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         self.fsm = fsm = FSM(reset_state="START")
         fsm.act("START",
             avalon.waitrequest.eq(1),
-            If(avalon.burstcount <= 1,
-                port.cmd.addr.eq(avalon.address - address_offset),
-                port.cmd.we.eq(avalon.write),
-                port.cmd.valid.eq(avalon.read | avalon.write)
-            ),
+            # Start of Access.
             If(avalon.read | avalon.write,
-                If((avalon.burstcount > 1) | (downconvert == True) | port.cmd.ready,
-                    start.eq(1),
-                    If((downconvert == False) & (avalon.burstcount <= 1),
-                        avalon.waitrequest.eq(0)
-                    ),
+                latch.eq(1),
+                # Burst Access.
+                If(avalon.burstcount > 1,
                     If(avalon.write,
-                        If(avalon.burstcount > 1,
-                            NextState("BURST_WRITE")
-                        ).Else(
-                            port.cmd.last.eq(1),
+                        NextState("BURST_WRITE")
+                    ),
+                    If(avalon.read,
+                        avalon.waitrequest.eq(0),
+                        NextValue(cmd_ready_count, avalon.burstcount),
+                        NextState("BURST_READ")
+                    )
+                # Single Access.
+                ).Else(
+                    port.cmd.addr.eq(avalon.address - address_offset),
+                    port.cmd.we.eq(avalon.write),
+                    port.cmd.valid.eq(1),
+                    port.cmd.last.eq(1),
+                    If((downconvert == True) | port.cmd.ready,
+                        avalon.waitrequest.eq(downconvert == True),
+                        If(port.cmd.we,
                             NextState("SINGLE_WRITE")
-                        )
-                    ).Elif(avalon.read,
-                        If(avalon.burstcount > 1,
-                            avalon.waitrequest.eq(0),
-                            NextValue(cmd_ready_count, avalon.burstcount),
-                            NextState("BURST_READ")
                         ).Else(
-                            port.cmd.last.eq(1),
                             NextState("SINGLE_READ")
                         )
                     )
