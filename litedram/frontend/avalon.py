@@ -61,41 +61,47 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         ]
         self.wdata_fifo = wdata_fifo = stream.SyncFIFO(wdata_layout, max_burst_length)
 
+        # Cmd FIFO.
+        # ---------
+        cmd_layout    = [("addr", port.address_width), ("we", 1)]
+        self.cmd_fifo = cmd_fifo = stream.SyncFIFO(cmd_layout, max_burst_length)
+
         # Control-Path.
         # -------------
         self.fsm = fsm = FSM(reset_state="SINGLE-ACCESS")
         fsm.act("SINGLE-ACCESS",
             avalon.waitrequest.eq(1),
-            port.cmd.addr.eq(avalon.address - address_offset),
-            port.cmd.we.eq(avalon.write),
-            port.cmd.valid.eq(avalon.read | (avalon.write & wdata_fifo.sink.ready)),
-            port.cmd.last.eq(avalon.burstcount <= 1),
-            If(port.cmd.valid & port.cmd.ready,
+            cmd_fifo.sink.valid.eq(avalon.read | (avalon.write & wdata_fifo.sink.ready)),
+            cmd_fifo.sink.last.eq(avalon.burstcount <= 1),
+            cmd_fifo.sink.we.eq(avalon.write),
+            cmd_fifo.sink.addr.eq(avalon.address - address_offset),
+            If(cmd_fifo.sink.valid & cmd_fifo.sink.ready,
                 avalon.waitrequest.eq(0),
                 # If access is a burst, continue it in BURST-ACCESS.
-                If(~port.cmd.last,
+                If(~cmd_fifo.sink.last,
                     NextValue(burst_count,   avalon.burstcount - 1),
                     NextValue(burst_read,    avalon.read),
-                    NextValue(burst_address, port.cmd.addr + burst_increment),
+                    NextValue(burst_address, cmd_fifo.sink.addr + burst_increment),
                     NextState("BURST-ACCESS")
                 )
             )
         )
         fsm.act("BURST-ACCESS",
             avalon.waitrequest.eq(1),
-            port.cmd.addr.eq(burst_address),
-            port.cmd.we.eq(avalon.write),
-            port.cmd.valid.eq(burst_read | (avalon.write & wdata_fifo.sink.ready)),
-            port.cmd.last.eq(burst_count == 1),
-            If(port.cmd.valid & port.cmd.ready,
+            cmd_fifo.sink.valid.eq(burst_read | (avalon.write & wdata_fifo.sink.ready)),
+            cmd_fifo.sink.last.eq(burst_count == 1),
+            cmd_fifo.sink.we.eq(avalon.write),
+            cmd_fifo.sink.addr.eq(burst_address),
+            If(cmd_fifo.sink.valid & cmd_fifo.sink.ready,
                 avalon.waitrequest.eq(~avalon.write),
                 NextValue(burst_count,   burst_count - 1),
                 NextValue(burst_address, burst_address + burst_increment),
-                If(port.cmd.last,
+                If(cmd_fifo.sink.last,
                     NextState("SINGLE-ACCESS")
                 )
             )
         )
+        self.comb += cmd_fifo.source.connect(port.cmd, keep={"valid", "ready", "last", "we", "addr"})
 
         # Write Data-path.
         # ----------------
