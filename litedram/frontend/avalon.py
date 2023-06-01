@@ -104,30 +104,10 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                     port.cmd.last.eq(1),
                     If(port.cmd.valid & port.cmd.ready,
                         avalon.waitrequest.eq(0),
-                        If(port.cmd.we,
-                            NextState("SINGLE-WRITE")
-                        ).Else(
-                            NextState("SINGLE-READ")
-                        )
                     )
                 )
             )
         )
-
-        fsm.act("SINGLE-WRITE",
-            avalon.waitrequest.eq(1),
-            If(port.wdata.valid & port.wdata.ready,
-                NextState("IDLE")
-            )
-        )
-
-        fsm.act("SINGLE-READ",
-            avalon.waitrequest.eq(1),
-            If(port.rdata.valid,
-                NextState("IDLE")
-            )
-        )
-
         fsm.act("BURST-WRITE",
             avalon.waitrequest.eq(1),
             port.cmd.addr.eq(address),
