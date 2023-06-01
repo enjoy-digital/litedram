@@ -100,20 +100,20 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         # Write Data-path.
         # ----------------
         self.comb += [
+            wdata_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
             wdata_fifo.sink.payload.data.eq(avalon.writedata),
             wdata_fifo.sink.payload.byteenable.eq(avalon.byteenable),
-            wdata_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
 
-            port.wdata.data.eq(wdata_fifo.source.payload.data),
-            port.wdata.we.eq(wdata_fifo.source.payload.byteenable),
             port.wdata.valid.eq(wdata_fifo.source.valid),
             wdata_fifo.source.ready.eq(port.wdata.ready),
+            port.wdata.data.eq(wdata_fifo.source.payload.data),
+            port.wdata.we.eq(wdata_fifo.source.payload.byteenable),
         ]
 
         # Read Data-path.
         # ---------------
         self.comb += [
+            avalon.readdatavalid.eq(port.rdata.valid),
             port.rdata.ready.eq(1),
             avalon.readdata.eq(port.rdata.data),
-            avalon.readdatavalid.eq(port.rdata.valid),
         ]
