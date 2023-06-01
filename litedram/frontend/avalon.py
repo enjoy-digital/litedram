@@ -7,10 +7,6 @@
 
 """AvalonMM frontend for LiteDRAM"""
 
-# TODO:
-# - Try to merge SINGLE-WRITE/BURST-WRITE (Consider single access as a 1 word burst).
-# - Try to merge SINGLE-READ /BURST-READ  (Consider single access as a 1 word burst).
-
 from math import log2
 
 from migen import *
@@ -50,37 +46,23 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         # # #
 
         # Internal Signals.
+        # -----------------
         burst_count    = Signal(9)
         burst_read     = Signal()
         burst_address  = Signal(port.address_width)
         address_offset = Signal(port.address_width)
         self.comb += address_offset.eq(base_address >> log2_int(port.data_width//8))
 
-        # Write Data-path.
+        # Write Data-FIFO.
+        # ----------------
         wdata_layout = [
             ("data",       avalon_data_width),
             ("byteenable", avalon_data_width//8),
         ]
         self.wdata_fifo = wdata_fifo = stream.SyncFIFO(wdata_layout, max_burst_length)
-        self.comb += [
-            wdata_fifo.sink.payload.data.eq(avalon.writedata),
-            wdata_fifo.sink.payload.byteenable.eq(avalon.byteenable),
-            wdata_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
-
-            port.wdata.data.eq(wdata_fifo.source.payload.data),
-            port.wdata.we.eq(wdata_fifo.source.payload.byteenable),
-            port.wdata.valid.eq(wdata_fifo.source.valid),
-            wdata_fifo.source.ready.eq(port.wdata.ready),
-        ]
-
-        # Read Data-path.
-        self.comb += [
-            port.rdata.ready.eq(1),
-            avalon.readdata.eq(port.rdata.data),
-            avalon.readdatavalid.eq(port.rdata.valid),
-        ]
 
         # Control-Path.
+        # -------------
         self.fsm = fsm = FSM(reset_state="SINGLE-ACCESS")
         fsm.act("SINGLE-ACCESS",
             avalon.waitrequest.eq(1),
@@ -114,3 +96,24 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 )
             )
         )
+
+        # Write Data-path.
+        # ----------------
+        self.comb += [
+            wdata_fifo.sink.payload.data.eq(avalon.writedata),
+            wdata_fifo.sink.payload.byteenable.eq(avalon.byteenable),
+            wdata_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
+
+            port.wdata.data.eq(wdata_fifo.source.payload.data),
+            port.wdata.we.eq(wdata_fifo.source.payload.byteenable),
+            port.wdata.valid.eq(wdata_fifo.source.valid),
+            wdata_fifo.source.ready.eq(port.wdata.ready),
+        ]
+
+        # Read Data-path.
+        # ---------------
+        self.comb += [
+            port.rdata.ready.eq(1),
+            avalon.readdata.eq(port.rdata.data),
+            avalon.readdatavalid.eq(port.rdata.valid),
+        ]
