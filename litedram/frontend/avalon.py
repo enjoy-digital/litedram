@@ -53,8 +53,6 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         burst_count     = Signal(9)
         address         = Signal(port.address_width)
         address_offset  = Signal(port.address_width)
-        cmd_ready_seen  = Signal()
-        cmd_ready_count = Signal(9)
         self.comb += address_offset.eq(base_address >> log2_int(port.data_width//8))
 
         # Write Data-path.
@@ -85,7 +83,6 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
         self.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
             avalon.waitrequest.eq(1),
-            NextValue(cmd_ready_seen, 0),
             # Start of Access.
             If(avalon.read | avalon.write,
                 NextValue(burst_count, avalon.burstcount),
@@ -97,7 +94,6 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                     ),
                     If(avalon.read,
                         avalon.waitrequest.eq(0),
-                        NextValue(cmd_ready_count, avalon.burstcount),
                         NextState("BURST-READ")
                     )
                 # Single Access.
@@ -153,19 +149,14 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             avalon.waitrequest.eq(1),
             port.cmd.addr.eq(address),
             port.cmd.we.eq(0),
-            port.cmd.valid.eq(~cmd_ready_seen),
-            If(port.cmd.ready,
-                If(cmd_ready_count == 1,
-                    NextValue(cmd_ready_seen, 1)
-                ),
-                NextValue(cmd_ready_count, cmd_ready_count - 1),
-                NextValue(address, address + burst_increment)
-            ),
-
-            If(port.rdata.valid,
-                If(burst_count == 1,
+            port.cmd.valid.eq(1),
+            port.cmd.last.eq(burst_count == 1),
+            If(port.cmd.valid & port.cmd.ready,
+                If(port.cmd.last,
                     NextState("IDLE")
-                ),
-                NextValue(burst_count, burst_count - 1)
+                ).Else(
+                    NextValue(burst_count, burst_count - 1),
+                    NextValue(address, address + burst_increment)
+                )
             )
         )
