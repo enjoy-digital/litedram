@@ -104,9 +104,9 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 ).Else(
                     port.cmd.addr.eq(avalon.address - address_offset),
                     port.cmd.we.eq(avalon.write),
-                    port.cmd.valid.eq(1),
+                    port.cmd.valid.eq(avalon.read | (avalon.write & wdata_fifo.sink.ready)),
                     port.cmd.last.eq(1),
-                    If(port.cmd.ready,
+                    If(port.cmd.valid & port.cmd.ready,
                         avalon.waitrequest.eq(0),
                         If(port.cmd.we,
                             NextState("SINGLE-WRITE")
@@ -137,21 +137,16 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             port.cmd.addr.eq(address),
             port.cmd.we.eq(1),
             port.cmd.valid.eq(avalon.write & wdata_fifo.sink.ready),
+            port.cmd.last.eq(burst_count == 1),
             If(port.cmd.valid & port.cmd.ready,
-                avalon.waitrequest.eq(0)
-            ),
-            If(burst_count > 0,
-                If(port.cmd.valid & port.cmd.ready,
+                avalon.waitrequest.eq(0),
+                If(port.cmd.last,
+                    NextState("IDLE")
+                ).Else(
                     NextValue(burst_count, burst_count - 1),
                     NextValue(address, address + burst_increment)
                 )
-            ).Else(
-                avalon.waitrequest.eq(1),
-                # Wait for the FIFO to be empty
-                If((~port.cmd.valid) & (~wdata_fifo.source.valid),
-                    NextState("IDLE")
-                )
-            ),
+            )
         )
 
         fsm.act("BURST-READ",
