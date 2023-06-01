@@ -51,6 +51,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
 
         # Internal Signals.
         burst_count     = Signal(9)
+        burst_write     = Signal()
         address         = Signal(port.address_width)
         address_offset  = Signal(port.address_width)
         self.comb += address_offset.eq(base_address >> log2_int(port.data_width//8))
@@ -86,16 +87,14 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             # Start of Access.
             If(avalon.read | avalon.write,
                 NextValue(burst_count, avalon.burstcount),
+                NextValue(burst_write, avalon.write),
                 NextValue(address, avalon.address - address_offset),
                 # Burst Access.
                 If(avalon.burstcount > 1,
-                    If(avalon.write,
-                        NextState("BURST-WRITE")
-                    ),
                     If(avalon.read,
-                        avalon.waitrequest.eq(0),
-                        NextState("BURST-READ")
-                    )
+                        avalon.waitrequest.eq(0)
+                    ),
+                    NextState("BURST")
                 # Single Access.
                 ).Else(
                     port.cmd.addr.eq(avalon.address - address_offset),
@@ -108,30 +107,16 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 )
             )
         )
-        fsm.act("BURST-WRITE",
+        fsm.act("BURST",
             avalon.waitrequest.eq(1),
             port.cmd.addr.eq(address),
-            port.cmd.we.eq(1),
-            port.cmd.valid.eq(avalon.write & wdata_fifo.sink.ready),
+            port.cmd.we.eq(avalon.write),
+            port.cmd.valid.eq(~burst_write | (avalon.write & wdata_fifo.sink.ready)),
             port.cmd.last.eq(burst_count == 1),
             If(port.cmd.valid & port.cmd.ready,
-                avalon.waitrequest.eq(0),
-                If(port.cmd.last,
-                    NextState("IDLE")
-                ).Else(
-                    NextValue(burst_count, burst_count - 1),
-                    NextValue(address, address + burst_increment)
-                )
-            )
-        )
-
-        fsm.act("BURST-READ",
-            avalon.waitrequest.eq(1),
-            port.cmd.addr.eq(address),
-            port.cmd.we.eq(0),
-            port.cmd.valid.eq(1),
-            port.cmd.last.eq(burst_count == 1),
-            If(port.cmd.valid & port.cmd.ready,
+                If(burst_write,
+                    avalon.waitrequest.eq(0)
+                ),
                 If(port.cmd.last,
                     NextState("IDLE")
                 ).Else(
