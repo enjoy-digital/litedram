@@ -8,7 +8,8 @@
 """LiteDRAM Refresher."""
 
 from migen import *
-from migen.genlib.misc import timeline
+
+from litex.gen.genlib.misc import timeline
 
 from litex.soc.interconnect import stream
 

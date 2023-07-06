@@ -14,10 +14,11 @@ from operator import or_
 import math
 
 from migen import *
-from migen.genlib.misc import timeline
+
 from migen.fhdl.specials import Tristate
 from migen.genlib.cdc import MultiReg
-from migen.genlib.misc import WaitTimer
+
+from litex.gen.genlib.misc import timeline, WaitTimer
 
 from litex.soc.interconnect.csr import *
 

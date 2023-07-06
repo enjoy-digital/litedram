@@ -8,7 +8,8 @@ from math import ceil
 from operator import and_
 
 from migen import *
-from migen.genlib.misc import WaitTimer
+
+from litex.gen.genlib.misc import WaitTimer
 
 from litex.soc.interconnect.csr import AutoCSR, CSR, CSRStatus, CSRStorage
 
