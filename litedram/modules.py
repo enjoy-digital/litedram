@@ -590,6 +590,14 @@ class MT46H64M16(LPDDRModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 72), tFAW=None, tRAS=None)}
 
+class MT46H128M16(LPDDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 16384
+    ncols  = 2048
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 72), tFAW=None, tRAS=None)}
 
 class MT46H32M32(LPDDRModule):
     # geometry
