@@ -37,14 +37,14 @@ class _AddressSlicer:
         if self.colbits > 10:
             # A10 is reserved for auto-precharge, this bit needs to be skipped for col addresses.
             return Cat(
-                Constant(0, self.address_align),
+                Replicate(0, self.address_align),
                 address[:10-self.address_align],
-                Constant(0, 1),
+                Replicate(0, 1),
                 address[10-self.address_align:split]
             )
         else:
             return Cat(
-                Constant(0, self.address_align),
+                Replicate(0, self.address_align),
                 address[:split]
             )
 
