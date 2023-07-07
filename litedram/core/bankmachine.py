@@ -34,10 +34,19 @@ class _AddressSlicer:
 
     def col(self, address):
         split = self.colbits - self.address_align
-        if self.colbits>10: # A10 is reserved for auto-precharge, this bit needs to be skipped for col addresses
-            return Cat(Replicate(0, self.address_align), address[:10-self.address_align], 0, address[10-self.address_align:split])
+        if self.colbits > 10:
+            # A10 is reserved for auto-precharge, this bit needs to be skipped for col addresses.
+            return Cat(
+                Constant(0, self.address_align),
+                address[:10-self.address_align],
+                Constant(0, 1),
+                address[10-self.address_align:split]
+            )
         else:
-            return Cat(Replicate(0, self.address_align), address[:split])
+            return Cat(
+                Constant(0, self.address_align),
+                address[:split]
+            )
 
 # BankMachine --------------------------------------------------------------------------------------
 
