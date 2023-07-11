@@ -70,9 +70,12 @@ class LiteDRAMDMAReader(Module, AutoCSR):
         else:
             raise NotImplementedError
 
+        # Reservation FIFO -------------------------------------------------------------------------
+
+        res_fifo = stream.SyncFIFO([("dummy", 1)], fifo_depth)
+        self.submodules += res_fifo
+
         # Request issuance -------------------------------------------------------------------------
-        request_enable = Signal()
-        request_issued = Signal()
 
         if is_native:
             self.comb += cmd.we.eq(0)
@@ -80,24 +83,14 @@ class LiteDRAMDMAReader(Module, AutoCSR):
             self.comb += cmd.size.eq(int(log2(port.data_width//8)))
         self.comb += [
             cmd.addr.eq(sink.address),
-            cmd.valid.eq(enable & sink.valid & request_enable),
-            sink.ready.eq(enable & cmd.ready & request_enable),
-            request_issued.eq(cmd.valid & cmd.ready)
+            cmd.last.eq(sink.last),
+            cmd.valid.eq(enable & sink.valid & res_fifo.sink.ready),
+            sink.ready.eq(enable & cmd.ready & res_fifo.sink.ready),
         ]
-
-        # FIFO reservation level counter -----------------------------------------------------------
-        # - Incremented when data is planned to be queued.
-        # - Decremented when data is dequeued.
-        data_dequeued = Signal()
-        self.rsv_level = rsv_level = Signal(max=fifo_depth+1)
-        self.sync += [
-            If(request_issued,
-                If(~data_dequeued, rsv_level.eq(self.rsv_level + 1))
-            ).Elif(data_dequeued,
-                rsv_level.eq(rsv_level - 1)
-            )
+        self.comb += [
+            res_fifo.sink.valid.eq(cmd.valid & cmd.ready),
+            res_fifo.sink.last.eq(cmd.last),
         ]
-        self.comb += request_enable.eq(rsv_level != fifo_depth)
 
         # FIFO -------------------------------------------------------------------------------------
         fifo = stream.SyncFIFO([("data", port.data_width)], fifo_depth, fifo_buffered)
@@ -105,10 +98,14 @@ class LiteDRAMDMAReader(Module, AutoCSR):
 
         self.comb += [
             rdata.connect(fifo.sink, omit={"id", "resp", "dest", "user"}),
-            fifo.source.connect(source, omit={"ready"}),
+            fifo.source.connect(source, omit={"valid", "ready", "last"}),
+            If(res_fifo.source.valid,
+                source.valid.eq(fifo.source.valid),
+                source.last.eq(res_fifo.source.last),
+            ),
             fifo.source.ready.eq(source.ready | ~enable), # Flush FIFO/Reservation counter when disabled.
-            data_dequeued.eq(fifo.source.valid & fifo.source.ready)
         ]
+        self.comb += res_fifo.source.ready.eq(fifo.source.valid & fifo.source.ready)
 
         if with_csr:
             self.add_csr()
