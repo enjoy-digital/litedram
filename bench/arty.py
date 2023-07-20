@@ -95,7 +95,7 @@ class BenchSoC(SoCCore):
 
         # UARTBone ---------------------------------------------------------------------------------
         if uart != "serial":
-            self.add_uartbone(name="serial", clk_freq=100e6, baudrate=115200, cd="uart")
+            self.add_uartbone(clk_freq=100e6, baudrate=115200, cd="uart")
 
         # Etherbone --------------------------------------------------------------------------------
         self.submodules.ethphy = LiteEthPHYMII(

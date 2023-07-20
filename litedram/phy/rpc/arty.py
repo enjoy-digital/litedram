@@ -260,7 +260,7 @@ class BaseSoC(SoCCore):
 
         if dynamic_freq:
             # UartBone -----------------------------------------------------------------------------
-            self.add_uartbone(name="serial", clk_freq=100e6, baudrate=1e6, cd="uart")
+            self.add_uartbone(clk_freq=100e6, baudrate=1e6, cd="uart")
         else:
             # Etherbone ----------------------------------------------------------------------------
             self.submodules.ethphy = LiteEthPHYMII(
