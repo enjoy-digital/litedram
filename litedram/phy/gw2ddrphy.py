@@ -19,7 +19,7 @@ from migen import *
 from migen.fhdl.specials import Tristate
 from migen.genlib.cdc import MultiReg
 
-from litex.gen.genlib.misc import timeline, WaitTimer
+from litex.gen.genlib.misc import timeline
 
 from litex.soc.interconnect.csr import *
 
