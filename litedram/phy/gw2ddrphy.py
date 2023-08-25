@@ -174,8 +174,8 @@ class GW2DDRPHY(Module, AutoCSR):
             wrphase       = wrphase,
             cl            = cl,
             cwl           = cwl,
-            read_latency  = cl_sys_latency + 10,
-            write_latency = cwl_sys_latency,
+            read_latency  = cl_sys_latency + 9,
+            write_latency = cwl_sys_latency - 1,
             read_leveling = True,
             bitslips      = 4,
             delays        = 8,
@@ -433,7 +433,7 @@ class GW2DDRPHY(Module, AutoCSR):
                 )
 
         # Read Control Path ------------------------------------------------------------------------
-        rdtap = cl_sys_latency # CHECKME: Latency.
+        rdtap = cl_sys_latency - 1 # CHECKME: Latency.
 
         # Creates a delay line of read commands coming from the DFI interface. The taps are used to
         # control DQS read (internal read pulse of the DQSBUF) and the output of the delay is used
@@ -454,7 +454,7 @@ class GW2DDRPHY(Module, AutoCSR):
         self.comb += dqs_re.eq(rddata_en.taps[rdtap] | rddata_en.taps[rdtap + 1])
 
         # Write Control Path -----------------------------------------------------------------------
-        wrtap = cwl_sys_latency  # CHECKME: Latency.
+        wrtap = cwl_sys_latency - 1  # CHECKME: Latency.
 
         # Create a delay line of write commands coming from the DFI interface. This taps are used to
         # control DQ/DQS tristates and to select write data of the DRAM burst from the DFI interface.
