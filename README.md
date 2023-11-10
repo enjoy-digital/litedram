@@ -29,10 +29,11 @@ design flow by generating the verilog rtl that you will use as a standard core.
 -----------
 PHY:
   - Generic SDRAM PHY (vendor agnostic, tested on Xilinx, Altera, Lattice)
-  - Spartan6 DDR/LPDDR/DDR2/DDR3 PHY (1:2 or 1:4 frequency ratio)
-  - Spartan7/Artix7/Kintex7/Virtex7 DDR2/DDR3 PHY (1:2 or 1:4 frequency ratio)
-  - Kintex/Virtex Ultrascale (Plus) DDR3/DDR4 PHY (1:4 frequency ratio)
-  - ECP5 DDR3 PHY (1:2 frequency ratio)
+  - Xilinx Spartan6 DDR/LPDDR/DDR2/DDR3 PHY (1:2 or 1:4 frequency ratio)
+  - Xilinx Spartan7/Artix7/Kintex7/Virtex7 DDR2/DDR3 PHY (1:2 or 1:4 frequency ratio)
+  - Xilinx Kintex/Virtex Ultrascale (Plus) DDR3/DDR4 PHY (1:4 frequency ratio)
+  - Lattice ECP5 DDR3 PHY (1:2 frequency ratio)
+  - Gowin G2A DDR3 PHY (1:2 frequency ratio)
 
 Core:
   - Fully pipelined, high performance.
