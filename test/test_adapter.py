@@ -22,6 +22,7 @@ from litex.gen.sim import *
 class ConverterDUT(Module):
     def __init__(self, user_data_width, native_data_width, mem_depth, separate_rw=True, read_latency=0):
         self.separate_rw = separate_rw
+
         if separate_rw:
             self.write_user_port     = LiteDRAMNativeWritePort(address_width=32, data_width=user_data_width)
             self.write_crossbar_port = LiteDRAMNativeWritePort(address_width=32, data_width=native_data_width)
@@ -85,6 +86,7 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
             dut = ConverterDUT(user_data_width=64, native_data_width=24, mem_depth=128)
             dut.finalize()
         self.assertIn("ratio must be an int", str(cm.exception).lower())
+
 
     def test_up_converter_ratio_must_be_integer(self):
         with self.assertRaises(ValueError) as cm:
@@ -335,6 +337,13 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
 
     def test_up_converter_not_aligned(self):
         data = self.pattern_test_data["8bit_to_32bit_not_aligned"]
+        dut  = ConverterDUT(user_data_width=8, native_data_width=32,
+                            mem_depth=len(data["expected"]), separate_rw=False)
+        self.converter_readback_test(dut, data["pattern"], data["expected"])
+
+    def test_up_converter_writes_not_sequential(self):
+        # Verify that not sequential writes to single DRAM word creates same result as sequential one
+        data = self.pattern_test_data["8bit_to_32bit_not_sequential"]
         dut  = ConverterDUT(user_data_width=8, native_data_width=32,
                             mem_depth=len(data["expected"]), separate_rw=False)
         self.converter_readback_test(dut, data["pattern"], data["expected"])
