@@ -275,27 +275,27 @@ class Command(Module):
         op = mpc_op if is_mpc else self.dfi.address
 
         rules = {
-            "H":       lambda: 1,  # high
-            "L":       lambda: 0,  # low
-            "V":       lambda: 0,  # defined logic
-            "X":       lambda: 0,  # don't care
-            "AB":      lambda: self.dfi.address[10],  # all banks
-            "AP":      lambda: self.dfi.address[10],  # auto precharge
-            "RFM":     lambda: 0,  # TODO: 1=RFM, 0=REF (Refresh Managemenent, only if r/o MR[27][0]=1, else always REF)
-            "SB(\d+)": lambda i: 0,  # sub-bank selection related to RFM
-            "WS_WR":   lambda: self.wck_sync == WCKSyncType.WR,  # Write WCK2CK SYNC
-            "WS_RD":   lambda: self.wck_sync == WCKSyncType.RD,  # Read WCK2CK SYNC
-            "WS_FS":   lambda: self.wck_sync == WCKSyncType.FS,  # FAST SYNC
-            "DC(\d+)": lambda i: 0,  # Data Copy, unimplemented
-            "WRX":     lambda: 0,  # Write X function, unimplemented
-            "WXSA":    lambda: 0,  # Write X function, unimplemented
-            "WXSB":    lambda: 0,  # Write X function, unimplemented
-            "BA(\d+)": lambda i: self.dfi.bank[i],  # only BA0-2 is used, in BG/B16 modes we always refresh banks (x, x+8)
-            "R(\d+)":  lambda i: self.dfi.address[i],  # row
+            "H":        lambda: 1,  # high
+            "L":        lambda: 0,  # low
+            "V":        lambda: 0,  # defined logic
+            "X":        lambda: 0,  # don't care
+            "AB":       lambda: self.dfi.address[10],  # all banks
+            "AP":       lambda: self.dfi.address[10],  # auto precharge
+            "RFM":      lambda: 0,  # TODO: 1=RFM, 0=REF (Refresh Managemenent, only if r/o MR[27][0]=1, else always REF)
+            "SB(\\d+)": lambda i: 0,  # sub-bank selection related to RFM
+            "WS_WR":    lambda: self.wck_sync == WCKSyncType.WR,  # Write WCK2CK SYNC
+            "WS_RD":    lambda: self.wck_sync == WCKSyncType.RD,  # Read WCK2CK SYNC
+            "WS_FS":    lambda: self.wck_sync == WCKSyncType.FS,  # FAST SYNC
+            "DC(\\d+)": lambda i: 0,  # Data Copy, unimplemented
+            "WRX":      lambda: 0,  # Write X function, unimplemented
+            "WXSA":     lambda: 0,  # Write X function, unimplemented
+            "WXSB":     lambda: 0,  # Write X function, unimplemented
+            "BA(\\d+)": lambda i: self.dfi.bank[i],  # only BA0-2 is used, in BG/B16 modes we always refresh banks (x, x+8)
+            "R(\\d+)":  lambda i: self.dfi.address[i],  # row
             # LPDDR5 specs split the regular column address into C[5:0] "column address" and B[3:0] "burst address"
-            "C(\d+)":  lambda i: self.dfi.address[i + 4],
-            "MA(\d+)": lambda i: mr_address[i],  # mode register address
-            "OP(\d+)": lambda i: op[i], # mode register value, or operand for MPC
+            "C(\\d+)":  lambda i: self.dfi.address[i + 4],
+            "MA(\\d+)": lambda i: mr_address[i],  # mode register address
+            "OP(\\d+)": lambda i: op[i], # mode register value, or operand for MPC
         }
 
         for pattern, value in rules.items():
