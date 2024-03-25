@@ -81,23 +81,28 @@ class LiteDRAMNativePortDownConverter(Module):
 
         ratio = port_from.data_width//port_to.data_width
         mode  = port_from.mode
-        count = Signal(max=ratio)
+
+        cmd_count = Signal(max=ratio)
+        cmd_addr  = Signal(len(port_from.cmd.addr))
+        cmd_we    = Signal()
 
         self.submodules.fsm = fsm = FSM(reset_state="IDLE")
         fsm.act("IDLE",
-            NextValue(count, 0),
+            port_from.cmd.ready.eq(1),
             If(port_from.cmd.valid,
+                NextValue(cmd_count, 0),
+                NextValue(cmd_addr,  port_from.cmd.addr),
+                NextValue(cmd_we,    port_from.cmd.we),
                 NextState("CONVERT")
             )
         )
         fsm.act("CONVERT",
             port_to.cmd.valid.eq(1),
-            port_to.cmd.we.eq(port_from.cmd.we),
-            port_to.cmd.addr.eq(port_from.cmd.addr*ratio + count),
+            port_to.cmd.we.eq(cmd_we),
+            port_to.cmd.addr.eq(cmd_addr*ratio + cmd_count),
             If(port_to.cmd.ready,
-                NextValue(count, count + 1),
-                If(count == (ratio - 1),
-                    port_from.cmd.ready.eq(1),
+                NextValue(cmd_count, cmd_count + 1),
+                If(cmd_count == (ratio - 1),
                     NextState("IDLE")
                 )
             )
