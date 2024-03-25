@@ -199,18 +199,18 @@ class Command(Module):
         assert len(self.dfi.address) >= 17, "At least 17 DFI addressbits needed for row address"
         mr_address = self.dfi.bank if is_mrw else self.dfi.address
         rules = {
-            "H":       lambda: 1,  # high
-            "L":       lambda: 0,  # low
-            "V":       lambda: 0,  # defined logic
-            "X":       lambda: 0,  # don't care
-            "BL":      lambda: 0,  # on-the-fly burst length, not using
-            "AP":      lambda: self.dfi.address[10],  # auto precharge
-            "AB":      lambda: self.dfi.address[10],  # all banks
-            "BA(\d+)": lambda i: self.dfi.bank[i],
-            "R(\d+)":  lambda i: self.dfi.address[i],  # row
-            "C(\d+)":  lambda i: self.dfi.address[i],  # column
-            "MA(\d+)": lambda i: mr_address[i],  # mode register address
-            "OP(\d+)": lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
+            "H":        lambda: 1,  # high
+            "L":        lambda: 0,  # low
+            "V":        lambda: 0,  # defined logic
+            "X":        lambda: 0,  # don't care
+            "BL":       lambda: 0,  # on-the-fly burst length, not using
+            "AP":       lambda: self.dfi.address[10],  # auto precharge
+            "AB":       lambda: self.dfi.address[10],  # all banks
+            "BA(\\d+)": lambda i: self.dfi.bank[i],
+            "R(\\d+)":  lambda i: self.dfi.address[i],  # row
+            "C(\\d+)":  lambda i: self.dfi.address[i],  # column
+            "MA(\\d+)": lambda i: mr_address[i],  # mode register address
+            "OP(\\d+)": lambda i: self.dfi.address[i],  # mode register value, or operand for MPC
         }
         for pattern, value in rules.items():
             m = re.match(pattern, bit)
