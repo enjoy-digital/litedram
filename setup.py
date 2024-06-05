@@ -10,7 +10,7 @@ with open("README.md", "r", encoding="utf-8") as fp:
 
 setup(
     name                          = "litedram",
-    version                       = "2023.12",
+    version                       = "2024.04",
     description                   = "Small footprint and configurable DRAM core",
     long_description              = long_description,
     long_description_content_type = "text/markdown",
