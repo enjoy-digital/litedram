@@ -544,6 +544,15 @@ class M12L16161A(SDRModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 10))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 55), tFAW=None, tRAS=40)}
 
+class NDS36PT5(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 8192
+    ncols  = 512
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(2, 10))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=10, tRFC=(None, 55), tFAW=None, tRAS=40)}
+
 class W9825G6KH6(SDRModule):
     # geometry
     nbanks = 4
