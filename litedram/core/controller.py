@@ -40,7 +40,13 @@ class ControllerSettings(Settings):
         with_auto_precharge = True,
 
         # Address mapping
-        address_mapping     = "ROW_BANK_COL"):
+        address_mapping     = "ROW_BANK_COL",
+
+        # bank_byte_alignment specify how many bytes should be in between each bank change (minimum).
+        # This is usefull when you want to match a L2 cache sets size.
+        # For instance you have a L2 cache of 256KB with 4 ways => Sets size of 256KB/4=64KB
+        # => Ideal bank_byte_alignment = 0x10000
+        bank_byte_alignment     = 0):
         self.set_attributes(locals())
 
 # Controller ---------------------------------------------------------------------------------------
