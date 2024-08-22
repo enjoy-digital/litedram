@@ -1,7 +1,7 @@
 #
 # This file is part of LiteDRAM.
 #
-# Copyright (c) 2016-2020 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2016-2024 Florent Kermarrec <florent@enjoy-digital.fr>
 # SPDX-License-Identifier: BSD-2-Clause
 
 """Wishbone frontend for LiteDRAM"""
@@ -10,14 +10,17 @@ from math import log2
 
 from migen import *
 
+from litex.gen import *
+
 from litex.soc.interconnect import stream
-from litedram.common import LiteDRAMNativePort
+
+from litedram.common           import LiteDRAMNativePort
 from litedram.frontend.adapter import LiteDRAMNativePortConverter
 
 
 # LiteDRAMWishbone2Native --------------------------------------------------------------------------
 
-class LiteDRAMWishbone2Native(Module):
+class LiteDRAMWishbone2Native(LiteXModule):
     def __init__(self, wishbone, port, base_address=0x00000000):
         wishbone_data_width = len(wishbone.dat_w)
         port_data_width     = 2**int(log2(len(port.wdata.data))) # Round to lowest power 2
@@ -41,7 +44,7 @@ class LiteDRAMWishbone2Native(Module):
         aborted = Signal()
         offset  = base_address >> log2_int(port.data_width//8)
 
-        self.submodules.fsm = fsm = FSM(reset_state="CMD")
+        self.fsm = fsm = FSM(reset_state="CMD")
         self.comb += [
             port.cmd.addr.eq(wishbone.adr - offset),
             port.cmd.we.eq(wishbone.we),
