@@ -26,7 +26,7 @@ class LiteDRAMWishbone2Native(LiteXModule):
         port_data_width     = 2**int(log2(len(port.wdata.data))) # Round to lowest power 2
         ratio               = wishbone_data_width/port_data_width
 
-        assert wishbone.addressing == "byte"
+        assert wishbone.addressing == "word"
 
         if wishbone_data_width != port_data_width:
             if wishbone_data_width > port_data_width:
