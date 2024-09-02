@@ -4,7 +4,7 @@
                                / /__/ / __/ -_) // / , _/ __ |/ /|_/ /
                               /____/_/\__/\__/____/_/|_/_/ |_/_/  /_/
 
-                                   Copyright 2015-2022 / EnjoyDigital
+                                   Copyright 2015-2024 / EnjoyDigital
                                A small footprint and configurable DRAM core
                                         powered by Migen & LiteX
 ```
