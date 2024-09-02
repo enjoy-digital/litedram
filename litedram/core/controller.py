@@ -19,35 +19,38 @@ from litedram.core.multiplexer import Multiplexer
 
 class ControllerSettings(Settings):
     def __init__(self,
-        # Command buffers
-        cmd_buffer_depth    = 8,
-        cmd_buffer_buffered = False,
+        # Command buffers.
+        cmd_buffer_depth    = 8,              # Depth of the command buffer (number of entries).
+        cmd_buffer_buffered = False,          # Enable or disable buffered command mode.
 
-        # Read/Write times
-        read_time           = 32,
-        write_time          = 16,
+        # Read/Write times.
+        read_time           = 32,             # Maximum time (in cycles) allowed for a read operation before switching to a write.
+        write_time          = 16,             # Maximum time (in cycles) allowed for a write operation before switching to a read.
 
-        # Bandwidth
-        with_bandwidth      = False,
+        # Bandwidth.
+        with_bandwidth      = False,          # Enable bandwidth calculation and monitoring.
 
-        # Refresh
-        with_refresh        = True,
-        refresh_cls         = Refresher,
-        refresh_zqcs_freq   = 1e0,
-        refresh_postponing  = 1,
+        # Refresh.
+        with_refresh        = True,           # Enable periodic refresh operations.
+        refresh_cls         = Refresher,      # Class used for refresh logic.
+        refresh_zqcs_freq   = 1e0,            # Frequency of ZQCS (ZQ Calibration Short) commands.
+        refresh_postponing  = 1,              # Maximum number of refresh postponements allowed.
 
-        # Auto-Precharge
-        with_auto_precharge = True,
+        # Auto-Precharge.
+        with_auto_precharge = True,           # Enable auto-precharge after read/write operations.
 
-        # Address mapping
-        address_mapping     = "ROW_BANK_COL",
+        # Address mapping.
+        address_mapping     = "ROW_BANK_COL", # Address mapping scheme (e.g., row-bank-column).
 
-        # bank_byte_alignment specify how many bytes should be in between each bank change (minimum).
-        # This is usefull when you want to match a L2 cache sets size.
-        # For instance you have a L2 cache of 256KB with 4 ways => Sets size of 256KB/4=64KB
-        # => Ideal bank_byte_alignment = 0x10000
-        bank_byte_alignment     = 0):
+        # Bank byte alignment.
+        bank_byte_alignment = 0):             # Minimum byte alignment between bank changes. Ensures a
+                                              # specific byte distance between consecutive banks to optimize
+                                              # data placement for cache line mapping (e.g., aligning to L2
+                                              # cache set size). For a 256KB L2 cache with 4 ways, the set
+                                              # size is 256KB / 4 = 64KB, suggesting a bank_byte_alignment
+                                              # of 0x10000.
         self.set_attributes(locals())
+
 
 # Controller ---------------------------------------------------------------------------------------
 
