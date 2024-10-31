@@ -46,9 +46,6 @@ class LiteDRAMDMAReader(Module, AutoCSR):
 
     source : Record("data")
         Source for DRAM word results from reading.
-
-    rsv_level: Signal()
-        FIFO reservation level counter
     """
 
     def __init__(self, port, fifo_depth=16, fifo_buffered=False, with_csr=False):
