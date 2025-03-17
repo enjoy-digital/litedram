@@ -667,6 +667,20 @@ class P3R1GE4JGF(DDR2Module):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(None, 7.5), tCCD=(2, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=12.5, tRCD=12.5, tWR=15, tRFC=(None, 127.5), tFAW=None, tRAS=None)}
 
+class K4T1G164QGBCE7(DDR2Module):
+    # geometry
+    nbanks = 8
+    nrows  = 8192
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(2, None), tRRD=(4, 10))
+    speedgrade_timings = {
+        "667":  _SpeedgradeTimings(tRP=15,     tRCD=15,     tWR=15, tRFC=(127.5, None), tFAW=(None, 37.5), tRAS=45),
+        "800":  _SpeedgradeTimings(tRP=12.5,   tRCD=12.5,   tWR=15, tRFC=(127.5, None), tFAW=(None, 35),   tRAS=45),
+        "1066": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=(127.5, None), tFAW=(None, 35),   tRAS=45),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1066"]
+
 # DDR3 (Chips) -------------------------------------------------------------------------------------
 
 class DDR3Module(SDRAMModule):                     memtype = "DDR3"
