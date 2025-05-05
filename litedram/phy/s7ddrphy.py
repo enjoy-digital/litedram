@@ -125,6 +125,13 @@ class S7DDRPHY(Module, AutoCSR):
             # DDR3 Write leveling is not possible on Artix7 due to the lack of ODELAYE2, adding +1
             # to cl in MR register increases sys_clk_freq range.
             cl += 1
+
+        # Some calibrations like write_leveling or latency calibration are not supported
+        # for DDR2 chip.
+        write_calibrations = (with_odelay and (memtype not in ["DDR2"]))
+        if memtype == "DDR2":
+            write_latency_calibration = False
+
         self.settings = PhySettings(
             phytype                   = phytype,
             memtype                   = memtype,
@@ -141,8 +148,8 @@ class S7DDRPHY(Module, AutoCSR):
             write_latency             = cwl_sys_latency - 1,
             cmd_latency               = cmd_latency,
             cmd_delay                 = cmd_delay,
-            write_leveling            = with_odelay,
-            write_dq_dqs_training     = with_odelay,
+            write_leveling            = write_calibrations,
+            write_dq_dqs_training     = write_calibrations,
             write_latency_calibration = write_latency_calibration,
             read_leveling             = True,
             delays                    = 32,
