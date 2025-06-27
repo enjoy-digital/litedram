@@ -571,6 +571,15 @@ class W9812G6JB(SDRModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 12))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=20, tRFC=(None, 60), tFAW=None, tRAS=42)}
 
+class W989D6DBGX6(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 8192
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 12))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=18, tRCD=18, tWR=15, tRFC=(None, 72), tFAW=None, tRAS=42)}
+
 # DDR ----------------------------------------------------------------------------------------------
 
 class DDRModule(SDRAMModule):                     memtype = "DDR"
