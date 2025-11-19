@@ -328,29 +328,64 @@ class LiteDRAMFIFO(Module):
                 # Store in DRAM.
                 dram_store.eq(1),
 
-                # Increment DRAM Data Count on Pre-Converter's Sink cycle.
-                If(pre_converter.sink.valid & pre_converter.sink.ready,
+                # Increment DRAM Word Count on Pre-Converter's Source cycle.
+                If(pre_converter.source.valid & pre_converter.source.ready,
                     dram_inc.eq(1),
                     NextValue(dram_first, 0),
+                ),
+                If(pre_converter.sink.valid & pre_converter.sink.ready,
                     If(data_width_ratio > 1,
                         NextValue(dram_inc_mod, dram_inc_mod + 1),
                     )
                 ),
 
-                # Decrement DRAM Data Count on Post-Converter's Source cycle.
-                If(post_converter.source.valid & post_converter.source.ready,
+                # Decrement DRAM Word Count on Post-Converter's Sink cycle.
+                If(post_converter.sink.valid & post_converter.sink.ready,
                     dram_dec.eq(1),
+                ),
+                If(post_converter.source.valid & post_converter.source.ready,
                     If(data_width_ratio > 1,
                         NextValue(dram_dec_mod, dram_dec_mod + 1),
                     )
                 ),
 
-                # Maintain DRAM Data Count.
+                # Maintain DRAM Word Count.
                 NextValue(dram_cnt, dram_cnt + dram_inc - dram_dec),
 
                 # Switch back to Bypass mode when no remaining DRAM word.
-                If((dram_first == 0) & (dram_cnt == 0) & (dram_inc_mod == 0) & (dram_dec_mod == 0),
+                If((dram_first == 0) & (dram_cnt == 0),
                     dram_store.eq(0),
-                    NextState("BYPASS")
+                    If((dram_dec_mod == 0) & (dram_inc_mod == 0), 
+                        NextState("BYPASS")
+                    ).Else(
+                        NextState("PUMP_PRECONVERTER"),
+                        NextValue(dram_dec_mod, dram_inc_mod),
+                    )
+                )
+            )
+            fsm.act("PUMP_PRECONVERTER",
+                pre_converter.source.connect(post_converter.sink),
+                If(dram_inc_mod == 0,
+                    NextState("DRAIN_POSTCONVERTER")
+                ).Else(
+                    pre_converter.sink.valid.eq(1),
+                    If(pre_converter.source.valid & pre_converter.source.ready,
+                        NextValue(dram_inc_mod, dram_inc_mod + 1),
+                    )
+                )
+            )
+            fsm.act("DRAIN_POSTCONVERTER",
+                pre_converter.source.connect(post_converter.sink),
+                If(dram_dec_mod == 0,
+                    If(dram_inc_mod == 0,
+                        NextState("BYPASS"),
+                    ).Else(
+                        NextState("PUMP_PRECONVERTER"),
+                        NextValue(dram_dec_mod, dram_inc_mod),
+                    ),
+                ).Else(
+                    If(post_converter.source.valid & post_converter.source.ready,
+                        NextValue(dram_dec_mod, dram_dec_mod + 1),
+                    )
                 )
             )
