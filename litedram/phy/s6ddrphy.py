@@ -433,8 +433,6 @@ class S6QuarterRateDDRPHY(Module):
             nphases       = nphases,
             rdphase       = 0,
             wrphase       = 1,
-            rdcmdphase    = 1,
-            wrcmdphase    = 0,
             cl            = 5,
             cwl           = 6,
             read_latency  = 6//2+1,
