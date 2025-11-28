@@ -320,3 +320,40 @@ class TestFIFO(unittest.TestCase):
 
     def test_fifo_delayed_reader_with_bypass(self):
         self.fifo_delayed_reader_test(with_bypass=True)
+
+    def fifo_partial_bypass_reader_test(self, N):
+        # Verify FIFO works correctly when reader reads N words through the bypass
+        def generator(dut):
+            for i in range(64):
+                yield from dut.write(10 + i)
+
+        def checker(dut):
+            # Read N words through the bypass
+            for i in range(N):
+                data = (yield from dut.read())
+                self.assertEqual(data, 10 + i)
+
+            # Wait until the writer finishes
+            for i in range(64):
+                yield
+
+            # Read the remaining words
+            for i in range(64-N):
+                data = (yield from dut.read())
+                self.assertEqual(data, 10 + N + i)
+            for i in range(16):
+                yield
+
+        dut = FIFODUT(data_width=32, base=16, depth=64, with_bypass=True)
+        generators = [
+            generator(dut),
+            checker(dut),
+            dut.memory.write_handler(dut.write_port),
+            dut.memory.read_handler(dut.read_port),
+            timeout_generator(1500),
+        ]
+        run_simulation(dut, generators)
+
+    def test_fifo_partial_bypass_reader(self):
+        for N in range(3):
+            self.fifo_partial_bypass_reader_test(N)
