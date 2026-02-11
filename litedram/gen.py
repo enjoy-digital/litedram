@@ -579,7 +579,7 @@ class LiteDRAMCore(SoCCore):
 
         # Sim.
         if isinstance(platform, SimPlatform):
-            from litex.tools.litex_sim import get_sdram_phy_settings
+            from litedram.phy.model import get_sdram_phy_settings
             phy_settings   = get_sdram_phy_settings(
                 memtype    = sdram_module.memtype,
                 data_width = core_config["sdram_module_nb"]*8,
