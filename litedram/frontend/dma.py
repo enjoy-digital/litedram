@@ -202,6 +202,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             self.comb += cmd.size.eq(int(log2(port.data_width//8)))
         self.comb += [
             cmd.addr.eq(sink.address),
+            cmd.last.eq(sink.last),
             cmd.valid.eq(fifo.sink.ready & sink.valid),
             sink.ready.eq(fifo.sink.ready & cmd.ready),
             fifo.sink.valid.eq(sink.valid & cmd.ready),
