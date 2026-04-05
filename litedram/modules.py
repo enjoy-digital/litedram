@@ -463,6 +463,15 @@ class IS42S16320(SDRModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=20, tRCD=20, tWR=20, tRFC=(None, 70), tFAW=None, tRAS=None)}
 
+class IS42S32800J6(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 4096
+    ncols  = 512
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 12))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=3, tRCD=3, tWR=12, tRFC=(None, 60), tFAW=None, tRAS=42)}
+
 class MT48LC4M16(SDRModule):
     # geometry
     nbanks = 4
