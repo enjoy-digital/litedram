@@ -140,6 +140,33 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
     def test_wishbone_128bit_to_32bit_burst_read(self):
         self.wishbone_burst_read_test(wishbone_data_width=128, native_data_width=32)
 
+    def test_wishbone_burst_read_prefetch_valid_stays_asserted_when_not_ready(self):
+        class DUT(Module):
+            def __init__(self):
+                self.port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+                self.wb   = wishbone.Interface(adr_width=30, data_width=32, bursting=True)
+                self.submodules += LiteDRAMWishbone2Native(
+                    wishbone = self.wb,
+                    port     = self.port)
+
+        def main_generator(dut):
+            yield dut.wb.cyc.eq(1)
+            yield dut.wb.stb.eq(1)
+            yield dut.wb.sel.eq(0xf)
+            yield dut.wb.adr.eq(0)
+            yield dut.wb.cti.eq(wishbone.CTI_BURST_INCREMENTING)
+            yield dut.port.cmd.ready.eq(1)
+            yield
+            self.assertEqual((yield dut.port.cmd.valid), 1)
+
+            yield dut.port.cmd.ready.eq(0)
+            yield
+            self.assertEqual((yield dut.port.cmd.valid), 1)
+            self.assertEqual((yield dut.port.cmd.addr), 1)
+
+        dut = DUT()
+        run_simulation(dut, [main_generator(dut)])
+
     def test_wishbone_8bit(self):
         # Verify Wishbone with 8-bit data width.
         data = self.pattern_test_data["8bit"]
