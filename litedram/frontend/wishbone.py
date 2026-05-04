@@ -28,7 +28,7 @@ class LiteDRAMWishbone2Native(LiteXModule):
         wishbone_data_width = len(wishbone.dat_w)
         port_data_width     = 2**int(log2(len(port.wdata.data))) # Round to lowest power 2
         ratio               = wishbone_data_width/port_data_width
-        with_burst          = getattr(wishbone, "bursting", False) and (wishbone_data_width == port_data_width)
+        with_burst          = getattr(wishbone, "bursting", False) and (wishbone_data_width >= port_data_width)
 
         assert wishbone.addressing == "word"
 
