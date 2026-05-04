@@ -51,7 +51,8 @@ class LiteDRAMWishbone2Native(LiteXModule):
         offset  = base_address >> log2_int(port.data_width//8)
 
         read_burst      = Signal()
-        read_cmd_start  = Signal()
+        read_cmd_request = Signal()
+        read_cmd_start   = Signal()
         read_pending    = Signal(max=3)
         read_next_addr  = Signal.like(port.cmd.addr)
         read_ack_d      = Signal()
@@ -72,9 +73,10 @@ class LiteDRAMWishbone2Native(LiteXModule):
             port.rdata.ready.eq(~read_data_valid | read_response_ready),
             read_response_valid.eq(read_data_valid | port.rdata.valid),
             read_response_ready.eq(read_response_valid & ~read_ack_d),
-            read_cmd_start.eq(
+            read_cmd_request.eq(
                 read_burst & (read_pending == 1) & ~read_prefetched & ~aborted &
-                ~read_response_ready & ~read_ack_d & ~read_ack_dd & port.cmd.ready),
+                ~read_response_ready & ~read_ack_d & ~read_ack_dd),
+            read_cmd_start.eq(read_cmd_request & port.cmd.ready),
         ]
 
         self.fsm = fsm = FSM(reset_state="CMD")
@@ -121,7 +123,7 @@ class LiteDRAMWishbone2Native(LiteXModule):
             If(read_ack_d,
                 NextValue(read_prefetched, 0)
             ),
-            If(read_cmd_start,
+            If(read_cmd_request,
                 port.cmd.valid.eq(1),
                 port.cmd.we.eq(0),
                 port.cmd.addr.eq(read_next_addr),
