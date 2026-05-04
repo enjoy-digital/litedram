@@ -44,6 +44,86 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
         run_simulation(dut, generators, vcd_name='sim.vcd')
         self.assertEqual(dut.mem.mem, mem_expected)
 
+    def wishbone_burst_read_test(self, length=8, latency=8):
+        class NativeReadMemory(Module):
+            def __init__(self, port):
+                self.accept_count = Signal(8)
+                self.accepted     = [Signal.like(port.cmd.addr) for _ in range(length)]
+
+                valid_pipe = Signal(latency)
+                data_pipe  = [Signal.like(port.rdata.data) for _ in range(latency)]
+
+                cmd_accept = Signal()
+                self.comb += [
+                    port.cmd.ready.eq(1),
+                    cmd_accept.eq(port.cmd.valid & port.cmd.ready & ~port.cmd.we),
+                    port.rdata.valid.eq(valid_pipe[-1]),
+                    port.rdata.data.eq(data_pipe[-1]),
+                ]
+
+                cases = {}
+                for i in range(length):
+                    cases[i] = self.accepted[i].eq(port.cmd.addr)
+
+                self.sync += [
+                    valid_pipe.eq(Cat(cmd_accept, valid_pipe[:-1])),
+                    data_pipe[0].eq(port.cmd.addr),
+                    If(cmd_accept,
+                        Case(self.accept_count, cases),
+                        self.accept_count.eq(self.accept_count + 1),
+                    )
+                ]
+                for i in range(1, latency):
+                    self.sync += data_pipe[i].eq(data_pipe[i - 1])
+
+        class DUT(Module):
+            def __init__(self):
+                self.port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+                self.wb   = wishbone.Interface(adr_width=30, data_width=32, bursting=True)
+                self.submodules += LiteDRAMWishbone2Native(
+                    wishbone = self.wb,
+                    port     = self.port)
+                self.submodules.mem = NativeReadMemory(self.port)
+
+        accepted = []
+
+        def main_generator(dut):
+            yield dut.wb.cyc.eq(1)
+            yield dut.wb.stb.eq(1)
+            yield dut.wb.sel.eq(0xf)
+            yield dut.wb.adr.eq(0)
+            yield dut.wb.cti.eq(wishbone.CTI_BURST_INCREMENTING)
+
+            for _ in range(5):
+                yield
+            self.assertEqual((yield dut.wb.ack), 0)
+            self.assertGreater((yield dut.mem.accept_count), 1)
+
+            for i in range(length):
+                yield dut.wb.adr.eq(i)
+                yield dut.wb.cti.eq(
+                    wishbone.CTI_BURST_INCREMENTING if i != (length - 1) else wishbone.CTI_BURST_END)
+                while (yield dut.wb.ack) == 0:
+                    yield
+                accepted_now = []
+                for signal in dut.mem.accepted:
+                    accepted_now.append((yield signal))
+                self.assertEqual((yield dut.wb.dat_r), i, (i, (yield dut.mem.accept_count), accepted_now))
+                yield
+
+            yield dut.wb.cyc.eq(0)
+            yield dut.wb.stb.eq(0)
+            yield dut.wb.cti.eq(wishbone.CTI_BURST_NONE)
+            for signal in dut.mem.accepted:
+                accepted.append((yield signal))
+
+        dut = DUT()
+        run_simulation(dut, [main_generator(dut)], vcd_name='sim.vcd')
+        self.assertEqual(accepted, list(range(length)))
+
+    def test_wishbone_32bit_burst_read(self):
+        self.wishbone_burst_read_test()
+
     def test_wishbone_8bit(self):
         # Verify Wishbone with 8-bit data width.
         data = self.pattern_test_data["8bit"]
