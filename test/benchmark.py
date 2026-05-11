@@ -114,7 +114,7 @@ class LiteDRAMBenchmarkSoC(SimSoC):
                 self.init_done  = CSRStorage()
                 self.init_error = CSRStorage()
         self.submodules.ddrctrl = ddrctrl = LiteDRAMCoreControl()
-        self.add_csr("ddrctrl")
+        self.csr.add("ddrctrl")
 
         display = Signal()
         finish  = Signal()

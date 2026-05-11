@@ -125,14 +125,14 @@ class SimSoC(SoCCore):
             log_level     = log_level,
             disable_delay = disable_delay,
         )
-        self.add_csr("lpddr4sim")
+        self.csr.add("lpddr4sim")
 
         self.add_constant("CONFIG_SIM_DISABLE_BIOS_PROMPT")
         if disable_delay:
             self.add_constant("CONFIG_DISABLE_DELAYS")
         if finish_after_memtest:
             self.submodules.ddrctrl = LiteDRAMCoreControl()
-            self.add_csr("ddrctrl")
+            self.csr.add("ddrctrl")
             self.sync += If(self.ddrctrl.init_done.storage, Finish())
 
         # Reuse DFITimingsChecker from phy/model.py

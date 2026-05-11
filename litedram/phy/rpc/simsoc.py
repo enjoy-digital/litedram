@@ -163,7 +163,7 @@ class SimSoC(SoCCore):
         sdram_module = EM6GA16L(sys_clk_freq, "1:4")
         pads = platform.request("rpcdram")
         self.submodules.ddrphy = SimulationPHY(pads, sys_clk_freq=sys_clk_freq, generate_read_data=True)
-        self.add_csr("ddrphy")
+        self.csr.add("ddrphy")
 
         controller_settings = ControllerSettings()
         controller_settings.auto_precharge = auto_precharge
@@ -187,7 +187,7 @@ class SimSoC(SoCCore):
         # self.add_constant("CONFIG_DISABLE_DELAYS")
 
         self.submodules.ddrctrl = LiteDRAMCoreControl()
-        self.add_csr("ddrctrl")
+        self.csr.add("ddrctrl")
         self.sync += If(self.ddrctrl.init_done.storage, Finish())
 
         # Print info
