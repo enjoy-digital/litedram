@@ -909,12 +909,37 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings,
     ddrctrl_csr_prefix = ddrctrl_name.upper() if ddrctrl_name is not None else None
     if sdram_name != "sdram":
         define_if_defined("CSR_SDRAM_BASE", f"CSR_{sdram_csr_prefix}_BASE")
+        for suffix in [
+            "dfii_control_read", "dfii_control_write",
+            *[f"dfii_pi{n}_address_write" for n in range(8)],
+            *[f"dfii_pi{n}_baddress_write" for n in range(8)],
+            *[f"dfii_pi{n}_command_write" for n in range(8)],
+            *[f"dfii_pi{n}_command_issue_write" for n in range(8)],
+        ]:
+            r.define(f"sdram_{suffix}", f"{sdram_name}_{suffix}")
     if ddrphy_name != "ddrphy":
         define_if_defined("CSR_DDRPHY_BASE", f"CSR_{ddrphy_csr_prefix}_BASE")
         for csr in ["RDPHASE", "WRPHASE", "RST", "EN_VTC"]:
             define_if_defined(f"CSR_DDRPHY_{csr}_ADDR", f"CSR_{ddrphy_csr_prefix}_{csr}_ADDR")
+        for suffix in [
+            "rdphase_read", "rdphase_write", "wrphase_read", "wrphase_write",
+            "rst_write", "en_vtc_write", "half_sys8x_taps_read",
+            "wlevel_en_write", "wlevel_strobe_write",
+            "burstdet_clr_write", "burstdet_seen_read",
+            "dly_sel_write", "dq_dly_sel_write",
+            "cdly_inc_write", "cdly_rst_write",
+            "rdly_dq_inc_write", "rdly_dq_rst_write",
+            "rdly_dq_bitslip_write", "rdly_dq_bitslip_rst_write",
+            "wdly_dq_inc_write", "wdly_dq_rst_write",
+            "wdly_dqs_inc_write", "wdly_dqs_rst_write",
+            "wdly_dqs_inc_count_read",
+            "wdly_dq_bitslip_write", "wdly_dq_bitslip_rst_write",
+        ]:
+            r.define(f"ddrphy_{suffix}", f"{ddrphy_name}_{suffix}")
     if ddrctrl_csr_prefix is not None and ddrctrl_name != "ddrctrl":
         define_if_defined("CSR_DDRCTRL_BASE", f"CSR_{ddrctrl_csr_prefix}_BASE")
+        for suffix in ["init_done_write", "init_error_write"]:
+            r.define(f"ddrctrl_{suffix}", f"{ddrctrl_name}_{suffix}")
     if sdram_name != "sdram" or ddrphy_name != "ddrphy" or ddrctrl_name != "ddrctrl":
         r.newline()
 
