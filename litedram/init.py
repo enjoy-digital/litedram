@@ -883,11 +883,45 @@ class CGenerator(list):
         self.append("}")
 
 
-def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
+def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings,
+    sdram_name         = "sdram",
+    ddrphy_name        = "ddrphy",
+    ddrctrl_name       = "ddrctrl",
+    memory_region_name = "main_ram"):
+
     r = CGenerator()
-    r.header_guard("__GENERATED_SDRAM_PHY_H")
+    header_guard = "__GENERATED_SDRAM_PHY_H" if sdram_name == "sdram" else \
+        f"__GENERATED_{sdram_name.upper()}_PHY_H"
+    r.header_guard(header_guard)
     r.include("<hw/common.h>")
     r.include("<generated/csr.h>")
+    r.include("<generated/mem.h>")
+    r.newline()
+
+    def define_if_defined(dst, src):
+        nonlocal r
+        r += f"#ifdef {src}"
+        r.define(dst, src)
+        r += "#endif"
+
+    sdram_csr_prefix  = sdram_name.upper()
+    ddrphy_csr_prefix = ddrphy_name.upper()
+    ddrctrl_csr_prefix = ddrctrl_name.upper() if ddrctrl_name is not None else None
+    if sdram_name != "sdram":
+        define_if_defined("CSR_SDRAM_BASE", f"CSR_{sdram_csr_prefix}_BASE")
+    if ddrphy_name != "ddrphy":
+        define_if_defined("CSR_DDRPHY_BASE", f"CSR_{ddrphy_csr_prefix}_BASE")
+        for csr in ["RDPHASE", "WRPHASE", "RST", "EN_VTC"]:
+            define_if_defined(f"CSR_DDRPHY_{csr}_ADDR", f"CSR_{ddrphy_csr_prefix}_{csr}_ADDR")
+    if ddrctrl_csr_prefix is not None and ddrctrl_name != "ddrctrl":
+        define_if_defined("CSR_DDRCTRL_BASE", f"CSR_{ddrctrl_csr_prefix}_BASE")
+    if sdram_name != "sdram" or ddrphy_name != "ddrphy" or ddrctrl_name != "ddrctrl":
+        r.newline()
+
+    region_prefix = memory_region_name.upper()
+    r.define("SDRAM_NAME", f"\"{sdram_name}\"")
+    r.define("SDRAM_BASE", f"{region_prefix}_BASE")
+    r.define("SDRAM_SIZE", f"{region_prefix}_SIZE")
     r.newline()
 
     r.define("DFII_CONTROL_SEL",     "0x01")
@@ -975,13 +1009,13 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
     r.newline()
 
     # Write/Read functions
-    r.define("DFII_PIX_DATA_SIZE", "CSR_SDRAM_DFII_PI0_WRDATA_SIZE")
+    r.define("DFII_PIX_DATA_SIZE", f"CSR_{sdram_csr_prefix}_DFII_PI0_WRDATA_SIZE")
     r.newline()
     for data in ["wrdata", "rddata"]:
         with r.block(f"static inline unsigned long sdram_dfii_pix_{data}_addr(int phase)") as b:
             with b.block("switch (phase)", newline=False) as s:
                 for n in range(nphases):
-                    s += f"case {n}: return CSR_SDRAM_DFII_PI{n}_{data.upper()}_ADDR;"
+                    s += f"case {n}: return CSR_{sdram_csr_prefix}_DFII_PI{n}_{data.upper()}_ADDR;"
                 s += "default: return 0;"
     r.newline()
 
