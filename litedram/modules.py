@@ -856,6 +856,18 @@ class H5TC4G63CFR(DDR3Module):
     }
     speedgrade_timings["default"] = speedgrade_timings["800"]
 
+class NT5CC256M16DP(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 7.5), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "800":  _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(260, None), tFAW=(None, 40), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["800"]
+
 class IS43TR16128B(DDR3Module):
     # geometry
     nbanks = 8
