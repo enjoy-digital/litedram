@@ -901,13 +901,78 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings,
     def define_if_defined(dst, src):
         nonlocal r
         r += f"#ifdef {src}"
+        r += f"#undef {dst}"
         r.define(dst, src)
         r += "#endif"
+
+    def alias_suffix(symbol):
+        for prefix in ["sdram_", "_sdram_"]:
+            if symbol.startswith(prefix):
+                return symbol[len(prefix):]
+        return symbol
+
+    def define_symbol_aliases(instance):
+        for symbol in [
+            # Public SDRAM API.
+            "sdram_get_databits",
+            "sdram_get_freq",
+            "sdram_get_cl",
+            "sdram_get_cwl",
+            "sdram_software_control_on",
+            "sdram_software_control_off",
+            "sdram_mode_register_write",
+            "sdram_write_leveling_rst_cmd_delay",
+            "sdram_write_leveling_force_cmd_delay",
+            "sdram_write_leveling",
+            "sdram_read_leveling",
+            "sdram_leveling",
+            "sdram_init",
+            "sdram_debug",
+
+            # SDRAM calibration globals.
+            "_sdram_tck_taps",
+            "_sdram_write_leveling_cmd_scan",
+            "_sdram_write_leveling_cmd_delay",
+            "_sdram_write_leveling_cdly_range_start",
+            "_sdram_write_leveling_cdly_range_end",
+
+            # Accessors API.
+            "read_dq_delay",
+            "read_inc_dq_delay",
+            "read_rst_dq_delay",
+            "sdram_clock_delay",
+            "sdram_inc_clock_delay",
+            "sdram_rst_clock_delay",
+            "write_dq_delay",
+            "write_inc_dq_delay",
+            "write_rst_dq_delay",
+            "write_inc_dqs_delay",
+            "write_rst_dqs_delay",
+            "write_inc_delay",
+            "write_rst_delay",
+            "read_dq_bitslip",
+            "read_inc_dq_bitslip",
+            "read_rst_dq_bitslip",
+            "write_dq_bitslip",
+            "write_inc_dq_bitslip",
+            "write_rst_dq_bitslip",
+            "sdram_select",
+            "sdram_deselect",
+            "sdram_leveling_action",
+            "_sdram_write_leveling_dat_delays",
+            "sdram_write_leveling_rst_dat_delay",
+            "sdram_write_leveling_force_dat_delay",
+            "_sdram_write_leveling_bitslips",
+            "sdram_write_leveling_rst_bitslip",
+            "sdram_write_leveling_force_bitslip",
+        ]:
+            r.define(symbol, f"{instance}_{alias_suffix(symbol)}")
 
     sdram_csr_prefix  = sdram_name.upper()
     ddrphy_csr_prefix = ddrphy_name.upper()
     ddrctrl_csr_prefix = ddrctrl_name.upper() if ddrctrl_name is not None else None
     if sdram_name != "sdram":
+        define_symbol_aliases(sdram_name)
         define_if_defined("CSR_SDRAM_BASE", f"CSR_{sdram_csr_prefix}_BASE")
         for suffix in [
             "dfii_control_read", "dfii_control_write",
