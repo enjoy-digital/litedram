@@ -117,10 +117,17 @@ class LiteDRAMAXI2NativeW(Module):
 
         # Write Data -------------------------------------------------------------------------------
         axi_w_connect = Signal(reset=1)
+        w_buffer_send = Signal()
         self.comb += [
+            # Only send write data after a matching write command has been
+            # accepted. This keeps delayed native wdata_ready pulses from
+            # consuming data ahead of the command stream.
+            w_buffer_send.eq((w_buffer_level != 0) | w_buffer_queue),
             If(axi_w_connect, axi.w.connect(w_buffer.sink)),
-            w_buffer.source.connect(port.wdata, omit={"strb", "id", "dest", "user"}),
-            port.wdata.we.eq(w_buffer.source.strb)
+            port.wdata.valid.eq(w_buffer.source.valid & w_buffer_send),
+            port.wdata.data.eq(w_buffer.source.data),
+            port.wdata.we.eq(w_buffer.source.strb),
+            w_buffer.source.ready.eq(port.wdata.ready & w_buffer_send),
         ]
 
         # Read-Modify-Write ------------------------------------------------------------------------
