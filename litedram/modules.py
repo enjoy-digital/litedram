@@ -883,6 +883,23 @@ class H5TC4G63CFR(DDR3Module):
     }
     speedgrade_timings["default"] = speedgrade_timings["800"]
 
+class H5TQ4G63CFR(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(6, 7.5), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "1066": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=(139, None), tFAW=(27, 50), tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5,   tRCD=13.5,   tWR=15, tRFC=(174, None), tFAW=(30, 45), tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75,  tRCD=13.75,  tWR=15, tRFC=(208, None), tFAW=(32, 40), tRAS=35),
+        "1866": _SpeedgradeTimings(tRP=13.91,  tRCD=13.91,  tWR=15, tRFC=(243, None), tFAW=(33, 36), tRAS=34),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
+class H5TQ4G63EFR(H5TQ4G63CFR): pass
+
 class IS43TR16128B(DDR3Module):
     # geometry
     nbanks = 8
