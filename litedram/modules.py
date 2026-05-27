@@ -490,6 +490,15 @@ class MT48LC4M16(SDRModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=14, tRFC=(None, 66), tFAW=None, tRAS=None)}
 
+class HY57V641620FTP(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 4096
+    ncols  = 256
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 14))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=21, tRCD=21, tWR=(2, None), tRFC=(None, 63), tFAW=None, tRAS=42)}
+
 class MT48LC16M16(SDRModule):
     # geometry
     nbanks = 4
@@ -553,6 +562,15 @@ class M12L64322A(SDRModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 10))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 55), tFAW=None, tRAS=40)}
 
+class EM638325(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 2048
+    ncols  = 256
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 12))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=18, tRCD=18, tWR=(2, None), tRFC=(None, 60), tFAW=None, tRAS=42)}
+
 class M12L16161A(SDRModule):
     # geometry
     nbanks = 2
@@ -588,6 +606,15 @@ class W9812G6JB(SDRModule):
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 12))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=20, tRFC=(None, 60), tFAW=None, tRAS=42)}
+
+class W9864G6JT(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 4096
+    ncols  = 256
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 12))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=(2, None), tRFC=(None, 60), tFAW=None, tRAS=42)}
 
 class W989D6DBGX6(SDRModule):
     # geometry
