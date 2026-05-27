@@ -6,10 +6,55 @@
 
 import os
 import csv
+import inspect
 import unittest
 
 import litedram.modules
 from litedram.modules import SDRAMModule, DDR3SPDData
+
+
+_rates = {
+    "SDR":    "1:1",
+    "DDR":    "1:2",
+    "LPDDR":  "1:2",
+    "DDR2":   "1:2",
+    "DDR3":   "1:4",
+    "RPC":    "1:4",
+    "DDR4":   "1:4",
+    "LPDDR4": "1:8",
+}
+
+
+def iter_sdram_module_classes():
+    for name, cls in vars(litedram.modules).items():
+        if not inspect.isclass(cls):
+            continue
+        if not issubclass(cls, SDRAMModule):
+            continue
+        if not all(hasattr(cls, attr) for attr in ("memtype", "nbanks", "nrows", "ncols")):
+            continue
+        yield name, cls
+
+
+class TestSDRAMModules(unittest.TestCase):
+    def test_modules_instantiate(self):
+        for name, cls in iter_sdram_module_classes():
+            rate = _rates[cls.memtype]
+            with self.subTest(module=name, speedgrade="default"):
+                cls(clk_freq=100e6, rate=rate)
+            for speedgrade in cls.speedgrade_timings:
+                if speedgrade == "default":
+                    continue
+                with self.subTest(module=name, speedgrade=speedgrade):
+                    cls(clk_freq=100e6, rate=rate, speedgrade=speedgrade)
+
+    def test_ddr4_rdimm_tfaw_uses_ck_minimum(self):
+        for name in ["HMA82GR7DJR4N", "M393A2K40DB3"]:
+            cls = getattr(litedram.modules, name)
+            module = cls(clk_freq=100e6, rate="1:4")
+            with self.subTest(module=name):
+                self.assertEqual(cls.speedgrade_timings["3200"].tFAW, (16, 10))
+                self.assertEqual(module.timing_settings.tFAW, 4)
 
 
 def load_spd_reference(filename):
