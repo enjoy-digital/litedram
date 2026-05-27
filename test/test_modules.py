@@ -80,6 +80,19 @@ class TestSDRAMModules(unittest.TestCase):
                 self.assertEqual(cls.speedgrade_timings["1600"].tFAW, (32, 40))
                 self.assertIs(cls.speedgrade_timings["default"], cls.speedgrade_timings["1600"])
 
+    def test_as4c256m16d3c_geometry_and_speedgrades(self):
+        cls = litedram.modules.AS4C256M16D3C
+        module = cls(clk_freq=100e6, rate="1:4")
+
+        self.assertEqual(module.nbanks, 8)
+        self.assertEqual(module.nrows, 32768)
+        self.assertEqual(module.ncols, 1024)
+        self.assertEqual(cls.speedgrade_timings["1600"].tRFC, (None, 260))
+        self.assertEqual(cls.speedgrade_timings["1600"].tFAW, (None, 40))
+        self.assertEqual(cls.speedgrade_timings["1866"].tFAW, (None, 35))
+        self.assertEqual(cls.speedgrade_timings["2133"].tRP, 13.09)
+        self.assertIs(cls.speedgrade_timings["default"], cls.speedgrade_timings["1600"])
+
 
 def load_spd_reference(filename):
     """Load reference SPD data from a CSV file

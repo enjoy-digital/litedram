@@ -999,6 +999,20 @@ class AS4C256M16D3A(DDR3Module):
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
+class AS4C256M16D3C(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 7.5), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 260), tFAW=(None, 40), tRAS=35),
+        "1866": _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=15, tRFC=(None, 260), tFAW=(None, 35), tRAS=34),
+        "2133": _SpeedgradeTimings(tRP=13.09, tRCD=13.09, tWR=15, tRFC=(None, 260), tFAW=(None, 35), tRAS=33),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
 class MT16KTF1G64HZ(DDR3Module):
     # base chip: MT41K512M8
     # geometry
