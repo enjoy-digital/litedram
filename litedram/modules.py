@@ -1180,7 +1180,7 @@ class HMA82GR7DJR4N(DDR4RegisteredModule):
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
     technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=10, tRAS=32),
+        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=(16, 10), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["3200"]
 
@@ -1200,7 +1200,7 @@ class M393A2K40DB3(DDR4RegisteredModule):
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
     technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=10, tRAS=32),
+        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=(16, 10), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["3200"]
 
