@@ -874,12 +874,12 @@ class K4B2G1646F(DDR3Module):
 class H5TC4G63CFR(DDR3Module):
     # geometry
     nbanks = 8
-    nrows  = 16384
+    nrows  = 32768
     ncols  = 1024
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 7.5), tZQCS=(64, 80))
     speedgrade_timings = {
-        "800":  _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(260, None), tFAW=(None, 40), tRAS=37.5),
+        "800":  _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 260), tFAW=(None, 40), tRAS=37.5),
     }
     speedgrade_timings["default"] = speedgrade_timings["800"]
 

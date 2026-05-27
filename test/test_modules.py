@@ -56,6 +56,15 @@ class TestSDRAMModules(unittest.TestCase):
                 self.assertEqual(cls.speedgrade_timings["3200"].tFAW, (16, 10))
                 self.assertEqual(module.timing_settings.tFAW, 4)
 
+    def test_h5tc4g63cfr_geometry_and_trfc(self):
+        cls = litedram.modules.H5TC4G63CFR
+        module = cls(clk_freq=100e6, rate="1:4")
+
+        self.assertEqual(module.nbanks, 8)
+        self.assertEqual(module.nrows, 32768)
+        self.assertEqual(module.ncols, 1024)
+        self.assertEqual(cls.speedgrade_timings["800"].tRFC, (None, 260))
+
 
 def load_spd_reference(filename):
     """Load reference SPD data from a CSV file
