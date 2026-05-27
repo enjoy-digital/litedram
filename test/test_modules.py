@@ -107,6 +107,21 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(cls.speedgrade_timings["default"].tRFC, (None, 60))
         self.assertEqual(cls.speedgrade_timings["default"].tRAS, 42)
 
+    def test_em638165_geometry_and_timings(self):
+        cls = litedram.modules.EM638165
+        module = cls(clk_freq=100e6, rate="1:1")
+
+        self.assertEqual(module.nbanks, 4)
+        self.assertEqual(module.nrows, 4096)
+        self.assertEqual(module.ncols, 256)
+        self.assertEqual(cls.technology_timings.tREFI, 64e6/4096)
+        self.assertEqual(cls.technology_timings.tRRD, (None, 10))
+        self.assertEqual(cls.speedgrade_timings["default"].tRP, 15)
+        self.assertEqual(cls.speedgrade_timings["default"].tRCD, 15)
+        self.assertEqual(cls.speedgrade_timings["default"].tWR, (2, None))
+        self.assertEqual(cls.speedgrade_timings["default"].tRFC, (None, 55))
+        self.assertEqual(cls.speedgrade_timings["default"].tRAS, 40)
+
 
 def load_spd_reference(filename):
     """Load reference SPD data from a CSV file
