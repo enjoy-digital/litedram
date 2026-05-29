@@ -182,6 +182,7 @@ class LPDDR4PHY(Module, AutoCSR):
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
             bitslips      = 16,
+            with_dm       = masked_write,
         )
 
         # DFI Interface ----------------------------------------------------------------------------

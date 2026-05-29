@@ -23,6 +23,7 @@ class GENSDRPHY(Module):
         bankbits    = len(pads.ba)
         nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits    = len(pads.dq)
+        with_dm     = hasattr(pads, "dm")
         assert databits%8 == 0
 
         # Parameters -------------------------------------------------------------------------------
@@ -40,7 +41,8 @@ class GENSDRPHY(Module):
             wrphase       = 0,
             cl            = cl,
             read_latency  = cl + 1,
-            write_latency = 0
+            write_latency = 0,
+            with_dm       = with_dm,
         )
 
         # DFI Interface ----------------------------------------------------------------------------
@@ -99,6 +101,7 @@ class HalfRateGENSDRPHY(Module):
         bankbits    = len(pads.ba)
         nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits    = len(pads.dq)
+        with_dm     = hasattr(pads, "dm")
         nphases     = 2
 
 
@@ -133,7 +136,8 @@ class HalfRateGENSDRPHY(Module):
             wrphase       = 0,
             cl            = cl,
             read_latency  = full_rate_phy.settings.read_latency//2 + 1,
-            write_latency = 0
+            write_latency = 0,
+            with_dm       = with_dm,
         )
 
         # DFI adaptation ---------------------------------------------------------------------------

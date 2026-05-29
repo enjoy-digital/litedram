@@ -232,6 +232,7 @@ class LPDDR5PHY(Module, AutoCSR):
             cmd_latency   = cmd_latency,
             cmd_delay     = cmd_delay,
             bitslips      = 8,
+            with_dm       = masked_write,
         )
         self.settings.wck_ck_ratio  = wck_ck_ratio
 

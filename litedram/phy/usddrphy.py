@@ -45,6 +45,7 @@ class USDDRPHY(Module, AutoCSR):
         bankbits = len(pads.ba) if memtype == "DDR3" else len(pads.ba) + len(pads.bg)
         nranks   = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits = len(pads.dq)
+        with_dm  = hasattr(pads, "dm")
         nphases  = 4
         assert databits%8 == 0
         x4_dimm_mode = (databits / len(pads.dqs_p)) == 4
@@ -115,6 +116,7 @@ class USDDRPHY(Module, AutoCSR):
             delays                    = 512,
             bitslips                  = 8,
             is_clam_shell             = is_clam_shell,
+            with_dm                   = with_dm,
         )
 
         if is_rdimm:
