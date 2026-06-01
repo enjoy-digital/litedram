@@ -13,7 +13,7 @@ from litex.build.generic_platform import Pins, Subsignal
 from litex.build.sim.config import SimConfig
 
 from litex.soc.interconnect.csr import CSR
-from litex.soc.integration.soc_core import SoCCore, soc_core_args, soc_core_argdict
+from litex.soc.integration.soc import SoCCore, soc_core_args, soc_core_argdict
 from litex.soc.integration.builder import builder_args, builder_argdict, Builder
 from litex.soc.cores.cpu import CPUS
 

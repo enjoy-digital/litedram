@@ -47,7 +47,7 @@ from litex.build.lattice          import LatticePlatform
 from litex.build.sim              import SimPlatform
 
 from litex.soc.cores.clock          import *
-from litex.soc.integration.soc_core import *
+from litex.soc.integration.soc import *
 from litex.soc.integration.builder  import *
 from litex.soc.interconnect         import wishbone
 from litex.soc.interconnect         import avalon

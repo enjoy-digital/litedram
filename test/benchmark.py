@@ -20,7 +20,7 @@ from litex.gen.genlib.misc import WaitTimer
 from litex.build.sim.config import SimConfig
 
 from litex.soc.interconnect.csr import *
-from litex.soc.integration.soc_core import *
+from litex.soc.integration.soc import *
 from litex.soc.integration.builder import *
 
 from litex.tools.litex_sim import SimSoC
