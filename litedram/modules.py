@@ -490,6 +490,15 @@ class MT48LC4M16(SDRModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=None)
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=14, tRFC=(None, 66), tFAW=None, tRAS=None)}
 
+class HY57V641620FTP(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 4096
+    ncols  = 256
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 14))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=21, tRCD=21, tWR=(2, None), tRFC=(None, 63), tFAW=None, tRAS=42)}
+
 class MT48LC16M16(SDRModule):
     # geometry
     nbanks = 4
@@ -553,6 +562,33 @@ class M12L64322A(SDRModule):
     technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 10))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 55), tFAW=None, tRAS=40)}
 
+class EM638165(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 4096
+    ncols  = 256
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 10))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=(2, None), tRFC=(None, 55), tFAW=None, tRAS=40)}
+
+class EM638325(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 2048
+    ncols  = 256
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 12))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=18, tRCD=18, tWR=(2, None), tRFC=(None, 60), tFAW=None, tRAS=42)}
+
+class EM636165(SDRModule):
+    # geometry
+    nbanks = 2
+    nrows  = 2048
+    ncols  = 256
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 12))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=18, tRCD=18, tWR=(2, None), tRFC=(None, 60), tFAW=None, tRAS=42)}
+
 class M12L16161A(SDRModule):
     # geometry
     nbanks = 2
@@ -588,6 +624,15 @@ class W9812G6JB(SDRModule):
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 12))
     speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=20, tRFC=(None, 60), tFAW=None, tRAS=42)}
+
+class W9864G6JT(SDRModule):
+    # geometry
+    nbanks = 4
+    nrows  = 4096
+    ncols  = 256
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/4096, tWTR=(2, None), tCCD=(1, None), tRRD=(None, 12))
+    speedgrade_timings = {"default": _SpeedgradeTimings(tRP=15, tRCD=15, tWR=(2, None), tRFC=(None, 60), tFAW=None, tRAS=42)}
 
 class W989D6DBGX6(SDRModule):
     # geometry
@@ -783,6 +828,18 @@ class MT41J128M16(DDR3Module):
 
 class MT41K128M16(MT41J128M16): pass
 
+class IMD128M16R39CG8GNF(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 16384
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 7.5), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 160), tFAW=(None, 40), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
 class MT41J256M16(DDR3Module):
     # geometry
     nbanks = 8
@@ -847,26 +904,31 @@ class K4B2G1646F(DDR3Module):
 class H5TC4G63CFR(DDR3Module):
     # geometry
     nbanks = 8
-    nrows  = 16384
-    ncols  = 1024
-    # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 7.5), tZQCS=(64, 80))
-    speedgrade_timings = {
-        "800":  _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(260, None), tFAW=(None, 40), tRAS=37.5),
-    }
-    speedgrade_timings["default"] = speedgrade_timings["800"]
-
-class NT5CC256M16DP(DDR3Module):
-    # geometry
-    nbanks = 8
     nrows  = 32768
     ncols  = 1024
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 7.5), tZQCS=(64, 80))
     speedgrade_timings = {
-        "800":  _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(260, None), tFAW=(None, 40), tRAS=35),
+        "800":  _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 260), tFAW=(None, 40), tRAS=37.5),
     }
     speedgrade_timings["default"] = speedgrade_timings["800"]
+
+class H5TQ4G63CFR(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(6, 7.5), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "1066": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=(139, None), tFAW=(27, 50), tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5,   tRCD=13.5,   tWR=15, tRFC=(174, None), tFAW=(30, 45), tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75,  tRCD=13.75,  tWR=15, tRFC=(208, None), tFAW=(32, 40), tRAS=35),
+        "1866": _SpeedgradeTimings(tRP=13.91,  tRCD=13.91,  tWR=15, tRFC=(243, None), tFAW=(33, 36), tRAS=34),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
+class H5TQ4G63EFR(H5TQ4G63CFR): pass
 
 class IS43TR16128B(DDR3Module):
     # geometry
@@ -964,6 +1026,20 @@ class AS4C256M16D3A(DDR3Module):
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 7.5), tZQCS=(64, 80))
     speedgrade_timings = {
         "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 260), tFAW=(None, 40), tRAS=35),
+    }
+    speedgrade_timings["default"] = speedgrade_timings["1600"]
+
+class AS4C256M16D3C(DDR3Module):
+    # geometry
+    nbanks = 8
+    nrows  = 32768
+    ncols  = 1024
+    # timings
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 7.5), tZQCS=(64, 80))
+    speedgrade_timings = {
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 260), tFAW=(None, 40), tRAS=35),
+        "1866": _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=15, tRFC=(None, 260), tFAW=(None, 35), tRAS=34),
+        "2133": _SpeedgradeTimings(tRP=13.09, tRCD=13.09, tWR=15, tRFC=(None, 260), tFAW=(None, 35), tRAS=33),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
@@ -1192,7 +1268,7 @@ class HMA82GR7DJR4N(DDR4RegisteredModule):
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
     technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=10, tRAS=32),
+        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=(16, 10), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["3200"]
 
@@ -1212,7 +1288,7 @@ class M393A2K40DB3(DDR4RegisteredModule):
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
     technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=10, tRAS=32),
+        "3200": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=trfc, tFAW=(16, 10), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["3200"]
 

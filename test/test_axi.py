@@ -276,6 +276,43 @@ class TestAXI(unittest.TestCase):
     def test_axi2native_random_r_valid(self):
         self._test_axi2native(r_valid_random=90)
 
+    def test_axi2native_write_data_waits_for_cmd(self):
+        axi_port  = LiteDRAMAXIPort(data_width=32, address_width=32, id_width=8)
+        dram_port = LiteDRAMNativePort("both", 32, 32)
+        dut       = LiteDRAMAXI2Native(axi_port, dram_port)
+
+        self.unreserved_wdata_errors = 0
+
+        def axi_write_generator():
+            yield axi_port.aw.valid.eq(1)
+            yield axi_port.aw.addr.eq(0)
+            yield axi_port.aw.burst.eq(BURST_INCR)
+            yield axi_port.aw.len.eq(0)
+            yield axi_port.aw.size.eq(log2_int(32//8))
+            yield axi_port.aw.id.eq(1)
+
+            yield axi_port.w.valid.eq(1)
+            yield axi_port.w.data.eq(0x12345678)
+            yield axi_port.w.strb.eq(0xf)
+            yield axi_port.w.last.eq(1)
+            while (yield axi_port.w.ready) == 0:
+                yield
+            yield axi_port.w.valid.eq(0)
+
+            for _ in range(8):
+                yield
+
+        def native_ready_monitor():
+            yield dram_port.cmd.ready.eq(0)
+            yield dram_port.wdata.ready.eq(1)
+            for _ in range(8):
+                if (yield dram_port.wdata.valid):
+                    self.unreserved_wdata_errors += 1
+                yield
+
+        run_simulation(dut, [axi_write_generator(), native_ready_monitor()])
+        self.assertEqual(self.unreserved_wdata_errors, 0)
+
     # Now let's stress things a bit... :)
     def test_axi2native_random_all(self):
         self._test_axi2native(

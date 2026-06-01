@@ -24,7 +24,7 @@ from litex.build.generic_platform import *
 from litex.build.xilinx.vivado import vivado_build_args, vivado_build_argdict
 
 from litex.soc.cores.clock import *
-from litex.soc.integration.soc_core import *
+from litex.soc.integration.soc import *
 from litex.soc.integration.builder import *
 from litex.soc.cores.led import LedChaser
 from litex.soc.cores.bitbang import I2CMaster

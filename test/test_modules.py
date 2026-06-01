@@ -6,10 +6,137 @@
 
 import os
 import csv
+import inspect
 import unittest
 
 import litedram.modules
 from litedram.modules import SDRAMModule, DDR3SPDData
+
+
+_rates = {
+    "SDR":    "1:1",
+    "DDR":    "1:2",
+    "LPDDR":  "1:2",
+    "DDR2":   "1:2",
+    "DDR3":   "1:4",
+    "RPC":    "1:4",
+    "DDR4":   "1:4",
+    "LPDDR4": "1:8",
+}
+
+
+def iter_sdram_module_classes():
+    for name, cls in vars(litedram.modules).items():
+        if not inspect.isclass(cls):
+            continue
+        if not issubclass(cls, SDRAMModule):
+            continue
+        if not all(hasattr(cls, attr) for attr in ("memtype", "nbanks", "nrows", "ncols")):
+            continue
+        yield name, cls
+
+
+class TestSDRAMModules(unittest.TestCase):
+    def test_modules_instantiate(self):
+        for name, cls in iter_sdram_module_classes():
+            rate = _rates[cls.memtype]
+            with self.subTest(module=name, speedgrade="default"):
+                cls(clk_freq=100e6, rate=rate)
+            for speedgrade in cls.speedgrade_timings:
+                if speedgrade == "default":
+                    continue
+                with self.subTest(module=name, speedgrade=speedgrade):
+                    cls(clk_freq=100e6, rate=rate, speedgrade=speedgrade)
+
+    def test_ddr4_rdimm_tfaw_uses_ck_minimum(self):
+        for name in ["HMA82GR7DJR4N", "M393A2K40DB3"]:
+            cls = getattr(litedram.modules, name)
+            module = cls(clk_freq=100e6, rate="1:4")
+            with self.subTest(module=name):
+                self.assertEqual(cls.speedgrade_timings["3200"].tFAW, (16, 10))
+                self.assertEqual(module.timing_settings.tFAW, 4)
+
+    def test_h5tc4g63cfr_geometry_and_trfc(self):
+        cls = litedram.modules.H5TC4G63CFR
+        module = cls(clk_freq=100e6, rate="1:4")
+
+        self.assertEqual(module.nbanks, 8)
+        self.assertEqual(module.nrows, 32768)
+        self.assertEqual(module.ncols, 1024)
+        self.assertEqual(cls.speedgrade_timings["800"].tRFC, (None, 260))
+
+    def test_h5tq4g63xfr_geometry_and_speedgrades(self):
+        for name in ["H5TQ4G63CFR", "H5TQ4G63EFR"]:
+            cls = getattr(litedram.modules, name)
+            module = cls(clk_freq=100e6, rate="1:4")
+
+            with self.subTest(module=name):
+                self.assertEqual(module.nbanks, 8)
+                self.assertEqual(module.nrows, 32768)
+                self.assertEqual(module.ncols, 1024)
+                self.assertIn("1066", cls.speedgrade_timings)
+                self.assertIn("1866", cls.speedgrade_timings)
+                self.assertEqual(cls.speedgrade_timings["1600"].tRFC, (208, None))
+                self.assertEqual(cls.speedgrade_timings["1600"].tFAW, (32, 40))
+                self.assertIs(cls.speedgrade_timings["default"], cls.speedgrade_timings["1600"])
+
+    def test_as4c256m16d3c_geometry_and_speedgrades(self):
+        cls = litedram.modules.AS4C256M16D3C
+        module = cls(clk_freq=100e6, rate="1:4")
+
+        self.assertEqual(module.nbanks, 8)
+        self.assertEqual(module.nrows, 32768)
+        self.assertEqual(module.ncols, 1024)
+        self.assertEqual(cls.speedgrade_timings["1600"].tRFC, (None, 260))
+        self.assertEqual(cls.speedgrade_timings["1600"].tFAW, (None, 40))
+        self.assertEqual(cls.speedgrade_timings["1866"].tFAW, (None, 35))
+        self.assertEqual(cls.speedgrade_timings["2133"].tRP, 13.09)
+        self.assertIs(cls.speedgrade_timings["default"], cls.speedgrade_timings["1600"])
+
+    def test_em636165_geometry_and_timings(self):
+        cls = litedram.modules.EM636165
+        module = cls(clk_freq=100e6, rate="1:1")
+
+        self.assertEqual(module.nbanks, 2)
+        self.assertEqual(module.nrows, 2048)
+        self.assertEqual(module.ncols, 256)
+        self.assertEqual(cls.technology_timings.tRRD, (None, 12))
+        self.assertEqual(cls.speedgrade_timings["default"].tRP, 18)
+        self.assertEqual(cls.speedgrade_timings["default"].tRCD, 18)
+        self.assertEqual(cls.speedgrade_timings["default"].tWR, (2, None))
+        self.assertEqual(cls.speedgrade_timings["default"].tRFC, (None, 60))
+        self.assertEqual(cls.speedgrade_timings["default"].tRAS, 42)
+
+    def test_em638165_geometry_and_timings(self):
+        cls = litedram.modules.EM638165
+        module = cls(clk_freq=100e6, rate="1:1")
+
+        self.assertEqual(module.nbanks, 4)
+        self.assertEqual(module.nrows, 4096)
+        self.assertEqual(module.ncols, 256)
+        self.assertEqual(cls.technology_timings.tREFI, 64e6/4096)
+        self.assertEqual(cls.technology_timings.tRRD, (None, 10))
+        self.assertEqual(cls.speedgrade_timings["default"].tRP, 15)
+        self.assertEqual(cls.speedgrade_timings["default"].tRCD, 15)
+        self.assertEqual(cls.speedgrade_timings["default"].tWR, (2, None))
+        self.assertEqual(cls.speedgrade_timings["default"].tRFC, (None, 55))
+        self.assertEqual(cls.speedgrade_timings["default"].tRAS, 40)
+
+    def test_imd128m16r39cg8gnf_geometry_and_timings(self):
+        cls = litedram.modules.IMD128M16R39CG8GNF
+        module = cls(clk_freq=100e6, rate="1:4")
+
+        self.assertEqual(module.nbanks, 8)
+        self.assertEqual(module.nrows, 16384)
+        self.assertEqual(module.ncols, 1024)
+        self.assertEqual(cls.technology_timings.tRRD, (4, 7.5))
+        self.assertEqual(cls.speedgrade_timings["1600"].tRP, 13.75)
+        self.assertEqual(cls.speedgrade_timings["1600"].tRCD, 13.75)
+        self.assertEqual(cls.speedgrade_timings["1600"].tWR, 15)
+        self.assertEqual(cls.speedgrade_timings["1600"].tRFC, (None, 160))
+        self.assertEqual(cls.speedgrade_timings["1600"].tFAW, (None, 40))
+        self.assertEqual(cls.speedgrade_timings["1600"].tRAS, 35)
+        self.assertIs(cls.speedgrade_timings["default"], cls.speedgrade_timings["1600"])
 
 
 def load_spd_reference(filename):

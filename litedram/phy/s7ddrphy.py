@@ -51,6 +51,7 @@ class S7DDRPHY(Module, AutoCSR):
         nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits    = len(pads.dq)
         strobes     = len(pads.dqs_p)
+        with_dm     = hasattr(pads, "dm")
         nphases     = nphases
         assert databits%8 == 0
 
@@ -154,6 +155,7 @@ class S7DDRPHY(Module, AutoCSR):
             read_leveling             = True,
             delays                    = 32,
             bitslips                  = 8,
+            with_dm                   = with_dm,
         )
 
         if is_rdimm:

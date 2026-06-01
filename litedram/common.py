@@ -230,6 +230,7 @@ class PhySettings(Settings):
             write_latency_calibration: bool = False,
             read_leveling: bool = False,
             is_clam_shell: bool = False,
+            with_dm: bool = True,
         ):
         if strobes is None:
             strobes = databits // 8
