@@ -83,7 +83,7 @@ class Bandwidth(Module, AutoCSR):
                 If(cmd_is_read, nreads.eq(nreads + 1)),
                 If(cmd_is_write, nwrites.eq(nwrites + 1)),
             ),
-            If(self.update.re,
+            If(self.update.wr_stb,
                 self.nreads.status.eq(nreads_r),
                 self.nwrites.status.eq(nwrites_r)
             )

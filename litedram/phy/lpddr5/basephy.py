@@ -209,11 +209,11 @@ class LPDDR5PHY(Module, AutoCSR):
 
         # Add CDC in case of memory controller operating in different clock domain than this PHY.
         csr_cdc = csr_cdc or (lambda i: i)
-        wlevel_strobe       = csr_cdc(self._wlevel_strobe.re)
-        rdly_dq_bitslip_rst = csr_cdc(self._rdly_dq_bitslip_rst.re)
-        rdly_dq_bitslip     = csr_cdc(self._rdly_dq_bitslip.re)
-        wdly_dq_bitslip_rst = csr_cdc(self._wdly_dq_bitslip_rst.re)
-        wdly_dq_bitslip     = csr_cdc(self._wdly_dq_bitslip.re)
+        wlevel_strobe       = csr_cdc(self._wlevel_strobe.wr_stb)
+        rdly_dq_bitslip_rst = csr_cdc(self._rdly_dq_bitslip_rst.wr_stb)
+        rdly_dq_bitslip     = csr_cdc(self._rdly_dq_bitslip.wr_stb)
+        wdly_dq_bitslip_rst = csr_cdc(self._wdly_dq_bitslip_rst.wr_stb)
+        wdly_dq_bitslip     = csr_cdc(self._wdly_dq_bitslip.wr_stb)
 
         # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
@@ -369,7 +369,7 @@ class LPDDR5PHY(Module, AutoCSR):
         # NOTE: WCK2CK leveling always happens at 2:1 WCK2CK ratio.
         twcktggl = 4
         wckl_strobe_dly = TappedDelayLine(
-            signal = self._wlevel_strobe.re,
+            signal = self._wlevel_strobe.wr_stb,
             ntaps  = twcktggl
         )
         self.submodules += wckl_strobe_dly
@@ -403,8 +403,8 @@ class LPDDR5PHY(Module, AutoCSR):
             self.submodules += BitSlip(
                 dw     = 2*wck_ck_ratio,
                 cycles = bitslip_cycles,
-                rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
-                slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
+                rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.wr_stb),
+                slp    = self.get_inc(byte, self._wdly_dq_bitslip.wr_stb),
                 i      = wck_pattern_selected,
                 o      = self.out.wck[byte],
             )

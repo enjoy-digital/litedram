@@ -105,21 +105,21 @@ class S7DDRPHY(Module, AutoCSR):
                 return i
             return csr_cdc(i)
 
-        rdly_dq_rst  = cdc(self._rdly_dq_rst.re)
-        rdly_dq_inc  = cdc(self._rdly_dq_inc.re)
-        rdly_dq_bitslip_rst  = cdc(self._rdly_dq_bitslip_rst.re)
-        rdly_dq_bitslip  = cdc(self._rdly_dq_bitslip.re)
-        wlevel_strobe = cdc(self._wlevel_strobe.re)
+        rdly_dq_rst  = cdc(self._rdly_dq_rst.wr_stb)
+        rdly_dq_inc  = cdc(self._rdly_dq_inc.wr_stb)
+        rdly_dq_bitslip_rst  = cdc(self._rdly_dq_bitslip_rst.wr_stb)
+        rdly_dq_bitslip  = cdc(self._rdly_dq_bitslip.wr_stb)
+        wlevel_strobe = cdc(self._wlevel_strobe.wr_stb)
         if with_odelay:
-            cdly_rst     = cdc(self._cdly_rst.re) | self._rst.storage
-            cdly_inc     = cdc(self._cdly_inc.re)
-            wdly_dq_rst  = cdc(self._wdly_dq_rst.re)
-            wdly_dq_inc  = cdc(self._wdly_dq_inc.re)
-            wdly_dqs_rst = cdc(self._wdly_dqs_rst.re)
-            wdly_dqs_inc = cdc(self._wdly_dqs_inc.re)
+            cdly_rst     = cdc(self._cdly_rst.wr_stb) | self._rst.storage
+            cdly_inc     = cdc(self._cdly_inc.wr_stb)
+            wdly_dq_rst  = cdc(self._wdly_dq_rst.wr_stb)
+            wdly_dq_inc  = cdc(self._wdly_dq_inc.wr_stb)
+            wdly_dqs_rst = cdc(self._wdly_dqs_rst.wr_stb)
+            wdly_dqs_inc = cdc(self._wdly_dqs_inc.wr_stb)
 
-        wdly_dq_bitslip_rst  = cdc(self._wdly_dq_bitslip_rst.re)
-        wdly_dq_bitslip  = cdc(self._wdly_dq_bitslip.re)
+        wdly_dq_bitslip_rst  = cdc(self._wdly_dq_bitslip_rst.wr_stb)
+        wdly_dq_bitslip  = cdc(self._wdly_dq_bitslip.wr_stb)
 
         # PHY settings -----------------------------------------------------------------------------
         if (memtype == "DDR3") and (not with_odelay):

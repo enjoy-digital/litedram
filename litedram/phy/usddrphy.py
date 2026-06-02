@@ -167,10 +167,10 @@ class USDDRPHY(Module, AutoCSR):
                         p_DELAY_FORMAT     = "TIME",
                         p_DELAY_TYPE       = "VARIABLE",
                         p_DELAY_VALUE      = 0,
-                        i_RST          = ResetSignal("ic") | self._cdly_rst.re | self._rst.storage,
+                        i_RST          = ResetSignal("ic") | self._cdly_rst.wr_stb | self._rst.storage,
                         i_CLK          = ClockSignal("sys"),
                         i_EN_VTC       = self._en_vtc.storage,
-                        i_CE           = self._cdly_inc.re,
+                        i_CE           = self._cdly_inc.wr_stb,
                         i_INC          = 1,
                         o_CNTVALUEOUT  = self._cdly_value.status if i == 0 else Signal(),
                         i_ODATAIN      = clk_o_nodelay,
@@ -228,10 +228,10 @@ class USDDRPHY(Module, AutoCSR):
                             p_DELAY_FORMAT     = "TIME",
                             p_DELAY_TYPE       = "VARIABLE",
                             p_DELAY_VALUE      = 0,
-                            i_RST     = ResetSignal("ic") | self._cdly_rst.re | self._rst.storage,
+                            i_RST     = ResetSignal("ic") | self._cdly_rst.wr_stb | self._rst.storage,
                             i_CLK     = ClockSignal("sys"),
                             i_EN_VTC  = self._en_vtc.storage,
-                            i_CE      = self._cdly_inc.re,
+                            i_CE      = self._cdly_inc.wr_stb,
                             i_INC     = 1,
                             i_ODATAIN = o_nodelay,
                             o_DATAOUT = pad[i],
@@ -254,14 +254,14 @@ class USDDRPHY(Module, AutoCSR):
             #preamble      = dqs_preamble,  # FIXME
             #postamble     = dqs_postamble, # FIXME
             wlevel_en     = self._wlevel_en.storage,
-            wlevel_strobe = self._wlevel_strobe.re)
+            wlevel_strobe = self._wlevel_strobe.wr_stb)
         self.submodules += dqs_oe_delay, dqs_pattern
         self.comb += dqs_oe_delay.input.eq(dqs_preamble | dqs_oe | dqs_postamble)
         for i in range(databits//8):
             dqs_bitslip    = BitSlip(8,
                 i      = dqs_pattern.o,
-                rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
-                slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
+                rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.wr_stb) | self._rst.storage,
+                slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.wr_stb,
                 cycles = 1)
             self.submodules += dqs_bitslip
             if x4_dimm_mode:
@@ -302,7 +302,7 @@ class USDDRPHY(Module, AutoCSR):
                         i_RST              = ResetSignal("ic"),
                         i_CLK              = ClockSignal("sys"),
                         i_EN_VTC           = self._en_vtc.storage,
-                        i_CE               = self._dly_sel.storage[i] & self._wdly_dqs_inc.re,
+                        i_CE               = self._dly_sel.storage[i] & self._wdly_dqs_inc.wr_stb,
                         i_INC              = 1,
                         i_ODATAIN          = dqs_nodelay,
                         o_DATAOUT          = dqs_delayed,
@@ -315,7 +315,7 @@ class USDDRPHY(Module, AutoCSR):
                     )
                 ]
                 wdly_dqs_inc_count = Signal(9)
-                self.sync += If(self._dly_sel.storage[i] & self._wdly_dqs_inc.re, wdly_dqs_inc_count.eq(wdly_dqs_inc_count + 1))
+                self.sync += If(self._dly_sel.storage[i] & self._wdly_dqs_inc.wr_stb, wdly_dqs_inc_count.eq(wdly_dqs_inc_count + 1))
                 self.comb += If(self._dly_sel.storage[i], self._wdly_dqs_inc_count.status.eq(wdly_dqs_inc_count))
 
         # DM ---------------------------------------------------------------------------------------
@@ -327,8 +327,8 @@ class USDDRPHY(Module, AutoCSR):
                 dm_o_nodelay = Signal()
                 dm_o_bitslip = BitSlip(8,
                     i      = dm_i,
-                    rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
-                    slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.re,
+                    rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.wr_stb) | self._rst.storage,
+                    slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.wr_stb,
                     cycles = 1)
                 self.submodules += dm_o_bitslip
                 self.specials += [
@@ -355,10 +355,10 @@ class USDDRPHY(Module, AutoCSR):
                         p_DELAY_FORMAT     = "TIME",
                         p_DELAY_TYPE       = "VARIABLE",
                         p_DELAY_VALUE      = 0,
-                        i_RST     = ResetSignal("ic") | (self._dly_sel.storage[i] & self._wdly_dq_rst.re) | self._rst.storage,
+                        i_RST     = ResetSignal("ic") | (self._dly_sel.storage[i] & self._wdly_dq_rst.wr_stb) | self._rst.storage,
                         i_EN_VTC  = self._en_vtc.storage,
                         i_CLK     = ClockSignal("sys"),
-                        i_CE      = self._dly_sel.storage[i] & self._wdly_dq_inc.re,
+                        i_CE      = self._dly_sel.storage[i] & self._wdly_dq_inc.wr_stb,
                         i_INC     = 1,
                         i_ODATAIN = dm_o_nodelay,
                         o_DATAOUT = pads.dm[i],
@@ -378,8 +378,8 @@ class USDDRPHY(Module, AutoCSR):
             dq_t         = Signal()
             dq_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
-                rst    = (self._dly_sel.storage[i//8] & self._wdly_dq_bitslip_rst.re) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//8] & self._wdly_dq_bitslip.re,
+                rst    = (self._dly_sel.storage[i//8] & self._wdly_dq_bitslip_rst.wr_stb) | self._rst.storage,
+                slp    = self._dly_sel.storage[i//8] & self._wdly_dq_bitslip.wr_stb,
                 cycles = 1)
             self.submodules += dq_o_bitslip
             self.specials += Instance("OSERDESE3",
@@ -398,8 +398,8 @@ class USDDRPHY(Module, AutoCSR):
                 o_T_OUT  = dq_t,
             )
             dq_i_bitslip = BitSlip(8,
-                rst    = (self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.re) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.re,
+                rst    = (self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.wr_stb) | self._rst.storage,
+                slp    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.wr_stb,
                 cycles = 1)
             self.submodules += dq_i_bitslip
             self.specials += Instance("ISERDESE3",
@@ -427,10 +427,10 @@ class USDDRPHY(Module, AutoCSR):
                 p_DELAY_FORMAT     = "TIME",
                 p_DELAY_TYPE       = "VARIABLE",
                 p_DELAY_VALUE      = 0,
-                i_RST     = ResetSignal("ic") | (self._dly_sel.storage[i//8] & self._wdly_dq_rst.re) | self._rst.storage,
+                i_RST     = ResetSignal("ic") | (self._dly_sel.storage[i//8] & self._wdly_dq_rst.wr_stb) | self._rst.storage,
                 i_CLK     = ClockSignal("sys"),
                 i_EN_VTC  = self._en_vtc.storage,
-                i_CE      = self._dly_sel.storage[i//8] & self._wdly_dq_inc.re,
+                i_CE      = self._dly_sel.storage[i//8] & self._wdly_dq_inc.wr_stb,
                 i_INC     = 1,
                 i_ODATAIN = dq_o_nodelay,
                 o_DATAOUT = dq_o_delayed,
@@ -446,10 +446,10 @@ class USDDRPHY(Module, AutoCSR):
                 p_DELAY_SRC        = "IDATAIN",
                 p_DELAY_TYPE       = "VARIABLE",
                 p_DELAY_VALUE      = 0,
-                i_RST     = ResetSignal("ic") | (self._dly_sel.storage[i//8] & self._rdly_dq_rst.re) | self._rst.storage,
+                i_RST     = ResetSignal("ic") | (self._dly_sel.storage[i//8] & self._rdly_dq_rst.wr_stb) | self._rst.storage,
                 i_CLK     = ClockSignal("sys"),
                 i_EN_VTC  = self._en_vtc.storage,
-                i_CE      = self._dly_sel.storage[i//8] & self._rdly_dq_inc.re,
+                i_CE      = self._dly_sel.storage[i//8] & self._rdly_dq_inc.wr_stb,
                 i_INC     = 1,
                 i_IDATAIN = dq_i_nodelay,
                 o_DATAOUT = dq_i_delayed,

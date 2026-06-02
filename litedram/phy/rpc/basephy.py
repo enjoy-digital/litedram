@@ -314,7 +314,7 @@ class BasePHY(Module, AutoCSR):
             If(dfi_adapters[2*nphases+0].is_cmd("UTR") & (dfi_adapters[2*nphases+0].utr_en == 1),
                 NextState("UTR_MODE")
             ),
-            If(self._reset_fsm.re,
+            If(self._reset_fsm.wr_stb,
                 NextState("IDLE")
             )
         )
@@ -383,7 +383,7 @@ class BasePHY(Module, AutoCSR):
         cs_lock = Signal()
         cs_lock_cond = reduce(and_, [dfi_hist[0].phases[p].cs_n for p in range(1, nphases)])
         cs_lock_cond = cs_lock_cond & ~dfi_hist[0].p0.cs_n
-        self.sync += If(cs_lock_cond, cs_lock.eq(1)).Elif(self._reset_fsm.re, cs_lock.eq(0))
+        self.sync += If(cs_lock_cond, cs_lock.eq(1)).Elif(self._reset_fsm.wr_stb, cs_lock.eq(0))
 
         _any_cmd_valid = reduce(or_, (a.cmd_valid for a in dfi_adapters))
         self.comb += [
@@ -415,8 +415,8 @@ class BasePHY(Module, AutoCSR):
             })
 
             bs = BitSlip(len(rbits_2ck), cycles=bitslip_cycles,
-                rst = self.get_rst(i//8, self._rdly_dq_bitslip_rst.re),
-                slp = self.get_inc(i//8, self._rdly_dq_bitslip.re),
+                rst = self.get_rst(i//8, self._rdly_dq_bitslip_rst.wr_stb),
+                slp = self.get_inc(i//8, self._rdly_dq_bitslip.wr_stb),
             )
             self.submodules += bs
             self.comb += bs.i.eq(rbits_2ck)

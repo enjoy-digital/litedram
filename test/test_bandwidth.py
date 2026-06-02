@@ -182,7 +182,7 @@ class TestBandwidth(unittest.TestCase):
 
         def main_generator(dut):
             # Keep the values always up to date
-            yield dut.bandwidth.update.re.eq(1)
+            yield dut.bandwidth.update.wr_stb.eq(1)
 
             # Wait until we have the data from 1st period
             while (yield dut.bandwidth.nwrites.status) != 3:

@@ -35,7 +35,7 @@ class PhaseInjector(Module, AutoCSR):
         # # #
 
         self.comb += [
-            If(self._command_issue.re,
+            If(self._command_issue.wr_stb,
                 If(self._command.fields.cs_top,
                     phase.cs_n.eq(2), # cs_n=0b10
                 ).Else(
@@ -56,8 +56,8 @@ class PhaseInjector(Module, AutoCSR):
             ),
             phase.address.eq(self._address.storage),
             phase.bank.eq(self._baddress.storage),
-            phase.wrdata_en.eq(self._command_issue.re & self._command.fields.wren),
-            phase.rddata_en.eq(self._command_issue.re & self._command.fields.rden),
+            phase.wrdata_en.eq(self._command_issue.wr_stb & self._command.fields.wren),
+            phase.rddata_en.eq(self._command_issue.wr_stb & self._command.fields.rden),
             phase.wrdata.eq(self._wrdata.storage),
             phase.wrdata_mask.eq(0)
         ]

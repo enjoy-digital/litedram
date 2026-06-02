@@ -256,8 +256,8 @@ class ECP5DDRPHY(Module, AutoCSR):
             rdly     = Signal(3)
             burstdet = Signal()
             self.sync += [
-                If(self._dly_sel.storage[i] & self._rdly_dq_rst.re, rdly.eq(0)),
-                If(self._dly_sel.storage[i] & self._rdly_dq_inc.re, rdly.eq(rdly + 1))
+                If(self._dly_sel.storage[i] & self._rdly_dq_rst.wr_stb, rdly.eq(0)),
+                If(self._dly_sel.storage[i] & self._rdly_dq_inc.wr_stb, rdly.eq(rdly + 1))
             ]
             self.specials += Instance("DQSBUFM",
                 p_DQS_LI_DEL_ADJ = "MINUS",
@@ -298,7 +298,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             burstdet_d = Signal()
             self.sync += [
                 burstdet_d.eq(burstdet),
-                If(self._burstdet_clr.re,  self._burstdet_seen.status[i].eq(0)),
+                If(self._burstdet_clr.wr_stb,  self._burstdet_seen.status[i].eq(0)),
                 If(burstdet & ~burstdet_d, self._burstdet_seen.status[i].eq(1)),
             ]
 
@@ -374,8 +374,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                     )
                 ]
                 dq_i_bitslip = BitSlip(4,
-                    rst    = self._dly_sel.storage[i] & self._rdly_dq_bitslip_rst.re,
-                    slp    = self._dly_sel.storage[i] & self._rdly_dq_bitslip.re,
+                    rst    = self._dly_sel.storage[i] & self._rdly_dq_bitslip_rst.wr_stb,
+                    slp    = self._dly_sel.storage[i] & self._rdly_dq_bitslip.wr_stb,
                     cycles = 1)
                 self.submodules += dq_i_bitslip
                 self.specials += [

@@ -65,8 +65,8 @@ class A7RPCPHY(BasePHY):
         # Read path
         self.idelaye2(
             din=stb_in, dout=stb_in_delayed,
-            rst=self.get_rst(0, self._rdly_dq_rst.re),
-            inc=self.get_inc(0, self._rdly_dq_inc.re),
+            rst=self.get_rst(0, self._rdly_dq_rst.wr_stb),
+            inc=self.get_inc(0, self._rdly_dq_inc.wr_stb),
         )
         self.iserdese2_ddr(din=stb_in_delayed, dout=stb_1ck_in, clk="sys4x_180")
 
@@ -94,8 +94,8 @@ class A7RPCPHY(BasePHY):
             # Read path
             self.idelaye2(
                 din=db_in, dout=db_in_delayed,
-                rst=self.get_rst(i//8, self._rdly_dq_rst.re),
-                inc=self.get_inc(i//8, self._rdly_dq_inc.re),
+                rst=self.get_rst(i//8, self._rdly_dq_rst.wr_stb),
+                inc=self.get_inc(i//8, self._rdly_dq_inc.wr_stb),
             )
             self.iserdese2_ddr(din=db_in_delayed, dout=db_1ck_in[i], clk="sys4x_180")
 
@@ -123,8 +123,8 @@ class A7RPCPHY(BasePHY):
             if i == 0:
                 self.idelaye2(
                     din=dqs_in, dout=dqs_in_delayed,
-                    rst=self.get_rst(i//8, self._rdly_dq_rst.re),
-                    inc=self.get_inc(i//8, self._rdly_dq_inc.re),
+                    rst=self.get_rst(i//8, self._rdly_dq_rst.wr_stb),
+                    inc=self.get_inc(i//8, self._rdly_dq_inc.wr_stb),
                 )
                 self.iserdese2_ddr(
                     clk="sys4x_90",

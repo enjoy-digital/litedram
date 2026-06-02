@@ -150,7 +150,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         sec_errors = self.sec_errors.status
         ded_errors = self.ded_errors.status
         self.sync += [
-            If(self.clear.re,
+            If(self.clear.wr_stb,
                 sec_errors.eq(0),
                 ded_errors.eq(0),
                 sec_detected.eq(0),
@@ -173,7 +173,7 @@ class LiteDRAMNativePortECC(Module, AutoCSR):
         if with_we_error_detection:
             we_errors = self.we_errors.status
             self.sync += [
-                If(self.clear.re,
+                If(self.clear.wr_stb,
                     we_errors.eq(0),
                 ).Else(
                     If(we_errors != (2**len(we_errors) - 1),

@@ -72,17 +72,17 @@ class S7LPDDR4PHY(DoubleRateLPDDR4PHY, S7Common):
             ]
             return o
 
-        rdly_dq_rst  = cdc(self._rdly_dq_rst.re)
-        rdly_dq_inc  = cdc(self._rdly_dq_inc.re)
-        rdly_dqs_rst = cdc(self._rdly_dqs_rst.re)
-        rdly_dqs_inc = cdc(self._rdly_dqs_inc.re)
+        rdly_dq_rst  = cdc(self._rdly_dq_rst.wr_stb)
+        rdly_dq_inc  = cdc(self._rdly_dq_inc.wr_stb)
+        rdly_dqs_rst = cdc(self._rdly_dqs_rst.wr_stb)
+        rdly_dqs_inc = cdc(self._rdly_dqs_inc.wr_stb)
         if with_odelay:
-            cdly_rst     = cdc(self._cdly_rst.re) | self._rst.storage
-            cdly_inc     = cdc(self._cdly_inc.re)
-            wdly_dq_rst  = cdc(self._wdly_dq_rst.re)
-            wdly_dq_inc  = cdc(self._wdly_dq_inc.re)
-            wdly_dqs_rst = cdc(self._wdly_dqs_rst.re)
-            wdly_dqs_inc = cdc(self._wdly_dqs_inc.re)
+            cdly_rst     = cdc(self._cdly_rst.wr_stb) | self._rst.storage
+            cdly_inc     = cdc(self._cdly_inc.wr_stb)
+            wdly_dq_rst  = cdc(self._wdly_dq_rst.wr_stb)
+            wdly_dq_inc  = cdc(self._wdly_dq_inc.wr_stb)
+            wdly_dqs_rst = cdc(self._wdly_dqs_rst.wr_stb)
+            wdly_dqs_inc = cdc(self._wdly_dqs_inc.wr_stb)
 
         # In theory we should only need to delay by 2 cycles, but sometimes it happened that
         # DQ/DMI were transmitted incomplete due to OE being asserted too late/released too

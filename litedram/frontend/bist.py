@@ -369,9 +369,9 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
             self.submodules += control_cdc, status_cdc
             # Control CDC In
             self.comb += [
-                control_cdc.sink.valid.eq(self.reset.re | self.start.re),
-                control_cdc.sink.reset.eq(self.reset.re),
-                control_cdc.sink.start.eq(self.start.re),
+                control_cdc.sink.valid.eq(self.reset.wr_stb | self.start.wr_stb),
+                control_cdc.sink.reset.eq(self.reset.wr_stb),
+                control_cdc.sink.start.eq(self.start.wr_stb),
                 control_cdc.sink.base.eq(self.base.storage),
                 control_cdc.sink.end.eq(self.end.storage),
                 control_cdc.sink.length.eq(self.length.storage),
@@ -409,8 +409,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
             ]
         else:
             self.comb += [
-                core.reset.eq(self.reset.re),
-                core.start.eq(self.start.re),
+                core.reset.eq(self.reset.wr_stb),
+                core.start.eq(self.start.wr_stb),
                 self.done.status.eq(core.done),
                 core.base.eq(self.base.storage),
                 core.end.eq(self.end.storage),
@@ -719,9 +719,9 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             self.submodules += control_cdc, status_cdc
             # Control CDC In
             self.comb += [
-                control_cdc.sink.valid.eq(self.reset.re | self.start.re),
-                control_cdc.sink.reset.eq(self.reset.re),
-                control_cdc.sink.start.eq(self.start.re),
+                control_cdc.sink.valid.eq(self.reset.wr_stb | self.start.wr_stb),
+                control_cdc.sink.reset.eq(self.reset.wr_stb),
+                control_cdc.sink.start.eq(self.start.wr_stb),
                 control_cdc.sink.base.eq(self.base.storage),
                 control_cdc.sink.end.eq(self.end.storage),
                 control_cdc.sink.length.eq(self.length.storage),
@@ -761,8 +761,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
             ]
         else:
             self.comb += [
-                core.reset.eq(self.reset.re),
-                core.start.eq(self.start.re),
+                core.reset.eq(self.reset.wr_stb),
+                core.start.eq(self.start.wr_stb),
                 self.done.status.eq(core.done),
                 core.base.eq(self.base.storage),
                 core.end.eq(self.end.storage),

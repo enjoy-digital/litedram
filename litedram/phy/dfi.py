@@ -242,7 +242,7 @@ class DFIRateConverter(Module):
         ----------
         phy_cls : type
             PHY class. It must support a `csr_cdc` argument (function: csr_cdc(Signal) -> Signal)
-            that it will use to wrap all CSR.re signals to avoid clock domain crossing problems.
+            that it will use to wrap all CSR.wr_stb signals to avoid clock domain crossing problems.
         ratio : int
             Frequency ratio between the new DFI and the DFI of the wrapped PHY.
         phy_attrs : list[str]

@@ -239,8 +239,8 @@ class LPDDR4PHY(Module, AutoCSR):
             self.submodules += BitSlip(
                 dw     = 2*nphases,
                 cycles = bitslip_cycles,
-                rst    = self.get_rst(bit//8, self._wdly_dq_bitslip_rst.re),
-                slp    = self.get_inc(bit//8, self._wdly_dq_bitslip.re),
+                rst    = self.get_rst(bit//8, self._wdly_dq_bitslip_rst.wr_stb),
+                slp    = self.get_inc(bit//8, self._wdly_dq_bitslip.wr_stb),
                 i      = Cat(*wrdata),
                 o      = self.out.dq_o[bit],
             )
@@ -250,8 +250,8 @@ class LPDDR4PHY(Module, AutoCSR):
             self.submodules += BitSlip(
                 dw     = 2*nphases,
                 cycles = bitslip_cycles,
-                rst    = self.get_rst(bit//8, self._rdly_dq_bitslip_rst.re),
-                slp    = self.get_inc(bit//8, self._rdly_dq_bitslip.re),
+                rst    = self.get_rst(bit//8, self._rdly_dq_bitslip_rst.wr_stb),
+                slp    = self.get_inc(bit//8, self._rdly_dq_bitslip.wr_stb),
                 i      = self.out.dq_i[bit],
                 o      = dq_i_bs,
             )
@@ -266,7 +266,7 @@ class LPDDR4PHY(Module, AutoCSR):
             preamble      = dqs_preamble,
             postamble     = dqs_postamble,
             wlevel_en     = self._wlevel_en.storage,
-            wlevel_strobe = self._wlevel_strobe.re)
+            wlevel_strobe = self._wlevel_strobe.wr_stb)
         self.submodules += dqs_pattern
         self.comb += [
             self.out.dqs_oe.eq(delayed(self, dqs_oe, cycles=1)),
@@ -277,8 +277,8 @@ class LPDDR4PHY(Module, AutoCSR):
             self.submodules += BitSlip(
                 dw     = 2*nphases,
                 cycles = bitslip_cycles,
-                rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
-                slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
+                rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.wr_stb),
+                slp    = self.get_inc(byte, self._wdly_dq_bitslip.wr_stb),
                 i      = dqs_pattern.o,
                 o      = self.out.dqs_o[byte],
             )
@@ -298,8 +298,8 @@ class LPDDR4PHY(Module, AutoCSR):
                 self.submodules += BitSlip(
                     dw     = 2*nphases,
                     cycles = bitslip_cycles,
-                    rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.re),
-                    slp    = self.get_inc(byte, self._wdly_dq_bitslip.re),
+                    rst    = self.get_rst(byte, self._wdly_dq_bitslip_rst.wr_stb),
+                    slp    = self.get_inc(byte, self._wdly_dq_bitslip.wr_stb),
                     i      = Cat(*wrdata_mask),
                     o      = self.out.dmi_o[byte],
                 )
