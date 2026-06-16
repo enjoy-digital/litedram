@@ -899,7 +899,7 @@ def main():
 
     soc     = LiteDRAMCore(platform, core_config, integrated_rom_size=0xC000)
     builder = Builder(soc, **builder_arguments)
-    builder.build(build_name=args.name, regular_comb=False)
+    builder.build(build_name=args.name)
 
 if __name__ == "__main__":
     main()
