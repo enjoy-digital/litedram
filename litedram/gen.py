@@ -521,7 +521,7 @@ class LiteDRAMCore(SoCCore):
             assert uart_type in ["rs232", "fifo"]
             if uart_type == "fifo":
                 platform.add_extension(get_uart_fifo_ios())
-                uart_interface = RS232PHYInterface()
+                uart_interface = UARTInterface()
                 self.uart = UART(uart_interface, tx_fifo_depth=1, rx_fifo_depth=1)
                 self.uart.add_auto_tx_flush(sys_clk_freq=sys_clk_freq, timeout=1, interval=128)
                 uart_tx_pads = platform.request("uart_tx")
