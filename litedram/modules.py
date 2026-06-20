@@ -907,7 +907,9 @@ class H5TC4G63CFR(DDR3Module):
     nrows  = 32768
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 7.5), tZQCS=(64, 80))
+    # JEDEC DDR3 x16 organisation requires the 6 nCK tRRD floor (vs 4 nCK
+    # for x4/x8). This matches the sibling x16 H5TQ4G63CFR definition.
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(6, 7.5), tZQCS=(64, 80))
     speedgrade_timings = {
         "800":  _SpeedgradeTimings(tRP=15, tRCD=15, tWR=15, tRFC=(None, 260), tFAW=(None, 40), tRAS=37.5),
     }

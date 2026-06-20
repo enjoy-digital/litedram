@@ -64,6 +64,9 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(module.nrows, 32768)
         self.assertEqual(module.ncols, 1024)
         self.assertEqual(cls.speedgrade_timings["800"].tRFC, (None, 260))
+        # x16 DDR3 tRRD nCK floor is 6 nCK (vs 4 nCK for x4/x8) and must
+        # match the sibling H5TQ4G63CFR x16 definition.
+        self.assertEqual(cls.technology_timings.tRRD, (6, 7.5))
 
     def test_h5tq4g63xfr_geometry_and_speedgrades(self):
         for name in ["H5TQ4G63CFR", "H5TQ4G63EFR"]:
