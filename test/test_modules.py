@@ -65,6 +65,15 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(module.ncols, 1024)
         self.assertEqual(cls.speedgrade_timings["800"].tRFC, (None, 260))
 
+    def test_mt53e256m16d1_tfaw_uses_ck_minimum(self):
+        cls = litedram.modules.MT53E256M16D1
+        # At a 100 MHz controller clock with 1:4 rate, the ns side of tFAW
+        # (40 ns) rounds to fewer cycles than the JEDEC 32 nCK minimum, so
+        # the nCK floor must be honoured.
+        module = cls(clk_freq=100e6, rate="1:4")
+        self.assertEqual(cls.speedgrade_timings["1866"].tFAW, (32, 40))
+        self.assertEqual(module.timing_settings.tFAW, 8)
+
     def test_h5tq4g63xfr_geometry_and_speedgrades(self):
         for name in ["H5TQ4G63CFR", "H5TQ4G63EFR"]:
             cls = getattr(litedram.modules, name)
