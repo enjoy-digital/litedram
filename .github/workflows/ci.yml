@@ -35,7 +35,7 @@ jobs:
       - name: Install LiteX
         run: |
           wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
-          python3 litex_setup.py --init --install --user
+          python3 litex_setup.py --init --install --user --clone-depth=1
 
       # Install GCC Toolchains
       - name: Install GCC Toolchains
