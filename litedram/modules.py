@@ -1313,6 +1313,9 @@ class MT53E256M16D1(SDRAMModule):
     # the controller during this time, after ZQCAL LATCH we have to wait tZQLAT=max(8ck, 30ns)
     technology_timings = _TechnologyTimings(tREFI=32e6/8192, tWTR=(8, 10), tCCD=tccd["masked-write"], tRRD=(4, 10), tZQCS=None)
     speedgrade_timings = {
-        "1866": _SpeedgradeTimings(tRP=(3, 21), tRCD=(4, 18), tWR=(4, 18), tRFC=180, tFAW=40, tRAS=(3, 42)),  # TODO: tRAS_max
+        # LPDDR4 8-bank tFAW per JESD209-4: max(32 nCK, 40 ns). Encoding
+        # the 32 nCK floor avoids under-constraining tFAW when the
+        # controller runs slower than the device speedgrade.
+        "1866": _SpeedgradeTimings(tRP=(3, 21), tRCD=(4, 18), tWR=(4, 18), tRFC=(None, 180), tFAW=(32, 40), tRAS=(3, 42)),  # TODO: tRAS_max
     }
     speedgrade_timings["default"] = speedgrade_timings["1866"]
