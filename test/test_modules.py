@@ -65,6 +65,25 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(module.ncols, 1024)
         self.assertEqual(cls.speedgrade_timings["800"].tRFC, (None, 260))
 
+    def test_ddr3_x16_trrd_uses_ck_minimum(self):
+        # JEDEC DDR3 fixes the tRRD nCK floor at 6 for x16 organisation
+        # (vs 4 for x4/x8). Every DDR3 part below is an x16 device, so the
+        # first element of `technology_timings.tRRD` must be at least 6.
+        names = [
+            "AS4C128M16",
+            "MT41K64M16",
+            "MT41J128M16", "MT41K128M16",
+            "MT41J256M16", "MT41K256M16",
+            "MT41J512M16", "MT41K512M16",
+            "K4B2G1646F",
+            "AS4C256M16D3A",
+            "AS4C256M16D3C",
+        ]
+        for name in names:
+            cls = getattr(litedram.modules, name)
+            with self.subTest(module=name):
+                self.assertGreaterEqual(cls.technology_timings.tRRD[0], 6)
+
     def test_h5tq4g63xfr_geometry_and_speedgrades(self):
         for name in ["H5TQ4G63CFR", "H5TQ4G63EFR"]:
             cls = getattr(litedram.modules, name)
