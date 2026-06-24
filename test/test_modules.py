@@ -64,6 +64,7 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(module.nrows, 32768)
         self.assertEqual(module.ncols, 1024)
         self.assertEqual(cls.speedgrade_timings["800"].tRFC, (None, 260))
+        self.assertEqual(cls.speedgrade_timings["800"].tFAW, (None, 50))
 
     def test_h5tq4g63xfr_geometry_and_speedgrades(self):
         for name in ["H5TQ4G63CFR", "H5TQ4G63EFR"]:
