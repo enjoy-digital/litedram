@@ -307,6 +307,37 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
         self.converter_readback_test(dut, pattern=pattern, mem_expected=mem_expected,
                                      main_generator=main_generator)
 
+    def test_up_converter_auto_flush_on_repeated_chunk(self):
+        # Verify that up-conversion does not merge two commands using the same chunk.
+        def main_generator(dut):
+            yield from dut.write(0x19, 0xffffffff, wait_data=False)
+            yield from dut.write(0x19, 0x11111111, wait_data=False)
+            yield from dut.read(0x19, wait_data=False, last=1)
+
+            yield from dut.write_driver.wait_all()
+            yield from dut.read_driver.wait_all()
+            for _ in range(8):  # wait for memory
+                yield
+
+        mem_expected = [
+            0x00000000000000000000000000000000,  # 0x00
+            0x00000000000000000000000000000000,  # 0x04
+            0x00000000000000000000000000000000,  # 0x08
+            0x00000000000000000000000000000000,  # 0x0c
+            0x00000000000000000000000000000000,  # 0x10
+            0x00000000000000000000000000000000,  # 0x14
+            0x00000000000000001111111100000000,  # 0x18
+            0x00000000000000000000000000000000,  # 0x1c
+        ]
+        pattern = [
+            (0x19, 0x11111111),
+        ]
+
+        dut  = ConverterDUT(user_data_width=32, native_data_width=128,
+                            mem_depth=len(mem_expected), separate_rw=False)
+        self.converter_readback_test(dut, pattern=pattern, mem_expected=mem_expected,
+                                     main_generator=main_generator)
+
     def test_up_converter_write_with_gap(self):
         # Verify that the up-converter can mask data properly when sending non-sequential writes
         def main_generator(dut):
