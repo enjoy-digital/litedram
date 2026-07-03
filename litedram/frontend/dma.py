@@ -249,7 +249,6 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
         self.submodules.fsm = fsm
         self.comb += fsm.reset.eq(~self._enable.storage)
         fsm.act("IDLE",
-            self.sink.ready.eq(1),
             NextValue(offset, 0),
             NextState("RUN"),
         )
