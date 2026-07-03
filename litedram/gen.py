@@ -278,6 +278,48 @@ def get_axi_user_port_ios(_id, aw, dw, iw):
         ),
     ]
 
+def connect_axi_user_port(axi_port, axi_port_io, user_enable):
+    return [
+        # AW Channel.
+        axi_port.aw.valid.eq(axi_port_io.awvalid & user_enable),
+        axi_port_io.awready.eq(axi_port.aw.ready & user_enable),
+        axi_port.aw.addr.eq(axi_port_io.awaddr),
+        axi_port.aw.burst.eq(axi_port_io.awburst),
+        axi_port.aw.len.eq(axi_port_io.awlen),
+        axi_port.aw.size.eq(axi_port_io.awsize),
+        axi_port.aw.id.eq(axi_port_io.awid),
+
+        # W Channel.
+        axi_port.w.valid.eq(axi_port_io.wvalid & user_enable),
+        axi_port_io.wready.eq(axi_port.w.ready & user_enable),
+        axi_port.w.last.eq(axi_port_io.wlast),
+        axi_port.w.strb.eq(axi_port_io.wstrb),
+        axi_port.w.data.eq(axi_port_io.wdata),
+
+        # B Channel.
+        axi_port_io.bvalid.eq(axi_port.b.valid & user_enable),
+        axi_port.b.ready.eq(axi_port_io.bready & user_enable),
+        axi_port_io.bresp.eq(axi_port.b.resp),
+        axi_port_io.bid.eq(axi_port.b.id),
+
+        # AR Channel.
+        axi_port.ar.valid.eq(axi_port_io.arvalid & user_enable),
+        axi_port_io.arready.eq(axi_port.ar.ready & user_enable),
+        axi_port.ar.addr.eq(axi_port_io.araddr),
+        axi_port.ar.burst.eq(axi_port_io.arburst),
+        axi_port.ar.len.eq(axi_port_io.arlen),
+        axi_port.ar.size.eq(axi_port_io.arsize),
+        axi_port.ar.id.eq(axi_port_io.arid),
+
+        # R Channel.
+        axi_port_io.rvalid.eq(axi_port.r.valid & user_enable),
+        axi_port.r.ready.eq(axi_port_io.rready & user_enable),
+        axi_port_io.rlast.eq(axi_port.r.last),
+        axi_port_io.rresp.eq(axi_port.r.resp),
+        axi_port_io.rdata.eq(axi_port.r.data),
+        axi_port_io.rid.eq(axi_port.r.id),
+    ]
+
 def get_fifo_user_port_ios(_id, dw):
     return [
         ("user_fifo_{}".format(_id), 0,
@@ -787,46 +829,7 @@ class LiteDRAMCore(SoCCore):
                         axi_port.data_width,
                         port["id_width"]))
                 _axi_port_io = platform.request("user_port_{}".format(name))
-                self.comb += [
-                    # AW Channel.
-                    axi_port.aw.valid.eq(_axi_port_io.awvalid & user_enable),
-                    _axi_port_io.awready.eq(axi_port.aw.ready & user_enable),
-                    axi_port.aw.addr.eq(_axi_port_io.awaddr),
-                    axi_port.aw.burst.eq(_axi_port_io.awburst),
-                    axi_port.aw.len.eq(_axi_port_io.awlen),
-                    axi_port.aw.size.eq(_axi_port_io.awsize),
-                    axi_port.aw.id.eq(_axi_port_io.awid),
-
-                    # W Channel.
-                    axi_port.w.valid.eq(_axi_port_io.wvalid),
-                    _axi_port_io.wready.eq(axi_port.w.ready),
-                    axi_port.w.last.eq(_axi_port_io.wlast),
-                    axi_port.w.strb.eq(_axi_port_io.wstrb),
-                    axi_port.w.data.eq(_axi_port_io.wdata),
-
-                    # B Channel.
-                    _axi_port_io.bvalid.eq(axi_port.b.valid),
-                    axi_port.b.ready.eq(_axi_port_io.bready),
-                    _axi_port_io.bresp.eq(axi_port.b.resp),
-                    _axi_port_io.bid.eq(axi_port.b.id),
-
-                    # AR Channel.
-                    axi_port.ar.valid.eq(_axi_port_io.arvalid & user_enable),
-                    _axi_port_io.arready.eq(axi_port.ar.ready & user_enable),
-                    axi_port.ar.addr.eq(_axi_port_io.araddr),
-                    axi_port.ar.burst.eq(_axi_port_io.arburst),
-                    axi_port.ar.len.eq(_axi_port_io.arlen),
-                    axi_port.ar.size.eq(_axi_port_io.arsize),
-                    axi_port.ar.id.eq(_axi_port_io.arid),
-
-                    # R Channel.
-                    _axi_port_io.rvalid.eq(axi_port.r.valid),
-                    axi_port.r.ready.eq(_axi_port_io.rready),
-                    _axi_port_io.rlast.eq(axi_port.r.last),
-                    _axi_port_io.rresp.eq(axi_port.r.resp),
-                    _axi_port_io.rdata.eq(axi_port.r.data),
-                    _axi_port_io.rid.eq(axi_port.r.id),
-                ]
+                self.comb += connect_axi_user_port(axi_port, _axi_port_io, user_enable)
             # FIFO ---------------------------------------------------------------------------------
             elif port["type"] == "fifo":
                 data_width = port.get("data_width", self.sdram.crossbar.controller.data_width)
