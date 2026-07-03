@@ -342,6 +342,7 @@ class TestFIFO(unittest.TestCase):
                 data = (yield from dut.read())
                 self.assertEqual(data, 10 + N + i)
             for i in range(16):
+                self.assertEqual((yield dut.fifo.source.valid), 0)
                 yield
 
         dut = FIFODUT(data_width=32, base=16, depth=64, with_bypass=True)
@@ -355,5 +356,5 @@ class TestFIFO(unittest.TestCase):
         run_simulation(dut, generators)
 
     def test_fifo_partial_bypass_reader(self):
-        for N in range(3):
+        for N in range(5):
             self.fifo_partial_bypass_reader_test(N)

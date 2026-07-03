@@ -5,8 +5,6 @@
 # Copyright (c) 2020 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
-import math
-
 from migen import *
 
 from litex.soc.interconnect import stream
@@ -311,8 +309,11 @@ class LiteDRAMFIFO(Module):
             dram_inc     = Signal()
             dram_dec     = Signal()
             dram_cnt     = Signal(port_address_width)
-            dram_inc_mod = Signal(max(int(math.log2(data_width_ratio)), 1))
-            dram_dec_mod = Signal(max(int(math.log2(data_width_ratio)), 1))
+            dram_inc_mod = Signal(max=data_width_ratio)
+            dram_dec_mod = Signal(max=data_width_ratio)
+            dram_flush_count  = Signal(max=max(data_width_ratio, 2))
+            dram_flush_output = Signal(max=max(data_width_ratio, 2))
+            dram_flush_total  = Signal(max=max(data_width_ratio, 2))
 
             self.submodules.fsm = fsm = FSM(reset_state="BYPASS")
             fsm.act("BYPASS",
@@ -321,6 +322,11 @@ class LiteDRAMFIFO(Module):
                 If(dram_store_threshold,
                     NextValue(dram_first, 1),
                     NextValue(dram_cnt,   0),
+                    NextValue(dram_inc_mod, 0),
+                    NextValue(dram_dec_mod, 0),
+                    NextValue(dram_flush_count,  0),
+                    NextValue(dram_flush_output, 0),
+                    NextValue(dram_flush_total,  0),
                     NextState("DRAM")
                 )
             )
@@ -355,33 +361,49 @@ class LiteDRAMFIFO(Module):
                 # Switch back to Bypass mode when no remaining DRAM word.
                 If((dram_first == 0) & (dram_cnt == 0),
                     dram_store.eq(0),
-                    If((dram_dec_mod == 0) & (dram_inc_mod == 0), 
+                    NextValue(dram_flush_count, dram_inc_mod),
+                    NextValue(dram_flush_output, 0),
+                    NextValue(dram_flush_total,  0),
+                    If(dram_dec_mod != 0,
+                        NextState("DRAIN_POSTCONVERTER")
+                    ).Elif(dram_inc_mod == 0,
                         NextState("BYPASS")
                     ).Else(
                         NextState("PUMP_PRECONVERTER"),
-                        NextValue(dram_dec_mod, dram_inc_mod),
                     )
                 )
             )
             fsm.act("PUMP_PRECONVERTER",
                 pre_converter.source.connect(post_converter.sink),
-                If(dram_inc_mod == 0,
-                    NextState("DRAIN_POSTCONVERTER")
+                If(dram_flush_output < dram_flush_count,
+                    post_converter.source.connect(post_fifo.sink),
+                ).Else(
+                    post_fifo.sink.valid.eq(0),
+                    post_converter.source.ready.eq(1),
+                ),
+                If(pre_converter.source.valid,
+                    If(post_converter.source.valid & post_converter.source.ready,
+                        NextValue(dram_flush_total, dram_flush_total + 1),
+                        If(dram_flush_output < dram_flush_count,
+                            NextValue(dram_flush_output, dram_flush_output + 1),
+                        ),
+                        If(dram_flush_total == (data_width_ratio - 1),
+                            NextValue(dram_inc_mod, 0),
+                            NextValue(dram_dec_mod, 0),
+                            NextValue(dram_flush_count, 0),
+                            NextState("BYPASS")
+                        )
+                    )
                 ).Else(
                     pre_converter.sink.valid.eq(1),
-                    If(pre_converter.source.valid & pre_converter.source.ready,
-                        NextValue(dram_inc_mod, dram_inc_mod + 1),
-                    )
                 )
             )
             fsm.act("DRAIN_POSTCONVERTER",
-                pre_converter.source.connect(post_converter.sink),
                 If(dram_dec_mod == 0,
-                    If(dram_inc_mod == 0,
+                    If(dram_flush_count == 0,
                         NextState("BYPASS"),
                     ).Else(
                         NextState("PUMP_PRECONVERTER"),
-                        NextValue(dram_dec_mod, dram_inc_mod),
                     ),
                 ).Else(
                     If(post_converter.source.valid & post_converter.source.ready,
