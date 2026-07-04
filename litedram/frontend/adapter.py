@@ -157,6 +157,8 @@ class LiteDRAMNativePortUpConverter(Module):
 
         # Defines cmd type and the chunks that have been requested for the current port_to command.
         sel              = Signal(ratio)
+        cmd_sel          = Signal(ratio)
+        cmd_selected     = Signal()
         cmd_buffer       = stream.SyncFIFO([("sel", ratio), ("we", 1)], 0)
         self.submodules += cmd_buffer
         # Store last received command.
@@ -186,7 +188,7 @@ class LiteDRAMNativePortUpConverter(Module):
                 NextValue(cmd_addr, port_from.cmd.addr),
                 NextValue(cmd_we, port_from.cmd.we),
                 NextValue(cmd_last, port_from.cmd.last),
-                NextValue(sel, 1 << port_from.cmd.addr[:log2_int(ratio)]),
+                NextValue(sel, cmd_sel),
                 If(port_from.cmd.we,
                     NextState("FILL"),
                 ).Else(
@@ -213,7 +215,7 @@ class LiteDRAMNativePortUpConverter(Module):
                 port_from.cmd.ready.eq(port_from.cmd.valid),
                 NextValue(cmd_last, port_from.cmd.last),
                 If(port_from.cmd.valid,
-                    NextValue(sel, sel | 1 << port_from.cmd.addr[:log2_int(ratio)])
+                    NextValue(sel, sel | cmd_sel)
                 )
             )
         )
@@ -231,6 +233,8 @@ class LiteDRAMNativePortUpConverter(Module):
         )
 
         self.comb += [
+            cmd_sel.eq(1 << port_from.cmd.addr[:log2_int(ratio)]),
+            cmd_selected.eq((sel & cmd_sel) != 0),
             cmd_buffer.source.ready.eq(wdata_finished | rdata_finished),
             addr_changed.eq(cmd_addr[log2_int(ratio):] != port_from.cmd.addr[log2_int(ratio):]),
             # Collision happens on write to read transition when address does not change.
@@ -238,11 +242,13 @@ class LiteDRAMNativePortUpConverter(Module):
             # Go to the next command if one of the following happens:
             #  - port_to address changes.
             #  - cmd type changes.
+            #  - the requested chunk has already been selected.
             #  - we received all the `ratio` commands.
             #  - this is the last command in a sequence.
             #  - master requests a flush (even after the command has been sent).
-            next_cmd.eq(addr_changed | (cmd_we != port_from.cmd.we) | (sel == 2**ratio - 1)
-                        | cmd_last | port_from.flush),
+            next_cmd.eq(addr_changed | (cmd_we != port_from.cmd.we)
+                        | (port_from.cmd.valid & cmd_selected)
+                        | (sel == 2**ratio - 1) | cmd_last | port_from.flush),
         ]
 
         self.sync += [
