@@ -78,6 +78,32 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(cls.speedgrade_timings["1866"].tFAW, (32, 40))
         self.assertEqual(module.timing_settings.tFAW, 8)
 
+    def test_ddr3_x16_tfaw_800_ns_minimum(self):
+        # JEDEC DDR3-800 x16 organisation requires tFAW >= 50 ns
+        # (vs 40 ns for x4/x8). #384 corrected a single x16 SK hynix part
+        # (H5TC4G63CFR) that was still encoded with the x4/x8 40 ns floor;
+        # this regression test locks the invariant in across every DDR3
+        # x16 device that exposes a "800" speedgrade in the module list.
+        names = [
+            "MT41K64M16",
+            "MT41J128M16", "MT41K128M16",
+            "MT41J256M16", "MT41K256M16",
+            "K4B2G1646F",
+            "H5TC4G63CFR",
+            "IS43TR16512B",
+        ]
+        for name in names:
+            cls = getattr(litedram.modules, name)
+            with self.subTest(module=name):
+                self.assertIn("800", cls.speedgrade_timings)
+                tfaw = cls.speedgrade_timings["800"].tFAW
+                self.assertIsNotNone(tfaw, f"{name}: tFAW missing at 800")
+                # tFAW is a (nCK, ns) tuple; the ns element is index 1.
+                self.assertGreaterEqual(
+                    tfaw[1], 50,
+                    f"{name}: JEDEC DDR3-800 x16 requires tFAW ns floor >= 50 ns",
+                )
+
     def test_ddr3_x16_trrd_uses_ck_minimum(self):
         # JEDEC DDR3 fixes the tRRD nCK floor at 6 for x16 organisation
         # (vs 4 for x4/x8). Every DDR3 part below is an x16 device, so the
