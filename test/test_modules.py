@@ -99,6 +99,10 @@ class TestSDRAMModules(unittest.TestCase):
             "K4B2G1646F",
             "AS4C256M16D3A",
             "AS4C256M16D3C",
+            # ISSI DDR3 x16 series (extends the sweep to the IS43TR16* family).
+            "IS43TR16128B",
+            "IS43TR16256A",
+            "IS43TR16512B",
         ]
         for name in names:
             cls = getattr(litedram.modules, name)
