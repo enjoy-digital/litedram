@@ -1242,7 +1242,9 @@ class MTA4ATF51264HZ(DDR4Module):
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
     technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "2133": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=33),
+        # ngroups=2 characterises this SODIMM as built from DDR4 x16 devices.
+        # JEDEC DDR4 x16 organisation requires the 28 nCK tFAW floor (vs 20 nCK for x4/x8).
+        "2133": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=trfc, tFAW=(28, 25), tRAS=33),
     }
     speedgrade_timings["default"] = speedgrade_timings["2133"]
 
