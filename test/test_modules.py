@@ -78,6 +78,17 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(cls.speedgrade_timings["1866"].tFAW, (32, 40))
         self.assertEqual(module.timing_settings.tFAW, 8)
 
+    def test_mt40a512m16_tfaw_uses_x16_ck_minimum(self):
+        # JEDEC DDR4 pins the tFAW nCK floor at 28 for x16 organisation
+        # (vs 20 for x4/x8). MT40A512M16 is a DDR4 x16 device (ngroups=2,
+        # ngroupbanks=4) and must honour the same floor as its sibling
+        # MT40A256M16, which already encodes tFAW=(28, 35).
+        cls = litedram.modules.MT40A512M16
+        module = cls(clk_freq=100e6, rate="1:4")
+        self.assertEqual(cls.speedgrade_timings["2400"].tFAW[0], 28)
+        # And the x16 sibling stays consistent (regression guard).
+        self.assertEqual(litedram.modules.MT40A256M16.speedgrade_timings["2400"].tFAW[0], 28)
+
     def test_ddr3_x16_trrd_uses_ck_minimum(self):
         # JEDEC DDR3 fixes the tRRD nCK floor at 6 for x16 organisation
         # (vs 4 for x4/x8). Every DDR3 part below is an x16 device, so the
