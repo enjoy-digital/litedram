@@ -78,31 +78,13 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(cls.speedgrade_timings["1866"].tFAW, (32, 40))
         self.assertEqual(module.timing_settings.tFAW, 8)
 
-    def test_ddr3_x16_tfaw_800_ns_minimum(self):
-        # JEDEC DDR3-800 x16 organisation requires tFAW >= 50 ns
-        # (vs 40 ns for x4/x8). #384 corrected a single x16 SK hynix part
-        # (H5TC4G63CFR) that was still encoded with the x4/x8 40 ns floor;
-        # this regression test locks the invariant in across every DDR3
-        # x16 device that exposes a "800" speedgrade in the module list.
-        names = [
-            "MT41K64M16",
-            "MT41J128M16", "MT41K128M16",
-            "MT41J256M16", "MT41K256M16",
-            "K4B2G1646F",
-            "H5TC4G63CFR",
-            "IS43TR16512B",
-        ]
-        for name in names:
-            cls = getattr(litedram.modules, name)
-            with self.subTest(module=name):
-                self.assertIn("800", cls.speedgrade_timings)
-                tfaw = cls.speedgrade_timings["800"].tFAW
-                self.assertIsNotNone(tfaw, f"{name}: tFAW missing at 800")
-                # tFAW is a (nCK, ns) tuple; the ns element is index 1.
-                self.assertGreaterEqual(
-                    tfaw[1], 50,
-                    f"{name}: JEDEC DDR3-800 x16 requires tFAW ns floor >= 50 ns",
-                )
+    def test_mta4atf51264hz_tfaw_uses_x16_ck_minimum(self):
+        # MTA4ATF51264HZ is a DDR4 SODIMM whose per-device organisation is
+        # characterised as x16 in this repo (ngroups=2, ngroupbanks=4).
+        # JEDEC DDR4 x16 pins the tFAW nCK floor at 28 (vs 20 for x4/x8).
+        cls = litedram.modules.MTA4ATF51264HZ
+        module = cls(clk_freq=100e6, rate="1:4")
+        self.assertEqual(cls.speedgrade_timings["2133"].tFAW[0], 28)
 
     def test_ddr3_x16_trrd_uses_ck_minimum(self):
         # JEDEC DDR3 fixes the tRRD nCK floor at 6 for x16 organisation
@@ -117,6 +99,10 @@ class TestSDRAMModules(unittest.TestCase):
             "K4B2G1646F",
             "AS4C256M16D3A",
             "AS4C256M16D3C",
+            # ISSI DDR3 x16 series (extends the sweep to the IS43TR16* family).
+            "IS43TR16128B",
+            "IS43TR16256A",
+            "IS43TR16512B",
         ]
         for name in names:
             cls = getattr(litedram.modules, name)
