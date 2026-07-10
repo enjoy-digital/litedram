@@ -945,7 +945,8 @@ class IS43TR16128B(DDR3Module):
     nrows  = 16384
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6), tZQCS=(64, 80))
+    # JEDEC DDR3 x16 organisation requires the 6 nCK tRRD floor (vs 4 nCK for x4/x8).
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(6, 6), tZQCS=(64, 80))
     speedgrade_timings = {
         "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 160), tFAW=(None, 40), tRAS=35),
     }
@@ -957,7 +958,8 @@ class IS43TR16256A(DDR3Module):
     nrows  = 32768
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6), tZQCS=(64, 80))
+    # JEDEC DDR3 x16 organisation requires the 6 nCK tRRD floor (vs 4 nCK for x4/x8).
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(6, 6), tZQCS=(64, 80))
     speedgrade_timings = {
         "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 260), tFAW=(None, 30), tRAS=35),
     }
@@ -969,7 +971,8 @@ class IS43TR16512B(DDR3Module):
     nrows  = 65536
     ncols  = 1024
     # timings
-    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 10), tZQCS=(64, 80))
+    # JEDEC DDR3 x16 organisation requires the 6 nCK tRRD floor (vs 4 nCK for x4/x8).
+    technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(6, 10), tZQCS=(64, 80))
     speedgrade_timings = {
         "800":  _SpeedgradeTimings(tRP=15,     tRCD=15,     tWR=15, tRFC=(None, 350), tFAW=(None, 50), tRAS=37.5),
         "1066": _SpeedgradeTimings(tRP=13.125, tRCD=13.125, tWR=15, tRFC=(None, 350), tFAW=(None, 50), tRAS=37.5),
@@ -1204,7 +1207,8 @@ class MT40A512M16(DDR4Module):
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
     technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
+        # JEDEC DDR4 x16 organisation requires the 28 nCK tFAW floor (vs 20 nCK for x4/x8).
+        "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(28, 25), tRAS=32),
     }
     speedgrade_timings["default"] = speedgrade_timings["2400"]
 
@@ -1238,7 +1242,9 @@ class MTA4ATF51264HZ(DDR4Module):
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
     technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "2133": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=33),
+        # ngroups=2 characterises this SODIMM as built from DDR4 x16 devices.
+        # JEDEC DDR4 x16 organisation requires the 28 nCK tFAW floor (vs 20 nCK for x4/x8).
+        "2133": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=trfc, tFAW=(28, 25), tRAS=33),
     }
     speedgrade_timings["default"] = speedgrade_timings["2133"]
 

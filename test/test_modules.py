@@ -78,6 +78,14 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(cls.speedgrade_timings["1866"].tFAW, (32, 40))
         self.assertEqual(module.timing_settings.tFAW, 8)
 
+    def test_mta4atf51264hz_tfaw_uses_x16_ck_minimum(self):
+        # MTA4ATF51264HZ is a DDR4 SODIMM whose per-device organisation is
+        # characterised as x16 in this repo (ngroups=2, ngroupbanks=4).
+        # JEDEC DDR4 x16 pins the tFAW nCK floor at 28 (vs 20 for x4/x8).
+        cls = litedram.modules.MTA4ATF51264HZ
+        module = cls(clk_freq=100e6, rate="1:4")
+        self.assertEqual(cls.speedgrade_timings["2133"].tFAW[0], 28)
+
     def test_ddr3_x16_trrd_uses_ck_minimum(self):
         # JEDEC DDR3 fixes the tRRD nCK floor at 6 for x16 organisation
         # (vs 4 for x4/x8). Every DDR3 part below is an x16 device, so the
@@ -91,6 +99,10 @@ class TestSDRAMModules(unittest.TestCase):
             "K4B2G1646F",
             "AS4C256M16D3A",
             "AS4C256M16D3C",
+            # ISSI DDR3 x16 series (extends the sweep to the IS43TR16* family).
+            "IS43TR16128B",
+            "IS43TR16256A",
+            "IS43TR16512B",
         ]
         for name in names:
             cls = getattr(litedram.modules, name)

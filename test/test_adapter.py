@@ -307,6 +307,37 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
         self.converter_readback_test(dut, pattern=pattern, mem_expected=mem_expected,
                                      main_generator=main_generator)
 
+    def test_up_converter_auto_flush_on_repeated_chunk(self):
+        # Verify that up-conversion does not merge two commands using the same chunk.
+        def main_generator(dut):
+            yield from dut.write(0x19, 0xffffffff, wait_data=False)
+            yield from dut.write(0x19, 0x11111111, wait_data=False)
+            yield from dut.read(0x19, wait_data=False, last=1)
+
+            yield from dut.write_driver.wait_all()
+            yield from dut.read_driver.wait_all()
+            for _ in range(8):  # wait for memory
+                yield
+
+        mem_expected = [
+            0x00000000000000000000000000000000,  # 0x00
+            0x00000000000000000000000000000000,  # 0x04
+            0x00000000000000000000000000000000,  # 0x08
+            0x00000000000000000000000000000000,  # 0x0c
+            0x00000000000000000000000000000000,  # 0x10
+            0x00000000000000000000000000000000,  # 0x14
+            0x00000000000000001111111100000000,  # 0x18
+            0x00000000000000000000000000000000,  # 0x1c
+        ]
+        pattern = [
+            (0x19, 0x11111111),
+        ]
+
+        dut  = ConverterDUT(user_data_width=32, native_data_width=128,
+                            mem_depth=len(mem_expected), separate_rw=False)
+        self.converter_readback_test(dut, pattern=pattern, mem_expected=mem_expected,
+                                     main_generator=main_generator)
+
     def test_up_converter_write_with_gap(self):
         # Verify that the up-converter can mask data properly when sending non-sequential writes
         def main_generator(dut):
@@ -331,6 +362,66 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
                 dut  = ConverterDUT(user_data_width=8, native_data_width=32,
                                     mem_depth=len(mem_expected), separate_rw=separate_rw)
                 self.converter_readback_test(dut, pattern=[], mem_expected=mem_expected,
+                                             main_generator=main_generator)
+
+    def test_up_converter_write_ordering(self):
+        # Verify that write data is placed according to subword addresses, not command order.
+        pattern = [
+            (0x03, 0x00),
+            (0x02, 0x11),
+            (0x01, 0x22),
+            (0x00, 0x33),
+            (0x12, 0x44),
+            (0x11, 0x55),
+            (0x13, 0x66),
+            (0x10, 0x77),
+        ]
+        mem_expected = [
+            # data, address
+            0x00112233,  # 0x00
+            0x00000000,  # 0x04
+            0x00000000,  # 0x08
+            0x00000000,  # 0x0c
+            0x66445577,  # 0x10
+            0x00000000,  # 0x14
+            0x00000000,  # 0x18
+            0x00000000,  # 0x1c
+        ]
+
+        for separate_rw in [True, False]:
+            with self.subTest(separate_rw=separate_rw):
+                dut = ConverterDUT(user_data_width=8, native_data_width=32,
+                                   mem_depth=len(mem_expected), separate_rw=separate_rw)
+                self.converter_readback_test(dut, pattern=pattern, mem_expected=mem_expected)
+
+    def test_up_converter_read_ordering(self):
+        # Verify that read data is returned in command order, not ascending subword order.
+        pattern = [
+            (0x03, 0x33),
+            (0x02, 0x22),
+            (0x01, 0x11),
+            (0x00, 0x00),
+        ]
+        mem_expected = [
+            # data, address
+            0x33221100,  # 0x00
+            0x00000000,  # 0x04
+            0x00000000,  # 0x08
+            0x00000000,  # 0x0c
+        ]
+
+        def main_generator(dut):
+            for adr, _ in pattern[:-1]:
+                yield from dut.read(adr, wait_data=False)
+            yield from dut.read(pattern[-1][0], wait_data=False, last=1)
+            yield from dut.read_driver.wait_all()
+
+        for separate_rw in [True, False]:
+            with self.subTest(separate_rw=separate_rw):
+                dut = ConverterDUT(user_data_width=8, native_data_width=32,
+                                   mem_depth=len(mem_expected), separate_rw=separate_rw)
+                dut.memory.mem = mem_expected.copy()
+                self.converter_readback_test(dut, pattern=pattern, mem_expected=mem_expected,
                                              main_generator=main_generator)
 
     def test_up_converter_not_aligned(self):

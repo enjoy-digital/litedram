@@ -532,6 +532,13 @@ class LiteDRAMCoreControl(LiteXModule):
         self.init_done  = CSRStorage()
         self.init_error = CSRStorage()
 
+# LiteDRAMCoreSimPHY -------------------------------------------------------------------------------
+
+class LiteDRAMCoreSimPHY(SDRAMPHYModel, AutoCSR):
+    def __init__(self, *args, **kwargs):
+        SDRAMPHYModel.__init__(self, *args, **kwargs)
+        self._reserved = CSRGap(name="reserved", name_start=None)
+
 # LiteDRAMCore -------------------------------------------------------------------------------------
 
 class LiteDRAMCore(SoCCore):
@@ -626,7 +633,7 @@ class LiteDRAMCore(SoCCore):
                 memtype    = sdram_module.memtype,
                 data_width = core_config["sdram_module_nb"]*8,
                 clk_freq   = sys_clk_freq)
-            self.ddrphy = sdram_phy = SDRAMPHYModel(
+            self.ddrphy = sdram_phy = LiteDRAMCoreSimPHY(
                 module    = sdram_module,
                 settings  = phy_settings,
                 clk_freq  = sys_clk_freq)
