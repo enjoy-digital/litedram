@@ -309,8 +309,8 @@ class LiteDRAMFIFO(Module):
             dram_inc     = Signal()
             dram_dec     = Signal()
             dram_cnt     = Signal(port_address_width)
-            dram_inc_mod = Signal(max=data_width_ratio)
-            dram_dec_mod = Signal(max=data_width_ratio)
+            dram_inc_mod = Signal(max=max(data_width_ratio, 2))
+            dram_dec_mod = Signal(max=max(data_width_ratio, 2))
             dram_flush_count  = Signal(max=max(data_width_ratio, 2))
             dram_flush_output = Signal(max=max(data_width_ratio, 2))
             dram_flush_total  = Signal(max=max(data_width_ratio, 2))
@@ -341,7 +341,11 @@ class LiteDRAMFIFO(Module):
                 ),
                 If(pre_converter.sink.valid & pre_converter.sink.ready,
                     If(data_width_ratio > 1,
-                        NextValue(dram_inc_mod, dram_inc_mod + 1),
+                        If(dram_inc_mod == (data_width_ratio - 1),
+                            NextValue(dram_inc_mod, 0),
+                        ).Else(
+                            NextValue(dram_inc_mod, dram_inc_mod + 1),
+                        )
                     )
                 ),
 
@@ -351,7 +355,11 @@ class LiteDRAMFIFO(Module):
                 ),
                 If(post_converter.source.valid & post_converter.source.ready,
                     If(data_width_ratio > 1,
-                        NextValue(dram_dec_mod, dram_dec_mod + 1),
+                        If(dram_dec_mod == (data_width_ratio - 1),
+                            NextValue(dram_dec_mod, 0),
+                        ).Else(
+                            NextValue(dram_dec_mod, dram_dec_mod + 1),
+                        )
                     )
                 ),
 
@@ -373,41 +381,59 @@ class LiteDRAMFIFO(Module):
                     )
                 )
             )
-            fsm.act("PUMP_PRECONVERTER",
-                pre_converter.source.connect(post_converter.sink),
-                If(dram_flush_output < dram_flush_count,
-                    post_converter.source.connect(post_fifo.sink),
-                ).Else(
-                    post_fifo.sink.valid.eq(0),
-                    post_converter.source.ready.eq(1),
-                ),
-                If(pre_converter.source.valid,
-                    If(post_converter.source.valid & post_converter.source.ready,
-                        NextValue(dram_flush_total, dram_flush_total + 1),
-                        If(dram_flush_output < dram_flush_count,
-                            NextValue(dram_flush_output, dram_flush_output + 1),
+            if data_width_ratio == 1:
+                # The flush states are unreachable when the converters have equal widths. Keep
+                # their hardware paths inert to avoid a combinatorial valid loop through the two
+                # identity converters.
+                fsm.act("PUMP_PRECONVERTER",
+                    NextState("BYPASS"),
+                )
+                fsm.act("DRAIN_POSTCONVERTER",
+                    NextState("BYPASS"),
+                )
+            else:
+                fsm.act("PUMP_PRECONVERTER",
+                    pre_converter.source.connect(post_converter.sink),
+                    If(dram_flush_output < dram_flush_count,
+                        post_converter.source.connect(post_fifo.sink),
+                    ).Else(
+                        post_fifo.sink.valid.eq(0),
+                        post_converter.source.ready.eq(1),
+                    ),
+                    If(pre_converter.source.valid,
+                        If(post_converter.source.valid & post_converter.source.ready,
+                            If(dram_flush_output < dram_flush_count,
+                                NextValue(dram_flush_output, dram_flush_output + 1),
+                            ),
+                            If(dram_flush_total == (data_width_ratio - 1),
+                                NextValue(dram_inc_mod, 0),
+                                NextValue(dram_dec_mod, 0),
+                                NextValue(dram_flush_count, 0),
+                                NextValue(dram_flush_output, 0),
+                                NextValue(dram_flush_total, 0),
+                                NextState("BYPASS")
+                            ).Else(
+                                NextValue(dram_flush_total, dram_flush_total + 1),
+                            )
+                        )
+                    ).Else(
+                        pre_converter.sink.valid.eq(1),
+                    )
+                )
+                fsm.act("DRAIN_POSTCONVERTER",
+                    If(dram_dec_mod == 0,
+                        If(dram_flush_count == 0,
+                            NextState("BYPASS"),
+                        ).Else(
+                            NextState("PUMP_PRECONVERTER"),
                         ),
-                        If(dram_flush_total == (data_width_ratio - 1),
-                            NextValue(dram_inc_mod, 0),
-                            NextValue(dram_dec_mod, 0),
-                            NextValue(dram_flush_count, 0),
-                            NextState("BYPASS")
+                    ).Else(
+                        If(post_converter.source.valid & post_converter.source.ready,
+                            If(dram_dec_mod == (data_width_ratio - 1),
+                                NextValue(dram_dec_mod, 0),
+                            ).Else(
+                                NextValue(dram_dec_mod, dram_dec_mod + 1),
+                            )
                         )
                     )
-                ).Else(
-                    pre_converter.sink.valid.eq(1),
                 )
-            )
-            fsm.act("DRAIN_POSTCONVERTER",
-                If(dram_dec_mod == 0,
-                    If(dram_flush_count == 0,
-                        NextState("BYPASS"),
-                    ).Else(
-                        NextState("PUMP_PRECONVERTER"),
-                    ),
-                ).Else(
-                    If(post_converter.source.valid & post_converter.source.ready,
-                        NextValue(dram_dec_mod, dram_dec_mod + 1),
-                    )
-                )
-            )

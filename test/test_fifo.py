@@ -10,6 +10,7 @@ import random
 
 from migen import *
 
+from litex.gen.fhdl import verilog
 from litex.soc.interconnect.stream import *
 
 from litedram.common import LiteDRAMNativeWritePort
@@ -21,8 +22,9 @@ from test.common import *
 
 
 class FIFODUT(Module):
-    def __init__(self, base, depth, data_width=8, address_width=32, with_bypass=False):
-        port_data_width = data_width if not with_bypass else 4*data_width
+    def __init__(self, base, depth, data_width=8, address_width=32, with_bypass=False,
+        data_width_ratio=4):
+        port_data_width = data_width if not with_bypass else data_width_ratio*data_width
         self.write_port = LiteDRAMNativeWritePort(address_width=32, data_width=port_data_width)
         self.read_port  = LiteDRAMNativeReadPort(address_width=32,  data_width=port_data_width)
         self.submodules.fifo = LiteDRAMFIFO(
@@ -321,7 +323,7 @@ class TestFIFO(unittest.TestCase):
     def test_fifo_delayed_reader_with_bypass(self):
         self.fifo_delayed_reader_test(with_bypass=True)
 
-    def fifo_partial_bypass_reader_test(self, N):
+    def fifo_partial_bypass_reader_test(self, N, data_width_ratio=4):
         # Verify FIFO works correctly when reader reads N words through the bypass
         def generator(dut):
             for i in range(64):
@@ -345,7 +347,13 @@ class TestFIFO(unittest.TestCase):
                 self.assertEqual((yield dut.fifo.source.valid), 0)
                 yield
 
-        dut = FIFODUT(data_width=32, base=16, depth=64, with_bypass=True)
+        dut = FIFODUT(
+            data_width       = 32,
+            data_width_ratio = data_width_ratio,
+            base             = 16,
+            depth            = 64,
+            with_bypass      = True,
+        )
         generators = [
             generator(dut),
             checker(dut),
@@ -358,3 +366,17 @@ class TestFIFO(unittest.TestCase):
     def test_fifo_partial_bypass_reader(self):
         for N in range(5):
             self.fifo_partial_bypass_reader_test(N)
+
+    def test_fifo_partial_bypass_reader_ratio_3(self):
+        self.fifo_partial_bypass_reader_test(N=1, data_width_ratio=3)
+
+    def test_fifo_bypass_equal_data_widths(self):
+        dut = FIFODUT(
+            data_width       = 32,
+            data_width_ratio = 1,
+            base             = 16,
+            depth            = 64,
+            with_bypass      = True,
+        )
+        dut.clock_domains.cd_sys = ClockDomain()
+        verilog.convert(dut, ios={dut.fifo.sink.valid}, comb_cycle_policy="error")
