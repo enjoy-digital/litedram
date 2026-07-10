@@ -124,6 +124,42 @@ class TestDMA(MemoryTestDataMixin, unittest.TestCase):
         data = self.pattern_test_data["32bit_duplicates"]
         self.dma_writer_test(data["pattern"], data["expected"], data_width=32)
 
+    def test_dma_writer_csr_disabled_sink_not_ready(self):
+        # Verify DMAWriter with CSR control does not sink data before being enabled.
+        class DUT(Module):
+            def __init__(self):
+                self.port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
+                self.submodules.dma = LiteDRAMDMAWriter(self.port, with_csr=True)
+
+        def main_generator(dut):
+            yield dut.dma._base.storage.eq(0x00)
+            yield dut.dma._length.storage.eq(0x04)
+            yield dut.dma.sink.valid.eq(1)
+            yield dut.dma.sink.data.eq(0xdeadbeef)
+
+            for _ in range(4):
+                self.assertEqual((yield dut.dma.sink.ready), 0)
+                yield
+
+            yield dut.dma._enable.storage.eq(1)
+            while not (yield dut.dma.sink.ready):
+                yield
+            yield
+            yield dut.dma.sink.valid.eq(0)
+
+            for _ in range(8):  # wait for memory
+                yield
+
+        dut = DUT()
+        mem = DRAMMemory(32, 4)
+
+        run_simulation(dut, [
+            main_generator(dut),
+            mem.write_handler(dut.port),
+            timeout_generator(1000),
+        ])
+        self.assertEqual(mem.mem[0], 0xdeadbeef)
+
     # LiteDRAMDMAReader ----------------------------------------------------------------------------
 
     def dma_reader_test(self, pattern, mem_expected, data_width, **kwargs):

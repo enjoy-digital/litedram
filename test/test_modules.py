@@ -64,6 +64,50 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(module.nrows, 32768)
         self.assertEqual(module.ncols, 1024)
         self.assertEqual(cls.speedgrade_timings["800"].tRFC, (None, 260))
+        self.assertEqual(cls.speedgrade_timings["800"].tFAW, (None, 50))
+        # x16 DDR3 tRRD nCK floor is 6 nCK (vs 4 nCK for x4/x8) and must
+        # match the sibling H5TQ4G63CFR x16 definition.
+        self.assertEqual(cls.technology_timings.tRRD, (6, 7.5))
+
+    def test_mt53e256m16d1_tfaw_uses_ck_minimum(self):
+        cls = litedram.modules.MT53E256M16D1
+        # At a 100 MHz controller clock with 1:4 rate, the ns side of tFAW
+        # (40 ns) rounds to fewer cycles than the JEDEC 32 nCK minimum, so
+        # the nCK floor must be honoured.
+        module = cls(clk_freq=100e6, rate="1:4")
+        self.assertEqual(cls.speedgrade_timings["1866"].tFAW, (32, 40))
+        self.assertEqual(module.timing_settings.tFAW, 8)
+
+    def test_mta4atf51264hz_tfaw_uses_x16_ck_minimum(self):
+        # MTA4ATF51264HZ is a DDR4 SODIMM whose per-device organisation is
+        # characterised as x16 in this repo (ngroups=2, ngroupbanks=4).
+        # JEDEC DDR4 x16 pins the tFAW nCK floor at 28 (vs 20 for x4/x8).
+        cls = litedram.modules.MTA4ATF51264HZ
+        module = cls(clk_freq=100e6, rate="1:4")
+        self.assertEqual(cls.speedgrade_timings["2133"].tFAW[0], 28)
+
+    def test_ddr3_x16_trrd_uses_ck_minimum(self):
+        # JEDEC DDR3 fixes the tRRD nCK floor at 6 for x16 organisation
+        # (vs 4 for x4/x8). Every DDR3 part below is an x16 device, so the
+        # first element of `technology_timings.tRRD` must be at least 6.
+        names = [
+            "AS4C128M16",
+            "MT41K64M16",
+            "MT41J128M16", "MT41K128M16",
+            "MT41J256M16", "MT41K256M16",
+            "MT41J512M16", "MT41K512M16",
+            "K4B2G1646F",
+            "AS4C256M16D3A",
+            "AS4C256M16D3C",
+            # ISSI DDR3 x16 series (extends the sweep to the IS43TR16* family).
+            "IS43TR16128B",
+            "IS43TR16256A",
+            "IS43TR16512B",
+        ]
+        for name in names:
+            cls = getattr(litedram.modules, name)
+            with self.subTest(module=name):
+                self.assertGreaterEqual(cls.technology_timings.tRRD[0], 6)
 
     def test_h5tq4g63xfr_geometry_and_speedgrades(self):
         for name in ["H5TQ4G63CFR", "H5TQ4G63EFR"]:
