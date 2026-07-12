@@ -86,6 +86,40 @@ class TestSDRAMModules(unittest.TestCase):
         module = cls(clk_freq=100e6, rate="1:4")
         self.assertEqual(cls.speedgrade_timings["2133"].tFAW[0], 28)
 
+    def test_ddr4_x16_tfaw_uses_ck_minimum(self):
+        # JEDEC DDR4 (JESD79-4) fixes the tFAW nCK floor at 28 for x16
+        # organisation (vs 20 nCK for x4/x8). PRs #392 and #393 corrected
+        # the two DDR4 x16 outliers in this repo (MT40A512M16 bare-chip
+        # and MTA4ATF51264HZ SODIMM); this regression test locks the
+        # invariant in across every DDR4 device whose per-device
+        # organisation is x16 (`ngroups == 2`, `ngroupbanks == 4`), so
+        # any future addition or accidental (20, ...) regression fails
+        # loudly at test time.
+        names = [
+            "EDY4016A",
+            "MT40A256M16",
+            "MT40A512M16",
+            "MTA4ATF51264HZ",
+        ]
+        for name in names:
+            cls = getattr(litedram.modules, name)
+            with self.subTest(module=name):
+                # Every listed class has ngroups=2 (x16 per-device shape).
+                self.assertEqual(cls.ngroups, 2, f"{name}: expected x16 shape (ngroups=2)")
+                # Every listed class exposes at least one speedgrade; check
+                # each speedgrade's tFAW nCK floor without hard-coding which
+                # speedgrade names exist (defensive against future edits).
+                for sg_name, sg in cls.speedgrade_timings.items():
+                    if sg_name == "default":
+                        continue
+                    tfaw = sg.tFAW
+                    self.assertIsNotNone(tfaw, f"{name}[{sg_name}]: tFAW missing")
+                    self.assertIsInstance(tfaw, tuple, f"{name}[{sg_name}]: tFAW not a tuple")
+                    self.assertGreaterEqual(
+                        tfaw[0], 28,
+                        f"{name}[{sg_name}]: JEDEC DDR4 x16 requires tFAW nCK floor >= 28",
+                    )
+
     def test_ddr3_x16_trrd_uses_ck_minimum(self):
         # JEDEC DDR3 fixes the tRRD nCK floor at 6 for x16 organisation
         # (vs 4 for x4/x8). Every DDR3 part below is an x16 device, so the
