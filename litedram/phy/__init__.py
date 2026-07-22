@@ -5,6 +5,8 @@ from litedram.phy.s7ddrphy import V7DDRPHY, K7DDRPHY, A7DDRPHY
 from litedram.phy.usddrphy import USDDRPHY, USPDDRPHY
 
 from litedram.phy.ecp5ddrphy import ECP5DDRPHY, ECP5DDRPHYInit
+from litedram.phy.nxddrphy import NexusDDRPHY, NexusDDRPHYInit
+
 from litedram.phy.gw2ddrphy import GW2DDRPHY
 from litedram.phy.gw5ddrphy import GW5DDRPHY
 
