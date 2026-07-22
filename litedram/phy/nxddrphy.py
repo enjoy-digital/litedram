@@ -24,6 +24,7 @@ from litex.soc.interconnect.csr import *
 
 from litedram.common import *
 from litedram.phy.dfi import *
+from litedram.phy.utils import ConstBitSlip
 
 # BitSlip ------------------------------------------------------------------------------------------
 
@@ -48,6 +49,18 @@ class BitSlip(Module):
         for i in range(cycles*dw):
             cases[i] = self.o.eq(r[i:dw+i])
         self.comb += Case(value, cases)
+
+# Nexus DDR PHY Write BitSlip ----------------------------------------------------------------------
+
+class _NexusDDRPHYWriteBitSlip(ConstBitSlip):
+    def __init__(self, dw):
+        assert (dw % 2) == 0
+        ConstBitSlip.__init__(self,
+            dw       = dw,
+            slp      = dw//2,
+            cycles   = 1,
+            register = False,
+        )
 
 # Lattice Nexus DDR PHY Initialization --------------------------------------------------------------
 
@@ -170,10 +183,6 @@ class NexusDDRPHY(Module, AutoCSR):
         rdphase = get_sys_phase(nphases, cl_sys_latency, cl)
         wrphase = get_sys_phase(nphases, cwl_sys_latency, cwl)
 
-        # Otherwise writes are off by half a SCLK cycle
-        # TODO: should we implement write DQ/DQS bitslip like s7ddrphy?
-        cwl += 1
-
         self.settings = PhySettings(
             phytype       = "NexusDDRPHY",
             memtype       = memtype,
@@ -186,7 +195,7 @@ class NexusDDRPHY(Module, AutoCSR):
             cl            = cl,
             cwl           = cwl,
             read_latency  = cl_sys_latency + 9,
-            write_latency = cwl_sys_latency,
+            write_latency = cwl_sys_latency - 1,
             read_leveling = True,
             bitslips      = 4,
             delays        = 16,
@@ -329,19 +338,29 @@ class NexusDDRPHY(Module, AutoCSR):
             ]
 
             # DQS ----------------------------------------------------------------------------------
-            dqs      = Signal()
-            dqs_oe_n = Signal()
+            dqs               = Signal()
+            dqs_oe_n          = Signal()
+            dqs_o_data        = Signal(4)
+            dqs_oe_n_data     = Signal(2)
+            dqs_o_bitslip     = _NexusDDRPHYWriteBitSlip(4)
+            dqs_oe_n_bitslip  = _NexusDDRPHYWriteBitSlip(2)
+            self.submodules += dqs_o_bitslip, dqs_oe_n_bitslip
+            self.comb += [
+                dqs_o_data.eq(Cat(0, dqs_oe, 0, dqs_oe | dqs_preamble)),
+                dqs_oe_n_data.eq(Cat(
+                    ~(dqs_oe | dqs_postamble),
+                    ~(dqs_oe | dqs_preamble),
+                )),
+                dqs_o_bitslip.i.eq(dqs_o_data),
+                dqs_oe_n_bitslip.i.eq(dqs_oe_n_data),
+            ]
             self.specials += [
                 Instance("ODDRX2DQS",
                     i_RST  = ResetSignal("sys"),
                     i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
                     i_DQSW = dqsw,
-                    i_D0   = 0,
-                    i_D1   = dqs_oe,
-                    i_D2   = 0,
-                    i_D3   = dqs_oe | dqs_preamble,
-                    # **{f"i_D{n}": (0b1010 >> n) & 0b1 for n in range(4)},
+                    **{f"i_D{n}": dqs_o_bitslip.o[n] for n in range(4)},
                     o_Q    = dqs
                 ),
                 Instance("TSHX2DQS",
@@ -349,8 +368,7 @@ class NexusDDRPHY(Module, AutoCSR):
                     i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal("sys2x"),
                     i_DQSW = dqsw,
-                    i_T0   = ~(dqs_oe | dqs_postamble),
-                    i_T1   = ~(dqs_oe | dqs_preamble),
+                    **{f"i_T{n}": dqs_oe_n_bitslip.o[n] for n in range(2)},
                     o_Q    = dqs_oe_n
                 ),
                 Tristate(pads.dqs_p[i], dqs, ~dqs_oe_n, dqs_i)
@@ -360,8 +378,11 @@ class NexusDDRPHY(Module, AutoCSR):
             dm_o_data       = Signal(8)
             dm_o_data_d     = Signal(8)
             dm_o_data_muxed = Signal(4)
+            dm_o_bitslip    = _NexusDDRPHYWriteBitSlip(4)
+            self.submodules += dm_o_bitslip
             for n in range(8):
                 self.comb += dm_o_data[n].eq(dfi.phases[n//4].wrdata_mask[n%4*databits//8+dm_remapping.get(i, i)])
+            self.comb += dm_o_bitslip.i.eq(dm_o_data_muxed)
             self.sync += dm_o_data_d.eq(dm_o_data)
             dm_bl8_cases = {}
             dm_bl8_cases[0] = dm_o_data_muxed.eq(dm_o_data[:4])
@@ -372,7 +393,7 @@ class NexusDDRPHY(Module, AutoCSR):
                 i_SCLK    = ClockSignal("sys"),
                 i_ECLK    = ClockSignal("sys2x"),
                 i_DQSW270 = dqsw270,
-                **{f"i_D{n}": dm_o_data_muxed[n] for n in range(4)},
+                **{f"i_D{n}": dm_o_bitslip.o[n] for n in range(4)},
                 o_Q       = pads.dm[i]
             )
 
@@ -386,8 +407,20 @@ class NexusDDRPHY(Module, AutoCSR):
                 dq_o_data       = Signal(8)
                 dq_o_data_d     = Signal(8)
                 dq_o_data_muxed = Signal(4)
+                dq_oe_n_data    = Signal(2)
+                dq_o_bitslip    = _NexusDDRPHYWriteBitSlip(4)
+                dq_oe_n_bitslip = _NexusDDRPHYWriteBitSlip(2)
+                self.submodules += dq_o_bitslip, dq_oe_n_bitslip
                 for n in range(8):
                     self.comb += dq_o_data[n].eq(dfi.phases[n//4].wrdata[n%4*databits+j])
+                self.comb += [
+                    dq_oe_n_data.eq(Cat(
+                        ~(dq_oe | dqs_postamble),
+                        ~(dq_oe | dqs_preamble),
+                    )),
+                    dq_o_bitslip.i.eq(dq_o_data_muxed),
+                    dq_oe_n_bitslip.i.eq(dq_oe_n_data),
+                ]
                 self.sync += dq_o_data_d.eq(dq_o_data)
                 dq_bl8_cases = {}
                 dq_bl8_cases[0] = dq_o_data_muxed.eq(dq_o_data[:4])
@@ -399,7 +432,7 @@ class NexusDDRPHY(Module, AutoCSR):
                         i_SCLK    = ClockSignal("sys"),
                         i_ECLK    = ClockSignal("sys2x"),
                         i_DQSW270 = dqsw270,
-                        **{f"i_D{n}": dq_o_data_muxed[n] for n in range(4)},
+                        **{f"i_D{n}": dq_o_bitslip.o[n] for n in range(4)},
                         o_Q       = dq_o
                     )
                 ]
@@ -437,8 +470,7 @@ class NexusDDRPHY(Module, AutoCSR):
                         i_SCLK    = ClockSignal("sys"),
                         i_ECLK    = ClockSignal("sys2x"),
                         i_DQSW270 = dqsw270,
-                        i_T0      = ~(dq_oe | dqs_postamble),
-                        i_T1      = ~(dq_oe | dqs_preamble),
+                        **{f"i_T{n}": dq_oe_n_bitslip.o[n] for n in range(2)},
                         o_Q       = dq_oe_n,
                     ),
                     Tristate(pads.dq[j], dq_o, ~dq_oe_n, dq_i)
@@ -466,7 +498,9 @@ class NexusDDRPHY(Module, AutoCSR):
         self.comb += dqs_re.eq(rddata_en.taps[rdtap] | rddata_en.taps[rdtap + 1])
 
         # Write Control Path -----------------------------------------------------------------------
-        wrtap = cwl_sys_latency
+        # The Nexus write path is one memory-clock late. Start one sys_clk cycle early and use the
+        # fixed half-word bitslips above to place DQ, DM, DQS and their tristates at the JEDEC CWL.
+        wrtap = cwl_sys_latency - 1
 
         # Create a delay line of write commands coming from the DFI interface. This taps are used to
         # control DQ/DQS tristates and to select write data of the DRAM burst from the DFI interface.
