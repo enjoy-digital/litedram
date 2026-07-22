@@ -31,8 +31,8 @@ from litedram.phy.dfi import *
 
 class BitSlip(Module):
     def __init__(self, dw, rst=None, slp=None, cycles=1):
-        self.i = Signal(dw)
-        self.o = Signal(dw)
+        self.i   = Signal(dw)
+        self.o   = Signal(dw)
         self.rst = Signal() if rst is None else rst
         self.slp = Signal() if slp is None else slp
 
@@ -147,8 +147,8 @@ class NexusDDRPHY(Module, AutoCSR):
         self.submodules.init = NexusDDRPHYInit()
 
         # Parameters -------------------------------------------------------------------------------
-        cl  = get_default_cl( memtype, tck) if cl  is None else cl
-        cwl = get_default_cwl(memtype, tck) if cwl is None else cwl
+        cl              = get_default_cl( memtype, tck) if cl  is None else cl
+        cwl             = get_default_cwl(memtype, tck) if cwl is None else cwl
         cl_sys_latency  = get_sys_latency(nphases, cl)
         cwl_sys_latency = get_sys_latency(nphases, cwl)
 
@@ -197,7 +197,7 @@ class NexusDDRPHY(Module, AutoCSR):
 
         # # #
 
-        bl8_chunk   = Signal()
+        bl8_chunk = Signal()
 
         # Iterate on pads groups -------------------------------------------------------------------
         for pads_group in range(len(pads.groups)):
@@ -271,55 +271,55 @@ class NexusDDRPHY(Module, AutoCSR):
                 If(self._dly_sel.storage[i] & self._rdly_dq_inc.wr_stb, rdly.eq(rdly + 1))
             ]
             self.specials += Instance("DQSBUF",
-                p_SIGN_READ = "POSITIVE",
-                p_S_READ = "0",
-                p_SIGN_WRITE = "POSITIVE",
-                p_S_WRITE = "0",
-                p_ENABLE_FIFO = "ENABLED",
-                p_FORCE_READ = "ENABLED",
-                p_FREE_WHEEL = "DDR",
-                p_MT_EN_READ = "ENABLED",
-                p_MT_EN_WRITE = "ENABLED",
+                p_SIGN_READ            = "POSITIVE",
+                p_S_READ               = "0",
+                p_SIGN_WRITE           = "POSITIVE",
+                p_S_WRITE              = "0",
+                p_ENABLE_FIFO          = "ENABLED",
+                p_FORCE_READ           = "ENABLED",
+                p_FREE_WHEEL           = "DDR",
+                p_MT_EN_READ           = "ENABLED",
+                p_MT_EN_WRITE          = "ENABLED",
                 p_MT_EN_WRITE_LEVELING = "ENABLED",
-                p_READ_ENABLE = "ENABLED",
-                p_RX_CENTERED = "ENABLED",
-                p_MODX = "MDDRX2",
-                p_UPDATE_QU = "UP1_AND_UP0_SAME",
-                p_WRITE_ENABLE = "ENABLED",
+                p_READ_ENABLE          = "ENABLED",
+                p_RX_CENTERED          = "ENABLED",
+                p_MODX                 = "MDDRX2",
+                p_UPDATE_QU            = "UP1_AND_UP0_SAME",
+                p_WRITE_ENABLE         = "ENABLED",
 
                 # Clocks / Reset
-                i_RST            = ResetSignal("sys"),
-                i_RSTSMCNT       = ResetSignal("sys"),
-                i_SCLK           = ClockSignal("sys"),
-                i_ECLKIN         = ClockSignal("sys2x"),
-                i_SELCLK         = 0,
-                i_DLLCODE        = self.init.delay,
-                i_PAUSE          = self.init.pause | self._dly_sel.storage[i],
+                i_RST                  = ResetSignal("sys"),
+                i_RSTSMCNT             = ResetSignal("sys"),
+                i_SCLK                 = ClockSignal("sys"),
+                i_ECLKIN               = ClockSignal("sys2x"),
+                i_SELCLK               = 0,
+                i_DLLCODE              = self.init.delay,
+                i_PAUSE                = self.init.pause | self._dly_sel.storage[i],
 
                 # Control
                 # Assert LOADNs to use DDRDEL control
-                i_RDLOADN        = self.init.loadn,
-                i_READMOVE       = self.init.move,
-                i_RDDIR          = 0,
-                i_WRLOAD_N       = self.init.loadn,
-                i_WRMOVE         = self.init.move,
-                i_WRDIR          = 0,
-                i_WRLVLOAD_N     = self.init.loadn,
-                i_WRLVMOVE       = self.init.move,
-                i_WRLVDIR        = 0,
+                i_RDLOADN              = self.init.loadn,
+                i_READMOVE             = self.init.move,
+                i_RDDIR                = 0,
+                i_WRLOAD_N             = self.init.loadn,
+                i_WRMOVE               = self.init.move,
+                i_WRDIR                = 0,
+                i_WRLVLOAD_N           = self.init.loadn,
+                i_WRLVMOVE             = self.init.move,
+                i_WRLVDIR              = 0,
                 # Reads (generate shifted DQS clock for reads)
-                i_READ          = Cat(dqs_re, dqs_re, dqs_re, dqs_re),
-                i_RDCLKSEL      = rdly,
-                i_DQSI           = dqs_i,
-                o_DQSR90         = dqsr90,
-                o_RDPNTR         = rdpntr,
-                o_WRPNTR         = wrpntr,
-                o_DATAVALID      = self.datavalid[i],
-                o_BURSTDETECT       = burstdet,
+                i_READ                 = Cat(dqs_re, dqs_re, dqs_re, dqs_re),
+                i_RDCLKSEL             = rdly,
+                i_DQSI                 = dqs_i,
+                o_DQSR90               = dqsr90,
+                o_RDPNTR               = rdpntr,
+                o_WRPNTR               = wrpntr,
+                o_DATAVALID            = self.datavalid[i],
+                o_BURSTDETECT          = burstdet,
 
                 # Writes (generate shifted ECLK clock for writes)
-                o_DQSW270        = dqsw270,
-                o_DQSW           = dqsw
+                o_DQSW270              = dqsw270,
+                o_DQSW                 = dqsw
             )
             burstdet_d = Signal()
             self.sync += [
@@ -410,10 +410,10 @@ class NexusDDRPHY(Module, AutoCSR):
                 self.submodules += dq_i_bitslip
                 self.specials += [
                     Instance("DELAYB",
-                        p_DEL_VALUE = "21",
+                        p_DEL_VALUE    = "21",
                         p_COARSE_DELAY = "0NS",
-                        i_A        = dq_i,
-                        o_Z        = dq_i_delayed
+                        i_A            = dq_i,
+                        o_Z            = dq_i_delayed
                     ),
                     Instance("IDDRX2DQ",
                         i_RST     = ResetSignal("sys"),
