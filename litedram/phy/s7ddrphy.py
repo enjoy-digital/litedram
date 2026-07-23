@@ -70,6 +70,13 @@ class S7DDRPHY(Module, AutoCSR):
         rdphase         = get_sys_phase(nphases, cl_sys_latency,   cl + cmd_latency)
         wrphase         = get_sys_phase(nphases, cwl_sys_latency, cwl + cmd_latency)
 
+        # Artix-7 requires read data one memory-clock phase into the ISERDESE2 word for reliable
+        # read leveling. This was previously achieved by programming CL + 1 in the DDR3 MR0. Keep
+        # the configured CL unchanged and express the compensation in the PHY schedule instead.
+        if (memtype == "DDR3") and (not with_odelay):
+            phase_cycles, rdphase = divmod(rdphase + 1, nphases)
+            cl_sys_latency -= phase_cycles
+
         # Registers --------------------------------------------------------------------------------
         self._rst             = CSRStorage()
 
@@ -120,12 +127,6 @@ class S7DDRPHY(Module, AutoCSR):
 
         wdly_dq_bitslip_rst  = cdc(self._wdly_dq_bitslip_rst.wr_stb)
         wdly_dq_bitslip  = cdc(self._wdly_dq_bitslip.wr_stb)
-
-        # PHY settings -----------------------------------------------------------------------------
-        if (memtype == "DDR3") and (not with_odelay):
-            # DDR3 Write leveling is not possible on Artix7 due to the lack of ODELAYE2, adding +1
-            # to cl in MR register increases sys_clk_freq range.
-            cl += 1
 
         # Some calibrations like write_leveling or latency calibration are not supported
         # for DDR2 chip.
