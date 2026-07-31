@@ -119,7 +119,10 @@ class ECP5DDRPHY(Module, AutoCSR):
         cwl          = None,
         cmd_delay    = 0,
         clk_polarity = 0,
-        dm_remapping = None):
+        dm_remapping = None,
+        dm_skip      = False, # unconditonally force DM IOs to zero and bypass ODDRX2DQA
+                              # and l2_cache must be set at target level to avoid partial access
+        ):
         assert isinstance(cmd_delay, int) and cmd_delay < 128
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
@@ -327,24 +330,28 @@ class ECP5DDRPHY(Module, AutoCSR):
             ]
 
             # DM -----------------------------------------------------------------------------------
-            dm_o_data       = Signal(8)
-            dm_o_data_d     = Signal(8)
-            dm_o_data_muxed = Signal(4)
-            for n in range(8):
-                self.comb += dm_o_data[n].eq(dfi.phases[n//4].wrdata_mask[n%4*databits//8+dm_remapping.get(i, i)])
-            self.sync += dm_o_data_d.eq(dm_o_data)
-            dm_bl8_cases = {}
-            dm_bl8_cases[0] = dm_o_data_muxed.eq(dm_o_data[:4])
-            dm_bl8_cases[1] = dm_o_data_muxed.eq(dm_o_data_d[4:])
-            self.sync += Case(bl8_chunk, dm_bl8_cases)
-            self.specials += Instance("ODDRX2DQA",
-                i_RST     = ResetSignal("sys"),
-                i_SCLK    = ClockSignal("sys"),
-                i_ECLK    = ClockSignal("sys2x"),
-                i_DQSW270 = dqsw270,
-                **{f"i_D{n}": dm_o_data_muxed[n] for n in range(4)},
-                o_Q       = pads.dm[i]
-            )
+            if dm_skip:
+            # Force DM IOs to zero.
+                self.comb += pads.dm[i].eq(0)
+            else:
+                dm_o_data       = Signal(8)
+                dm_o_data_d     = Signal(8)
+                dm_o_data_muxed = Signal(4)
+                for n in range(8):
+                    self.comb += dm_o_data[n].eq(dfi.phases[n//4].wrdata_mask[n%4*databits//8+dm_remapping.get(i, i)])
+                self.sync += dm_o_data_d.eq(dm_o_data)
+                dm_bl8_cases = {}
+                dm_bl8_cases[0] = dm_o_data_muxed.eq(dm_o_data[:4])
+                dm_bl8_cases[1] = dm_o_data_muxed.eq(dm_o_data_d[4:])
+                self.sync += Case(bl8_chunk, dm_bl8_cases)
+                self.specials += Instance("ODDRX2DQA",
+                    i_RST     = ResetSignal("sys"),
+                    i_SCLK    = ClockSignal("sys"),
+                    i_ECLK    = ClockSignal("sys2x"),
+                    i_DQSW270 = dqsw270,
+                    **{f"i_D{n}": dm_o_data_muxed[n] for n in range(4)},
+                    o_Q       = pads.dm[i]
+                )
 
             # DQ -----------------------------------------------------------------------------------
             for j in range(8*i, 8*(i+1)):
