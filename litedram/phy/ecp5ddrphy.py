@@ -120,9 +120,7 @@ class ECP5DDRPHY(Module, AutoCSR):
         cmd_delay    = 0,
         clk_polarity = 0,
         dm_remapping = None,
-        dm_skip      = False, # unconditonally force DM IOs to zero and bypass ODDRX2DQA
-                              # and l2_cache must be set at target level to avoid partial access
-        ):
+        with_dm      = True):
         assert isinstance(cmd_delay, int) and cmd_delay < 128
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
@@ -178,6 +176,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             read_leveling = True,
             bitslips      = 4,
             delays        = 8,
+            with_dm       = with_dm,
         )
 
         # DFI Interface ----------------------------------------------------------------------------
@@ -330,10 +329,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             ]
 
             # DM -----------------------------------------------------------------------------------
-            if dm_skip:
-            # Force DM IOs to zero.
-                self.comb += pads.dm[i].eq(0)
-            else:
+            if with_dm:
                 dm_o_data       = Signal(8)
                 dm_o_data_d     = Signal(8)
                 dm_o_data_muxed = Signal(4)
@@ -352,6 +348,9 @@ class ECP5DDRPHY(Module, AutoCSR):
                     **{f"i_D{n}": dm_o_data_muxed[n] for n in range(4)},
                     o_Q       = pads.dm[i]
                 )
+            else:
+                # DM-less configurations require full-width writes.
+                self.comb += pads.dm[i].eq(0)
 
             # DQ -----------------------------------------------------------------------------------
             for j in range(8*i, 8*(i+1)):

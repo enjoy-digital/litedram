@@ -7,6 +7,7 @@
 import unittest
 
 from migen import *
+from migen.fhdl.specials import Instance
 
 from litedram.common import get_default_cwl, get_sys_latency
 from litedram.phy.ecp5ddrphy import ECP5DDRPHY
@@ -60,3 +61,18 @@ class TestDDR3PHYSettings(unittest.TestCase):
                         phy.settings.write_latency,
                         cwl_sys_latency + write_latency_offset,
                     )
+
+    def test_ecp5_without_dm(self):
+        with_dm    = ECP5DDRPHY(self.get_pads())
+        without_dm = ECP5DDRPHY(self.get_pads(), with_dm=False)
+
+        def count_oddrx2dqa(phy):
+            fragment = phy.get_fragment()
+            return sum(
+                isinstance(special, Instance) and special.of == "ODDRX2DQA"
+                for special in fragment.specials
+            )
+
+        self.assertTrue(with_dm.settings.with_dm)
+        self.assertFalse(without_dm.settings.with_dm)
+        self.assertEqual(count_oddrx2dqa(with_dm) - count_oddrx2dqa(without_dm), 1)
