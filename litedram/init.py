@@ -143,6 +143,9 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
     cl  = phy_settings.cl
     bl  = 8
     cwl = phy_settings.cwl
+    dll_off = getattr(phy_settings, "dll_off", False)
+    if dll_off and (cl != 6 or cwl != 6):
+        raise ValueError("DDR3 DLL-off mode requires CL=6 and CWL=6.")
 
     def format_mr0(bl, cl, wr, dll_reset):
         bl_to_mr0 = {
@@ -217,10 +220,14 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
     rtt_wr  = getattr(phy_settings, "rtt_wr",  "60ohm")
     ron     = getattr(phy_settings, "ron",     "34ohm")
     tdqs    = getattr(phy_settings, "tdqs",    0)
+    if dll_off:
+        # Neither nominal nor dynamic ODT is supported with the DRAM DLL off.
+        rtt_nom = rtt_wr = "disabled"
 
     wr  = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
     mr0 = format_mr0(bl, cl, wr, 1)
     mr1 = format_mr1(z_to_ron[ron], z_to_rtt_nom[rtt_nom], tdqs)
+    mr1 |= int(dll_off)
     mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
     mr3 = 0
 

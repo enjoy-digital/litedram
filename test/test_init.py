@@ -26,6 +26,25 @@ def update_c_reference(content, filename):
     f.close()
 
 class TestInit(unittest.TestCase):
+    def test_ddr3_dll_off(self):
+        from types import SimpleNamespace
+        from litedram.init import get_ddr3_phy_init_sequence
+
+        phy = SimpleNamespace(cl=6, cwl=6, nphases=2, dll_off=True)
+        timing = SimpleNamespace(tWTR=3)
+        sequence, registers = get_ddr3_phy_init_sequence(phy, timing)
+        modes = {bank: address for label, address, bank, command, delay in sequence
+                 if label.startswith("Load Mode Register")}
+        self.assertEqual(modes[1], 0x3)  # DLL off, RZQ/7 drive, RTT_NOM disabled.
+        self.assertEqual(modes[2], 0x8)  # CWL6, RTT_WR disabled.
+        self.assertEqual(registers[1], modes[1])
+
+        for cl, cwl in ((5, 6), (6, 5), (7, 7)):
+            with self.subTest(cl=cl, cwl=cwl):
+                phy.cl, phy.cwl = cl, cwl
+                with self.assertRaises(ValueError):
+                    get_ddr3_phy_init_sequence(phy, timing)
+
     def test_sdr(self):
         from litex_boards.targets.scarabhardware_minispartan6 import BaseSoC
         soc       = BaseSoC()

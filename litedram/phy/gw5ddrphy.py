@@ -124,7 +124,8 @@ class GW5DDRPHY(Module, AutoCSR):
         cwl          = None,
         cmd_delay    = 0,
         clk_polarity = 0,
-        dm_remapping = None):
+        dm_remapping = None,
+        dll_off      = False):
         assert isinstance(cmd_delay, int) and cmd_delay < 128
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
@@ -140,8 +141,14 @@ class GW5DDRPHY(Module, AutoCSR):
 
         # Init -------------------------------------------------------------------------------------
         self.submodules.init = GW5DDRPHYInit()
+        pause = Signal()
+        self.specials += MultiReg(self.init.pause, pause, "sys")
 
         # Parameters -------------------------------------------------------------------------------
+        if dll_off:
+            if cl not in (None, 6) or cwl not in (None, 6):
+                raise ValueError("DDR3 DLL-off mode requires CL=6 and CWL=6.")
+            cl, cwl = 6, 6
         cl  = get_default_cl( memtype, tck) if cl  is None else cl
         cwl = get_default_cwl(memtype, tck) if cwl is None else cwl
         cl_sys_latency  = get_sys_latency(nphases, cl)
@@ -179,8 +186,9 @@ class GW5DDRPHY(Module, AutoCSR):
             write_latency = cwl_sys_latency - 1,
             read_leveling = True,
             bitslips      = 4,
-            delays        = 8,
+            delays        = 128,
         )
+        self.settings.dll_off = dll_off
 
         # DFI Interface ----------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, 4*databits, nphases)
@@ -282,12 +290,7 @@ class GW5DDRPHY(Module, AutoCSR):
             dqsw     = Signal()
             rdpntr   = Signal(3)
             wrpntr   = Signal(3)
-            rdly     = Signal(3)
             burstdet = Signal()
-            self.sync += [
-                If(self._dly_sel.storage[i] & self._rdly_dq_rst.wr_stb, rdly.eq(0)),
-                If(self._dly_sel.storage[i] & self._rdly_dq_inc.wr_stb, rdly.eq(rdly + 1))
-            ]
             self.specials += Instance("DQS",
                 p_DQS_MODE = "X2_DDR3",
                 # Clocks / Reset
@@ -295,13 +298,13 @@ class GW5DDRPHY(Module, AutoCSR):
                 i_PCLK     = ClockSignal("sys"),
                 i_FCLK     = ClockSignal("sys2x"),
                 i_DLLSTEP  = self.init.delay,
-                i_HOLD     = self.init.pause | self._dly_sel.storage[i],
+                i_HOLD     = pause | self._dly_sel.storage[i],
 
                 # Control
-                # Assert LOADNs to use DDRDEL control
-                i_RLOADN   = 0,
-                i_RMOVE    = 0,
-                i_RDIR     = 1,
+                # Calibrate the read delay, keeping the FIFO clock source fixed.
+                i_RLOADN   = ~(self._dly_sel.storage[i] & self._rdly_dq_rst.wr_stb),
+                i_RMOVE    = self._dly_sel.storage[i] & self._rdly_dq_inc.wr_stb,
+                i_RDIR     = 0,
                 i_WLOADN   = 0,
                 i_WMOVE    = 0,
                 i_WDIR     = 1,
@@ -310,7 +313,7 @@ class GW5DDRPHY(Module, AutoCSR):
 
                 # Reads (generate shifted DQS clock for reads)
                 i_READ     = Replicate(dqs_re, 4),
-                i_RCLKSEL  = rdly,
+                i_RCLKSEL  = 0,
                 i_DQSIN    = dqs_i,
                 o_DQSR90   = dqsr90,
                 o_RPOINT   = rdpntr,
@@ -403,8 +406,9 @@ class GW5DDRPHY(Module, AutoCSR):
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal("sys2x"),
                     i_TCLK  = dqsw270,
-                    i_TX0   = ~dq_oe,
-                    i_TX1   = ~dq_oe,
+                    # Enable DQ before the first DQS edge of the write burst.
+                    i_TX0   = ~(dq_oe | dqs_preamble),
+                    i_TX1   = ~(dq_oe | dqs_preamble),
                     **{f"i_D{n}": dq_o_data_muxed[n] for n in range(4)},
                     o_Q0    = dq_o,
                     o_Q1    = dq_o_oen,
