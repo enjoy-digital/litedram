@@ -340,10 +340,13 @@ class GW5DDRPHY(Module, AutoCSR):
             if nphases == 4:
                 # RBURST can rise and fall between system clock edges in X4 mode.
                 # Capture its edge in the fast domain before crossing to sys.
+                # Synchronize before edge detection so both inputs are registered.
                 burstdet_sync = PulseSynchronizer(fast_domain + "_i", "sys")
                 self.submodules += burstdet_sync
-                self.sync.sys4x_i += burstdet_d.eq(burstdet)
-                self.comb += burstdet_sync.i.eq(burstdet & ~burstdet_d)
+                burstdet_sample = Signal()
+                self.specials += MultiReg(burstdet, burstdet_sample, fast_domain + "_i")
+                self.sync.sys4x_i += burstdet_d.eq(burstdet_sample)
+                self.comb += burstdet_sync.i.eq(burstdet_sample & ~burstdet_d)
                 burst_event = burstdet_sync.o
             else:
                 self.sync += burstdet_d.eq(burstdet)
