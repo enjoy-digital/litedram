@@ -7,7 +7,7 @@
 # Copyright (c) 2023 Gwenhael Goavec-Merou <gwenhael@enjoy-digital.fr>
 # SPDX-License-Identifier: BSD-2-Clause
 
-# 1:2 frequency-ratio DDR3 PHY for Gowin's GW5A
+# 1:2 / 1:4 frequency-ratio DDR3 PHY for Gowin's GW5A
 # DDR3: 800 MT/s
 
 from functools import reduce
@@ -20,7 +20,7 @@ from migen import *
 from litex.gen import *
 
 from migen.fhdl.specials import Tristate
-from migen.genlib.cdc import MultiReg
+from migen.genlib.cdc import MultiReg, PulseSynchronizer
 
 from litex.gen.genlib.misc import timeline
 
@@ -56,7 +56,7 @@ class BitSlip(Module):
 # Gowin GW5A DDR PHY Initialization -----------------------------------------------------------------
 
 class GW5DDRPHYInit(Module):
-    def __init__(self):
+    def __init__(self, clock_domain="sys2x"):
         self.pause = Signal()
         self.stop  = Signal()
         self.delay = Signal(8)
@@ -77,7 +77,7 @@ class GW5DDRPHYInit(Module):
         self.specials += Instance("DDRDLL",
             p_SCAL_EN  = "false",
             i_RESET    = ResetSignal("init"),
-            i_CLKIN    = ClockSignal("sys2x"),
+            i_CLKIN    = ClockSignal(clock_domain),
             i_UPDNCNTL = ~update,
             i_STOP     = freeze,
             o_STEP     = delay,
@@ -118,6 +118,11 @@ class GW5DDRPHYInit(Module):
 # Gowin GW5A DDR PHY -------------------------------------------------------------------------------
 
 class GW5DDRPHY(Module, AutoCSR):
+    """DDR3 PHY using sys, sys2x/sys4x, and init clock domains.
+
+    Quarter-rate mode also requires sys4x_i, the ungated fast PLL output, to
+    capture short burst-detection pulses. The gated HCLK cannot clock fabric FFs.
+    """
     def __init__(self, pads,
         sys_clk_freq = 100e6,
         cl           = None,
@@ -125,22 +130,27 @@ class GW5DDRPHY(Module, AutoCSR):
         cmd_delay    = 0,
         clk_polarity = 0,
         dm_remapping = None,
-        dll_off      = False):
+        dll_off      = False,
+        nphases      = 2):
+        if nphases not in (2, 4):
+            raise ValueError("GW5DDRPHY supports 2 or 4 DFI phases.")
         assert isinstance(cmd_delay, int) and cmd_delay < 128
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
-        tck         = 2/(2*2*sys_clk_freq)
+        tck         = 1/(nphases*sys_clk_freq)
         addressbits = len(pads.a)
         bankbits    = len(pads.ba)
         nranks      = 1 if not hasattr(pads, "cs_n") else len(pads.cs_n)
         databits    = len(pads.dq)
-        nphases     = 2
+        serdes_bits = 2*nphases
+        phase_beats = 8//nphases
+        fast_domain = f"sys{nphases}x"
         if not dm_remapping:
             dm_remapping = {}
         assert databits%8 == 0
 
         # Init -------------------------------------------------------------------------------------
-        self.submodules.init = GW5DDRPHYInit()
+        self.submodules.init = GW5DDRPHYInit(fast_domain)
         pause = Signal()
         self.specials += MultiReg(self.init.pause, pause, "sys")
 
@@ -175,23 +185,23 @@ class GW5DDRPHY(Module, AutoCSR):
             phytype       = "GW5DDRPHY",
             memtype       = memtype,
             databits      = databits,
-            dfi_databits  = 4*databits,
+            dfi_databits  = phase_beats*databits,
             nranks        = nranks,
             nphases       = nphases,
             rdphase       = rdphase,
             wrphase       = wrphase,
             cl            = cl,
             cwl           = cwl,
-            read_latency  = cl_sys_latency + 9,
+            read_latency  = cl_sys_latency + (9 if nphases == 2 else 7),
             write_latency = cwl_sys_latency - 1,
             read_leveling = True,
-            bitslips      = 4,
+            bitslips      = serdes_bits,
             delays        = 128,
         )
         self.settings.dll_off = dll_off
 
         # DFI Interface ----------------------------------------------------------------------------
-        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 4*databits, nphases)
+        self.dfi = dfi = Interface(addressbits, bankbits, nranks, phase_beats*databits, nphases)
 
         # # #
 
@@ -202,17 +212,17 @@ class GW5DDRPHY(Module, AutoCSR):
             pads.sel_group(pads_group)
 
             # Clock --------------------------------------------------------------------------------
-            clk_pattern = {0: 0b1010, 1: 0b0101}[clk_polarity]
+            clk_pattern = {0: 0b10101010, 1: 0b01010101}[clk_polarity]
             for i in range(len(pads.clk_p)):
                 pad_oddrx2f = Signal()
                 pad_clk = Signal()
-                self.specials += Instance("OSER4",
+                self.specials += Instance(f"OSER{serdes_bits}",
                     p_TXCLK_POL = 0b0,
                     i_RESET = ResetSignal("sys"),
                     i_PCLK  = ClockSignal("sys"),
-                    i_FCLK  = ClockSignal("sys2x"),
-                    **{f"i_TX{n}": 0b0 for n in range(2)},
-                    **{f"i_D{n}": (clk_pattern >> n) & 0b1 for n in range(4)},
+                    i_FCLK  = ClockSignal(fast_domain),
+                    **{f"i_TX{n}": 0b0 for n in range(nphases)},
+                    **{f"i_D{n}": (clk_pattern >> n) & 0b1 for n in range(serdes_bits)},
                     o_Q0    = pad_oddrx2f,
                     o_Q1    = Open()
                 )
@@ -254,13 +264,13 @@ class GW5DDRPHY(Module, AutoCSR):
                     continue
                 for i in range(len(pad)):
                     pad_oddrx2f = Signal()
-                    self.specials += Instance("OSER4",
+                    self.specials += Instance(f"OSER{serdes_bits}",
                         p_TXCLK_POL = 0b0,
                         i_RESET = ResetSignal("sys"),
                         i_PCLK = ClockSignal("sys"),
-                        i_FCLK = ClockSignal("sys2x"),
-                        **{f"i_TX{n}": 0b0 for n in range(2)},
-                        **{f"i_D{n}": getattr(dfi.phases[n//2], dfi_name)[i] for n in range(4)},
+                        i_FCLK = ClockSignal(fast_domain),
+                        **{f"i_TX{n}": 0b0 for n in range(nphases)},
+                        **{f"i_D{n}": getattr(dfi.phases[n//2], dfi_name)[i] for n in range(serdes_bits)},
                         o_Q0   = pad_oddrx2f,
                         o_Q1   = Open()
                     )
@@ -292,11 +302,11 @@ class GW5DDRPHY(Module, AutoCSR):
             wrpntr   = Signal(3)
             burstdet = Signal()
             self.specials += Instance("DQS",
-                p_DQS_MODE = "X2_DDR3",
+                p_DQS_MODE = "X2_DDR3" if nphases == 2 else "X4",
                 # Clocks / Reset
                 i_RESET    = ResetSignal("sys"),
                 i_PCLK     = ClockSignal("sys"),
-                i_FCLK     = ClockSignal("sys2x"),
+                i_FCLK     = ClockSignal(fast_domain),
                 i_DLLSTEP  = self.init.delay,
                 i_HOLD     = pause | self._dly_sel.storage[i],
 
@@ -327,26 +337,38 @@ class GW5DDRPHY(Module, AutoCSR):
                 o_DQSW0    = dqsw
             )
             burstdet_d = Signal()
+            if nphases == 4:
+                # RBURST can rise and fall between system clock edges in X4 mode.
+                # Capture its edge in the fast domain before crossing to sys.
+                burstdet_sync = PulseSynchronizer(fast_domain + "_i", "sys")
+                self.submodules += burstdet_sync
+                self.sync.sys4x_i += burstdet_d.eq(burstdet)
+                self.comb += burstdet_sync.i.eq(burstdet & ~burstdet_d)
+                burst_event = burstdet_sync.o
+            else:
+                self.sync += burstdet_d.eq(burstdet)
+                burst_event = burstdet & ~burstdet_d
             self.sync += [
-                burstdet_d.eq(burstdet),
                 If(self._burstdet_clr.wr_stb,  self._burstdet_seen.status[i].eq(0)),
-                If(burstdet & ~burstdet_d, self._burstdet_seen.status[i].eq(1)),
+                If(burst_event, self._burstdet_seen.status[i].eq(1)),
             ]
 
             # DQS ----------------------------------------------------------------------------------
             dqs_o     = Signal()
             dqs_o_oen = Signal()
             self.specials += [
-                Instance("OSER4_MEM",
+                Instance(f"OSER{serdes_bits}_MEM",
                     p_TCLK_SOURCE = "DQSW",
                     p_TXCLK_POL   = 0b1,
                     i_RESET = ResetSignal("sys"),
                     i_PCLK  = ClockSignal("sys"),
-                    i_FCLK  = ClockSignal("sys2x"),
+                    i_FCLK  = ClockSignal(fast_domain),
                     i_TCLK  = dqsw,
-                    i_TX0   = ~(dqs_oe | dqs_postamble),
-                    i_TX1   = ~(dqs_oe | dqs_preamble),
-                    **{f"i_D{n}": (0b1010 >> n) & 0b1 for n in range(4)},
+                    **{f"i_TX{n}": ~(dqs_oe |
+                        (dqs_postamble if n == 0 else 0) |
+                        (dqs_preamble if n == nphases - 1 else 0))
+                        for n in range(nphases)},
+                    **{f"i_D{n}": (0b10101010 >> n) & 0b1 for n in range(serdes_bits)},
                     o_Q0    = dqs_o,
                     o_Q1    = dqs_o_oen
                 ),
@@ -362,23 +384,26 @@ class GW5DDRPHY(Module, AutoCSR):
             # DM -----------------------------------------------------------------------------------
             dm_o_data       = Signal(8)
             dm_o_data_d     = Signal(8)
-            dm_o_data_muxed = Signal(4)
+            dm_o_data_muxed = Signal(serdes_bits)
             for n in range(8):
-                self.comb += dm_o_data[n].eq(dfi.phases[n//4].wrdata_mask[n%4*databits//8+dm_remapping.get(i, i)])
-            self.sync += dm_o_data_d.eq(dm_o_data)
-            dm_bl8_cases = {}
-            dm_bl8_cases[0] = dm_o_data_muxed.eq(dm_o_data[:4])
-            dm_bl8_cases[1] = dm_o_data_muxed.eq(dm_o_data_d[4:])
-            self.sync += Case(bl8_chunk, dm_bl8_cases)
-            self.specials += Instance("OSER4_MEM",
+                self.comb += dm_o_data[n].eq(dfi.phases[n//phase_beats].wrdata_mask[n%phase_beats*databits//8+dm_remapping.get(i, i)])
+            if nphases == 2:
+                self.sync += dm_o_data_d.eq(dm_o_data)
+                self.sync += Case(bl8_chunk, {
+                    0: dm_o_data_muxed.eq(dm_o_data[:4]),
+                    1: dm_o_data_muxed.eq(dm_o_data_d[4:]),
+                })
+            else:
+                self.sync += dm_o_data_muxed.eq(dm_o_data)
+            self.specials += Instance(f"OSER{serdes_bits}_MEM",
                 p_TCLK_SOURCE = "DQSW270",
                 p_TXCLK_POL   = 0b0,
                 i_RESET = ResetSignal("sys"),
                 i_PCLK  = ClockSignal("sys"),
-                i_FCLK  = ClockSignal("sys2x"),
+                i_FCLK  = ClockSignal(fast_domain),
                 i_TCLK  = dqsw270,
-                **{f"i_TX{n}": 0b0 for n in range(2)},
-                **{f"i_D{n}": dm_o_data_muxed[n] for n in range(4)},
+                **{f"i_TX{n}": 0b0 for n in range(nphases)},
+                **{f"i_D{n}": dm_o_data_muxed[n] for n in range(serdes_bits)},
                 o_Q0    = pads.dm[i],
                 o_Q1    = Open()
             )
@@ -391,49 +416,54 @@ class GW5DDRPHY(Module, AutoCSR):
                 dq_i_data       = Signal(8)
                 dq_o_data       = Signal(8)
                 dq_o_data_d     = Signal(8)
-                dq_o_data_muxed = Signal(4)
+                dq_o_data_muxed = Signal(serdes_bits)
                 for n in range(8):
-                    self.comb += dq_o_data[n].eq(dfi.phases[n//4].wrdata[n%4*databits+j])
-                self.sync += dq_o_data_d.eq(dq_o_data)
-                dq_bl8_cases = {}
-                dq_bl8_cases[0] = dq_o_data_muxed.eq(dq_o_data[:4])
-                dq_bl8_cases[1] = dq_o_data_muxed.eq(dq_o_data_d[4:])
-                self.sync += Case(bl8_chunk, dq_bl8_cases)
-                self.specials += Instance("OSER4_MEM",
+                    self.comb += dq_o_data[n].eq(dfi.phases[n//phase_beats].wrdata[n%phase_beats*databits+j])
+                if nphases == 2:
+                    self.sync += dq_o_data_d.eq(dq_o_data)
+                    self.sync += Case(bl8_chunk, {
+                        0: dq_o_data_muxed.eq(dq_o_data[:4]),
+                        1: dq_o_data_muxed.eq(dq_o_data_d[4:]),
+                    })
+                else:
+                    self.sync += dq_o_data_muxed.eq(dq_o_data)
+                self.specials += Instance(f"OSER{serdes_bits}_MEM",
                     p_TCLK_SOURCE = "DQSW270",
                     p_TXCLK_POL   = 0b0,
                     i_RESET = ResetSignal("sys"),
                     i_PCLK  = ClockSignal("sys"),
-                    i_FCLK  = ClockSignal("sys2x"),
+                    i_FCLK  = ClockSignal(fast_domain),
                     i_TCLK  = dqsw270,
                     # Enable DQ before the first DQS edge of the write burst.
-                    i_TX0   = ~(dq_oe | dqs_preamble),
-                    i_TX1   = ~(dq_oe | dqs_preamble),
-                    **{f"i_D{n}": dq_o_data_muxed[n] for n in range(4)},
+                    **{f"i_TX{n}": ~(dq_oe | dqs_preamble) for n in range(nphases)},
+                    **{f"i_D{n}": dq_o_data_muxed[n] for n in range(serdes_bits)},
                     o_Q0    = dq_o,
                     o_Q1    = dq_o_oen,
                 )
-                dq_i_bitslip = BitSlip(4,
+                dq_i_bitslip = BitSlip(serdes_bits,
                     rst    = self._dly_sel.storage[i] & self._rdly_dq_bitslip_rst.wr_stb,
                     slp    = self._dly_sel.storage[i] & self._rdly_dq_bitslip.wr_stb,
                     cycles = 1)
                 self.submodules += dq_i_bitslip
-                self.specials += Instance("IDES4_MEM",
+                self.specials += Instance(f"IDES{serdes_bits}_MEM",
                     i_RESET = ResetSignal("sys"),
                     i_PCLK  = ClockSignal("sys"),
-                    i_FCLK  = ClockSignal("sys2x"),
+                    i_FCLK  = ClockSignal(fast_domain),
                     i_ICLK  = dqsr90,
                     i_RADDR = rdpntr,
                     i_WADDR = wrpntr,
                     i_D     = dq_i,
                     i_CALIB = 0,
-                    **{f"o_Q{n}": dq_i_bitslip.i[n] for n in range(4)},
+                    **{f"o_Q{n}": dq_i_bitslip.i[n] for n in range(serdes_bits)},
                 )
-                dq_i_bitslip_o_d = Signal(4)
-                self.sync += dq_i_bitslip_o_d.eq(dq_i_bitslip.o)
-                self.comb += dq_i_data.eq(Cat(dq_i_bitslip_o_d, dq_i_bitslip.o))
+                if nphases == 2:
+                    dq_i_bitslip_o_d = Signal(4)
+                    self.sync += dq_i_bitslip_o_d.eq(dq_i_bitslip.o)
+                    self.comb += dq_i_data.eq(Cat(dq_i_bitslip_o_d, dq_i_bitslip.o))
+                else:
+                    self.comb += dq_i_data.eq(dq_i_bitslip.o)
                 for n in range(8):
-                    self.comb += dfi.phases[n//4].rddata[n%4*databits+j].eq(dq_i_data[n])
+                    self.comb += dfi.phases[n//phase_beats].rddata[n%phase_beats*databits+j].eq(dq_i_data[n])
                 self.specials += Instance("IOBUF",
                     i_I   = dq_o,
                     i_OEN = dq_o_oen,
@@ -448,11 +478,8 @@ class GW5DDRPHY(Module, AutoCSR):
         # control DQS read (internal read pulse of the DQSBUF) and the output of the delay is used
         # signal a valid read data to the DFI interface.
         #
-        # The DQS read must be asserted for 2 sys_clk cycles before the read data is coming back from
-        # the DRAM (see 6.2.4 READ Pulse Positioning Optimization of FPGA-TN-02035-1.2)
-        #
-        # The read data valid is asserted for 1 sys_clk cycle when the data is available on the DFI
-        # interface, the latency is the sum of the ODDRX2DQA, CAS, IDDRX2DQA latencies.
+        # DQS read gates the returning burst. Read data valid marks the cycle in which the
+        # complete BL8 burst is available on the DFI interface.
         rddata_en = TappedDelayLine(
             signal = reduce(or_, [dfi.phases[i].rddata_en for i in range(nphases)]),
             ntaps  = self.settings.read_latency
@@ -460,29 +487,28 @@ class GW5DDRPHY(Module, AutoCSR):
         self.submodules += rddata_en
 
         self.comb += [phase.rddata_valid.eq(rddata_en.output) for phase in dfi.phases]
-        self.comb += dqs_re.eq(rddata_en.taps[rdtap] | rddata_en.taps[rdtap + 1])
+        self.comb += dqs_re.eq(reduce(or_, rddata_en.taps[rdtap:rdtap + 4//nphases]))
 
         # Write Control Path -----------------------------------------------------------------------
         wrtap = cwl_sys_latency - 1
 
         # Create a delay line of write commands coming from the DFI interface. This taps are used to
         # control DQ/DQS tristates and to select write data of the DRAM burst from the DFI interface.
-        # The PHY is operating in halfrate mode (so provide 4 datas every sys_clk cycles: 2x for DDR,
-        # 2x for halfrate) but DDR3 requires a burst of 8 datas (BL8) for best efficiency. Writes are
-        # then performed in 2 sys_clk cycles and data needs to be selected for each cycle.
+        # BL8 occupies two system cycles at 1:2 and one at 1:4. In 1:2 mode the write
+        # data mux selects the appropriate half of the burst for each cycle.
         wrdata_en = TappedDelayLine(
             signal = reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]),
             ntaps  = wrtap + 4
         )
         self.submodules += wrdata_en
 
-        self.comb += dq_oe.eq(wrdata_en.taps[wrtap] | wrdata_en.taps[wrtap + 1])
+        burst_cycles = 4//nphases
+        self.comb += dq_oe.eq(reduce(or_, wrdata_en.taps[wrtap:wrtap + burst_cycles]))
         self.comb += bl8_chunk.eq(wrdata_en.taps[wrtap])
         self.comb += dqs_oe.eq(dq_oe)
 
         # Write DQS Postamble/Preamble Control Path ------------------------------------------------
-        # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
-        # write. During writes, DQS tristate is configured as output for at least 4 sys_clk cycles:
-        # 1 for Preamble, 2 for the Write and 1 for the Postamble.
+        # Extend DQS output enable by one memory clock at each end of the burst. The
+        # serializer selects the last/first TX slot of the preceding/following system cycle.
         self.comb += dqs_preamble.eq( wrdata_en.taps[wrtap - 1]  & ~wrdata_en.taps[wrtap + 0])
-        self.comb += dqs_postamble.eq(wrdata_en.taps[wrtap + 2]  & ~wrdata_en.taps[wrtap + 1])
+        self.comb += dqs_postamble.eq(wrdata_en.taps[wrtap + burst_cycles] & ~wrdata_en.taps[wrtap + burst_cycles - 1])
