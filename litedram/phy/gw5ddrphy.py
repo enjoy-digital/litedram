@@ -145,6 +145,7 @@ class GW5DDRPHY(Module, AutoCSR):
         serdes_bits = 2*nphases
         phase_beats = 8//nphases
         fast_domain = f"sys{nphases}x"
+        dll_on_x4   = nphases == 4 and not dll_off
         if not dm_remapping:
             dm_remapping = {}
         assert databits%8 == 0
@@ -292,6 +293,12 @@ class GW5DDRPHY(Module, AutoCSR):
         dqs_oe        = Signal()
         dqs_postamble = Signal()
         dqs_preamble  = Signal()
+        dqs_read = Replicate(dqs_re, 4)
+        if dll_on_x4:
+            # DLL-on returns DQS one CK later than DLL-off at the same CL.
+            dqs_re_d = Signal()
+            self.sync += dqs_re_d.eq(dqs_re)
+            dqs_read = Cat(dqs_re_d, Replicate(dqs_re, 3))
         for i in range(databits//8):
             # DQS
             dqs_i    = Signal()
@@ -312,18 +319,19 @@ class GW5DDRPHY(Module, AutoCSR):
 
                 # Control
                 # Calibrate the read delay, keeping the FIFO clock source fixed.
+                # DLL-on X4 scans toward decreasing delay.
                 i_RLOADN   = ~(self._dly_sel.storage[i] & self._rdly_dq_rst.wr_stb),
                 i_RMOVE    = self._dly_sel.storage[i] & self._rdly_dq_inc.wr_stb,
-                i_RDIR     = 0,
+                i_RDIR     = 1 if dll_on_x4 else 0,
                 i_WLOADN   = 0,
                 i_WMOVE    = 0,
                 i_WDIR     = 1,
                 o_RFLAG    = Open(),
                 o_WFLAG    = Open(),
 
-                # Reads (generate shifted DQS clock for reads)
-                i_READ     = Replicate(dqs_re, 4),
-                i_RCLKSEL  = 0,
+                # Reads (DLL-on X4 uses the opposite read-gate polarity).
+                i_READ     = dqs_read,
+                i_RCLKSEL  = 2 if dll_on_x4 else 0,
                 i_DQSIN    = dqs_i,
                 o_DQSR90   = dqsr90,
                 o_RPOINT   = rdpntr,

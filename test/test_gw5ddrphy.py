@@ -86,3 +86,24 @@ class TestGW5DDRPHY(unittest.TestCase):
             self.assertEqual(phy.settings.bitslips, 2*nphases)
         with self.assertRaises(ValueError):
             GW5DDRPHY(test_ddr3_phy_settings.TestDDR3PHYSettings.get_pads(), nphases=3)
+
+    def test_quarter_rate_read_window(self):
+        for dll_off, expected in ((True, [0xf]), (False, [0xe, 0x1])):
+            with self.subTest(dll_off=dll_off):
+                phy = GW5DDRPHY(test_ddr3_phy_settings.TestDDR3PHYSettings.get_pads(),
+                    nphases=4, sys_clk_freq=25e6 if dll_off else 100e6, dll_off=dll_off)
+                fragment = phy.get_fragment()
+                dqs = next(s for s in fragment.specials if isinstance(s, Instance) and s.of == "DQS")
+                read = next(p.expr for p in dqs.items if isinstance(p, Instance.Input) and p.name == "READ")
+                fragment.specials.clear()
+                windows = []
+                def generator():
+                    yield phy.dfi.phases[phy.settings.rdphase].rddata_en.eq(1)
+                    yield
+                    yield phy.dfi.phases[phy.settings.rdphase].rddata_en.eq(0)
+                    for _ in range(10):
+                        windows.append((yield read))
+                        yield
+                run_simulation(fragment, generator(), clocks={"sys": 40, "sys4x_i": 10, "init": 20})
+                # Keep the BL8 gate four CK long, delayed one CK for DLL-on.
+                self.assertEqual([window for window in windows if window], expected)
