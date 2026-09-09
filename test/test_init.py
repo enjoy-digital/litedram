@@ -30,13 +30,15 @@ class TestInit(unittest.TestCase):
         from types import SimpleNamespace
         from litedram.init import get_ddr3_phy_init_sequence
 
-        phy = SimpleNamespace(cl=6, cwl=6, nphases=2, dll_off=True)
+        phy    = SimpleNamespace(cl=6, cwl=6, nphases=2, dll_off=True)
         timing = SimpleNamespace(tWTR=3)
         sequence, registers = get_ddr3_phy_init_sequence(phy, timing)
-        modes = {bank: address for label, address, bank, command, delay in sequence
-                 if label.startswith("Load Mode Register")}
-        self.assertEqual(modes[1], 0x3)  # DLL off, RZQ/7 drive, RTT_NOM disabled.
-        self.assertEqual(modes[2], 0x8)  # CWL6, RTT_WR disabled.
+        modes = {
+            bank: address for label, address, bank, command, delay in sequence
+            if label.startswith("Load Mode Register")
+        }
+        self.assertEqual(modes[1], 0x3) # DLL off, RZQ/7 drive, RTT_NOM disabled.
+        self.assertEqual(modes[2], 0x8) # CWL6, RTT_WR disabled.
         self.assertEqual(registers[1], modes[1])
 
         for cl, cwl in ((5, 6), (6, 5), (7, 7)):

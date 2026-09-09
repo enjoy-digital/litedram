@@ -152,6 +152,7 @@ class GW5DDRPHY(Module, AutoCSR):
 
         # Init -------------------------------------------------------------------------------------
         self.submodules.init = GW5DDRPHYInit(fast_domain)
+
         pause = Signal()
         self.specials += MultiReg(self.init.pause, pause, "sys")
 
@@ -293,12 +294,14 @@ class GW5DDRPHY(Module, AutoCSR):
         dqs_oe        = Signal()
         dqs_postamble = Signal()
         dqs_preamble  = Signal()
+
         dqs_read = Replicate(dqs_re, 4)
         if dll_on_x4:
             # DLL-on returns DQS one CK later than DLL-off at the same CL.
             dqs_re_d = Signal()
             self.sync += dqs_re_d.eq(dqs_re)
             dqs_read = Cat(dqs_re_d, Replicate(dqs_re, 3))
+
         for i in range(databits//8):
             # DQS
             dqs_i    = Signal()
@@ -360,8 +363,8 @@ class GW5DDRPHY(Module, AutoCSR):
                 self.sync += burstdet_d.eq(burstdet)
                 burst_event = burstdet & ~burstdet_d
             self.sync += [
-                If(self._burstdet_clr.wr_stb,  self._burstdet_seen.status[i].eq(0)),
-                If(burst_event, self._burstdet_seen.status[i].eq(1)),
+                If(self._burstdet_clr.wr_stb, self._burstdet_seen.status[i].eq(0)),
+                If(burst_event,              self._burstdet_seen.status[i].eq(1)),
             ]
 
             # DQS ----------------------------------------------------------------------------------
@@ -375,10 +378,11 @@ class GW5DDRPHY(Module, AutoCSR):
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal(fast_domain),
                     i_TCLK  = dqsw,
-                    **{f"i_TX{n}": ~(dqs_oe |
+                    **{f"i_TX{n}": ~(
+                        dqs_oe |
                         (dqs_postamble if n == 0 else 0) |
-                        (dqs_preamble if n == nphases - 1 else 0))
-                        for n in range(nphases)},
+                        (dqs_preamble if n == nphases - 1 else 0)
+                    ) for n in range(nphases)},
                     **{f"i_D{n}": (0b10101010 >> n) & 0b1 for n in range(serdes_bits)},
                     o_Q0    = dqs_o,
                     o_Q1    = dqs_o_oen

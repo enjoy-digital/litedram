@@ -140,9 +140,9 @@ def get_ddr2_phy_init_sequence(phy_settings, timing_settings):
 # DDR3 ---------------------------------------------------------------------------------------------
 
 def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
-    cl  = phy_settings.cl
-    bl  = 8
-    cwl = phy_settings.cwl
+    cl      = phy_settings.cl
+    bl      = 8
+    cwl     = phy_settings.cwl
     dll_off = getattr(phy_settings, "dll_off", False)
     if dll_off and (cl != 6 or cwl != 6):
         raise ValueError("DDR3 DLL-off mode requires CL=6 and CWL=6.")
