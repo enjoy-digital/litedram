@@ -414,8 +414,8 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         ]
         run_simulation(dut, generators)
 
-    def test_bist_csr_cdc(self):
-	    # Verify BIST (Generator and Checker) with control from CSRs in a different clock domain.
+    def bist_csr_cdc_test(self, sys_period):
+        # Verify BIST with control from CSRs in a different clock domain.
         class DUT(Module):
             def __init__(self):
                 port_kwargs     = dict(address_width=32, data_width=32, clock_domain="async")
@@ -436,6 +436,7 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
         generators = {
             "sys": [
                 main_generator(dut, mem),
+                timeout_generator(300),
             ],
             "async": [
                 mem.write_handler(dut.write_port),
@@ -443,7 +444,36 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
             ]
         }
         clocks = {
-            "sys": 10,
+            "sys": sys_period,
             "async": (7, 3),
         }
         run_simulation(dut, generators, clocks)
+
+    def test_bist_csr_cdc(self):
+        self.bist_csr_cdc_test(sys_period=10)
+
+    def test_bist_csr_cdc_slow_sys(self):
+        self.bist_csr_cdc_test(sys_period=100)
+
+    def test_bist_csr_cdc_configuration(self):
+        # A control packet can arrive and be consumed between two CSR clock edges.
+        for cls, port_cls in ((LiteDRAMBISTGenerator, LiteDRAMNativeWritePort),
+                              (LiteDRAMBISTChecker, LiteDRAMNativeReadPort)):
+            with self.subTest(cls=cls.__name__):
+                port = port_cls(address_width=32, data_width=32, clock_domain="async")
+                dut = cls(port)
+
+                def generator():
+                    yield from dut.base.write(0x40)
+                    yield from dut.end.write(0x140)
+                    yield from dut.length.write(0x80)
+                    yield from dut.random.write(1)
+                    yield from dut.reset.write(1)
+                    for _ in range(4):
+                        yield
+                    self.assertEqual((yield dut.core.base), 0x40)
+                    self.assertEqual((yield dut.core.end), 0x140)
+                    self.assertEqual((yield dut.core.length), 0x80)
+                    self.assertEqual((yield dut.core.random_data), 1)
+
+                run_simulation(dut, generator(), clocks={"sys": 100, "async": (7, 3)})

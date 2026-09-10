@@ -384,7 +384,8 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
                 core.reset.eq(control_cdc.source.valid & control_cdc.source.reset),
                 core.start.eq(control_cdc.source.valid & control_cdc.source.start),
             ]
-            self.sync += [
+            sync = getattr(self.sync, clock_domain)
+            sync += [
                 If(control_cdc.source.valid,
                     core.base.eq(control_cdc.source.base),
                     core.end.eq(control_cdc.source.end),
@@ -734,7 +735,8 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
                 core.reset.eq(control_cdc.source.valid & control_cdc.source.reset),
                 core.start.eq(control_cdc.source.valid & control_cdc.source.start),
             ]
-            self.sync += [
+            sync = getattr(self.sync, clock_domain)
+            sync += [
                 If(control_cdc.source.valid,
                     core.base.eq(control_cdc.source.base),
                     core.end.eq(control_cdc.source.end),
