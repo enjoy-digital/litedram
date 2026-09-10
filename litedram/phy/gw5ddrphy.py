@@ -151,6 +151,7 @@ class GW5DDRPHY(Module, AutoCSR):
         assert databits%8 == 0
 
         # Init -------------------------------------------------------------------------------------
+        # Reset the I/O counters with CLKDIV while the fast clock is stopped.
         self.submodules.init = GW5DDRPHYInit(fast_domain)
 
         pause = Signal()
@@ -221,7 +222,7 @@ class GW5DDRPHY(Module, AutoCSR):
                 pad_clk = Signal()
                 self.specials += Instance(f"OSER{serdes_bits}",
                     p_TXCLK_POL = 0b0,
-                    i_RESET = ResetSignal("sys"),
+                    i_RESET = self.init.reset,
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal(fast_domain),
                     **{f"i_TX{n}": 0b0 for n in range(nphases)},
@@ -269,7 +270,7 @@ class GW5DDRPHY(Module, AutoCSR):
                     pad_oddrx2f = Signal()
                     self.specials += Instance(f"OSER{serdes_bits}",
                         p_TXCLK_POL = 0b0,
-                        i_RESET = ResetSignal("sys"),
+                        i_RESET = self.init.reset,
                         i_PCLK = ClockSignal("sys"),
                         i_FCLK = ClockSignal(fast_domain),
                         **{f"i_TX{n}": 0b0 for n in range(nphases)},
@@ -315,7 +316,7 @@ class GW5DDRPHY(Module, AutoCSR):
             self.specials += Instance("DQS",
                 p_DQS_MODE = "X2_DDR3" if nphases == 2 else "X4",
                 # Clocks / Reset
-                i_RESET    = ResetSignal("sys"),
+                i_RESET    = self.init.reset,
                 i_PCLK     = ClockSignal("sys"),
                 i_FCLK     = ClockSignal(fast_domain),
                 i_DLLSTEP  = self.init.delay,
@@ -374,7 +375,7 @@ class GW5DDRPHY(Module, AutoCSR):
                 Instance(f"OSER{serdes_bits}_MEM",
                     p_TCLK_SOURCE = "DQSW",
                     p_TXCLK_POL   = 0b1,
-                    i_RESET = ResetSignal("sys"),
+                    i_RESET = self.init.reset,
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal(fast_domain),
                     i_TCLK  = dqsw,
@@ -413,7 +414,7 @@ class GW5DDRPHY(Module, AutoCSR):
             self.specials += Instance(f"OSER{serdes_bits}_MEM",
                 p_TCLK_SOURCE = "DQSW270",
                 p_TXCLK_POL   = 0b0,
-                i_RESET = ResetSignal("sys"),
+                i_RESET = self.init.reset,
                 i_PCLK  = ClockSignal("sys"),
                 i_FCLK  = ClockSignal(fast_domain),
                 i_TCLK  = dqsw270,
@@ -445,7 +446,7 @@ class GW5DDRPHY(Module, AutoCSR):
                 self.specials += Instance(f"OSER{serdes_bits}_MEM",
                     p_TCLK_SOURCE = "DQSW270",
                     p_TXCLK_POL   = 0b0,
-                    i_RESET = ResetSignal("sys"),
+                    i_RESET = self.init.reset,
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal(fast_domain),
                     i_TCLK  = dqsw270,
@@ -461,7 +462,7 @@ class GW5DDRPHY(Module, AutoCSR):
                     cycles = 1)
                 self.submodules += dq_i_bitslip
                 self.specials += Instance(f"IDES{serdes_bits}_MEM",
-                    i_RESET = ResetSignal("sys"),
+                    i_RESET = self.init.reset,
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal(fast_domain),
                     i_ICLK  = dqsr90,
