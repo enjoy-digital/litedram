@@ -176,6 +176,11 @@ class GW5DDRPHY(Module, AutoCSR):
         self._rdly_dq_bitslip_rst = CSR()
         self._rdly_dq_bitslip     = CSR()
 
+        if dll_on_x4:
+            self._wdly_dq_rst = CSR()
+            self._wdly_dq_inc = CSR()
+            self._wdly_dq_dir = CSRStorage()
+
         self._burstdet_clr  = CSR()
         self._burstdet_seen = CSRStatus(databits//8)
 
@@ -199,6 +204,7 @@ class GW5DDRPHY(Module, AutoCSR):
             read_latency  = cl_sys_latency + (9 if nphases == 2 else 7),
             write_latency = cwl_sys_latency - 1,
             read_leveling = True,
+            write_dq_dqs_training = dll_on_x4,
             bitslips      = serdes_bits,
             delays        = 256,
         )
@@ -313,6 +319,9 @@ class GW5DDRPHY(Module, AutoCSR):
             rdpntr   = Signal(3)
             wrpntr   = Signal(3)
             burstdet = Signal()
+            wloadn = 0
+            if dll_on_x4:
+                wloadn = ~(self.init.reset | (self._dly_sel.storage[i] & self._wdly_dq_rst.wr_stb))
             self.specials += Instance("DQS",
                 p_DQS_MODE = "X2_DDR3" if nphases == 2 else "X4",
                 # Clocks / Reset
@@ -327,9 +336,9 @@ class GW5DDRPHY(Module, AutoCSR):
                 i_RLOADN   = ~(self._dly_sel.storage[i] & self._rdly_dq_rst.wr_stb),
                 i_RMOVE    = self._dly_sel.storage[i] & self._rdly_dq_inc.wr_stb,
                 i_RDIR     = self._rdly_dq_dir.storage,
-                i_WLOADN   = 0,
-                i_WMOVE    = 0,
-                i_WDIR     = 1,
+                i_WLOADN   = wloadn,
+                i_WMOVE    = self._dly_sel.storage[i] & self._wdly_dq_inc.wr_stb if dll_on_x4 else 0,
+                i_WDIR     = self._wdly_dq_dir.storage if dll_on_x4 else 1,
                 o_RFLAG    = Open(),
                 o_WFLAG    = Open(),
 
