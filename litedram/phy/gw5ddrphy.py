@@ -204,11 +204,11 @@ class GW5DDRPHY(Module, AutoCSR):
             read_latency  = cl_sys_latency + (9 if nphases == 2 else 7),
             write_latency = cwl_sys_latency - 1,
             read_leveling = True,
-            write_dq_dqs_training = dll_on_x4,
             bitslips      = serdes_bits,
             delays        = 256,
         )
-        self.settings.dll_off = dll_off
+        self.settings.dll_off               = dll_off
+        self.settings.write_dq_dqs_training = dll_on_x4
 
         # DFI Interface ----------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, phase_beats*databits, nphases)
@@ -319,6 +319,7 @@ class GW5DDRPHY(Module, AutoCSR):
             rdpntr   = Signal(3)
             wrpntr   = Signal(3)
             burstdet = Signal()
+
             wloadn = 0
             if dll_on_x4:
                 wloadn = ~(self.init.reset | (self._dly_sel.storage[i] & self._wdly_dq_rst.wr_stb))
