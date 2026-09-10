@@ -171,6 +171,7 @@ class GW5DDRPHY(Module, AutoCSR):
 
         self._rdly_dq_rst         = CSR()
         self._rdly_dq_inc         = CSR()
+        self._rdly_dq_dir         = CSRStorage(reset=int(dll_on_x4))
         self._rdly_dq_bitslip_rst = CSR()
         self._rdly_dq_bitslip     = CSR()
 
@@ -198,7 +199,7 @@ class GW5DDRPHY(Module, AutoCSR):
             write_latency = cwl_sys_latency - 1,
             read_leveling = True,
             bitslips      = serdes_bits,
-            delays        = 128,
+            delays        = 256,
         )
         self.settings.dll_off = dll_off
 
@@ -322,10 +323,9 @@ class GW5DDRPHY(Module, AutoCSR):
 
                 # Control
                 # Calibrate the read delay, keeping the FIFO clock source fixed.
-                # DLL-on X4 scans toward decreasing delay.
                 i_RLOADN   = ~(self._dly_sel.storage[i] & self._rdly_dq_rst.wr_stb),
                 i_RMOVE    = self._dly_sel.storage[i] & self._rdly_dq_inc.wr_stb,
-                i_RDIR     = 1 if dll_on_x4 else 0,
+                i_RDIR     = self._rdly_dq_dir.storage,
                 i_WLOADN   = 0,
                 i_WMOVE    = 0,
                 i_WDIR     = 1,
