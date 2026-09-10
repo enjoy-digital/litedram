@@ -151,6 +151,7 @@ class GW5DDRPHY(Module, AutoCSR):
         assert databits%8 == 0
 
         # Init -------------------------------------------------------------------------------------
+        # Reset the I/O counters with CLKDIV while the fast clock is stopped.
         self.submodules.init = GW5DDRPHYInit(fast_domain)
 
         pause = Signal()
@@ -171,8 +172,14 @@ class GW5DDRPHY(Module, AutoCSR):
 
         self._rdly_dq_rst         = CSR()
         self._rdly_dq_inc         = CSR()
+        self._rdly_dq_dir         = CSRStorage(reset=int(dll_on_x4))
         self._rdly_dq_bitslip_rst = CSR()
         self._rdly_dq_bitslip     = CSR()
+
+        if dll_on_x4:
+            self._wdly_dq_rst = CSR()
+            self._wdly_dq_inc = CSR()
+            self._wdly_dq_dir = CSRStorage()
 
         self._burstdet_clr  = CSR()
         self._burstdet_seen = CSRStatus(databits//8)
@@ -198,9 +205,10 @@ class GW5DDRPHY(Module, AutoCSR):
             write_latency = cwl_sys_latency - 1,
             read_leveling = True,
             bitslips      = serdes_bits,
-            delays        = 128,
+            delays        = 256,
         )
-        self.settings.dll_off = dll_off
+        self.settings.dll_off               = dll_off
+        self.settings.write_dq_dqs_training = dll_on_x4
 
         # DFI Interface ----------------------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, phase_beats*databits, nphases)
@@ -220,7 +228,7 @@ class GW5DDRPHY(Module, AutoCSR):
                 pad_clk = Signal()
                 self.specials += Instance(f"OSER{serdes_bits}",
                     p_TXCLK_POL = 0b0,
-                    i_RESET = ResetSignal("sys"),
+                    i_RESET = self.init.reset,
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal(fast_domain),
                     **{f"i_TX{n}": 0b0 for n in range(nphases)},
@@ -268,7 +276,7 @@ class GW5DDRPHY(Module, AutoCSR):
                     pad_oddrx2f = Signal()
                     self.specials += Instance(f"OSER{serdes_bits}",
                         p_TXCLK_POL = 0b0,
-                        i_RESET = ResetSignal("sys"),
+                        i_RESET = self.init.reset,
                         i_PCLK = ClockSignal("sys"),
                         i_FCLK = ClockSignal(fast_domain),
                         **{f"i_TX{n}": 0b0 for n in range(nphases)},
@@ -311,10 +319,14 @@ class GW5DDRPHY(Module, AutoCSR):
             rdpntr   = Signal(3)
             wrpntr   = Signal(3)
             burstdet = Signal()
+
+            wloadn = 0
+            if dll_on_x4:
+                wloadn = ~(self.init.reset | (self._dly_sel.storage[i] & self._wdly_dq_rst.wr_stb))
             self.specials += Instance("DQS",
                 p_DQS_MODE = "X2_DDR3" if nphases == 2 else "X4",
                 # Clocks / Reset
-                i_RESET    = ResetSignal("sys"),
+                i_RESET    = self.init.reset,
                 i_PCLK     = ClockSignal("sys"),
                 i_FCLK     = ClockSignal(fast_domain),
                 i_DLLSTEP  = self.init.delay,
@@ -322,13 +334,12 @@ class GW5DDRPHY(Module, AutoCSR):
 
                 # Control
                 # Calibrate the read delay, keeping the FIFO clock source fixed.
-                # DLL-on X4 scans toward decreasing delay.
                 i_RLOADN   = ~(self._dly_sel.storage[i] & self._rdly_dq_rst.wr_stb),
                 i_RMOVE    = self._dly_sel.storage[i] & self._rdly_dq_inc.wr_stb,
-                i_RDIR     = 1 if dll_on_x4 else 0,
-                i_WLOADN   = 0,
-                i_WMOVE    = 0,
-                i_WDIR     = 1,
+                i_RDIR     = self._rdly_dq_dir.storage,
+                i_WLOADN   = wloadn,
+                i_WMOVE    = self._dly_sel.storage[i] & self._wdly_dq_inc.wr_stb if dll_on_x4 else 0,
+                i_WDIR     = self._wdly_dq_dir.storage if dll_on_x4 else 1,
                 o_RFLAG    = Open(),
                 o_WFLAG    = Open(),
 
@@ -374,7 +385,7 @@ class GW5DDRPHY(Module, AutoCSR):
                 Instance(f"OSER{serdes_bits}_MEM",
                     p_TCLK_SOURCE = "DQSW",
                     p_TXCLK_POL   = 0b1,
-                    i_RESET = ResetSignal("sys"),
+                    i_RESET = self.init.reset,
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal(fast_domain),
                     i_TCLK  = dqsw,
@@ -413,7 +424,7 @@ class GW5DDRPHY(Module, AutoCSR):
             self.specials += Instance(f"OSER{serdes_bits}_MEM",
                 p_TCLK_SOURCE = "DQSW270",
                 p_TXCLK_POL   = 0b0,
-                i_RESET = ResetSignal("sys"),
+                i_RESET = self.init.reset,
                 i_PCLK  = ClockSignal("sys"),
                 i_FCLK  = ClockSignal(fast_domain),
                 i_TCLK  = dqsw270,
@@ -445,7 +456,7 @@ class GW5DDRPHY(Module, AutoCSR):
                 self.specials += Instance(f"OSER{serdes_bits}_MEM",
                     p_TCLK_SOURCE = "DQSW270",
                     p_TXCLK_POL   = 0b0,
-                    i_RESET = ResetSignal("sys"),
+                    i_RESET = self.init.reset,
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal(fast_domain),
                     i_TCLK  = dqsw270,
@@ -461,7 +472,7 @@ class GW5DDRPHY(Module, AutoCSR):
                     cycles = 1)
                 self.submodules += dq_i_bitslip
                 self.specials += Instance(f"IDES{serdes_bits}_MEM",
-                    i_RESET = ResetSignal("sys"),
+                    i_RESET = self.init.reset,
                     i_PCLK  = ClockSignal("sys"),
                     i_FCLK  = ClockSignal(fast_domain),
                     i_ICLK  = dqsr90,
