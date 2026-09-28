@@ -169,16 +169,25 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
     fifo_buffered : bool
         Implement FIFO in Block Ram.
 
+    with_be : bool
+        Expose one byte-enable bit per data byte on the sink. Masks, including sparse and zero
+        masks, travel through the write FIFO with data and drive native write enables or AXI
+        strobes. A zero mask still consumes a command/data beat. The CSR controller continues
+        to address complete words; base and length must remain word aligned.
+
     Attributes
     ----------
     sink : Record("address", "data")
         Sink for DRAM addresses and DRAM data word to be written too.
     """
-    def __init__(self, port, fifo_depth=16, fifo_buffered=False, with_csr=False):
+    def __init__(self, port, fifo_depth=16, fifo_buffered=False, with_csr=False, with_be=False):
         assert isinstance(port, (LiteDRAMNativePort, LiteDRAMAXIPort))
-        self.port = port
-        self.sink = sink = stream.Endpoint([("address", port.address_width),
-                                            ("data", port.data_width)])
+        self.port    = port
+        self.with_be = with_be
+        payload_layout = [("address", port.address_width), ("data", port.data_width)]
+        if with_be:
+            payload_layout += [("be", port.data_width//8)]
+        self.sink = sink = stream.Endpoint(payload_layout)
 
         # # #
 
@@ -194,7 +203,10 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             raise NotImplementedError
 
         # FIFO -------------------------------------------------------------------------------------
-        self.submodules.fifo = fifo = stream.SyncFIFO([("data", port.data_width)], fifo_depth, fifo_buffered)
+        fifo_layout = [("data", port.data_width)]
+        if with_be:
+            fifo_layout += [("be", port.data_width//8)]
+        self.submodules.fifo = fifo = stream.SyncFIFO(fifo_layout, fifo_depth, fifo_buffered)
 
         if is_native:
             self.comb += cmd.we.eq(1)
@@ -209,10 +221,14 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             fifo.sink.data.eq(sink.data)
         ]
 
+        # Keep each mask with its data while command and write-data channels stall independently.
+        if with_be:
+            self.comb += fifo.sink.be.eq(sink.be)
+        be = fifo.source.be if with_be else (1 << (port.data_width//8)) - 1
         if is_native:
-            self.comb += wdata.we.eq(2**(port.data_width//8)-1)
+            self.comb += wdata.we.eq(be)
         if is_axi:
-            self.comb += wdata.strb.eq(2**(port.data_width//8)-1)
+            self.comb += wdata.strb.eq(be)
         self.comb += [
             wdata.valid.eq(fifo.source.valid),
             fifo.source.ready.eq(wdata.ready),
@@ -224,7 +240,10 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
 
     def add_csr(self, default_base=0, default_length=0, default_enable=0, default_loop=0):
         self._sink = self.sink
-        self.sink  = stream.Endpoint([("data", self.port.data_width)])
+        payload_layout = [("data", self.port.data_width)]
+        if self.with_be:
+            payload_layout += [("be", self.port.data_width//8)]
+        self.sink = stream.Endpoint(payload_layout)
 
         self._base   = CSRStorage(32, reset=default_base)
         self._length = CSRStorage(32, reset=default_length)
@@ -243,6 +262,9 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
         self.comb += length.eq(self._length.storage[shift:])
 
         self.comb += self._offset.status.eq(offset)
+
+        if self.with_be:
+            self.comb += self._sink.be.eq(self.sink.be)
 
         fsm = FSM(reset_state="IDLE")
         fsm = ResetInserter()(fsm)
