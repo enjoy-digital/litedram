@@ -120,7 +120,8 @@ class ECP5DDRPHY(Module, AutoCSR):
         cmd_delay    = 0,
         clk_polarity = 0,
         dm_remapping = None,
-        with_dm      = True):
+        with_dm      = True,
+        csr_cdc      = None):
         assert isinstance(cmd_delay, int) and cmd_delay < 128
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
@@ -153,6 +154,15 @@ class ECP5DDRPHY(Module, AutoCSR):
 
         self._burstdet_clr  = CSR()
         self._burstdet_seen = CSRStatus(databits//8)
+
+        # CSR write strobes in the PHY clock domain (identity when the PHY runs in the CSR domain,
+        # see ecp5ddrphy_with_ratio).
+        csr_cdc = csr_cdc or (lambda i: i)
+        rdly_dq_rst         = csr_cdc(self._rdly_dq_rst.wr_stb)
+        rdly_dq_inc         = csr_cdc(self._rdly_dq_inc.wr_stb)
+        rdly_dq_bitslip_rst = csr_cdc(self._rdly_dq_bitslip_rst.wr_stb)
+        rdly_dq_bitslip     = csr_cdc(self._rdly_dq_bitslip.wr_stb)
+        burstdet_clr        = csr_cdc(self._burstdet_clr.wr_stb)
 
         # Observation
         self.datavalid = Signal(databits//8)
@@ -258,8 +268,8 @@ class ECP5DDRPHY(Module, AutoCSR):
             rdly     = Signal(3)
             burstdet = Signal()
             self.sync += [
-                If(self._dly_sel.storage[i] & self._rdly_dq_rst.wr_stb, rdly.eq(0)),
-                If(self._dly_sel.storage[i] & self._rdly_dq_inc.wr_stb, rdly.eq(rdly + 1))
+                If(self._dly_sel.storage[i] & rdly_dq_rst, rdly.eq(0)),
+                If(self._dly_sel.storage[i] & rdly_dq_inc, rdly.eq(rdly + 1))
             ]
             self.specials += Instance("DQSBUFM",
                 p_DQS_LI_DEL_ADJ = "MINUS",
@@ -300,7 +310,7 @@ class ECP5DDRPHY(Module, AutoCSR):
             burstdet_d = Signal()
             self.sync += [
                 burstdet_d.eq(burstdet),
-                If(self._burstdet_clr.wr_stb,  self._burstdet_seen.status[i].eq(0)),
+                If(burstdet_clr,  self._burstdet_seen.status[i].eq(0)),
                 If(burstdet & ~burstdet_d, self._burstdet_seen.status[i].eq(1)),
             ]
 
@@ -380,8 +390,8 @@ class ECP5DDRPHY(Module, AutoCSR):
                     )
                 ]
                 dq_i_bitslip = BitSlip(4,
-                    rst    = self._dly_sel.storage[i] & self._rdly_dq_bitslip_rst.wr_stb,
-                    slp    = self._dly_sel.storage[i] & self._rdly_dq_bitslip.wr_stb,
+                    rst    = self._dly_sel.storage[i] & rdly_dq_bitslip_rst,
+                    slp    = self._dly_sel.storage[i] & rdly_dq_bitslip,
                     cycles = 1)
                 self.submodules += dq_i_bitslip
                 self.specials += [
@@ -464,3 +474,36 @@ class ECP5DDRPHY(Module, AutoCSR):
         # 1 for Preamble, 2 for the Write and 1 for the Postamble.
         self.comb += dqs_preamble.eq( wrdata_en.taps[wrtap - 1]  & ~wrdata_en.taps[wrtap + 0])
         self.comb += dqs_postamble.eq(wrdata_en.taps[wrtap + 2]  & ~wrdata_en.taps[wrtap + 1])
+
+# ECP5 DDR PHY with higher MC:PHY ratio ------------------------------------------------------------
+
+def ecp5ddrphy_with_ratio(ratio=2, phy_cls=ECP5DDRPHY, serdes_reset_cnt=0):
+    """Generate an ECP5DDRPHY class behind a DFIRateConverter (MC:PHY frequency ratio).
+
+    With ratio=2 (1:4 MC:DRAM clocks), the controller runs in `sys` (4 DFI phases), the PHY logic
+    (SCLK) in `sys2x` and the DDR edge clock (ECLK) in `sys4x`, allowing DDR3-800 with a ~100MHz
+    controller. The CRG must provide `sys4x` (ECLKSYNCB) and `sys2x` (CLKDIVF) with `sys` phase
+    aligned to `sys2x` (for example a second ECLKSYNCB/CLKDIVF from the same PLL output at 2x sys),
+    and connect `phy.init.stop`/`phy.init.reset` to the `sys4x` ECLKSYNCB stop / CLKDIVF reset as
+    for the 1:2 PHY.
+
+    Validated on hardware (ECP5-8, MT41K64M16, DDR3-594 and DDR3-700): the controller read latency
+    is one controller cycle lower than the generic DFIRateConverter estimate derived from the 1:2
+    PHY (the read data comes back one controller cycle before the PHY `rddata_valid`, which only
+    showed with back to back reads).
+    """
+    wrapper_cls = DFIRateConverter.phy_wrapper(
+        phy_cls          = phy_cls,
+        ratio            = ratio,
+        phy_attrs        = ["init", "datavalid"],
+        clock_mapping    = {"sys": f"sys{ratio}x", "sys2x": f"sys{2*ratio}x"},
+        serdes_reset_cnt = serdes_reset_cnt,
+    )
+
+    def wrapper(*args, **kwargs):
+        sys_clk_freq = kwargs.pop("sys_clk_freq", 100e6)
+        phy = wrapper_cls(*args, sys_clk_freq=ratio*sys_clk_freq, **kwargs)
+        phy.settings.read_latency -= 1
+        return phy
+
+    return wrapper
