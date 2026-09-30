@@ -121,13 +121,18 @@ class DFIRateConverter(Module):
     different than 0 for `write_delay`/`read_delay` and may be needed to properly align
     write/read latency of the original PHY and the wrapper.
     """
-    def __init__(self, phy_dfi, *, clkdiv, clk, ratio, serdes_reset_cnt=-1, write_delay=0, read_delay=0):
+    def __init__(self, phy_dfi, *, clkdiv, clk, ratio, serdes_reset_cnt=-1, write_delay=0, read_delay=0,
+        serializer=None, deserializer=None):
         assert len(phy_dfi.p0.wrdata) % ratio == 0
         assert 0 <= write_delay < ratio, f"Data can be delayed up to {ratio} clk cycles"
         assert 0 <= read_delay < ratio, f"Data can be delayed up to {ratio} clk cycles"
 
-        self.ser_latency = Serializer.LATENCY
-        self.des_latency = Deserializer.LATENCY
+        # Serializer/Deserializer classes (same interface as the default ones, e.g. a PHY specific
+        # clock domain crossing).
+        serializer   = serializer   or Serializer
+        deserializer = deserializer or Deserializer
+        self.ser_latency = serializer.LATENCY
+        self.des_latency = deserializer.LATENCY
 
         phase_params = dict(
             addressbits = len(phy_dfi.p0.address),
@@ -155,7 +160,7 @@ class DFIRateConverter(Module):
                     phase_m = self.dfi.phases[pi + len(phy_dfi.phases)*j]
                     sigs_m.append(getattr(phase_m, name))
 
-                ser = Serializer(
+                ser = serializer(
                     clkdiv     = clkdiv,
                     clk       = clk,
                     i_dw      = ratio*width,
@@ -184,7 +189,7 @@ class DFIRateConverter(Module):
                 self.comb += sig_m[write_delay*width:(write_delay+1)*width].eq(Cat(sigs_m))
 
                 o = Signal.like(sig_s)
-                ser = Serializer(
+                ser = serializer(
                     clkdiv     = clkdiv,
                     clk       = clk,
                     i_dw      = len(sig_m),
@@ -211,7 +216,7 @@ class DFIRateConverter(Module):
                     phase_m = self.dfi.phases[pi*ratio + j]
                     sigs_m.append(getattr(phase_m, name))
 
-                des = Deserializer(
+                des = deserializer(
                     clkdiv    = clkdiv,
                     clk       = clk,
                     i_dw      = len(sig_s),
