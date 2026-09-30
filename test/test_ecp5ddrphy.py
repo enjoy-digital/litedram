@@ -37,6 +37,25 @@ def fabric(phy):
     return fragment, [o for i, o in enumerate(oddr) if i % 9 != 0], tsh
 
 class TestECP5DDRPHY(unittest.TestCase):
+    def test_io_rst(self):
+        # IOLOGIC/DQSBUFM resets: sys reset by default (1:2), init sequence reset with `io_rst_init`
+        # (default of the 1:4 wrapper: released while the edge clock is stopped).
+        io_cells = {"ODDRX2F", "ODDRX2DQA", "ODDRX2DQSB", "TSHX2DQA", "TSHX2DQSA", "IDDRX2DQA", "DQSBUFM"}
+        def rsts(phy):
+            fragment = phy.get_fragment()
+            return [p.expr for s in fragment.specials if isinstance(s, Instance) and s.of in io_cells
+                for p in s.items if isinstance(p, Instance.Input) and p.name == "RST"]
+        pads = test_ddr3_phy_settings.TestDDR3PHYSettings.get_pads()
+        phy  = ECP5DDRPHY(pads, sys_clk_freq=50e6)
+        r    = rsts(phy)
+        self.assertTrue(len(r) > 0)
+        self.assertTrue(all(isinstance(e, ResetSignal) and e.cd == "sys" for e in r))
+        phy  = ECP5DDRPHY(test_ddr3_phy_settings.TestDDR3PHYSettings.get_pads(), sys_clk_freq=50e6, io_rst_init=True)
+        self.assertTrue(all(e is phy.init.reset for e in rsts(phy)))
+        phy  = ecp5ddrphy_with_ratio(2)(test_ddr3_phy_settings.TestDDR3PHYSettings.get_pads(), sys_clk_freq=50e6)
+        r    = rsts(phy.phy)
+        self.assertTrue(len(r) > 0 and all(e is phy.init.reset for e in r))
+
     def test_ratio_settings(self):
         phy_12, _ = get_phy(1)
         phy_14, _ = get_phy(2)
