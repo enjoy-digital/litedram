@@ -48,7 +48,7 @@ class _CommandChooser(Module):
     cmd : Endpoint(cmd_request_rw_layout)
         Currently selected request stream (when ~cmd.valid, cas/ras/we are 0)
     """
-    def __init__(self, requests):
+    def __init__(self, requests, eligible=None):
         self.want_reads     = Signal()
         self.want_writes    = Signal()
         self.want_cmds      = Signal()
@@ -77,9 +77,16 @@ class _CommandChooser(Module):
         self.submodules += arbiter
         choices = Array(valids[i] for i in range(n))
         self.comb += [
-            arbiter.request.eq(valids),
-            cmd.valid.eq(choices[arbiter.grant])
+            cmd.valid.eq(choices[arbiter.grant] & (1 if eligible is None else Array(eligible)[arbiter.grant]))
         ]
+        if eligible is not None:
+            # The arbiter's grant is registered. Filter for NEXT cycle: the
+            # group issued now will be cooling down; the other group is ready.
+            self.comb += arbiter.request.eq(Cat(
+                valids[i] & ~(cmd.valid & cmd.ready & (request.ba[2] == cmd.ba[2]))
+                for i,request in enumerate(requests)))
+        else:
+            self.comb += arbiter.request.eq(valids)
 
         for name in ["a", "ba", "is_read", "is_write", "is_cmd"]:
             choices = Array(getattr(req, name) for req in requests)
@@ -242,9 +249,18 @@ class Multiplexer(Module, AutoCSR):
             wrcmdphase = (wrphase - 1)%nphases
 
         # Command choosing -------------------------------------------------------------------------
+        interleaved = getattr(settings, "with_bank_group_interleaving", False)
         requests = [bm.cmd for bm in bank_machines]
+        group_ready = None
+        if interleaved:
+            # Alternate groups in round-robin order. The selected group's
+            # registered cooldown masks same-group CAS for the next cycle.
+            requests = [bank_machines[i].cmd for i in (0, 4, 1, 5, 2, 6, 3, 7)]
+            group_ready = [Signal(reset=1) for _ in range(2)]
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
-        self.submodules.choose_req = choose_req = _CommandChooser(requests)
+        self.submodules.choose_req = choose_req = _CommandChooser(requests,
+            eligible=None if group_ready is None else
+                [group_ready[i & 1] for i in range(len(requests))])
         if settings.phy.nphases == 1:
             # When only 1 phase, use choose_req for all requests
             choose_cmd = choose_req
@@ -271,7 +287,18 @@ class Multiplexer(Module, AutoCSR):
         self.comb += ras_allowed.eq(trrdcon.ready & tfawcon.ready)
 
         # tCCD timing (Column to Column delay) -----------------------------------------------------
-        self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
+        # Preserve tCCD_L for recovery/turnaround timing; only CAS arbitration
+        # uses the shorter tCCD_S=4 CK between different bank groups.
+        self.submodules.tccdcon = tccdcon = tXXDController(
+            1 if interleaved else settings.timing.tCCD)
+        if interleaved:
+            for group in range(2):
+                timer = tXXDController(settings.timing.tCCD)
+                setattr(self.submodules, "tccd_group" + str(group), timer)
+                self.comb += [group_ready[group].eq(timer.ready),
+                    timer.valid.eq(choose_req.accept() &
+                        (choose_req.write() | choose_req.read()) &
+                        (choose_req.cmd.ba[2] == group))]
         self.comb += tccdcon.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
 
         # CAS control ------------------------------------------------------------------------------
