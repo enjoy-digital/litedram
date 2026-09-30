@@ -9,7 +9,7 @@ from migen import *
 from migen.fhdl.specials import Tristate
 from migen.sim import run_simulation
 
-from litedram.phy.ecp5ddrphy import ECP5DDRPHY, ecp5ddrphy_with_ratio
+from litedram.phy.ecp5ddrphy import ECP5DDRPHY, ecp5ddrphy_with_ratio, RateCrossing
 from test import test_ddr3_phy_settings
 
 # Aligned clocks (rising edges of the faster clocks on the sys rising edges).
@@ -37,6 +37,51 @@ def fabric(phy):
     return fragment, [o for i, o in enumerate(oddr) if i % 9 != 0], tsh
 
 class TestECP5DDRPHY(unittest.TestCase):
+    def test_rate_crossing_loopback(self):
+        # RateCrossing serializer -> deserializer (aligned sys/sys2x clocks): for each capture edge,
+        # a read word pairing returns the words intact with a fixed latency.
+        import random
+        class Loopback(Module):
+            def __init__(self):
+                self.submodules.rate = rate = RateCrossing(clk="sys2x")
+                self.i = Signal(16)
+                self.o = Signal(16)
+                s = Signal(8)
+                self.submodules.ser = rate.serializer_cls()("sys", "sys2x", 16, 8, i=self.i, o=s)
+                self.submodules.des = rate.deserializer_cls()("sys", "sys2x", 8, 16, i=s, o=self.o)
+        def run(sel, shift, n=40):
+            dut   = Loopback()
+            words = [random.getrandbits(16) for _ in range(n)]
+            out   = []
+            def gen():
+                yield dut.rate.sel.eq(sel)
+                yield dut.rate.shift.eq(shift)
+                for w in words + [0]*8:
+                    yield dut.i.eq(w)
+                    yield
+                    out.append((yield dut.o))
+            run_simulation(dut, {"sys": gen()}, clocks={"sys": 20, "sys2x": 10})
+            for lat in range(8):
+                if out[lat:lat + n] == words:
+                    return lat
+            return None
+        random.seed(0)
+        for sel in range(2):
+            lats = {shift: run(sel, shift) for shift in range(4)}
+            self.assertIsNotNone(lats[0], (sel, lats))
+            self.assertEqual(lats[2], lats[0] + 1, (sel, lats)) # shift bit 1: one sys cycle later.
+
+    def test_rate_crossing_wrapper(self):
+        pads    = test_ddr3_phy_settings.TestDDR3PHYSettings.get_pads()
+        default = ecp5ddrphy_with_ratio(2)(pads, sys_clk_freq=50e6)
+        pads    = test_ddr3_phy_settings.TestDDR3PHYSettings.get_pads()
+        phy     = ecp5ddrphy_with_ratio(2, rate_crossing=True)(pads, sys_clk_freq=50e6)
+        self.assertIn("rate", [csr.name for csr in phy.get_csrs()])
+        self.assertNotIn("rate", [csr.name for csr in default.get_csrs()])
+        # Maximum RateCrossing deserializer latency: one controller cycle more than the default.
+        self.assertEqual(phy.settings.read_latency, default.settings.read_latency + 1)
+        phy.get_fragment()
+
     def test_io_rst(self):
         # IOLOGIC/DQSBUFM resets: sys reset by default (1:2), init sequence reset with `io_rst_init`
         # (default of the 1:4 wrapper: released while the edge clock is stopped).
