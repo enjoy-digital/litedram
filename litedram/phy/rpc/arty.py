@@ -21,6 +21,7 @@ from migen import *
 
 from litex_boards.platforms import digilent_arty
 from litex.build.generic_platform import *
+from litex.build.pmod import PmodSDCard
 from litex.build.xilinx.vivado import vivado_build_args, vivado_build_argdict
 
 from litex.soc.cores.clock import *
@@ -374,7 +375,7 @@ def main():
                   no_sdram_init=args.no_sdram_init, with_analyzer=not args.no_analyzer,
                   **soc_core_argdict(args))
     assert not (args.with_spi_sdcard and args.with_sdcard)
-    soc.platform.add_extension(digilent_arty._sdcard_pmod_io)
+    soc.platform.add_extension(PmodSDCard("pmodd"))
     if args.with_spi_sdcard:
         soc.add_spi_sdcard()
     if args.with_sdcard:
