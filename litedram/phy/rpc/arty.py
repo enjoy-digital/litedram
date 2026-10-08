@@ -21,7 +21,7 @@ from migen import *
 
 from litex_boards.platforms import digilent_arty
 from litex.build.generic_platform import *
-from litex.build.pmod import PmodSDCard
+from litex_boards.extensions.pmod import PmodSDCard
 from litex.build.xilinx.vivado import vivado_build_args, vivado_build_argdict
 
 from litex.soc.cores.clock import *
