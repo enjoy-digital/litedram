@@ -21,6 +21,7 @@ from migen import *
 
 from litex_boards.platforms import digilent_arty
 from litex.build.generic_platform import *
+from litex.build.pmod import PmodSDCard
 from litex.build.xilinx.vivado import vivado_build_args, vivado_build_argdict
 
 from litex.soc.cores.clock import *
@@ -144,7 +145,7 @@ class _CRG(Module, AutoCSR):
             pll.create_clkout(self.cd_sys4x_180, 4*sys_clk_freq, phase=180)
 
         self.submodules.main_pll = main_pll = S7PLL(speedgrade=-1)
-        self.comb += main_pll.reset.eq(~platform.request("cpu_reset"))
+        self.comb += main_pll.reset.eq(~platform.request("cpu_reset_n"))
         main_pll.register_clkin(platform.request("clk100"), 100e6)
         if dynamic:
             main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
@@ -374,7 +375,7 @@ def main():
                   no_sdram_init=args.no_sdram_init, with_analyzer=not args.no_analyzer,
                   **soc_core_argdict(args))
     assert not (args.with_spi_sdcard and args.with_sdcard)
-    soc.platform.add_extension(digilent_arty._sdcard_pmod_io)
+    soc.platform.add_extension(PmodSDCard("pmodd"))
     if args.with_spi_sdcard:
         soc.add_spi_sdcard()
     if args.with_sdcard:
