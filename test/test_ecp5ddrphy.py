@@ -78,8 +78,12 @@ class TestECP5DDRPHY(unittest.TestCase):
         phy     = ecp5ddrphy_with_ratio(2, rate_crossing=True)(pads, sys_clk_freq=50e6)
         self.assertIn("rate", [csr.name for csr in phy.get_csrs()])
         self.assertNotIn("rate", [csr.name for csr in default.get_csrs()])
-        # Maximum RateCrossing deserializer latency: one controller cycle more than the default.
-        self.assertEqual(phy.settings.read_latency, default.settings.read_latency + 1)
+        # Read latency: default = exact generic estimate, RateCrossing = maximum deserializer
+        # latency (one more) minus one controller cycle (hardware): equal.
+        self.assertEqual(phy.settings.read_latency, default.settings.read_latency)
+        # Write latency: the default serializers consume the write data one controller cycle after
+        # the generic estimate (see test_write_beats_1_4), the RateCrossing ones at the estimate.
+        self.assertEqual(default.settings.write_latency, phy.settings.write_latency + 1)
         phy.get_fragment()
 
     def test_io_rst(self):
@@ -163,3 +167,38 @@ class TestECP5DDRPHY(unittest.TestCase):
     def test_write_beats_1_2(self):
         beats, driven = self.write_beats(1)
         self.assertIn(beats, [driven[i:i+8] for i in range(len(driven) - 7)])
+
+    def test_write_beats_1_4(self):
+        # The burst reaches the DQ serializers intact with the controller driving the write data
+        # `write_latency` cycles after `wrdata_en` (fails with the generic write latency estimate:
+        # the default serializers consume the data one controller cycle later).
+        beats, driven = self.write_beats(2)
+        self.assertIn(beats, [driven[i:i+8] for i in range(len(driven) - 7)])
+
+    def read_latency(self, ratio):
+        phy, pads = get_phy(ratio)
+        fragment, _, _ = fabric(phy)
+        s    = phy.settings
+        seen = []
+        def controller():
+            for _ in range(8):
+                yield
+            yield phy.dfi.phases[s.rdphase].rddata_en.eq(1)
+            yield
+            yield phy.dfi.phases[s.rdphase].rddata_en.eq(0)
+            for cyc in range(2*s.read_latency + 8):
+                if (yield phy.dfi.phases[0].rddata_valid):
+                    seen.append(cyc)
+                yield
+        run_simulation(fragment, {"sys": [controller()]}, clocks=CLOCKS[ratio])
+        return s.read_latency, seen
+
+    def test_read_latency_1_2(self):
+        advertised, seen = self.read_latency(1)
+        self.assertEqual(seen[0], advertised)
+
+    def test_read_latency_1_4(self):
+        # rddata_valid comes back exactly `read_latency` controller cycles after rddata_en (same
+        # cycle convention as the hardware-validated 1:2 PHY above).
+        advertised, seen = self.read_latency(2)
+        self.assertEqual(seen[0], advertised)
