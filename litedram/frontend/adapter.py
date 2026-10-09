@@ -140,8 +140,9 @@ class LiteDRAMNativePortUpConverter(Module):
     Incomplete writes/reads (i.e. with n < N) are handled automatically in the
     middle of a burst, but last command has to use cmd.last=1 if the last burst
     is not complete (not all N addresses have been used).
+    Up to read_depth reads to the controller can be in flight (0: one at a time).
     """
-    def __init__(self, port_from, port_to, reverse=False):
+    def __init__(self, port_from, port_to, reverse=False, read_depth=8):
         assert port_from.clock_domain == port_to.clock_domain
         assert port_from.data_width    < port_to.data_width
         assert port_from.mode         == port_to.mode
@@ -158,6 +159,10 @@ class LiteDRAMNativePortUpConverter(Module):
 
         # Store the subword request order for the current port_to command.
         # This preserves command order for reads and maps write data back to address lanes.
+        # Reads: up to `read_depth` port_to commands are kept in flight (with a pass-through
+        # buffer, each read has to return its data before the next one is accepted).
+        # Writes: committed only when nothing is outstanding and issued once their data has
+        # been assembled.
         cmd_count        = Signal(max=ratio + 1)
         cmd_order        = Signal(ratio*chunk_bits)
         cmd_chunks       = Signal(ratio)
@@ -167,7 +172,7 @@ class LiteDRAMNativePortUpConverter(Module):
             ("we",    1),
             ("count", len(cmd_count)),
             ("order", len(cmd_order)),
-        ], 0)
+        ], read_depth)
         self.submodules += cmd_buffer
         # Store last received command.
         cmd_addr         = Signal.like(port_from.cmd.addr)
@@ -238,14 +243,19 @@ class LiteDRAMNativePortUpConverter(Module):
             )
         )
         fsm.act("COMMIT",
-            cmd_buffer.sink.valid.eq(1),
             cmd_buffer.sink.we.eq(cmd_we),
             cmd_buffer.sink.count.eq(cmd_count),
             cmd_buffer.sink.order.eq(cmd_order),
-            If(cmd_buffer.sink.ready,
-                If(cmd_we,
+            If(cmd_we,
+                # Write: commit when nothing else is outstanding (head of the buffer), go to
+                # CMD when its data has been assembled.
+                cmd_buffer.sink.valid.eq(cmd_buffer.level == 0),
+                If(wdata_finished,
                     NextState("CMD")
-                ).Else(
+                )
+            ).Else(
+                cmd_buffer.sink.valid.eq(1),
+                If(cmd_buffer.sink.ready,
                     NextState("NEW")
                 )
             )
@@ -286,8 +296,9 @@ class LiteDRAMNativePortUpConverter(Module):
         # Read Datapath ----------------------------------------------------------------------------
 
         if mode in ["read", "both"]:
-            # Queue received data not to lose it when it comes too fast.
-            rdata_fifo = stream.SyncFIFO(port_to.rdata.description, ratio - 1)
+            # Queue received data not to lose it when it comes too fast: one word per read in
+            # flight (read_depth buffered + 1 issued and waiting to be buffered).
+            rdata_fifo = stream.SyncFIFO(port_to.rdata.description, max(ratio - 1, read_depth + 1))
             self.submodules += rdata_fifo
 
             rdata_count = Signal(max=ratio)
