@@ -13,6 +13,7 @@ from litex.soc.interconnect.stream import *
 
 from litedram.common import LiteDRAMNativePort, LiteDRAMNativeWritePort, LiteDRAMNativeReadPort
 from litedram.frontend.adapter import LiteDRAMNativePortConverter, LiteDRAMNativePortCDC
+from litedram.frontend.adapter import LiteDRAMNativePortUpConverter
 
 from test.common import *
 
@@ -429,6 +430,73 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
         dut  = ConverterDUT(user_data_width=8, native_data_width=32,
                             mem_depth=len(data["expected"]), separate_rw=False)
         self.converter_readback_test(dut, data["pattern"], data["expected"])
+
+    def up_converter_pipelined_reads_test(self, read_depth, rdata_latency, controller_latency=16):
+        # Up-converter in front of a pipelined controller model: read commands accepted every
+        # cycle, data returned after controller_latency cycles and not held back (rdata.ready
+        # ignored, as the LiteDRAM controller does).
+        ratio = 4
+        nreads = 64
+        port_from = LiteDRAMNativeReadPort(address_width=32, data_width=32)
+        port_to   = LiteDRAMNativeReadPort(address_width=32, data_width=32*ratio)
+        dut       = LiteDRAMNativePortUpConverter(port_from, port_to, read_depth=read_depth)
+        driver    = NativePortDriver(port_from)
+        mem       = [sum(((4*i + n) << (32*n)) for n in range(ratio)) for i in range(nreads//ratio)]
+        overflows = []
+
+        @passive
+        def controller(port):
+            inflight = []
+            cycle    = 0
+            yield port.cmd.ready.eq(1)
+            while True:
+                if inflight and inflight[0][0] <= cycle:
+                    if not (yield port.rdata.ready):
+                        overflows.append(cycle)
+                    yield port.rdata.valid.eq(1)
+                    yield port.rdata.data.eq(inflight.pop(0)[1])
+                else:
+                    yield port.rdata.valid.eq(0)
+                if (yield port.cmd.valid):
+                    inflight.append((cycle + controller_latency, mem[(yield port.cmd.addr)]))
+                yield
+                cycle += 1
+
+        def main_generator():
+            for adr in range(nreads):
+                yield from driver.read(adr, wait_data=False, last=int(adr == nreads - 1))
+            while len(driver.rdata) != nreads:
+                yield
+
+        cycle_count = [0]
+        @passive
+        def cycle_counter():
+            while True:
+                yield
+                cycle_count[0] += 1
+
+        generators = [
+            main_generator(),
+            driver.read_data_handler(latency=rdata_latency),
+            controller(port_to),
+            cycle_counter(),
+            timeout_generator(20000),
+        ]
+        run_simulation(dut, generators)
+        self.assertEqual(overflows, [])
+        self.assertEqual(driver.rdata, list(range(nreads)))
+        return cycle_count[0]
+
+    def test_up_converter_pipelined_reads(self):
+        # Verify reads with several port_to reads in flight, with/without rdata backpressure.
+        for read_depth in [0, 1, 2, 8]:
+            for rdata_latency in [0, 3, 16]:
+                with self.subTest(read_depth=read_depth, rdata_latency=rdata_latency):
+                    self.up_converter_pipelined_reads_test(read_depth, rdata_latency)
+        # Verify reads are pipelined.
+        serial    = self.up_converter_pipelined_reads_test(read_depth=0, rdata_latency=0)
+        pipelined = self.up_converter_pipelined_reads_test(read_depth=8, rdata_latency=0)
+        self.assertLess(2*pipelined, serial)
 
     def cdc_readback_test(self, dut, pattern, mem_expected, clocks):
         assert len(set(adr for adr, _ in pattern)) == len(pattern), "Pattern has duplicates!"
