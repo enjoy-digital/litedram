@@ -585,10 +585,14 @@ def ecp5ddrphy_with_ratio(ratio=2, phy_cls=ECP5DDRPHY, serdes_reset_cnt=0, io_rs
     and connect `phy.init.stop`/`phy.init.reset` to the `sys4x` ECLKSYNCB stop / CLKDIVF reset as
     for the 1:2 PHY.
 
-    Validated on hardware (ECP5-8, MT41K64M16, DDR3-594 and DDR3-700): the controller read latency
-    is one controller cycle lower than the generic DFIRateConverter estimate derived from the 1:2
-    PHY (the read data comes back one controller cycle before the PHY `rddata_valid`, which only
-    showed with back to back reads).
+    Validated on hardware:
+    - Default serializers: LFE5UM5G-85F, MT41K256M16, DDR3-600 (ECPIX-5, BIOS read leveling +
+      memtest): the generic DFIRateConverter read latency estimate is exact, and the PHY consumes
+      the write data one controller cycle after the generic write latency estimate (see
+      test_write_beats_1_4/test_read_latency_1_4, matching the fabric simulations).
+    - `rate_crossing`: LFE5U-25F, MT41K64M16, DDR3-594 and DDR3-700 (Cam Link 4K): the controller
+      read latency is one cycle lower than the estimate with the maximum RateCrossing deserializer
+      latency (its runtime `shift` aligns the read words at init).
 
     `io_rst_init` (default): IO gearing reset from the init sequence (see ECP5DDRPHY), needed at
     1:4 on hardware (DRAM dead on ~1 of 5 placements with the sys reset).
@@ -621,9 +625,15 @@ def ecp5ddrphy_with_ratio(ratio=2, phy_cls=ECP5DDRPHY, serdes_reset_cnt=0, io_rs
         if rate_crossing:
             phy.submodules.rate = rate
             phy.get_csrs = lambda: phy.phy.get_csrs() + rate.get_csrs()
-        # Read latency: generic estimate (with the maximum RateCrossing deserializer latency, its
-        # `shift` aligns the read words at init) minus one controller cycle (hardware).
-        phy.settings.read_latency -= 1
+            # Read latency: generic estimate (with the maximum RateCrossing deserializer latency,
+            # its `shift` aligns the read words at init) minus one controller cycle (hardware).
+            phy.settings.read_latency -= 1
+        else:
+            # Default serializers: the PHY consumes the write data one controller cycle after the
+            # generic estimate (fabric simulation, see test_write_beats_1_4; BIOS memtest only
+            # passes with it on hardware). The read estimate is correct as is (rddata_valid at
+            # exactly read_latency in fabric simulation, see test_read_latency_1_4).
+            phy.settings.write_latency += 1
         return phy
 
     return wrapper
