@@ -430,14 +430,14 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     dm      = 1
     assert not (dm and tdqs)
 
-    wr  = max(timing_settings.tWTR*phy_settings.nphases, 10) # >= ceiling(tWR/tCK)
+    wr  = max(timing_settings.tWR*phy_settings.nphases, 10) # >= ceiling(tWR/tCK)
     mr0 = format_mr0(bl, cl, wr, 1)
     mr1 = format_mr1(1, z_to_ron[ron], z_to_rtt_nom[rtt_nom], tdqs)
     mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
     mr3 = format_mr3(timing_settings.fine_refresh_mode)
     mr4 = 0
     mr5 = (dm << 10)
-    mr6 = format_mr6(4) # FIXME: tCCD
+    mr6 = format_mr6(getattr(phy_settings, "tccd", 4))
 
     rdimm_init = []
     if phy_settings.is_rdimm:
@@ -926,6 +926,12 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
     for setting in ["cl", "cwl", "cmd_latency", "cmd_delay"]:
         if getattr(phy_settings, setting, None) is not None:
             r.define(f"SDRAM_PHY_{setting.upper()}", getattr(phy_settings, setting))
+
+    # Native calibration uses logical IDs generated alongside the gateware.
+    mapping = getattr(phy_settings, "usnative_mapping", None)
+    if mapping is not None:
+        for name, value in mapping.c_defines().items():
+            r.define("SDRAM_PHY_USNATIVE_" + name, value)
 
     # Define PHY Read.Write phases
     rdphase = phy_settings.rdphase

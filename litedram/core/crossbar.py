@@ -134,8 +134,15 @@ class LiteDRAMCrossbar(Module):
             )
         }
         cba_shift = cba_shifts[controller.settings.address_mapping]
-        m_ba      = [m.get_bank_address(self.bank_bits, cba_shift)for m in self.masters]
-        m_rca     = [m.get_row_column_address(self.bank_bits, self.rca_bits, cba_shift) for m in self.masters]
+        interleaved = getattr(controller.settings, "with_bank_group_interleaving", False)
+        if interleaved:
+            # Native 128-bit word: [row][BA:2][column:7][BG:1]. Apply the
+            # permutation to every master, including CPU and converted ports.
+            m_ba = [Cat(m.cmd.addr[8:10], m.cmd.addr[0]) for m in self.masters]
+            m_rca = [Cat(m.cmd.addr[1:8], m.cmd.addr[10:]) for m in self.masters]
+        else:
+            m_ba      = [m.get_bank_address(self.bank_bits, cba_shift)for m in self.masters]
+            m_rca     = [m.get_row_column_address(self.bank_bits, self.rca_bits, cba_shift) for m in self.masters]
 
         master_readys       = [0]*nmasters
         master_wdata_readys = [0]*nmasters
@@ -143,6 +150,15 @@ class LiteDRAMCrossbar(Module):
 
         arbiters = [roundrobin.RoundRobin(nmasters, roundrobin.SP_CE) for n in range(self.nbanks)]
         self.submodules += arbiters
+
+        if interleaved:
+            # Include acceptance when registering ownership to close the first
+            # lock cycle. Releasing one cycle late is conservative.
+            owner_masks = self.owner_masks = [Signal(nmasters) for _ in range(self.nbanks)]
+            for nb, arbiter in enumerate(arbiters):
+                bank = getattr(controller, "bank" + str(nb))
+                self.sync += owner_masks[nb].eq(Mux(bank.lock | (bank.valid & bank.ready),
+                    1 << arbiter.grant, 0))
 
         for nb, arbiter in enumerate(arbiters):
             bank = getattr(controller, "bank"+str(nb))
@@ -154,7 +170,8 @@ class LiteDRAMCrossbar(Module):
                 for other_nb, other_arbiter in enumerate(arbiters):
                     if other_nb != nb:
                         other_bank = getattr(controller, "bank"+str(other_nb))
-                        locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
+                        locked = locked | (owner_masks[other_nb][nm] if interleaved else
+                            (other_bank.lock & (other_arbiter.grant == nm)))
                 master_locked.append(locked)
 
             # Arbitrate ----------------------------------------------------------------------------

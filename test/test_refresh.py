@@ -111,3 +111,48 @@ class TestRefresh(unittest.TestCase):
         for postponing in [1, 2, 4, 8]:
             with self.subTest(postponing=postponing):
                 self.refresher_test(postponing)
+
+
+    def test_registered_refresh_and_zqcs_command_equivalence(self):
+        from types import SimpleNamespace
+        from litedram.core.controller import ControllerSettings
+        from migen import Module
+        import random
+
+        self.assertFalse(ControllerSettings().with_registered_refresh_timers)
+        for postponing in (1, 2, 4, 8):
+            for zqcs in (None, 4):
+                with self.subTest(postponing=postponing, zqcs=zqcs):
+                    top = Module()
+                    def settings(registered):
+                        s = ControllerSettings(with_registered_refresh_timers=registered)
+                        s.geom = SimpleNamespace(addressbits=12, bankbits=3)
+                        s.phy = SimpleNamespace(nranks=1)
+                        s.timing = SimpleNamespace(tREFI=101, tRP=3, tRFC=7, tZQCS=zqcs)
+                        return s
+                    # Keep ZQCS due on each refresh to exercise its entire sequence.
+                    top.submodules.reference = reference = Refresher(settings(False),
+                        clk_freq=1000, zqcs_freq=1000, postponing=postponing)
+                    top.submodules.registered = registered = Refresher(settings(True),
+                        clk_freq=1000, zqcs_freq=1000, postponing=postponing)
+
+                    def compare():
+                        rng = random.Random(3200)
+                        refreshes = calibrations = 0
+                        for cycle in range(2500):
+                            ready = rng.randrange(4) != 0
+                            yield reference.cmd.ready.eq(ready)
+                            yield registered.cmd.ready.eq(ready)
+                            yield
+                            for field in ("valid", "last", "a", "ba", "cas", "ras", "we"):
+                                self.assertEqual((yield getattr(reference.cmd, field)),
+                                    (yield getattr(registered.cmd, field)), (cycle, field))
+                            self.assertEqual((yield reference.timer.done), (yield registered.timer.done))
+                            if (yield reference.cmd.cas) and (yield reference.cmd.ras):
+                                refreshes += 1
+                            if (yield reference.cmd.we) and not (yield reference.cmd.ras):
+                                calibrations += 1
+                        self.assertGreater(refreshes, 0)
+                        if zqcs is not None:
+                            self.assertGreater(calibrations, 0)
+                    run_simulation(top, compare())

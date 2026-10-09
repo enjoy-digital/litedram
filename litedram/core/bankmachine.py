@@ -133,7 +133,21 @@ class BankMachine(Module):
         row_hit    = Signal()
         row_open   = Signal()
         row_close  = Signal()
-        self.comb += row_hit.eq(row == slicer.row(cmd_buffer.source.addr))
+        if (getattr(settings, "with_registered_row_hit", False) or
+                getattr(settings, "with_bank_group_interleaving", False)):
+            # Precompute row equality on buffer replacement, keeping the
+            # comparator out of the global CAS arbitration path.
+            row_hit.reset = Constant(1, 1)
+            self.row_hit, self.row = row_hit, row
+            self.current_address = cmd_buffer.source.addr
+            self.sync += If(row_open & ~row_close,
+                If(cmd_buffer.sink.ready,
+                    row_hit.eq(slicer.row(cmd_buffer.source.addr) == slicer.row(cmd_buffer.sink.addr))
+                ).Else(row_hit.eq(1))
+            ).Elif(cmd_buffer.sink.ready,
+                row_hit.eq(row == slicer.row(cmd_buffer.sink.addr)))
+        else:
+            self.comb += row_hit.eq(row == slicer.row(cmd_buffer.source.addr))
         self.sync += \
             If(row_close,
                 row_opened.eq(0)

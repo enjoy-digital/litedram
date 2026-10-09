@@ -87,3 +87,6 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Temporary directories created by the fresh native device-query runner.
+usnative-query-*/
