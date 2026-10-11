@@ -117,15 +117,22 @@ class LiteDRAMDMAReader(Module, AutoCSR):
 
         # # #
 
-        shift  = log2_int(self.port.data_width//8)
-        base   = Signal(self.port.address_width)
-        offset = Signal(self.port.address_width)
-        length = Signal(self.port.address_width)
+        shift   = log2_int(self.port.data_width//8)
+        base    = Signal(self.port.address_width)
+        offset  = Signal(self.port.address_width)
+        length  = Signal(self.port.address_width)
+        address = Signal(self.port.address_width)
         self.comb += self.enable.eq(self._enable.storage)
         self.comb += base.eq(self._base.storage[shift:])
         self.comb += length.eq(self._length.storage[shift:])
 
         self.comb += self._offset.status.eq(offset)
+
+        # Native ports are word-addressed, AXI ports are byte-addressed.
+        if isinstance(self.port, LiteDRAMAXIPort):
+            self.comb += address.eq((base + offset) << shift)
+        else:
+            self.comb += address.eq(base + offset)
 
         fsm = FSM(reset_state="IDLE")
         fsm = ResetInserter()(fsm)
@@ -138,7 +145,7 @@ class LiteDRAMDMAReader(Module, AutoCSR):
         fsm.act("RUN",
             self.sink.valid.eq(1),
             self.sink.last.eq(offset == (length - 1)),
-            self.sink.address.eq(base + offset),
+            self.sink.address.eq(address),
             If(self.sink.ready,
                 NextValue(offset, offset + 1),
                 If(self.sink.last,
@@ -229,6 +236,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
             self.comb += wdata.we.eq(be)
         if is_axi:
             self.comb += wdata.strb.eq(be)
+            self.comb += wdata.last.eq(1) # Single beat bursts.
         self.comb += [
             wdata.valid.eq(fifo.source.valid),
             fifo.source.ready.eq(wdata.ready),
@@ -254,14 +262,21 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
 
         # # #
 
-        shift  = log2_int(self.port.data_width//8)
-        base   = Signal(self.port.address_width)
-        offset = Signal(self.port.address_width)
-        length = Signal(self.port.address_width)
+        shift   = log2_int(self.port.data_width//8)
+        base    = Signal(self.port.address_width)
+        offset  = Signal(self.port.address_width)
+        length  = Signal(self.port.address_width)
+        address = Signal(self.port.address_width)
         self.comb += base.eq(self._base.storage[shift:])
         self.comb += length.eq(self._length.storage[shift:])
 
         self.comb += self._offset.status.eq(offset)
+
+        # Native ports are word-addressed, AXI ports are byte-addressed.
+        if isinstance(self.port, LiteDRAMAXIPort):
+            self.comb += address.eq((base + offset) << shift)
+        else:
+            self.comb += address.eq(base + offset)
 
         if self.with_be:
             self.comb += self._sink.be.eq(self.sink.be)
@@ -277,7 +292,7 @@ class LiteDRAMDMAWriter(Module, AutoCSR):
         fsm.act("RUN",
             self._sink.valid.eq(self.sink.valid),
             self._sink.last.eq(offset == (length - 1)),
-            self._sink.address.eq(base + offset),
+            self._sink.address.eq(address),
             self._sink.data.eq(self.sink.data),
             self.sink.ready.eq(self._sink.ready),
             If(self.sink.valid & self.sink.ready,
