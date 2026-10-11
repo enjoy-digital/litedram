@@ -98,12 +98,35 @@ class LiteDRAMAXI2NativeW(Module):
         ]
         self.comb += can_write.eq(w_buffer.level > w_buffer_level)
 
+        # Write Response reservation ---------------------------------------------------------------
+        # - Incremented when the last write cmd of a burst is sent
+        # - Decremented when the write response is acknowledged
+        # Ensures resp_buffer always has room for the responses of the issued bursts, so responses
+        # are never dropped when the master holds BREADY low.
+        resp_queue   = Signal()
+        resp_dequeue = Signal()
+        resp_level   = Signal(max=buffer_depth + 1)
+        can_resp     = Signal()
+        self.comb += [
+            resp_queue.eq(port.cmd.valid & port.cmd.ready & port.cmd.we & port.cmd.last),
+            resp_dequeue.eq(axi.b.valid & axi.b.ready)
+        ]
+        self.sync += [
+            If(resp_queue,
+                If(~resp_dequeue, resp_level.eq(resp_level + 1))
+            ).Elif(resp_dequeue,
+                resp_level.eq(resp_level - 1)
+            )
+        ]
+        self.comb += can_resp.eq(resp_level != buffer_depth)
+
         # Command ----------------------------------------------------------------------------------
         # Accept and send command to the controller only if:
         # - Address & Data request are *both* valid.
         # - Data buffer is not empty.
+        # - Write response buffer has room for the response.
         self.comb += [
-            self.cmd_request.eq(aw.valid & can_write),
+            self.cmd_request.eq(aw.valid & can_write & can_resp),
             If(self.cmd_request & self.cmd_grant,
                 port.cmd.valid.eq(1),
                 port.cmd.last.eq(aw.last),
@@ -143,6 +166,10 @@ class LiteDRAMAXI2NativeW(Module):
             rmw_mask      = Signal(port.data_width)
             rmw_cmd_done  = Signal()
             rmw_data_done = Signal()
+            rmw_w_partial = Signal()
+
+            # Detect partial write data.
+            self.comb += rmw_w_partial.eq(axi.w.valid & (axi.w.strb != (2**len(axi.w.strb) - 1)))
 
             # Grant write when write buffer is empty.
             self.comb += self.rmw_wgrant.eq(~w_buffer_queue & (w_buffer_level == 0))
@@ -152,8 +179,9 @@ class LiteDRAMAXI2NativeW(Module):
                 can_write.eq(0)
             )
 
-            # Disconnect regular Datapath on a Read-Modify-Write cycle.
-            self.comb += If(self.rmw_request,
+            # Disconnect regular Datapath on partial data and on a Read-Modify-Write cycle (partial
+            # data must wait for its address and never be buffered/written with partial strobes).
+            self.comb += If(rmw_w_partial | self.rmw_request,
                 axi_w_connect.eq(0),
             )
 
@@ -163,8 +191,12 @@ class LiteDRAMAXI2NativeW(Module):
                 # Clear RMW Cmd/Data done signals.
                 NextValue(rmw_cmd_done,  0),
                 NextValue(rmw_data_done, 0),
-                # Detect partial data and initiate a RMW access.
-                If(axi.w.valid & (axi.w.strb != (2**len(axi.w.strb) - 1)),
+                # Detect partial data and initiate a RMW access once:
+                # - Its address is valid.
+                # - Previous data has been written, so the address is the one of the partial data
+                #   (AXI allows write data to be presented before its address).
+                # - Write response buffer has room for the response.
+                If(rmw_w_partial & aw.valid & (w_buffer.level == 0) & can_resp,
                     # Before issuing the RMW sequence, we must ensure that all pending writes/reads
                     # access have been done, so issue a request and wait for grant.
                     self.rmw_request.eq(1),

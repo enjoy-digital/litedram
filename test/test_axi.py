@@ -139,12 +139,16 @@ class TestAXI(unittest.TestCase):
                 yield
                 if (yield axi_port.b.id) != write.id:
                     self.writes_id_errors += 1
+            axi_port.writes_done = True
 
         def reads_cmd_generator(axi_port, reads):
             prng = random.Random(42)
             while not axi_port.reads_enable:
                 yield
             for read in reads:
+                # AXI does not order reads with writes: wait for write responses before checked reads.
+                while (not read.dummy) and (not axi_port.writes_done):
+                    yield
                 while prng.randrange(100) < ar_valid_random:
                     yield
                 # Send command
@@ -208,11 +212,16 @@ class TestAXI(unittest.TestCase):
             _strb = [prng.randrange(2**(32//8)) if data_rand_enable else 0xff for j in range(_len + 1)]
             writes.append(Write(offset, _data, _strb, _id, type=BURST_INCR, len=_len, size=log2_int(32//8)))
             offset += _len + 1
-        # Dummy reads to ensure datas have been written before the effective reads start.
+        # Dummy reads (simultaneous with writes) before the effective reads.
         dummy_reads = [Read(1023, [0], [2**(32//8)-1], 0, type=BURST_FIXED, len=0, size=log2_int(32//8)) for _ in range(32)]
+        for read in dummy_reads:
+            read.dummy = True
+        for write in writes:
+            write.dummy = False
         reads = dummy_reads + writes
 
         # Simulation
+        axi_port.writes_done = False
         if simultaneous_writes_reads:
             axi_port.reads_enable = True
         else:
@@ -312,6 +321,132 @@ class TestAXI(unittest.TestCase):
 
         run_simulation(dut, [axi_write_generator(), native_ready_monitor()])
         self.assertEqual(self.unreserved_wdata_errors, 0)
+
+    def _axi2native_single_writes(self, writes, w_buffer_depth=16, with_read_modify_write=False,
+        mem_init=[], w_delay=0, aw_delay=0, b_ready_delay=0, ncycles=1000):
+        # Issue single-beat writes with independent AW/W timings and return (B IDs, memory).
+        axi_port  = LiteDRAMAXIPort(data_width=32, address_width=32, id_width=8)
+        dram_port = LiteDRAMNativePort("both", 32, 32)
+        dut       = LiteDRAMAXI2Native(axi_port, dram_port,
+            w_buffer_depth         = w_buffer_depth,
+            with_read_modify_write = with_read_modify_write)
+        mem       = DRAMMemory(32, 1024, init=mem_init)
+        b_ids     = []
+
+        def aw_generator():
+            for _ in range(aw_delay):
+                yield
+            for addr, data, strb, _id in writes:
+                yield axi_port.aw.valid.eq(1)
+                yield axi_port.aw.addr.eq(addr)
+                yield axi_port.aw.burst.eq(BURST_INCR)
+                yield axi_port.aw.len.eq(0)
+                yield axi_port.aw.size.eq(log2_int(32//8))
+                yield axi_port.aw.id.eq(_id)
+                yield
+                while (yield axi_port.aw.ready) == 0:
+                    yield
+                yield axi_port.aw.valid.eq(0)
+
+        def w_generator():
+            for _ in range(w_delay):
+                yield
+            for addr, data, strb, _id in writes:
+                yield axi_port.w.valid.eq(1)
+                yield axi_port.w.data.eq(data)
+                yield axi_port.w.strb.eq(strb)
+                yield axi_port.w.last.eq(1)
+                yield
+                while (yield axi_port.w.ready) == 0:
+                    yield
+                yield axi_port.w.valid.eq(0)
+
+        def b_generator():
+            yield axi_port.b.ready.eq(0)
+            for _ in range(b_ready_delay):
+                yield
+            yield axi_port.b.ready.eq(1)
+            for _ in range(ncycles):
+                yield
+                if (yield axi_port.b.valid) and (yield axi_port.b.ready):
+                    b_ids.append((yield axi_port.b.id))
+
+        generators = [
+            aw_generator(),
+            w_generator(),
+            b_generator(),
+            mem.read_handler(dram_port),
+            mem.write_handler(dram_port),
+        ]
+        run_simulation(dut, generators)
+        return b_ids, mem
+
+    def test_axi2native_b_backpressure(self):
+        # Holding BREADY low across more writes than the response buffer can hold must stall the
+        # writes, not drop their responses.
+        for depth in [2, 4]:
+            for with_read_modify_write in [False, True]:
+                with self.subTest(depth=depth, with_read_modify_write=with_read_modify_write):
+                    writes = [(4*(16 + i), 0x100 + i, 0xf, i) for i in range(2*depth + 1)]
+                    b_ids, mem = self._axi2native_single_writes(writes,
+                        w_buffer_depth         = depth,
+                        with_read_modify_write = with_read_modify_write,
+                        b_ready_delay          = 200)
+                    self.assertEqual(b_ids, [_id for _, _, _, _id in writes])
+                    for addr, data, _, _ in writes:
+                        self.assertEqual(mem.mem[addr//4], data)
+
+    def test_axi2native_b_backpressure_rmw_partial(self):
+        # Same with partial writes going through the Read-Modify-Write path.
+        writes = [(4*(16 + i), 0x100 + i, 0x1, i) for i in range(5)]
+        b_ids, mem = self._axi2native_single_writes(writes,
+            w_buffer_depth         = 2,
+            with_read_modify_write = True,
+            mem_init               = [0xaabbcc00]*32,
+            b_ready_delay          = 200)
+        self.assertEqual(b_ids, [_id for _, _, _, _id in writes])
+        for addr, data, _, _ in writes:
+            self.assertEqual(mem.mem[addr//4], 0xaabbcc00 | (data & 0xff))
+
+    def test_axi2native_rmw_w_before_aw(self):
+        # A partial W beat arriving before its AW must be merged at the AW address and answered
+        # with the AW ID.
+        for warmup in [False, True]:
+            with self.subTest(warmup=warmup):
+                mem_init = [0]*64
+                mem_init[0]  = 0xaabbcc11
+                mem_init[16] = 0x11223344
+                writes = [(0x40, 0x000000dd, 0x1, 7)]
+                if warmup:
+                    writes = [(0x80, 0x55667788, 0xf, 3)] + writes
+                b_ids, mem = self._axi2native_single_writes(writes,
+                    with_read_modify_write = True,
+                    mem_init               = mem_init,
+                    aw_delay               = 40)
+                self.assertEqual(b_ids, [_id for _, _, _, _id in writes])
+                self.assertEqual(mem.mem[0],  0xaabbcc11)
+                self.assertEqual(mem.mem[16], 0x112233dd)
+                if warmup:
+                    self.assertEqual(mem.mem[32], 0x55667788)
+
+    def test_axi2native_rmw_partial_w_behind_buffered_w(self):
+        # A partial W beat queued behind full W beats whose AWs have not been seen yet must not
+        # be merged at the address of the first buffered write.
+        mem_init = [0]*64
+        mem_init[18] = 0x11223344
+        writes = [
+            (0x40, 0x01010101, 0xf, 1),
+            (0x44, 0x02020202, 0xf, 2),
+            (0x48, 0x000000dd, 0x1, 3),
+        ]
+        b_ids, mem = self._axi2native_single_writes(writes,
+            with_read_modify_write = True,
+            mem_init               = mem_init,
+            aw_delay               = 40)
+        self.assertEqual(b_ids, [1, 2, 3])
+        self.assertEqual(mem.mem[16], 0x01010101)
+        self.assertEqual(mem.mem[17], 0x02020202)
+        self.assertEqual(mem.mem[18], 0x112233dd)
 
     # Now let's stress things a bit... :)
     def test_axi2native_random_all(self):
