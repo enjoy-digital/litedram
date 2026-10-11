@@ -11,6 +11,7 @@ from migen import *
 from litex.gen.sim import *
 
 from litedram.common import *
+from litedram.frontend.axi import *
 from litedram.frontend.dma import *
 
 from test.common import *
@@ -211,3 +212,75 @@ class TestDMA(MemoryTestDataMixin, unittest.TestCase):
         # Verify DMAReader with a buffered FIFO.
         data = self.pattern_test_data["32bit_long_sequential"]
         self.dma_reader_test(data["pattern"], data["expected"], data_width=32, fifo_buffered=True)
+
+    # AXI with CSR ---------------------------------------------------------------------------------
+
+    def dma_axi_csr_dut(self, dma_cls, data_width):
+        class DUT(Module):
+            def __init__(self):
+                self.axi_port    = LiteDRAMAXIPort(data_width=data_width, address_width=32, id_width=1)
+                self.native_port = LiteDRAMNativePort("both", 32, data_width)
+                self.submodules.axi2native = LiteDRAMAXI2Native(self.axi_port, self.native_port)
+                self.submodules.dma        = dma_cls(self.axi_port, with_csr=True)
+        return DUT()
+
+    def test_dma_writer_axi_csr(self):
+        # CSR base/length are in bytes, AXI addresses must be byte addresses and each single beat
+        # burst must be closed with WLAST (to get a write response).
+        for data_width in [32, 64]:
+            with self.subTest(data_width=data_width):
+                nbytes = data_width//8
+                words  = [0x11223344 + i for i in range(4)]
+                dut    = self.dma_axi_csr_dut(LiteDRAMDMAWriter, data_width)
+                mem    = DRAMMemory(data_width, 64)
+                bresps = []
+
+                def generator():
+                    yield dut.dma._base.storage.eq(0x40)
+                    yield dut.dma._length.storage.eq(len(words)*nbytes)
+                    yield dut.dma._enable.storage.eq(1)
+                    for word in words:
+                        yield dut.dma.sink.valid.eq(1)
+                        yield dut.dma.sink.data.eq(word)
+                        yield
+                        while not (yield dut.dma.sink.ready):
+                            yield
+                    yield dut.dma.sink.valid.eq(0)
+                    for _ in range(256):
+                        yield
+
+                @passive
+                def b_monitor():
+                    while True:
+                        if (yield dut.axi_port.b.valid) and (yield dut.axi_port.b.ready):
+                            bresps.append((yield dut.axi_port.b.resp))
+                        yield
+
+                run_simulation(dut, [generator(), b_monitor(), mem.write_handler(dut.native_port), mem.read_handler(dut.native_port)])
+                self.assertEqual(mem.mem[0x40//nbytes:0x40//nbytes + len(words)], words)
+                self.assertEqual(bresps, [0]*len(words))
+
+    def test_dma_reader_axi_csr(self):
+        # CSR base/length are in bytes, AXI addresses must be byte addresses.
+        for data_width in [32, 64]:
+            with self.subTest(data_width=data_width):
+                nbytes   = data_width//8
+                words    = [0x11223344, 0x55667788]
+                mem_init = [0xdeadbeef]*64
+                mem_init[0x40//nbytes:0x40//nbytes + len(words)] = words
+                dut      = self.dma_axi_csr_dut(LiteDRAMDMAReader, data_width)
+                mem      = DRAMMemory(data_width, 64, init=mem_init)
+                data     = []
+
+                def generator():
+                    yield dut.dma._base.storage.eq(0x40)
+                    yield dut.dma._length.storage.eq(len(words)*nbytes)
+                    yield dut.dma._enable.storage.eq(1)
+                    yield dut.dma.source.ready.eq(1)
+                    for _ in range(256):
+                        yield
+                        if (yield dut.dma.source.valid):
+                            data.append((yield dut.dma.source.data))
+
+                run_simulation(dut, [generator(), mem.read_handler(dut.native_port), mem.write_handler(dut.native_port)])
+                self.assertEqual(data, words)

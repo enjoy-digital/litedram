@@ -60,6 +60,8 @@ class TestDMAByteEnable(unittest.TestCase):
                                     stalled = item if valid and not ready else None
                                     if valid and ready:
                                         writes.append(item)
+                                        if kind == "axi":
+                                            self.assertEqual((yield wdata.last), 1)
 
                             def producer():
                                 if with_csr:
@@ -88,5 +90,7 @@ class TestDMAByteEnable(unittest.TestCase):
                                 self.fail("Buffered writes did not drain")
 
                             run_simulation(dut, [passive(producer)(), command_consumer(), data_consumer(), timeout()])
-                            self.assertEqual(commands, list(range(len(words))))
+                            # CSR addresses words, AXI ports are byte-addressed.
+                            step = lanes if (kind == "axi" and with_csr) else 1
+                            self.assertEqual(commands, [n*step for n in range(len(words))])
                             self.assertEqual(writes, list(zip(words, masks)))
