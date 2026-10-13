@@ -167,7 +167,8 @@ class TestS7DDRPHYCKPhaseShift(unittest.TestCase):
             ("ddrphy0_w4x",     "ddrphy0_w"): 64,     # DQ, static.
         })
         for i in iserdes:
-            self.assertEqual((self.domain(i["CLK"]), self.domain(i["CLKDIV"])), ("ddrphy0_w4x", "ddrphy0_w"))
+            self.assertEqual((self.domain(i["CLK"]), self.domain(i["CLKDIV"])),
+                ("ddrphy0_w4x", "ddrphy0_w"))
         self.assertEqual(len([i for i in insts if i.of == "IDELAYE2"]), 64)
         self.assertEqual(len([i for i in insts if i.of == "IOBUF"]), 64) # ECC lane left out.
 
@@ -203,7 +204,7 @@ class TestS7DDRPHYCKPhaseShift(unittest.TestCase):
         self.assertAlmostEqual(phy.ps_step_ps, 16.74, places=2)
 
     def test_latencies_are_the_a7_ones(self):
-        # Same schedule as the A7DDRPHY without CK phase shift; write latency calibrated by the BIOS.
+        # Same schedule as without CK phase shift; write latency calibrated by the BIOS.
         phy, _ = self.get_phy()
         ref, _ = self.get_phy(with_ck_phase_shift=False)
         for k in ("cl", "cwl", "read_latency", "write_latency", "nphases", "dfi_databits",

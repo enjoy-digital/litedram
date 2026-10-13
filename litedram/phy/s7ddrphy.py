@@ -9,31 +9,7 @@
 # 1:4, 1:2 frequency-ratio DDR2/DDR3 PHY for Xilinx's Series7
 # DDR2: 400, 533, 667, 800 and 1066 MT/s
 # DDR3: 800, 1066, 1333 , 1600 and 1866 MT/s
-#
-# CK phase shift (with_ck_phase_shift, DDR3 1:4 without ODELAYE2: A7DDRPHY, or K7DDRPHY on HR banks
-# with with_odelay=False):
-#
-# Without ODELAYE2 there is no per-lane write leveling. With a fly-by command/clock bus (a DIMM-like
-# layout, e.g. the nine x8 chips of a 72-bit channel), each chip sees CK at a different delay from
-# its DQS and, with a single static DQS phase, only part of the lanes meet tDQSS. The PHY then moves
-# CK against DQ/DQS instead:
-# - CK and the command/address pins run on a pair of clocks with MMCM fine phase shift; DQ, DQS
-#   and the read capture run on static clocks of the same MMCM, so DQ keeps its DQS at 90 deg and
-#   the read capture does not move. The MMCM's fine-PS outputs all share one phase (the
-#   FINE_PS_FRAC DRC refuses fine-PS outputs at different sub-VCO phases), so CK is the one that
-#   moves.
-# - One MMCM per PHY, cascaded from `sys` with its feedback through a BUFG: the static outputs
-#   keep the phase of `sys` and Vivado times sys <-> static clocks as synchronous.
-# - The commands cross from `sys` to the shifted CLKDIV through registers clocked on the falling
-#   edge of `sys` (FDRE IS_C_INVERTED): with the CK phase kept within +-1/2 tCK of `sys`, the
-#   crossing keeps about half a `sys` period of setup and hold. add_constraints() adds the phase
-#   range as clock uncertainty on that crossing.
-# - Each lane keeps its own write latency (write bitslip); the read side adds per-bit selection
-#   (`dq_dly_sel`: the IDELAY taps and the read bitslip of single DQ bits) since the ISERDESE2 of
-#   one lane do not all frame a word alike.
-# The calibration (liblitedram's sdram_s7hr.c, run by the BIOS) scans the CK phase over one tCK,
-# runs the per-lane write latency calibration, the per-bit read leveling and a traffic test
-# (LiteDRAM BIST) at each step, and settles in the middle of the longest run every lane passes.
+# CK phase shift (DDR3 write leveling by CK phase) for PHYs without ODELAYE2 (A7, K7 HR banks).
 
 from functools import reduce
 from operator import or_
@@ -50,6 +26,15 @@ from litedram.common import *
 from litedram.phy.dfi import *
 
 # CK Phase Shift -----------------------------------------------------------------------------------
+
+# Without ODELAYE2 there is no per-lane write leveling: with a fly-by command/clock bus, only part
+# of the lanes meet tDQSS with a single static DQS phase. With with_ck_phase_shift, CK and the
+# commands run on MMCM fine phase shift outputs while DQ/DQS/read capture stay on static outputs of
+# the same MMCM, so moving CK against DQ/DQS does the write leveling. Commands cross from sys
+# through falling edge registers, the per-lane write latency is calibrated with the write bitslips
+# and the read side gets per-bit selection (dq_dly_sel). The BIOS (liblitedram's sdram_s7hr.c) scans
+# the CK phase over one tCK with a traffic test (LiteDRAM BIST) and settles in the middle of the
+# longest passing run.
 
 class S7DDRPHYCKPhase(Module, AutoCSR):
     """The MMCM fine phase shift of CK, one step per CSR write (PSCLK = sys).
@@ -134,13 +119,12 @@ class S7DDRPHY(Module, AutoCSR):
         csr_cdc          = None,
         is_rdimm         = False,
         write_latency_calibration = True,
-        with_ck_phase_shift = False,
-        name             = "ddrphy",
-        mmcm_loc         = None):
-        # with_ck_phase_shift: CK/commands on an MMCM fine phase shift (see the file header), for
-        # DDR3 1:4 without ODELAYE2. The PHY then has its own MMCM (cascaded from sys) and clock
-        # domains, prefixed with `name` (unique per PHY of a SoC); `mmcm_loc` optionally places
-        # the MMCM (add_constraints()).
+        with_ck_phase_shift       = False,
+        name                      = "ddrphy",
+        mmcm_loc                  = None):
+        # with_ck_phase_shift: DDR3 1:4 without ODELAYE2, see CK Phase Shift. The PHY then has its
+        # own MMCM (optionally placed at mmcm_loc) and clock domains prefixed with name (unique per
+        # PHY of a SoC).
         assert memtype in ["DDR2", "DDR3", "DDR4"]
         assert not (memtype == "DDR3" and nphases == 2)
         if with_ck_phase_shift:
@@ -680,22 +664,22 @@ class S7DDRPHY(Module, AutoCSR):
 
 
     def add_ck_phase_shift(self, sys_clk_freq, nphases, strobes):
-        """The PHY's MMCM, clock domains and serializer resets (with_ck_phase_shift).
-
-        One MMCM cascaded from sys (VCO = 2*nphases*sys = the DDR rate):
-          c       sys     fine PS   CLKDIV of CK and the commands
-          c4x     4x sys  fine PS   CLK of CK and the commands
-          w       sys     0         CLKDIV of DQ/DQS/DM and of the read ISERDESE2
-          w4x     4x sys  0         CLK of DQ/DM and of the read ISERDESE2
-          w4x_dqs 4x sys  90 deg    CLK of DQS
-        Returns the CK/commands serializer reset and the per-lane DQ/DQS serializer resets.
-        """
+        # Returns the CK/commands serializer reset and the per-lane DQ/DQS serializer resets.
         name = self.name
+
+        # Clock Domains (MMCM outputs).
+        #   c       sys     fine PS   CLKDIV of CK and the commands
+        #   c4x     4x sys  fine PS   CLK of CK and the commands
+        #   w       sys     0         CLKDIV of DQ/DQS/DM and of the read ISERDESE2
+        #   w4x     4x sys  0         CLK of DQ/DM and of the read ISERDESE2
+        #   w4x_dqs 4x sys  90 deg    CLK of DQS
         self.clock_domains.cd_c       = ClockDomain(f"{name}_c")
         self.clock_domains.cd_c4x     = ClockDomain(f"{name}_c4x",     reset_less=True)
         self.clock_domains.cd_w       = ClockDomain(f"{name}_w")
         self.clock_domains.cd_w4x     = ClockDomain(f"{name}_w4x",     reset_less=True)
         self.clock_domains.cd_w4x_dqs = ClockDomain(f"{name}_w4x_dqs", reset_less=True)
+
+        # MMCM (cascaded from sys, VCO at the DDR rate, feedback through a BUFG to keep sys' phase).
         vco_mult = 2*nphases
         vco_freq = sys_clk_freq*vco_mult
         assert 600e6 <= vco_freq <= 1440e6, f"MMCM VCO {vco_freq/1e6:.1f} MHz out of range"
@@ -748,6 +732,8 @@ class S7DDRPHY(Module, AutoCSR):
             o_CLKOUT4 = outs[4],
         )
         self.specials += Instance("BUFG", i_I=fb, o_O=fb_buf)
+
+        # Clock Buffers.
         for o, cd in zip(outs, [self.cd_c, self.cd_c4x, self.cd_w, self.cd_w4x, self.cd_w4x_dqs]):
             self.specials += Instance("BUFG", i_I=o, o_O=cd.clk)
 
@@ -768,22 +754,24 @@ class S7DDRPHY(Module, AutoCSR):
         return ck_rst, lane_rst
 
     def add_constraints(self, platform):
-        """with_ck_phase_shift: timing of the phase-shifted crossing and the MMCM placement.
-
-        The commands leave sys on its falling edge and enter the shifted CLKDIV: the CK phase
-        range (+-1/2 tCK) goes in as clock uncertainty on that crossing, setup and hold. The
-        MMCM's output clocks only exist once the netlist is linked, so the uncertainty is set
-        before placement rather than in the XDC."""
         if not self.with_ck_phase_shift:
             return
-        sys_clk = f"[get_clocks -of_objects [get_pins -hierarchical -filter {{{{NAME =~ *{self.name}_mmcm/CLKIN1}}}}]]"
-        c_clk   = f"[get_clocks -of_objects [get_pins -hierarchical -filter {{{{NAME =~ *{self.name}_mmcm/CLKOUT0}}}}]]"
-        for kind in ("setup", "hold"):
-            platform.toolchain.pre_placement_commands.append(
-                f"set_clock_uncertainty -{kind} 1.0 -from {sys_clk} -to {c_clk}")
+        def mmcm_filter(pin=""):
+            return f"{{{{NAME =~ *{self.name}_mmcm{pin}}}}}"
+        def mmcm_clk(pin):
+            return f"[get_clocks -of_objects [get_pins -hierarchical -filter {mmcm_filter(pin)}]]"
+
+        # Commands crossing (sys falling edge -> shifted CLKDIV): the CK phase range (+-1/2 tCK) as
+        # clock uncertainty, setup and hold. The MMCM's output clocks only exist once the netlist is
+        # linked: set before placement rather than in the XDC.
+        for kind in ["setup", "hold"]:
+            platform.toolchain.pre_placement_commands.append(f"set_clock_uncertainty -{kind} 1.0 " +
+                f"-from {mmcm_clk('/CLKIN1')} -to {mmcm_clk('/CLKOUT0')}")
+
+        # MMCM placement.
         if self.mmcm_loc is not None:
-            platform.add_platform_command(
-                f"set_property LOC {self.mmcm_loc} [get_cells -hierarchical -filter {{{{NAME =~ *{self.name}_mmcm}}}}]")
+            mmcm = f"[get_cells -hierarchical -filter {mmcm_filter()}]"
+            platform.add_platform_command(f"set_property LOC {self.mmcm_loc} {mmcm}")
 
 # Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 
@@ -799,7 +787,10 @@ class K7DDRPHY(S7DDRPHY):
     def __init__(self, pads, with_odelay=True, write_latency_calibration=None, **kwargs):
         if write_latency_calibration is None:
             write_latency_calibration = with_odelay
-        S7DDRPHY.__init__(self, pads, with_odelay=with_odelay, write_latency_calibration=write_latency_calibration, **kwargs)
+        S7DDRPHY.__init__(self, pads,
+            with_odelay               = with_odelay,
+            write_latency_calibration = write_latency_calibration,
+            **kwargs)
 
 # Xilinx Artix7 (S7DDRPHY without odelay, sys2/4x_dqs generated in CRG with 90° phase vs sys2/4x) --
 
