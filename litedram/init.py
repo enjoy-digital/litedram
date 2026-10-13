@@ -926,6 +926,9 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
     for setting in ["cl", "cwl", "cmd_latency", "cmd_delay"]:
         if getattr(phy_settings, setting, None) is not None:
             r.define(f"SDRAM_PHY_{setting.upper()}", getattr(phy_settings, setting))
+    # Fine CK phase steps per tCK (PHYs that write-level by moving CK, e.g. S7HRDDRPHY).
+    if getattr(phy_settings, "ckphase_steps", None) is not None:
+        r.define("SDRAM_PHY_CKPHASE_STEPS", phy_settings.ckphase_steps)
 
     # Define PHY Read.Write phases
     rdphase = phy_settings.rdphase
