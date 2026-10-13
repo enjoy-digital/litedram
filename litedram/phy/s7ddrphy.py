@@ -9,6 +9,7 @@
 # 1:4, 1:2 frequency-ratio DDR2/DDR3 PHY for Xilinx's Series7
 # DDR2: 400, 533, 667, 800 and 1066 MT/s
 # DDR3: 800, 1066, 1333 , 1600 and 1866 MT/s
+# CK phase shift (DDR3 write leveling by CK phase) for PHYs without ODELAYE2 (A7, K7 HR banks).
 
 from functools import reduce
 from operator import or_
@@ -17,11 +18,90 @@ import math
 
 from migen import *
 from migen.genlib.cdc import PulseSynchronizer
+from migen.genlib.resetsync import AsyncResetSynchronizer
 
 from litex.soc.interconnect.csr import *
 
 from litedram.common import *
 from litedram.phy.dfi import *
+
+# CK Phase Shift -----------------------------------------------------------------------------------
+
+# Without ODELAYE2 there is no per-lane write leveling: with a fly-by command/clock bus, only part
+# of the lanes meet tDQSS with a single static DQS phase. With with_ck_phase_shift, CK and the
+# commands run on MMCM fine phase shift outputs while DQ/DQS/read capture stay on static outputs of
+# the same MMCM, so moving CK against DQ/DQS does the write leveling. Commands cross from sys
+# through falling edge registers, the per-lane write latency is calibrated with the write bitslips
+# and the read side gets per-bit selection (dq_dly_sel). The BIOS (liblitedram's sdram_s7hr.c) scans
+# the CK phase over one tCK with a traffic test (LiteDRAM BIST) and settles in the middle of the
+# longest passing run.
+
+class S7DDRPHYCKPhase(Module, AutoCSR):
+    """The MMCM fine phase shift of CK, one step per CSR write (PSCLK = sys).
+
+    CSRs: inc / dec (one step later / earlier), status (value: signed steps from the MMCM's reset
+    phase, busy: a step in progress, the MMCM takes ~12 cycles; locked). A step requested while
+    busy is dropped: wait for busy low. The value follows the MMCM: back to 0 when it unlocks.
+    """
+    def __init__(self):
+        self.psen     = Signal()
+        self.psincdec = Signal()
+        self.psdone   = Signal()
+        self.locked   = Signal()
+
+        self._inc    = CSR()
+        self._dec    = CSR()
+        self._status = CSRStatus(fields=[
+            CSRField("value",  size=16, description="CK phase, signed fine steps from reset."),
+            CSRField("busy",   size=1,  description="A phase step is in progress."),
+            CSRField("locked", size=1,  description="The PHY's MMCM is locked."),
+        ])
+
+        # # #
+
+        busy  = Signal()
+        value = Signal((16, True))
+        self.sync += [
+            self.psen.eq(0),
+            If(~busy & (self._inc.re | self._dec.re),
+                self.psen.eq(1),
+                self.psincdec.eq(self._inc.re),
+                busy.eq(1),
+            ),
+            If(self.psdone,
+                busy.eq(0),
+                If(self.psincdec,
+                    value.eq(value + 1)
+                ).Else(
+                    value.eq(value - 1)
+                )
+            ),
+            If(~self.locked,
+                busy.eq(0),
+                value.eq(0),
+            ),
+        ]
+        self.comb += [
+            self._status.fields.value.eq(value),
+            self._status.fields.busy.eq(busy),
+            self._status.fields.locked.eq(self.locked),
+        ]
+
+
+def _negedge(module, signal, clk):
+    """`signal` registered on the falling edge of `clk` (one FDRE per bit, IS_C_INVERTED)."""
+    q = Signal.like(signal)
+    for i in range(len(signal)):
+        module.specials += Instance("FDRE",
+            p_INIT          = 0,
+            p_IS_C_INVERTED = 1,
+            i_C  = clk,
+            i_CE = 1,
+            i_R  = 0,
+            i_D  = signal[i],
+            o_Q  = q[i],
+        )
+    return q
 
 # Xilinx Series7 DDR2/DDR3 PHY ---------------------------------------------------------------------
 
@@ -38,9 +118,18 @@ class S7DDRPHY(Module, AutoCSR):
         ddr_clk          = None,
         csr_cdc          = None,
         is_rdimm         = False,
-        write_latency_calibration = True):
+        write_latency_calibration = True,
+        with_ck_phase_shift       = False,
+        name                      = "ddrphy",
+        mmcm_loc                  = None):
+        # with_ck_phase_shift: DDR3 1:4 without ODELAYE2, see CK Phase Shift. The PHY then has its
+        # own MMCM (optionally placed at mmcm_loc) and clock domains prefixed with name (unique per
+        # PHY of a SoC).
         assert memtype in ["DDR2", "DDR3", "DDR4"]
         assert not (memtype == "DDR3" and nphases == 2)
+        if with_ck_phase_shift:
+            assert memtype == "DDR3" and nphases == 4 and not with_odelay
+            assert ddr_clk is None and not is_rdimm
         phytype     = self.__class__.__name__
         pads        = PHYPadsCombiner(pads)
         tck         = 2/(2*nphases*sys_clk_freq)
@@ -54,6 +143,12 @@ class S7DDRPHY(Module, AutoCSR):
         with_dm     = hasattr(pads, "dm")
         nphases     = nphases
         assert databits%8 == 0
+        if with_ck_phase_shift:
+            assert len(pads.groups) == 1
+            assert databits == 8*strobes, "x8 lanes (8 DQ per DQS)"
+        self.with_ck_phase_shift = with_ck_phase_shift
+        self.name                = name
+        self.mmcm_loc            = mmcm_loc
 
         # Parameters -------------------------------------------------------------------------------
         iodelay_tap_average = {
@@ -81,6 +176,8 @@ class S7DDRPHY(Module, AutoCSR):
         self._rst             = CSRStorage()
 
         self._dly_sel         = CSRStorage(strobes)
+        if with_ck_phase_shift:
+            self._dq_dly_sel  = CSRStorage(8, description="Read-side per-bit mask (0: all bits).")
         self._half_sys8x_taps = CSRStorage(5, reset=half_sys8x_taps)
 
         self._wlevel_en     = CSRStorage()
@@ -133,6 +230,8 @@ class S7DDRPHY(Module, AutoCSR):
         write_calibrations = (with_odelay and (memtype not in ["DDR2"]))
         if memtype == "DDR2":
             write_latency_calibration = False
+        if with_ck_phase_shift:
+            write_latency_calibration = False
 
         self.settings = PhySettings(
             phytype                   = phytype,
@@ -177,12 +276,37 @@ class S7DDRPHY(Module, AutoCSR):
 
         # # #
 
+        # Clocks/Resets of the Serializers ---------------------------------------------------------
+        # CK/commands on ck_clk/ck_clkdiv, DQ/DM/read capture on dq_clk/dq_clkdiv, DQS on dqs_clk.
+        ddr_clk = ddr_clk or ("sys2x" if nphases == 2 else "sys4x")
+        if with_ck_phase_shift:
+            ck_rst, lane_rst = self.add_ck_phase_shift(sys_clk_freq, nphases, strobes)
+            ck_clk,  ck_clkdiv  = f"{name}_c4x", f"{name}_c"
+            dq_clk,  dq_clkdiv  = f"{name}_w4x", f"{name}_w"
+            dqs_clk = f"{name}_w4x_dqs"
+        else:
+            ck_rst   = ResetSignal("sys") | self._rst.storage
+            lane_rst = [ResetSignal("sys") | self._rst.storage]*strobes
+            ck_clk,  ck_clkdiv  = ddr_clk, "sys"
+            dq_clk,  dq_clkdiv  = ddr_clk, "sys"
+            dqs_clk = ddr_clk if with_odelay else ddr_clk+"_dqs"
+
+        # Read-side selection of a DQ bit (dly_sel lanes, dq_dly_sel bits).
+        if with_ck_phase_shift:
+            dq_sel = Signal(8)
+            self.comb += If(self._dq_dly_sel.storage == 0,
+                dq_sel.eq(0xff)
+            ).Else(
+                dq_sel.eq(self._dq_dly_sel.storage)
+            )
+            def rd_sel(i):
+                return self._dly_sel.storage[i//8] & dq_sel[i%8]
+
         # Iterate on pads groups -------------------------------------------------------------------
         for pads_group in range(len(pads.groups)):
             pads.sel_group(pads_group)
 
             # Clock --------------------------------------------------------------------------------
-            ddr_clk = ddr_clk or ("sys2x" if nphases == 2 else "sys4x")
             for i in range(len(pads.clk_p)):
                 sd_clk_se_nodelay = Signal()
                 sd_clk_se_delayed = Signal()
@@ -192,9 +316,9 @@ class S7DDRPHY(Module, AutoCSR):
                     p_TRISTATE_WIDTH = 1,
                     p_DATA_RATE_OQ   = "DDR",
                     p_DATA_RATE_TQ   = "BUF",
-                    i_RST    = ResetSignal("sys") | self._rst.storage,
-                    i_CLK    = ClockSignal(ddr_clk),
-                    i_CLKDIV = ClockSignal("sys"),
+                    i_RST    = ck_rst,
+                    i_CLK    = ClockSignal(ck_clk),
+                    i_CLKDIV = ClockSignal(ck_clkdiv),
                     **{f"i_D{n+1}": (0b10101010 >> n) & 0b1 for n in range(8)},
                     o_OQ     = sd_clk_se_nodelay,
                     i_OCE    = 1,
@@ -244,6 +368,10 @@ class S7DDRPHY(Module, AutoCSR):
                     if (pad_type == "required"):
                         raise ValueError(f"DRAM pad {pad_name} required but not found in pads.")
                     continue
+                dfi_cmd = [getattr(phase, dfi_name) for phase in dfi.phases]
+                if with_ck_phase_shift:
+                    # Into the shifted CLKDIV through falling-edge registers of sys.
+                    dfi_cmd = [_negedge(self, cmd, ClockSignal("sys")) for cmd in dfi_cmd]
                 for i in range(len(pad)):
                     oq  = Signal()
                     self.specials += Instance("OSERDESE2",
@@ -252,10 +380,10 @@ class S7DDRPHY(Module, AutoCSR):
                         p_TRISTATE_WIDTH = 1,
                         p_DATA_RATE_OQ   = "DDR",
                         p_DATA_RATE_TQ   = "BUF",
-                        i_RST    = ResetSignal("sys") | self._rst.storage,
-                        i_CLK    = ClockSignal(ddr_clk),
-                        i_CLKDIV = ClockSignal("sys"),
-                        **{f"i_D{n+1}": getattr(dfi.phases[n//2], dfi_name)[i] for n in range(8)},
+                        i_RST    = ck_rst,
+                        i_CLK    = ClockSignal(ck_clk),
+                        i_CLKDIV = ClockSignal(ck_clkdiv),
+                        **{f"i_D{n+1}": dfi_cmd[n//2][i] for n in range(8)},
                         i_OCE    = 1,
                         o_OQ     = oq if with_odelay else pad[i],
                     )
@@ -312,9 +440,9 @@ class S7DDRPHY(Module, AutoCSR):
                 p_TRISTATE_WIDTH = 1,
                 p_DATA_RATE_OQ   = "DDR",
                 p_DATA_RATE_TQ   = "BUF",
-                i_RST    = ResetSignal("sys") | self._rst.storage,
-                i_CLK    = ClockSignal(ddr_clk) if with_odelay else ClockSignal(ddr_clk+"_dqs"),
-                i_CLKDIV = ClockSignal("sys"),
+                i_RST    = lane_rst[i],
+                i_CLK    = ClockSignal(dqs_clk),
+                i_CLKDIV = ClockSignal(dq_clkdiv),
                 **{f"i_D{n+1}": dqs_bitslip.o[n] for n in range(8)},
                 i_OCE    = 1,
                 o_OFB    = dqs_o_no_delay if with_odelay else Signal(),
@@ -367,9 +495,9 @@ class S7DDRPHY(Module, AutoCSR):
                     p_TRISTATE_WIDTH = 1,
                     p_DATA_RATE_OQ   = "DDR",
                     p_DATA_RATE_TQ   = "BUF",
-                    i_RST    = ResetSignal("sys") | self._rst.storage,
-                    i_CLK    = ClockSignal(ddr_clk),
-                    i_CLKDIV = ClockSignal("sys"),
+                    i_RST    = lane_rst[i],
+                    i_CLK    = ClockSignal(dq_clk),
+                    i_CLKDIV = ClockSignal(dq_clkdiv),
                     **{f"i_D{n+1}": dm_o_bitslip.o[n] for n in range(8)},
                     i_OCE    = 1,
                     o_OQ     = dm_o_nodelay if with_odelay else pads.dm[i],
@@ -401,6 +529,9 @@ class S7DDRPHY(Module, AutoCSR):
 
         dq_dqs_ratio = databits // strobes
         assert (dq_dqs_ratio in [4, 8])
+        if not with_ck_phase_shift:
+            def rd_sel(i):
+                return self._dly_sel.storage[i//dq_dqs_ratio]
 
         for i in range(databits):
             dq_o_nodelay = Signal()
@@ -421,9 +552,9 @@ class S7DDRPHY(Module, AutoCSR):
                 p_TRISTATE_WIDTH = 1,
                 p_DATA_RATE_OQ   = "DDR",
                 p_DATA_RATE_TQ   = "BUF",
-                i_RST    = ResetSignal("sys") | self._rst.storage,
-                i_CLK    = ClockSignal(ddr_clk),
-                i_CLKDIV = ClockSignal("sys"),
+                i_RST    = lane_rst[i//dq_dqs_ratio],
+                i_CLK    = ClockSignal(dq_clk),
+                i_CLKDIV = ClockSignal(dq_clkdiv),
                 **{f"i_D{n+1}": dq_o_bitslip.o[n] for n in range(8)},
                 i_TCE    = 1,
                 i_T1     = ~dq_oe_delay.output,
@@ -432,8 +563,8 @@ class S7DDRPHY(Module, AutoCSR):
                 o_OQ     = dq_o_nodelay,
             )
             dq_i_bitslip = BitSlip(8,
-                rst    = (self._dly_sel.storage[i//dq_dqs_ratio] & rdly_dq_bitslip_rst) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//dq_dqs_ratio] & rdly_dq_bitslip,
+                rst    = (rd_sel(i) & rdly_dq_bitslip_rst) | self._rst.storage,
+                slp    = rd_sel(i) & rdly_dq_bitslip,
                 cycles = 1)
             self.submodules += dq_i_bitslip
             self.specials += Instance("ISERDESE2",
@@ -443,10 +574,10 @@ class S7DDRPHY(Module, AutoCSR):
                 p_DATA_RATE      = "DDR",
                 p_NUM_CE         = 1,
                 p_IOBDELAY       = "IFD",
-                i_RST     = ResetSignal("sys") | self._rst.storage,
-                i_CLK     = ClockSignal(ddr_clk),
-                i_CLKB    = ~ClockSignal(ddr_clk),
-                i_CLKDIV  = ClockSignal("sys"),
+                i_RST     = lane_rst[i//dq_dqs_ratio],
+                i_CLK     = ClockSignal(dq_clk),
+                i_CLKB    = ~ClockSignal(dq_clk),
+                i_CLKDIV  = ClockSignal(dq_clkdiv),
                 i_BITSLIP = 0,
                 i_CE1     = 1,
                 i_DDLY    = dq_i_delayed,
@@ -482,9 +613,9 @@ class S7DDRPHY(Module, AutoCSR):
                 p_IDELAY_TYPE           = "VARIABLE",
                 p_IDELAY_VALUE          = 0,
                 i_C        = ClockSignal("sys"),
-                i_LD       = (self._dly_sel.storage[i//dq_dqs_ratio] & rdly_dq_rst) | self._rst.storage,
+                i_LD       = (rd_sel(i) & rdly_dq_rst) | self._rst.storage,
                 i_LDPIPEEN = 0,
-                i_CE       = self._dly_sel.storage[i//dq_dqs_ratio] & rdly_dq_inc,
+                i_CE       = rd_sel(i) & rdly_dq_inc,
                 i_INC      = 1,
                 i_IDATAIN  = dq_i_nodelay,
                 o_DATAOUT  = dq_i_delayed
@@ -532,17 +663,134 @@ class S7DDRPHY(Module, AutoCSR):
         self.comb += dqs_postamble.eq(wrdata_en.taps[wrtap + 1]  & ~wrdata_en.taps[wrtap + 0])
 
 
+    def add_ck_phase_shift(self, sys_clk_freq, nphases, strobes):
+        # Returns the CK/commands serializer reset and the per-lane DQ/DQS serializer resets.
+        name = self.name
+
+        # Clock Domains (MMCM outputs).
+        #   c       sys     fine PS   CLKDIV of CK and the commands
+        #   c4x     4x sys  fine PS   CLK of CK and the commands
+        #   w       sys     0         CLKDIV of DQ/DQS/DM and of the read ISERDESE2
+        #   w4x     4x sys  0         CLK of DQ/DM and of the read ISERDESE2
+        #   w4x_dqs 4x sys  90 deg    CLK of DQS
+        self.clock_domains.cd_c       = ClockDomain(f"{name}_c")
+        self.clock_domains.cd_c4x     = ClockDomain(f"{name}_c4x",     reset_less=True)
+        self.clock_domains.cd_w       = ClockDomain(f"{name}_w")
+        self.clock_domains.cd_w4x     = ClockDomain(f"{name}_w4x",     reset_less=True)
+        self.clock_domains.cd_w4x_dqs = ClockDomain(f"{name}_w4x_dqs", reset_less=True)
+
+        # MMCM (cascaded from sys, VCO at the DDR rate, feedback through a BUFG to keep sys' phase).
+        vco_mult = 2*nphases
+        vco_freq = sys_clk_freq*vco_mult
+        assert 600e6 <= vco_freq <= 1440e6, f"MMCM VCO {vco_freq/1e6:.1f} MHz out of range"
+        self.ps_step_ps       = 1e12/vco_freq/56
+        self.ps_steps_per_tck = 56*vco_mult//nphases # One tCK = 2 VCO periods = 112 steps (1:4).
+        self.settings.ckphase_steps = self.ps_steps_per_tck # SDRAM_PHY_CKPHASE_STEPS (BIOS).
+        fb, fb_buf = Signal(), Signal()
+        outs       = [Signal() for _ in range(5)]
+        self.mmcm_locked = locked = Signal()
+        self.submodules.ckphase = ckphase = S7DDRPHYCKPhase()
+        self.comb += ckphase.locked.eq(locked)
+        self.mmcm_rst = mmcm_rst = Signal()
+        self.comb += mmcm_rst.eq(ResetSignal("sys"))
+        self.specials += Instance("MMCME2_ADV", name=f"{name}_mmcm",
+            p_BANDWIDTH           = "OPTIMIZED",
+            p_CLKIN1_PERIOD       = 1e9/sys_clk_freq,
+            p_REF_JITTER1         = 0.01,
+            p_DIVCLK_DIVIDE       = 1,
+            p_CLKFBOUT_MULT_F     = float(vco_mult),
+            p_CLKFBOUT_PHASE      = 0.0,
+            p_CLKOUT0_DIVIDE_F    = float(vco_mult),
+            p_CLKOUT0_PHASE       = 0.0,
+            p_CLKOUT0_USE_FINE_PS = "TRUE",
+            p_CLKOUT1_DIVIDE      = 2,
+            p_CLKOUT1_PHASE       = 0.0,
+            p_CLKOUT1_USE_FINE_PS = "TRUE",
+            p_CLKOUT2_DIVIDE      = vco_mult,
+            p_CLKOUT2_PHASE       = 0.0,
+            p_CLKOUT3_DIVIDE      = 2,
+            p_CLKOUT3_PHASE       = 0.0,
+            p_CLKOUT4_DIVIDE      = 2,
+            p_CLKOUT4_PHASE       = 90.0,
+            i_CLKIN1   = ClockSignal("sys"),
+            i_CLKIN2   = 0,
+            i_CLKINSEL = 1,
+            i_CLKFBIN  = fb_buf,
+            o_CLKFBOUT = fb,
+            i_RST      = mmcm_rst,
+            i_PWRDWN   = 0,
+            o_LOCKED   = locked,
+            i_PSCLK    = ClockSignal("sys"),
+            i_PSEN     = ckphase.psen,
+            i_PSINCDEC = ckphase.psincdec,
+            o_PSDONE   = ckphase.psdone,
+            i_DCLK = 0, i_DEN = 0, i_DWE = 0, i_DADDR = 0, i_DI = 0,
+            o_CLKOUT0 = outs[0],
+            o_CLKOUT1 = outs[1],
+            o_CLKOUT2 = outs[2],
+            o_CLKOUT3 = outs[3],
+            o_CLKOUT4 = outs[4],
+        )
+        self.specials += Instance("BUFG", i_I=fb, o_O=fb_buf)
+
+        # Clock Buffers.
+        for o, cd in zip(outs, [self.cd_c, self.cd_c4x, self.cd_w, self.cd_w4x, self.cd_w4x_dqs]):
+            self.specials += Instance("BUFG", i_I=o, o_O=cd.clk)
+
+        # Serializer resets: held while the MMCM is unlocked, released synchronously to each
+        # CLKDIV; one register per lane on the DQ/DQS side.
+        serdes_rst = Signal()
+        self.comb += serdes_rst.eq(ResetSignal("sys") | ~locked | self._rst.storage)
+        self.specials += [
+            AsyncResetSynchronizer(self.cd_c, serdes_rst),
+            AsyncResetSynchronizer(self.cd_w, serdes_rst),
+        ]
+        lane_rst = [Signal(reset_less=True) for _ in range(strobes)]
+        ck_rst   = Signal(reset_less=True)
+        sync_w   = getattr(self.sync, f"{name}_w")
+        sync_c   = getattr(self.sync, f"{name}_c")
+        sync_w  += [r.eq(ResetSignal(f"{name}_w")) for r in lane_rst]
+        sync_c  += ck_rst.eq(ResetSignal(f"{name}_c"))
+        return ck_rst, lane_rst
+
+    def add_constraints(self, platform):
+        if not self.with_ck_phase_shift:
+            return
+        def mmcm_filter(pin=""):
+            return f"{{{{NAME =~ *{self.name}_mmcm{pin}}}}}"
+        def mmcm_clk(pin):
+            return f"[get_clocks -of_objects [get_pins -hierarchical -filter {mmcm_filter(pin)}]]"
+
+        # Commands crossing (sys falling edge -> shifted CLKDIV): the CK phase range (+-1/2 tCK) as
+        # clock uncertainty, setup and hold. The MMCM's output clocks only exist once the netlist is
+        # linked: set before placement rather than in the XDC.
+        for kind in ["setup", "hold"]:
+            platform.toolchain.pre_placement_commands.append(f"set_clock_uncertainty -{kind} 1.0 " +
+                f"-from {mmcm_clk('/CLKIN1')} -to {mmcm_clk('/CLKOUT0')}")
+
+        # MMCM placement.
+        if self.mmcm_loc is not None:
+            mmcm = f"[get_cells -hierarchical -filter {mmcm_filter()}]"
+            platform.add_platform_command(f"set_property LOC {self.mmcm_loc} {mmcm}")
+
 # Xilinx Virtex7 (S7DDRPHY with odelay) ------------------------------------------------------------
 
 class V7DDRPHY(S7DDRPHY):
     def __init__(self, pads, **kwargs):
         S7DDRPHY.__init__(self, pads, with_odelay=True, **kwargs)
 
-# Xilinx Kintex7 (S7DDRPHY with odelay) ------------------------------------------------------------
+# Xilinx Kintex7 (S7DDRPHY with odelay on HP banks, without on HR banks) ---------------------------
 
 class K7DDRPHY(S7DDRPHY):
-    def __init__(self, pads, **kwargs):
-        S7DDRPHY.__init__(self, pads, with_odelay=True, **kwargs)
+    # HR banks have no ODELAYE2: with_odelay=False gives the A7DDRPHY's behaviour (sys2/4x_dqs from
+    # the CRG), or with with_ck_phase_shift=True write leveling by CK phase (DDR3).
+    def __init__(self, pads, with_odelay=True, write_latency_calibration=None, **kwargs):
+        if write_latency_calibration is None:
+            write_latency_calibration = with_odelay
+        S7DDRPHY.__init__(self, pads,
+            with_odelay               = with_odelay,
+            write_latency_calibration = write_latency_calibration,
+            **kwargs)
 
 # Xilinx Artix7 (S7DDRPHY without odelay, sys2/4x_dqs generated in CRG with 90° phase vs sys2/4x) --
 
