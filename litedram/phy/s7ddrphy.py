@@ -10,7 +10,8 @@
 # DDR2: 400, 533, 667, 800 and 1066 MT/s
 # DDR3: 800, 1066, 1333 , 1600 and 1866 MT/s
 #
-# CK phase shift (with_ck_phase_shift, DDR3 1:4 without ODELAYE2, e.g. HR banks):
+# CK phase shift (with_ck_phase_shift, DDR3 1:4 without ODELAYE2: A7DDRPHY, or K7DDRPHY on HR banks
+# with with_odelay=False):
 #
 # Without ODELAYE2 there is no per-lane write leveling. With a fly-by command/clock bus (a DIMM-like
 # layout, e.g. the nine x8 chips of a 72-bit channel), each chip sees CK at a different delay from
@@ -790,11 +791,15 @@ class V7DDRPHY(S7DDRPHY):
     def __init__(self, pads, **kwargs):
         S7DDRPHY.__init__(self, pads, with_odelay=True, **kwargs)
 
-# Xilinx Kintex7 (S7DDRPHY with odelay) ------------------------------------------------------------
+# Xilinx Kintex7 (S7DDRPHY with odelay on HP banks, without on HR banks) ---------------------------
 
 class K7DDRPHY(S7DDRPHY):
-    def __init__(self, pads, **kwargs):
-        S7DDRPHY.__init__(self, pads, with_odelay=True, **kwargs)
+    # HR banks have no ODELAYE2: with_odelay=False gives the A7DDRPHY's behaviour (sys2/4x_dqs from
+    # the CRG), or with with_ck_phase_shift=True write leveling by CK phase (DDR3).
+    def __init__(self, pads, with_odelay=True, write_latency_calibration=None, **kwargs):
+        if write_latency_calibration is None:
+            write_latency_calibration = with_odelay
+        S7DDRPHY.__init__(self, pads, with_odelay=with_odelay, write_latency_calibration=write_latency_calibration, **kwargs)
 
 # Xilinx Artix7 (S7DDRPHY without odelay, sys2/4x_dqs generated in CRG with 90° phase vs sys2/4x) --
 

@@ -126,8 +126,12 @@ class TestS7DDRPHYCKPhaseShift(unittest.TestCase):
 
     def get_phy(self, lanes=8, **kwargs):
         from litedram.common import PHYPadsReducer
+        # A Kintex7 HR bank (the typical use); A7DDRPHY takes the same arguments.
+        cls = kwargs.pop("cls", K7DDRPHY)
+        if cls is K7DDRPHY:
+            kwargs.setdefault("with_odelay", False)
         kwargs.setdefault("with_ck_phase_shift", True)
-        phy = A7DDRPHY(PHYPadsReducer(self.get_pads(), list(range(lanes))),
+        phy = cls(PHYPadsReducer(self.get_pads(), list(range(lanes))),
             memtype="DDR3", sys_clk_freq=400e6/3, cl=7, cwl=6, name="ddrphy0", **kwargs)
         insts = [s for s in phy.get_fragment().specials if isinstance(s, Instance)]
         return phy, insts
@@ -208,6 +212,23 @@ class TestS7DDRPHYCKPhaseShift(unittest.TestCase):
         self.assertEqual(phy.settings.rdphase.reset.value, ref.settings.rdphase.reset.value)
         self.assertEqual(phy.settings.wrphase.reset.value, ref.settings.wrphase.reset.value)
         self.assertFalse(phy.settings.write_latency_calibration)
+
+    def test_k7_hr_bank_is_the_a7_phy(self):
+        # K7DDRPHY(with_odelay=False): the A7DDRPHY's settings and primitives, with or without CK
+        # phase shift.
+        for ck in (False, True):
+            k7, k7_insts = self.get_phy(with_ck_phase_shift=ck)
+            a7, a7_insts = self.get_phy(with_ck_phase_shift=ck, cls=A7DDRPHY)
+            for k in ("cl", "cwl", "read_latency", "write_latency", "write_leveling",
+                      "write_latency_calibration", "read_leveling"):
+                self.assertEqual(getattr(k7.settings, k), getattr(a7.settings, k), k)
+            self.assertEqual(sorted(i.of for i in k7_insts), sorted(i.of for i in a7_insts))
+            self.assertEqual([c.name for c in k7.get_csrs()], [c.name for c in a7.get_csrs()])
+        self.assertFalse([i for i in k7_insts if i.of == "ODELAYE2"])
+        # Default: HP banks, with ODELAYE2 and write latency calibration (unchanged).
+        k7_hp, k7_hp_insts = self.get_phy(with_odelay=True, with_ck_phase_shift=False)
+        self.assertTrue(k7_hp.settings.write_latency_calibration)
+        self.assertTrue([i for i in k7_hp_insts if i.of == "ODELAYE2"])
 
     def test_csrs(self):
         phy, _ = self.get_phy()
