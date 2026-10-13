@@ -96,7 +96,20 @@ class LiteDRAMAXI2NativeW(Module):
                 w_buffer_level.eq(w_buffer_level - 1)
             )
         ]
-        self.comb += can_write.eq(w_buffer.level > w_buffer_level)
+        # Write data not yet claimed by a command (written to the buffer, no command sent yet), as
+        # its own register: can_write is then a flop, not a compare of two counters, on the
+        # command's path into the controller's arbitration.
+        w_unclaimed     = Signal(max=buffer_depth + 1)
+        w_buffer_accept = Signal()
+        self.comb += w_buffer_accept.eq(w_buffer.sink.valid & w_buffer.sink.ready)
+        self.sync += [
+            If(w_buffer_accept & ~w_buffer_queue,
+                w_unclaimed.eq(w_unclaimed + 1)
+            ).Elif(~w_buffer_accept & w_buffer_queue,
+                w_unclaimed.eq(w_unclaimed - 1)
+            )
+        ]
+        self.comb += can_write.eq(w_unclaimed != 0)
 
         # Write Response reservation ---------------------------------------------------------------
         # - Incremented when the last write cmd of a burst is sent
@@ -145,7 +158,11 @@ class LiteDRAMAXI2NativeW(Module):
             # Only send write data after a matching write command has been
             # accepted. This keeps delayed native wdata_ready pulses from
             # consuming data ahead of the command stream.
-            w_buffer_send.eq((w_buffer_level != 0) | w_buffer_queue),
+            # The command is in the controller one cycle before the controller can ask for its
+            # data (its write data ready comes write_latency registers after the bank machine
+            # issues the write), so the registered level is enough: no path from the command's
+            # ready to the write data.
+            w_buffer_send.eq(w_buffer_level != 0),
             If(axi_w_connect, axi.w.connect(w_buffer.sink)),
             port.wdata.valid.eq(w_buffer.source.valid & w_buffer_send),
             port.wdata.data.eq(w_buffer.source.data),
