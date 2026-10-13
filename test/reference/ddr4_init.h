@@ -131,7 +131,7 @@ static inline void init_sequence(void)
 	command_p0(DFII_COMMAND_RAS|DFII_COMMAND_CAS|DFII_COMMAND_WE|DFII_COMMAND_CS);
 
 	/* Load Mode Register 0, CL=9, BL=8 */
-	sdram_dfii_pi0_address_write(0x100);
+	sdram_dfii_pi0_address_write(0x300);
 	sdram_dfii_pi0_baddress_write(0);
 	command_p0(DFII_COMMAND_RAS|DFII_COMMAND_CAS|DFII_COMMAND_WE|DFII_COMMAND_CS);
 	cdelay(200);

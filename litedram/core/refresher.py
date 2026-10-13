@@ -105,12 +105,24 @@ class RefreshTimer(Module):
 
     Generate periodic pulses (tREFI period) to trigger DRAM refresh.
     """
-    def __init__(self, trefi):
+    def __init__(self, trefi, registered=False):
         self.wait  = Signal()
         self.done  = Signal()
         self.count = Signal(bits_for(trefi))
 
         # # #
+
+        if registered:
+            if trefi < 1:
+                raise ValueError("Refresh interval must be positive")
+            self.done.reset = Constant(int(trefi == 1), 1)
+            count = Signal(bits_for(trefi), reset=trefi-1)
+            # Exact invariant done == (count == 0), including reset/reload.
+            self.sync += If(self.wait & ~self.done,
+                count.eq(count-1), self.done.eq(count == 1)
+            ).Else(count.eq(trefi-1), self.done.eq(trefi == 1))
+            self.comb += self.count.eq(count)
+            return
 
         done  = Signal()
         count = Signal(bits_for(trefi), reset=trefi-1)
@@ -233,7 +245,9 @@ class Refresher(Module):
         # Refresh Timer ----------------------------------------------------------------------------
         if settings.timing.tREFI < 100: # FIXME: Reduce Margin.
             raise ValueError("Clk/tREFI is ratio too low , please increase Clk frequency or disable Refresh.")
-        timer = RefreshTimer(settings.timing.tREFI)
+        timer = RefreshTimer(settings.timing.tREFI,
+            registered=(getattr(settings, "with_registered_refresh_timers", False) or
+                getattr(settings, "with_bank_group_interleaving", False)))
         self.submodules.timer = timer
         self.comb += timer.wait.eq(~timer.done)
 
@@ -249,7 +263,9 @@ class Refresher(Module):
 
         if settings.timing.tZQCS is not None:
             # ZQCS Timer ---------------------------------------------------------------------------
-            zqcs_timer = RefreshTimer(int(clk_freq/zqcs_freq))
+            zqcs_timer = RefreshTimer(int(clk_freq/zqcs_freq),
+                registered=(getattr(settings, "with_registered_refresh_timers", False) or
+                getattr(settings, "with_bank_group_interleaving", False)))
             self.submodules.zqcs_timer = zqcs_timer
             self.comb += wants_zqcs.eq(zqcs_timer.done)
 
