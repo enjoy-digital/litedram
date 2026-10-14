@@ -163,7 +163,13 @@ class LiteDRAMAXI2NativeW(Module):
             # issues the write), so the registered level is enough: no path from the command's
             # ready to the write data.
             w_buffer_send.eq(w_buffer_level != 0),
-            If(axi_w_connect, axi.w.connect(w_buffer.sink)),
+            # Payload always from axi.w (the RMW WRITE state overrides it); only the handshake is
+            # gated, so the partial-strobe detection does not select the data path.
+            axi.w.connect(w_buffer.sink, omit={"valid", "ready"}),
+            If(axi_w_connect,
+                w_buffer.sink.valid.eq(axi.w.valid),
+                axi.w.ready.eq(w_buffer.sink.ready),
+            ),
             port.wdata.valid.eq(w_buffer.source.valid & w_buffer_send),
             port.wdata.data.eq(w_buffer.source.data),
             port.wdata.we.eq(w_buffer.source.strb),
