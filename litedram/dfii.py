@@ -24,7 +24,7 @@ class PhaseInjector(Module, AutoCSR):
             # Separate cs for clam shell topology
             CSRField("cs_top",   size=1, description="DFI chip select bus for top half only"),
             CSRField("cs_bottom",   size=1, description="DFI chip select bus for bottom half only"),
-        ], description="Control DFI signals on a single phase")
+        ], reset_less=True, description="Control DFI signals on a single phase") # Only used on _command_issue.
 
         self._command_issue = CSR() # description="The command gets commited on a write to this register"
         self._address       = CSRStorage(len(phase.address), reset_less=True,  description="DFI address bus")
@@ -61,7 +61,10 @@ class PhaseInjector(Module, AutoCSR):
             phase.wrdata.eq(self._wrdata.storage),
             phase.wrdata_mask.eq(0)
         ]
-        self.sync += If(phase.rddata_valid, self._rddata.status.eq(phase.rddata))
+        # Read data capture (reset-less: only read by software after it issues a read).
+        rddata = Signal(len(phase.rddata), reset_less=True)
+        self.sync += If(phase.rddata_valid, rddata.eq(phase.rddata))
+        self.comb += self._rddata.status.eq(rddata)
 
 # DFIInjector --------------------------------------------------------------------------------------
 
