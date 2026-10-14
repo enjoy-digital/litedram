@@ -133,9 +133,9 @@ class _LiteDRAMBISTGenerator(Module):
         ashift, awidth = get_ashift_awidth(dram_port)
         self.start       = Signal()
         self.done        = Signal()
-        self.base        = Signal(awidth)
-        self.end         = Signal(awidth)
-        self.length      = Signal(awidth)
+        self.base        = Signal(awidth, reset_less=True) # Config: set with start, used in RUN.
+        self.end         = Signal(awidth, reset_less=True)
+        self.length      = Signal(awidth, reset_less=True)
         self.random_data = Signal()
         self.random_addr = Signal()
         self.ticks       = Signal(32)
@@ -331,9 +331,9 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         self.reset       = CSR()
         self.start       = CSR()
         self.done        = CSRStatus()
-        self.base        = CSRStorage(awidth)
-        self.end         = CSRStorage(awidth)
-        self.length      = CSRStorage(awidth)
+        self.base        = CSRStorage(awidth, reset_less=True) # Only used on start.
+        self.end         = CSRStorage(awidth, reset_less=True)
+        self.length      = CSRStorage(awidth, reset_less=True)
         self.random      = CSRStorage(fields=[
             CSRField("data", size=1),
             CSRField("addr", size=1),
@@ -429,9 +429,9 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         ashift, awidth = get_ashift_awidth(dram_port)
         self.start       = Signal()
         self.done        = Signal()
-        self.base        = Signal(awidth)
-        self.end         = Signal(awidth)
-        self.length      = Signal(awidth)
+        self.base        = Signal(awidth, reset_less=True) # Config: set with start, used in RUN.
+        self.end         = Signal(awidth, reset_less=True)
+        self.length      = Signal(awidth, reset_less=True)
         self.random_data = Signal()
         self.random_addr = Signal()
         self.ticks       = Signal(32)
@@ -680,9 +680,9 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         self.reset       = CSR()
         self.start       = CSR()
         self.done        = CSRStatus()
-        self.base        = CSRStorage(awidth)
-        self.end         = CSRStorage(awidth)
-        self.length      = CSRStorage(awidth)
+        self.base        = CSRStorage(awidth, reset_less=True) # Only used on start.
+        self.end         = CSRStorage(awidth, reset_less=True)
+        self.length      = CSRStorage(awidth, reset_less=True)
         self.random      = CSRStorage(fields=[
             CSRField("data", size=1),
             CSRField("addr", size=1),
