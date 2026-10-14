@@ -179,7 +179,7 @@ class LiteDRAMAXI2NativeW(Module):
 
             # # #
 
-            rmw_data      = Signal(port.data_width)
+            rmw_data      = Signal(port.data_width, reset_less=True) # Set in MODIFY.
             rmw_mask      = Signal(port.data_width)
             rmw_cmd_done  = Signal()
             rmw_data_done = Signal()
