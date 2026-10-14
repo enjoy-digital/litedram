@@ -128,7 +128,7 @@ class BankMachine(Module):
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
         # Row tracking -----------------------------------------------------------------------------
-        row        = Signal(settings.geom.rowbits)
+        row        = Signal(settings.geom.rowbits, reset_less=True) # Only compared when row_opened.
         row_opened = Signal()
         row_hit    = Signal()
         row_open   = Signal()

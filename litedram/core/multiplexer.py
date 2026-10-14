@@ -165,6 +165,14 @@ class _Steerer(Module):
             if hasattr(phase, "odt"):
                 # FIXME: add dynamic drive for multi-rank (will be needed for high frequencies)
                 self.comb += phase.odt.eq(Replicate(Signal(reset=1), nranks))
+            # Bank and address registers are reset-less: at reset the command (cs_n, ras_n, cas_n,
+            # we_n) is a NOP/deselect, so the DRAM/PHY does not use them.
+            bank    = Signal(len(phase.bank),    reset_less=True)
+            address = Signal(len(phase.address), reset_less=True)
+            self.comb += [
+                phase.bank.eq(bank),
+                phase.address.eq(address),
+            ]
             if rankbits:
                 rank_decoder = Decoder(nranks)
                 self.submodules += rank_decoder
@@ -173,13 +181,13 @@ class _Steerer(Module):
                     self.sync += If(sel == STEER_REFRESH, phase.cs_n.eq(0)).Else(phase.cs_n.eq(~rank_decoder.o))
                 else:
                     self.sync += phase.cs_n.eq(~rank_decoder.o)
-                self.sync += phase.bank.eq(Array(cmd.ba[:-rankbits] for cmd in commands)[sel])
+                self.sync += bank.eq(Array(cmd.ba[:-rankbits] for cmd in commands)[sel])
             else:
                 self.sync += phase.cs_n.eq(0)
-                self.sync += phase.bank.eq(Array(cmd.ba[:] for cmd in commands)[sel])
+                self.sync += bank.eq(Array(cmd.ba[:] for cmd in commands)[sel])
 
             self.sync += [
-                phase.address.eq(Array(cmd.a for cmd in commands)[sel]),
+                address.eq(Array(cmd.a for cmd in commands)[sel]),
                 phase.cas_n.eq(~Array(valid_and(cmd, "cas") for cmd in commands)[sel]),
                 phase.ras_n.eq(~Array(valid_and(cmd, "ras") for cmd in commands)[sel]),
                 phase.we_n.eq(~Array(valid_and(cmd, "we") for cmd in commands)[sel])

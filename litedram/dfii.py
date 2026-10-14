@@ -61,7 +61,10 @@ class PhaseInjector(Module, AutoCSR):
             phase.wrdata.eq(self._wrdata.storage),
             phase.wrdata_mask.eq(0)
         ]
-        self.sync += If(phase.rddata_valid, self._rddata.status.eq(phase.rddata))
+        # Read data capture (reset-less: only read by software after it issues a read).
+        rddata = Signal(len(phase.rddata), reset_less=True)
+        self.sync += If(phase.rddata_valid, rddata.eq(phase.rddata))
+        self.comb += self._rddata.status.eq(rddata)
 
 # DFIInjector --------------------------------------------------------------------------------------
 
