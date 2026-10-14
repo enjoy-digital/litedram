@@ -126,8 +126,8 @@ class LiteDRAMWishbone2Native(LiteXModule):
         # Write path --------------------------------------------------------------------------------
         wr_valid      = Signal()
         wr_addr       = Signal.like(port.cmd.addr)
-        wr_data       = Signal(port_data_width)
-        wr_we         = Signal(port_sel_width)
+        wr_data       = Signal(port_data_width, reset_less=True) # Only used with wr_valid.
+        wr_we         = Signal(port_sel_width,  reset_less=True)
         wr_sel        = Signal(ratio)
         wr_last       = Signal()
         wr_can_merge  = Signal()
@@ -156,7 +156,7 @@ class LiteDRAMWishbone2Native(LiteXModule):
         # Read path ---------------------------------------------------------------------------------
         rd_cache_valid = Signal()
         rd_cache_addr  = Signal.like(port.cmd.addr)
-        rd_cache_data  = Signal(port_data_width)
+        rd_cache_data  = Signal(port_data_width, reset_less=True) # Only used with rd_cache_valid.
         rd_addr        = Signal.like(port.cmd.addr)
         rd_chunk       = Signal(ratio_bits)
         rd_last        = Signal()
@@ -249,8 +249,6 @@ class LiteDRAMWishbone2Native(LiteXModule):
             port.wdata.we.eq(wr_we),
             If(port.wdata.ready,
                 NextValue(wr_valid, 0),
-                NextValue(wr_data,  0),
-                NextValue(wr_we,    0),
                 NextValue(wr_sel,   0),
                 NextState("CMD")
             )
