@@ -345,7 +345,7 @@ class LiteDRAMNativePortUpConverter(Module):
             wdata_count   = Signal(max=ratio)
             wdata_chunk   = Signal(chunk_bits)
             wdata_data    = Signal.like(port_to.wdata.data)
-            wdata_we      = Signal.like(port_to.wdata.we)
+            wdata_we      = Signal(len(port_to.wdata.we)) # Not Signal.like: the payload is reset-less.
             wdata_pending = Signal()
             wdata_accept  = Signal()
             wdata_last    = Signal()
