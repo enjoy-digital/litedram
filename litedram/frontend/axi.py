@@ -47,6 +47,24 @@ class LiteDRAMAXI2NativeW(Module):
 
         ashift = log2_int(port.data_width//8)
 
+        # Write Data Input -------------------------------------------------------------------------
+        # With Read-Modify-Write, the write data goes through one register stage that also flags
+        # partial beats (strobes not all set): the RMW decision then starts from a register
+        # instead of a wide strobe compare.
+        axi_w     = axi.w
+        w_partial = Signal()
+        if with_read_modify_write:
+            w_pipe = stream.Buffer(stream.EndpointDescription(
+                axi.w.description.payload_layout + [("partial", 1)],
+                axi.w.description.param_layout))
+            self.submodules.w_pipe = w_pipe
+            self.comb += [
+                axi.w.connect(w_pipe.sink),
+                w_pipe.sink.partial.eq(axi.w.strb != (2**len(axi.w.strb) - 1)),
+            ]
+            axi_w = w_pipe.source
+            self.comb += w_partial.eq(axi_w.partial)
+
         # Burst to Beat ----------------------------------------------------------------------------
         aw        =  AXIStreamInterface(layout=ax_description(axi.address_width), id_width=axi.id_width)
         aw_buffer = stream.Buffer(aw.description)
@@ -163,12 +181,12 @@ class LiteDRAMAXI2NativeW(Module):
             # issues the write), so the registered level is enough: no path from the command's
             # ready to the write data.
             w_buffer_send.eq(w_buffer_level != 0),
-            # Payload always from axi.w (the RMW WRITE state overrides it); only the handshake is
+            # Payload always from axi_w (the RMW WRITE state overrides it); only the handshake is
             # gated, so the partial-strobe detection does not select the data path.
-            axi.w.connect(w_buffer.sink, omit={"valid", "ready"}),
+            axi_w.connect(w_buffer.sink, omit={"valid", "ready", "partial"}),
             If(axi_w_connect,
-                w_buffer.sink.valid.eq(axi.w.valid),
-                axi.w.ready.eq(w_buffer.sink.ready),
+                w_buffer.sink.valid.eq(axi_w.valid),
+                axi_w.ready.eq(w_buffer.sink.ready),
             ),
             port.wdata.valid.eq(w_buffer.source.valid & w_buffer_send),
             port.wdata.data.eq(w_buffer.source.data),
@@ -192,7 +210,7 @@ class LiteDRAMAXI2NativeW(Module):
             rmw_w_partial = Signal()
 
             # Detect partial write data.
-            self.comb += rmw_w_partial.eq(axi.w.valid & (axi.w.strb != (2**len(axi.w.strb) - 1)))
+            self.comb += rmw_w_partial.eq(axi_w.valid & w_partial)
 
             # Grant write when write buffer is empty.
             self.comb += self.rmw_wgrant.eq(~w_buffer_queue & (w_buffer_level == 0))
@@ -242,12 +260,12 @@ class LiteDRAMAXI2NativeW(Module):
             rmw_fsm.act("MODIFY",
                 self.rmw_request.eq(1),
                 # Generate mask.
-                *[rmw_mask[8*i:8*(i+1)].eq(Replicate(axi.w.strb[i], 8)) for i in range(port.data_width//8)],
+                *[rmw_mask[8*i:8*(i+1)].eq(Replicate(axi_w.strb[i], 8)) for i in range(port.data_width//8)],
                 # Receive Read Data and modify it.
                 port.rdata.ready.eq(1),
                 If(port.rdata.valid,
                     # Keep previous unmasked data and replace masked data with new ones.
-                    NextValue(rmw_data, (port.rdata.data & ~rmw_mask) | (axi.w.data & rmw_mask)),
+                    NextValue(rmw_data, (port.rdata.data & ~rmw_mask) | (axi_w.data & rmw_mask)),
                     NextState("WRITE")
                 )
             )
@@ -264,11 +282,11 @@ class LiteDRAMAXI2NativeW(Module):
                 ),
                 # Issue Write Data.
                 w_buffer.sink.valid.eq(~rmw_data_done),
-                w_buffer.sink.last.eq(axi.w.last),
+                w_buffer.sink.last.eq(axi_w.last),
                 w_buffer.sink.data.eq(rmw_data),
                 w_buffer.sink.strb.eq(2**len(w_buffer.sink.strb) - 1),
                 If(w_buffer.sink.valid & w_buffer.sink.ready,
-                    axi.w.ready.eq(1),
+                    axi_w.ready.eq(1),
                     NextValue(rmw_data_done, 1)
                 ),
                 # Return to Idle when both Cmd/Data are done.
