@@ -67,8 +67,10 @@ def ecc_phy_settings(phy_settings):
 class LiteDRAMDFIECC(LiteXModule):
     """SECDED between a controller's DFI (`slave`, 64 bits per beat) and the PHY side (`master`,
     72 bits per beat). CSRs: `enable` (correction on, reset 1), `sec`/`ded` counters of corrected
-    single-bit and detected double-bit beats, `clear`."""
-    def __init__(self, addressbits, bankbits, nranks, phy_dfi_databits, nphases):
+    single-bit and detected double-bit beats, `clear`; with `with_bit_stats`, a corrected-error
+    counter per DQ bit (0-63 data, 64-71 ECC lane), read through `bitsel`/`bitcnt` - which bits
+    of the interface fail, for the calibration."""
+    def __init__(self, addressbits, bankbits, nranks, phy_dfi_databits, nphases, with_bit_stats=True):
         raw   = ECC_DATABITS + ECC_CHECKBITS
         assert phy_dfi_databits % raw == 0
         beats = phy_dfi_databits//raw # Beats per phase (2 on a DDR PHY).
@@ -86,6 +88,7 @@ class LiteDRAMDFIECC(LiteXModule):
         sec_any = Signal()
         ded_any = Signal()
         secs, deds = [], []
+        hits = [] # Per beat: the DQ bit a single-bit error flipped (one-hot, 72 bits), 2 cycles late.
 
         for s, m in zip(slave.phases, master.phases):
             # Commands and enables: straight through.
@@ -124,6 +127,22 @@ class LiteDRAMDFIECC(LiteXModule):
                 secs.append(sec_b)
                 deds.append(ded_b)
 
+                # Which DQ flipped (statistics only, off the data path): re-encode the corrected
+                # data, compare with the raw beat received.
+                if with_bit_stats:
+                    raw_r  = Signal(raw, reset_less=True)
+                    data_r = Signal(ECC_DATABITS, reset_less=True)
+                    self.sync += raw_r.eq(m.rddata[b*raw:(b + 1)*raw]), data_r.eq(dec.o)
+                    enc2 = ECCEncoder(ECC_DATABITS)
+                    self.submodules += enc2
+                    expect = Signal(raw)
+                    self.comb += enc2.i.eq(data_r), expect[:ECC_DATABITS].eq(data_r)
+                    for k, p in enumerate(c_pos):
+                        self.comb += expect[ECC_DATABITS + k].eq(enc2.o[p])
+                    hit = Signal(raw, reset_less=True)
+                    self.sync += hit.eq(Mux(sec_b, raw_r ^ expect, 0))
+                    hits.append(hit)
+
         # Counters (one count per cycle with any corrected / uncorrectable beat).
         sec_cnt = Signal(32)
         ded_cnt = Signal(32)
@@ -142,3 +161,17 @@ class LiteDRAMDFIECC(LiteXModule):
                 If(ded_any & (ded_cnt != 0xffffffff), ded_cnt.eq(ded_cnt + 1)),
             )
         ]
+
+        # Per-DQ corrected-error counters (a bit hit by several beats in one cycle counts once).
+        if with_bit_stats:
+            raw  = ECC_DATABITS + ECC_CHECKBITS
+            self.bitsel = CSRStorage(7,  description="DQ bit whose counter `bitcnt` shows (0-71).")
+            self.bitcnt = CSRStatus(32, description="Corrected single-bit errors on DQ `bitsel`.")
+            hit_any = Signal(raw, reset_less=True)
+            self.sync += hit_any.eq(reduce(or_, hits))
+            cnts = [Signal(32, name=f"ecc_bitcnt{i}") for i in range(raw)]
+            for i, c in enumerate(cnts):
+                self.sync += If(self.clear.re, c.eq(0)).Elif(hit_any[i] & (c != 0xffffffff), c.eq(c + 1))
+            bitcnt = Signal(32, reset_less=True)
+            self.sync += bitcnt.eq(Array(cnts)[self.bitsel.storage])
+            self.comb += self.bitcnt.status.eq(bitcnt)

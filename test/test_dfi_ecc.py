@@ -13,7 +13,7 @@ from litedram.core.ecc import LiteDRAMDFIECC, ecc_phy_settings, ECC_LATENCY
 
 
 class TestDFIECC(unittest.TestCase):
-    def run_loopback(self, flips, enable=1, n=64, seed=0):
+    def run_loopback(self, flips, enable=1, n=64, seed=0, read_bits=()):
         """Write random 64-bit beats on every phase, loop the PHY-side write data back as read
         data with `flips(beat_index) -> [bit, ...]` raw bits inverted, check the decoded data."""
         rng   = random.Random(seed)
@@ -56,8 +56,17 @@ class TestDFIECC(unittest.TestCase):
                         got.append((yield s.rddata))
                 yield
 
-        run_simulation(dut, [stim(), loopback(), check()])
-        return sent, got, dut
+        cnts = {}
+        def read_counters():
+            for _ in range(n + 12):
+                yield
+            for i in read_bits:
+                yield dut.bitsel.storage.eq(i)
+                yield; yield; yield
+                cnts[i] = (yield dut.bitcnt.status)
+
+        run_simulation(dut, [stim(), loopback(), check(), read_counters()])
+        return (sent, got, dut, cnts) if read_bits else (sent, got, dut)
 
     def test_clean(self):
         sent, got, _ = self.run_loopback(lambda k: [])
@@ -71,6 +80,14 @@ class TestDFIECC(unittest.TestCase):
     def test_single_bit_not_corrected_when_disabled(self):
         sent, got, _ = self.run_loopback(lambda k: [k % 64], enable=0)
         self.assertNotEqual(got[:len(sent)], sent)
+
+    def test_bit_stats(self):
+        # One flipped DQ (bit 21) on every beat: its counter counts, its neighbours stay at 0.
+        sent, got, _, cnts = self.run_loopback(lambda k: [21], n=16, read_bits=[20, 21, 22])
+        self.assertEqual(got[:len(sent)], sent)
+        self.assertEqual(cnts[20], 0)
+        self.assertGreater(cnts[21], 0)
+        self.assertEqual(cnts[22], 0)
 
     def test_double_bit_detected(self):
         sent, got, _ = self.run_loopback(lambda k: [3, 17])
