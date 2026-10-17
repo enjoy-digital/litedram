@@ -14,10 +14,20 @@ from litedram.common import *
 # LiteDRAMNativePortCDC ----------------------------------------------------------------------------
 
 class LiteDRAMNativePortCDC(Module):
+    """LiteDRAM port Clock Domain Crossing
+
+    Crosses a native port between two clock domains through asynchronous FIFOs.
+
+    The controller side does not stall on rdata (read data is returned as soon as available), so
+    reads are only accepted on port_from while the read data of all the reads in flight fits in
+    the rdata FIFO: a slow port_from rdata consumer then stalls the commands instead of losing
+    read data. rdata_depth also bounds the read throughput: a read stream only sustains one word
+    per cycle when rdata_depth covers the read round-trip latency (in port_from cycles).
+    """
     def __init__(self, port_from, port_to,
-                 cmd_depth   = 4,
+                 cmd_depth   = 8,
                  wdata_depth = 16,
-                 rdata_depth = 16):
+                 rdata_depth = 32):
         assert port_from.address_width == port_to.address_width
         assert port_from.data_width    == port_to.data_width
         assert port_from.mode          == port_to.mode
@@ -28,6 +38,8 @@ class LiteDRAMNativePortCDC(Module):
 
         # # #
 
+        cmd_stall = Signal()
+
         cmd_cdc = stream.ClockDomainCrossing(
             layout  = [("we", 1), ("addr", address_width)],
             cd_from = port_from.clock_domain,
@@ -35,7 +47,12 @@ class LiteDRAMNativePortCDC(Module):
             depth   = cmd_depth,
             with_common_rst = False)
         self.submodules += cmd_cdc
-        self.submodules += stream.Pipeline(port_from.cmd, cmd_cdc, port_to.cmd)
+        self.comb += [
+            port_from.cmd.connect(cmd_cdc.sink, omit={"valid", "ready"}),
+            cmd_cdc.sink.valid.eq(port_from.cmd.valid & ~cmd_stall),
+            port_from.cmd.ready.eq(cmd_cdc.sink.ready & ~cmd_stall),
+            cmd_cdc.source.connect(port_to.cmd),
+        ]
 
         if mode in ["write", "both"]:
             wdata_cdc = stream.ClockDomainCrossing(
@@ -56,6 +73,26 @@ class LiteDRAMNativePortCDC(Module):
                 with_common_rst = False)
             self.submodules += rdata_cdc
             self.submodules += stream.Pipeline(port_to.rdata, rdata_cdc, port_from.rdata)
+
+            # Read credits (port_from clock domain): reads accepted minus read data delivered. Every
+            # read returns one rdata word, so the reads in flight never exceed the rdata FIFO's depth.
+            if port_from.clock_domain != port_to.clock_domain:
+                rdata_inflight = Signal(max=rdata_depth + 1)
+                rdata_cmd      = Signal()
+                rdata_ack      = Signal()
+                self.comb += [
+                    rdata_cmd.eq(port_from.cmd.valid & port_from.cmd.ready & ~port_from.cmd.we),
+                    rdata_ack.eq(port_from.rdata.valid & port_from.rdata.ready),
+                    cmd_stall.eq(~port_from.cmd.we & (rdata_inflight == rdata_depth)),
+                ]
+                sync_from = getattr(self.sync, port_from.clock_domain)
+                sync_from += [
+                    If(rdata_cmd & ~rdata_ack,
+                        rdata_inflight.eq(rdata_inflight + 1)
+                    ).Elif(~rdata_cmd & rdata_ack,
+                        rdata_inflight.eq(rdata_inflight - 1)
+                    )
+                ]
 
 # LiteDRAMNativePortDownConverter ------------------------------------------------------------------
 
