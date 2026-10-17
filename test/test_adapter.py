@@ -565,3 +565,86 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
             "native": (7, 3),
         }
         self.cdc_readback_test(dut, data["pattern"], data["expected"], clocks=clocks)
+
+    def cdc_pipelined_read_test(self, clocks, n=128, latency=8, rdata_ready=lambda cycle: 1, **kwargs):
+        # Read n words through a LiteDRAMNativePortCDC with back-to-back read commands. The native
+        # side behaves like LiteDRAMCrossbar: it accepts one command per cycle and returns read data
+        # after a fixed latency, without looking at rdata.ready. Returns (read data, user cycles).
+        user_port   = LiteDRAMNativeReadPort(address_width=32, data_width=32, clock_domain="user")
+        native_port = LiteDRAMNativeReadPort(address_width=32, data_width=32, clock_domain="native")
+        dut         = LiteDRAMNativePortCDC(port_from=user_port, port_to=native_port, **kwargs)
+        rdata       = []
+        cycles      = []
+
+        def mem(adr):
+            return seed_to_data(adr)
+
+        @passive
+        def native_generator():
+            pending = []
+            cycle   = 0
+            yield native_port.cmd.ready.eq(1)
+            while True:
+                if (yield native_port.cmd.valid):
+                    pending.append((cycle + latency, mem((yield native_port.cmd.addr))))
+                if pending and pending[0][0] <= cycle:
+                    yield native_port.rdata.valid.eq(1)
+                    yield native_port.rdata.data.eq(pending.pop(0)[1])
+                else:
+                    yield native_port.rdata.valid.eq(0)
+                cycle += 1
+                yield
+
+        def cmd_generator():
+            yield user_port.cmd.we.eq(0)
+            yield user_port.cmd.valid.eq(1)
+            for adr in range(n):
+                yield user_port.cmd.addr.eq(adr)
+                yield
+                while (yield user_port.cmd.ready) == 0:
+                    yield
+            yield user_port.cmd.valid.eq(0)
+
+        def rdata_generator():
+            for cycle in range(16*n):
+                if (yield user_port.rdata.valid) and (yield user_port.rdata.ready):
+                    rdata.append((yield user_port.rdata.data))
+                    if len(rdata) == n:
+                        cycles.append(cycle)
+                        break
+                yield user_port.rdata.ready.eq(rdata_ready(cycle))
+                yield
+
+        generators = {
+            "user":   [cmd_generator(), rdata_generator()],
+            "native": [native_generator()],
+        }
+        run_simulation(dut, generators, clocks)
+        self.assertEqual(rdata, [mem(adr) for adr in range(n)])
+        return rdata, cycles[0]
+
+    def test_port_cdc_rdata_backpressure(self):
+        # Verify that no read data is lost when the native side runs faster than the user side and
+        # the user side keeps more reads in flight than the read data FIFO can hold while applying
+        # backpressure on rdata (the native side cannot be stalled on rdata).
+        patterns = {
+            "ready_1_of_8"   : lambda cycle: (cycle % 8) == 0,
+            "ready_low_64"   : lambda cycle: (cycle % 128) >= 64,
+            "ready_low_start": lambda cycle: cycle >= 256,
+        }
+        for name, rdata_ready in patterns.items():
+            for clocks in [{"user": 10, "native": 4}, {"user": 10, "native": (7, 3)}]:
+                with self.subTest(rdata_ready=name, clocks=clocks):
+                    self.cdc_pipelined_read_test(clocks=clocks, n=128, rdata_ready=rdata_ready)
+
+    def test_port_cdc_read_throughput(self):
+        # Verify that a read stream still sustains one word per user cycle through the CDC when the
+        # user side keeps up with the read data.
+        n = 256
+        for clocks in [{"user": 10, "native": 4}, {"user": 10, "native": 10}, {"user": 10, "native": (7, 3)}]:
+            for latency in [8, 24]:
+                with self.subTest(clocks=clocks, latency=latency):
+                    _, cycles = self.cdc_pipelined_read_test(clocks=clocks, n=n, latency=latency)
+                    native_period = clocks["native"] if isinstance(clocks["native"], int) else clocks["native"][0]
+                    overhead      = latency*native_period//clocks["user"] + 16
+                    self.assertLessEqual(cycles, n + overhead)
