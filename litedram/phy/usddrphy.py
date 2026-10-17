@@ -34,7 +34,9 @@ class USDDRPHY(Module, AutoCSR):
         cmd_latency      = 0,
         cmd_delay        = None,
         is_rdimm         = False,
-        is_clam_shell    = False):
+        is_clam_shell    = False,
+        with_hpio_vref   = False,
+        hpio_vref_tune   = 31):
         phytype     = self.__class__.__name__
         device      = {"USDDRPHY": "ULTRASCALE", "USPDDRPHY": "ULTRASCALE_PLUS"}[phytype]
         pads        = PHYPadsCombiner(pads)
@@ -93,6 +95,17 @@ class USDDRPHY(Module, AutoCSR):
 
         self._rdphase = CSRStorage(2, reset=rdphase)
         self._wrphase = CSRStorage(2, reset=wrphase)
+
+        # Read VREF scan (UltraScale+ HP banks only): one HPIO_VREF per byte group drives the VREF
+        # of that byte's DQ IOBUFE3s, 7 bits per byte in this register. FABRIC_RANGE1 (POD) VREF
+        # in % of VCCO (UG571/UG861 VREF scan table): 58 + 0.5*code for codes 15-72, 57.5 +
+        # 0.5*code for codes 1-14, 65 for code 0. Added after rdphase/wrphase to keep CSR offsets.
+        if with_hpio_vref:
+            assert phytype == "USPDDRPHY" and memtype == "DDR4"
+            assert not x4_dimm_mode
+            assert 0 <= hpio_vref_tune <= 72
+            self._rdly_vref = CSRStorage(7*(databits//8),
+                reset=sum(hpio_vref_tune << (7*i) for i in range(databits//8)))
 
         # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
@@ -370,6 +383,17 @@ class USDDRPHY(Module, AutoCSR):
         dq_oe_delay = TappedDelayLine(ntaps=1)
         self.submodules += dq_oe_delay
         self.comb += dq_oe_delay.input.eq(dqs_preamble | dq_oe | dqs_postamble)
+        byte_vref = []
+        if with_hpio_vref:
+            # One per byte: a tuned VREF cannot cross a byte group, each DQ byte sits in one.
+            for j in range(databits//8):
+                vref = Signal()
+                self.specials += Instance("HPIO_VREF",
+                    p_VREF_CNTR        = "FABRIC_RANGE1",
+                    i_FABRIC_VREF_TUNE = self._rdly_vref.storage[7*j:7*(j+1)],
+                    o_VREF             = vref,
+                )
+                byte_vref.append(vref)
         for i in range(databits):
             dq_o_nodelay = Signal()
             dq_o_delayed = Signal()
@@ -454,12 +478,26 @@ class USDDRPHY(Module, AutoCSR):
                 i_IDATAIN = dq_i_nodelay,
                 o_DATAOUT = dq_i_delayed,
             )
-            self.specials += Instance("IOBUF",
-                i_I   = dq_o_delayed,
-                o_O   = dq_i_nodelay,
-                i_T   = dq_t,
-                io_IO = pads.dq[i],
-            )
+            if with_hpio_vref:
+                self.specials += Instance("IOBUFE3",
+                    p_SIM_DEVICE     = device,
+                    i_I              = dq_o_delayed,
+                    o_O              = dq_i_nodelay,
+                    i_T              = dq_t,
+                    io_IO            = pads.dq[i],
+                    i_VREF           = byte_vref[i//8],
+                    i_OSC_EN         = 0,
+                    i_OSC            = 0,
+                    i_DCITERMDISABLE = 0,
+                    i_IBUFDISABLE    = 0,
+                )
+            else:
+                self.specials += Instance("IOBUF",
+                    i_I   = dq_o_delayed,
+                    o_O   = dq_i_nodelay,
+                    i_T   = dq_t,
+                    io_IO = pads.dq[i],
+                )
 
         # Read Control Path ------------------------------------------------------------------------
         # Creates a delay line of read commands coming from the DFI interface. The output is used to
