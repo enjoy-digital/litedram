@@ -922,6 +922,12 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
     r.define("SDRAM_PHY_XDR", 1 if phy_settings.memtype == "SDR" else 2)
     r.define("SDRAM_PHY_DATABITS", phy_settings.databits)
     r.define("SDRAM_PHY_DFI_DATABITS", phy_settings.dfi_databits)
+    # DFI ECC (core/ecc.py): the controller's view above, the raw PHY widths (with the ECC lanes,
+    # what the DFI injector and the calibration see) here.
+    if getattr(phy_settings, "ecc_databits", None) is not None:
+        r.define("SDRAM_PHY_ECC")
+        r.define("SDRAM_PHY_ECC_DATABITS", phy_settings.ecc_databits)
+        r.define("SDRAM_PHY_ECC_MODULES",  phy_settings.ecc_databits//8)
     r.define("SDRAM_PHY_PHASES", nphases)
     for setting in ["cl", "cwl", "cmd_latency", "cmd_delay"]:
         if getattr(phy_settings, setting, None) is not None:
