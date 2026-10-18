@@ -192,15 +192,19 @@ class CrossbarDUT(Module):
 
     def addr_port(self, bank, row, col):
         # construct an address the way port master would do it
-        assert self.settings.address_mapping == "ROW_BANK_COL"
         aa = self.address_align
         cb = self.settings.geom.colbits
         rb = self.settings.geom.rowbits
         bb = self.settings.geom.bankbits
         col  = (col  & (2**cb - 1)) >> aa
-        bank = (bank & (2**bb - 1)) << (cb - aa)
-        row  = (row  & (2**rb - 1)) << (cb + bb - aa)
-        return row | bank | col
+        bank = (bank & (2**bb - 1))
+        row  = (row  & (2**rb - 1))
+        if self.settings.address_mapping == "ROW_BANK_COL":
+            return (row << (cb + bb - aa)) | (bank << (cb - aa)) | col
+        if self.settings.address_mapping == "ROW_COL_BANK":
+            # bank bits at the bottom (bank_byte_alignment 0: a bank change every word)
+            return (((row << (cb - aa)) | col) << bb) | bank
+        raise NotImplementedError(self.settings.address_mapping)
 
     def addr_iface(self, row, col):
         # construct address the way bankmachine should receive it
@@ -234,22 +238,27 @@ class TestCrossbar(unittest.TestCase):
         return controller.data
 
     def test_available_address_mappings(self):
-        # Check that the only supported address mapping is ROW_BANK_COL (if we start supporting new
-        # mappings, then update these tests to also test these other mappings).
+        # Check the supported address mappings (ROW_BANK_COL and ROW_COL_BANK; if we start
+        # supporting new mappings, then update these tests to also test these other mappings).
         def finalize_crossbar(mapping):
             dut = CrossbarDUT(controller_settings=dict(address_mapping=mapping))
             dut.crossbar.get_port()
             dut.crossbar.finalize()
 
-        for mapping in ["ROW_BANK_COL", "BANK_ROW_COL"]:
-            if mapping in ["ROW_BANK_COL"]:
+        for mapping in ["ROW_BANK_COL", "ROW_COL_BANK", "BANK_ROW_COL"]:
+            if mapping in ["ROW_BANK_COL", "ROW_COL_BANK"]:
                 finalize_crossbar(mapping)
             else:
                 with self.assertRaises(KeyError):
                     finalize_crossbar(mapping)
 
     def test_address_mappings(self):
-        # Verify that address is translated correctly.
+        # Verify that address is translated correctly, for each mapping.
+        for mapping in ["ROW_BANK_COL", "ROW_COL_BANK"]:
+            with self.subTest(mapping=mapping):
+                self.address_mapping_test(mapping)
+
+    def address_mapping_test(self, mapping):
         reads = []
 
         def producer(dut, driver):
@@ -264,7 +273,7 @@ class TestCrossbar(unittest.TestCase):
                     raise TypeError(t["rw"])
 
         geom_settings = dict(colbits=10, rowbits=13, bankbits=2)
-        dut  = CrossbarDUT(geom_settings=geom_settings)
+        dut  = CrossbarDUT(geom_settings=geom_settings, controller_settings=dict(address_mapping=mapping))
         port = dut.crossbar.get_port()
         driver = NativePortDriver(port)
         transfers = [

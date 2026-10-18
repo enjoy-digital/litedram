@@ -40,7 +40,12 @@ class ControllerSettings(Settings):
         with_auto_precharge = True,           # Enable auto-precharge after read/write operations.
 
         # Address mapping.
-        address_mapping     = "ROW_BANK_COL", # Address mapping scheme (e.g., row-bank-column).
+        address_mapping     = "ROW_BANK_COL", # Address mapping scheme: "ROW_BANK_COL" (bank bits above
+                                              # the column's: a sequential access stays in one bank for a
+                                              # row) or "ROW_COL_BANK" (bank bits at the bottom, a bank
+                                              # change every bank_byte_alignment bytes, at least one
+                                              # word: a sequential stream rotates over the banks and
+                                              # keeps every bank machine busy).
 
         # Bank byte alignment.
         bank_byte_alignment = 0):             # Minimum byte alignment between bank changes. Ensures a

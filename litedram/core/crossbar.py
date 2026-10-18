@@ -127,11 +127,19 @@ class LiteDRAMCrossbar(Module):
         nmasters   = len(self.masters)
 
         # Address mapping --------------------------------------------------------------------------
+        word_bytes = controller.data_width // 8
         cba_shifts = {
             "ROW_BANK_COL": max(
                 controller.settings.geom.colbits - controller.address_align,
-                log2_int(getattr(controller.settings, "bank_byte_alignment", 0) //(controller.data_width // 8))
-            )
+                log2_int(getattr(controller.settings, "bank_byte_alignment", 0) // word_bytes)
+            ),
+            # Bank bits below the column's: consecutive words rotate over the banks (every
+            # bank_byte_alignment bytes, at least one word), so a sequential stream keeps every
+            # bank machine busy instead of one at a time; a bank's row still holds that bank's
+            # words of the span, activated and auto-precharged as before.
+            "ROW_COL_BANK": log2_int(
+                max(getattr(controller.settings, "bank_byte_alignment", 0), word_bytes) // word_bytes
+            ),
         }
         cba_shift = cba_shifts[controller.settings.address_mapping]
         m_ba      = [m.get_bank_address(self.bank_bits, cba_shift)for m in self.masters]
