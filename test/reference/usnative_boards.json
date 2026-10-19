@@ -1,0 +1,132 @@
+{
+  "source_revision": "bca0201",
+  "scope": "Candidate inventory; not a compatibility or hardware pass declaration.",
+  "boards": [
+    {
+      "board": "adi_adrv2crr_fmc",
+      "part": "xczu11eg-ffvf1517-2-i",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "alibaba_vu13p",
+      "part": "xcvu13p-fhgb2104-2l-e",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "aliexpress_rk_xcku5p",
+      "part": "xcku5p-ffvb676-2-i",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "alinx_axau15",
+      "part": "xcau15p-ffvb676-2-i",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "avnet_aesku40",
+      "part": "xcku040-fbva676-1-c",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "decklink_quad_hdmi_recorder",
+      "part": "xcku040-ffva1156-2-e",
+      "memory": "DDR3",
+      "status": "deferred_ddr3"
+    },
+    {
+      "board": "enclustra_mercury_xu5",
+      "part": "xczu2eg-sfvc784-1-i",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "enclustra_mercury_xu8_pe3",
+      "part": "xczu7ev-fbvb900-2-i",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "mlk_cu07_ku15p",
+      "part": "xcku15p-ffva1156-2-e",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "opalkelly_xem8320",
+      "part": "xcau25p-ffvb676-2-e",
+      "memory": "DDR4",
+      "status": "hardware_validated_variants"
+    },
+    {
+      "board": "sqrl_xcu1525",
+      "part": "xcvu9p-fsgd2104-2l-e",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "xilinx_alveo_u200",
+      "part": "xcu200-fsgd2104-2-e",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "xilinx_alveo_u250",
+      "part": "xcu250-figd2104-2L-e",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "xilinx_alveo_u280",
+      "part": "xcu280-fsvh2892-2L-e-es1",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "xilinx_kcu105",
+      "part": "xcku040-ffva1156-2-e",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "xilinx_kcu116",
+      "part": "xcku5p-ffvb676-2-e",
+      "memory": "DDR4",
+      "status": "native_ooc_synthesis_only"
+    },
+    {
+      "board": "xilinx_vcu118",
+      "part": "xcvu9p-flga2104-2-e",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "xilinx_vcu128",
+      "part": "xcvu37p-fsvh2892-2L-e",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "xilinx_zcu102",
+      "part": "xczu9eg-ffvb1156-2-i",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "xilinx_zcu104",
+      "part": "xczu7ev-ffvc1156-2-i",
+      "memory": "DDR4",
+      "status": "candidate"
+    },
+    {
+      "board": "xilinx_zcu106",
+      "part": "xczu7ev-ffvc1156-2-e",
+      "memory": "DDR4",
+      "status": "candidate"
+    }
+  ]
+}
