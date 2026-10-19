@@ -495,6 +495,11 @@ class SDRAMPHYModel(Module):
                 if start > len(init):
                     break
                 bank_init[bank] = init[start:end]
+        elif address_mapping == "ROW_COL_BANK":
+            # Bank bits at the bottom of the address: consecutive words rotate over the banks (the
+            # crossbar's ROW_COL_BANK with a bank_byte_alignment of at most one word).
+            for bank in range(nbanks):
+                bank_init[bank] = init[bank::nbanks]
 
         return bank_init
 
