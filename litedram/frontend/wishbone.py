@@ -25,7 +25,6 @@ class LiteDRAMWishbone2Native(LiteXModule):
     def __init__(self, wishbone, port, base_address=0x00000000):
         wishbone_data_width = len(wishbone.dat_w)
         port_data_width     = 2**int(log2(len(port.wdata.data))) # Round to lowest power 2
-        ratio               = wishbone_data_width/port_data_width
 
         assert wishbone.addressing == "word"
 
@@ -51,11 +50,10 @@ class LiteDRAMWishbone2Native(LiteXModule):
 
         # # #
 
-        aborted = Signal()
-        wdata_pending = Signal()
-        wdata_data    = Signal.like(wishbone.dat_w)
-        wdata_sel     = Signal.like(wishbone.sel)
-        offset  = base_address >> log2_int(port.data_width//8)
+        aborted    = Signal()
+        wdata_data = Signal(len(wishbone.dat_w), reset_less=True) # Only used in WRITE.
+        wdata_we   = Signal(len(wishbone.sel),   reset_less=True)
+        offset     = base_address >> log2_int(port.data_width//8)
 
         self.fsm = fsm = FSM(reset_state="CMD")
         self.comb += [
@@ -67,23 +65,24 @@ class LiteDRAMWishbone2Native(LiteXModule):
         fsm.act("CMD",
             port.cmd.valid.eq(wishbone.cyc & wishbone.stb),
             If(port.cmd.valid & port.cmd.ready & wishbone.we,
-                NextValue(wdata_pending, 1),
-                NextValue(wdata_data,    wishbone.dat_w),
-                NextValue(wdata_sel,     wishbone.sel),
-                NextState("WRITE")),
+                # Latch the data with the command: once the controller has accepted a write it
+                # pulls the data whatever the master does next (stb dropped, cycle aborted).
+                NextValue(wdata_data, wishbone.dat_w),
+                NextValue(wdata_we,   wishbone.sel),
+                NextState("WRITE")
+            ),
             If(port.cmd.valid & port.cmd.ready & ~wishbone.we, NextState("READ")),
             NextValue(aborted, 0),
         )
         self.comb += [
-            port.wdata.valid.eq(wdata_pending),
             port.wdata.data.eq(wdata_data),
-            port.wdata.we.eq(wdata_sel),
+            port.wdata.we.eq(wdata_we),
         ]
         fsm.act("WRITE",
+            port.wdata.valid.eq(1), # Held until the handshake, independently of stb/cyc.
             NextValue(aborted, ~wishbone.cyc | aborted),
-            If(port.wdata.valid & port.wdata.ready,
+            If(port.wdata.ready,
                 wishbone.ack.eq(wishbone.cyc & ~aborted),
-                NextValue(wdata_pending, 0),
                 NextState("CMD")
             ),
         )
