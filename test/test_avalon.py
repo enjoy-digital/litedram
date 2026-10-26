@@ -13,7 +13,7 @@ from litex.soc.interconnect import avalon
 from litedram.frontend.avalon import LiteDRAMAvalonMM2Native
 from litedram.common import LiteDRAMNativePort
 
-from test.common import DRAMMemory, MemoryTestDataMixin
+from test.common import DRAMMemory, MemoryTestDataMixin, timeout_generator
 
 class DUT(Module):
     def __init__(self, port, avalon, base_address=0x0, mem_expected=[]):
@@ -171,6 +171,45 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
 
         run_simulation(dut, generators, vcd_name='sim.vcd')
         self.assertEqual(dut.mem.mem, data + [0,0,0,0,0])
+
+    def avalon_burst_readback_test(self, data, port_data_width, mem_expected):
+        # Burst write then burst read of len(data) words, then single reads.
+        def main_generator(dut):
+            yield from dut.avalon.bus_write(0x0, data)
+            yield
+            self.assertEqual((yield from dut.avalon.bus_read(0x0, burstcount=len(data))), data[0])
+            for d in data[1:]:
+                self.assertEqual((yield dut.avalon.readdatavalid), 1)
+                self.assertEqual((yield from dut.avalon.continue_read_burst()), d)
+            for _ in range(4):
+                yield
+            for i, d in enumerate(data):
+                self.assertEqual((yield from dut.avalon.bus_read(i)), d)
+            yield
+            yield
+
+        avl  = avalon.AvalonMMInterface(adr_width=30, data_width=32)
+        port = LiteDRAMNativePort("both", address_width=30, data_width=port_data_width)
+        dut  = DUT(port, avl, base_address=0x0, mem_expected=mem_expected)
+        generators = [
+            main_generator(dut),
+            dut.mem.write_handler(dut.port),
+            dut.mem.read_handler(dut.port),
+            timeout_generator(2000),
+        ]
+        run_simulation(dut, generators)
+        self.assertEqual(dut.mem.mem, mem_expected)
+
+    def test_avalon_burst_upconvert_partial_last_word(self):
+        # Bursts whose length is not a multiple of the up-conversion ratio end with a partial wide
+        # word: the bridge has to flag its last command for the up-converter to flush it.
+        data = [0x01234567, 0x89abcdef, 0xdeadbeef, 0xc0ffee00, 0x76543210, 0xfedcba98]
+        with self.subTest(ratio=2):
+            self.avalon_burst_readback_test(data[:5], 64,
+                [0x89abcdef01234567, 0xc0ffee00deadbeef, 0x76543210, 0, 0, 0])
+        with self.subTest(ratio=4):
+            self.avalon_burst_readback_test(data, 128,
+                [0xc0ffee00deadbeef89abcdef01234567, 0xfedcba9876543210, 0, 0])
 
     def test_avalon_burst_downconvert(self):
         data = [0x01234567, 0x89abcdef, 0xdeadbeef, 0xc0ffee00, 0x76543210, 0xfedcba98]

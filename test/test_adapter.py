@@ -365,6 +365,64 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
                 self.converter_readback_test(dut, pattern=[], mem_expected=mem_expected,
                                              main_generator=main_generator)
 
+    def test_up_converter_write_slow_master(self):
+        # Verify that a master deasserting valid (and we) between the beats of a sequence does not
+        # make the up-converter flush partial words: one wide write per `ratio` beats.
+        nbeats, gap = 8, 2
+        dut = ConverterDUT(user_data_width=32, native_data_width=128, mem_depth=4, separate_rw=False)
+        port_from, port_to = dut.write_user_port, dut.write_crossbar_port
+        wide_writes = []
+
+        def cmd_generator():
+            for i in range(nbeats):
+                yield port_from.cmd.valid.eq(1)
+                yield port_from.cmd.we.eq(1)
+                yield port_from.cmd.addr.eq(i)
+                yield port_from.cmd.last.eq(i == nbeats - 1)
+                yield
+                while not (yield port_from.cmd.ready):
+                    yield
+                # Idle like the Avalon bridge: valid and we low, address of the next beat.
+                yield port_from.cmd.valid.eq(0)
+                yield port_from.cmd.we.eq(0)
+                yield port_from.cmd.last.eq(0)
+                yield port_from.cmd.addr.eq(i + 1)
+                for _ in range(gap):
+                    yield
+            for _ in range(32):
+                yield
+
+        def wdata_generator():
+            for i in range(nbeats):
+                yield port_from.wdata.valid.eq(1)
+                yield port_from.wdata.data.eq(0x11111111*(i + 1))
+                yield port_from.wdata.we.eq(0xf)
+                yield
+                while not (yield port_from.wdata.ready):
+                    yield
+            yield port_from.wdata.valid.eq(0)
+
+        @passive
+        def monitor():
+            while True:
+                if (yield port_to.cmd.valid) and (yield port_to.cmd.ready) and (yield port_to.cmd.we):
+                    wide_writes.append((yield port_to.cmd.addr))
+                yield
+
+        generators = [
+            cmd_generator(),
+            wdata_generator(),
+            monitor(),
+            dut.memory.write_handler(port_to),
+            timeout_generator(1000),
+        ]
+        run_simulation(dut, generators)
+        self.assertEqual(wide_writes, [0, 1])
+        self.assertEqual(dut.memory.mem, [
+            0x44444444333333332222222211111111,
+            0x88888888777777776666666655555555,
+            0, 0])
+
     def test_up_converter_write_ordering(self):
         # Verify that write data is placed according to subword addresses, not command order.
         pattern = [
