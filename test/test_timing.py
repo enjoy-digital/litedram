@@ -97,21 +97,22 @@ class TestTiming(unittest.TestCase):
         self.assertEqual(dut.errors, 0)
 
     def test_tfaw_controller(self):
+        # ready is low exactly while 4 ACTIVATEs were issued in the last tfaw-1 cycles.
         tfaw = 8
         valids = "_----___________"
-        readys = "-----______-----"
+        readys = "-----____-------"
         with self.subTest(tfaw=tfaw, valids=valids, readys=readys):
             self.tfaw_controller_test(tfaw, valids, readys)
 
         tfaw = 8
         valids = "_-_-_-_-________"
-        readys = "--------___-----"
+        readys = "--------_-------"
         with self.subTest(tfaw=tfaw, valids=valids, readys=readys):
             self.tfaw_controller_test(tfaw, valids, readys)
 
         tfaw = 8
         valids = "_-_-___-_-______"
-        readys = "----------_-----"
+        readys = "----------------"
         with self.subTest(tfaw=tfaw, valids=valids, readys=readys):
             self.tfaw_controller_test(tfaw, valids, readys)
 
@@ -120,3 +121,29 @@ class TestTiming(unittest.TestCase):
         readys = "-----------------"
         with self.subTest(tfaw=tfaw, valids=valids, readys=readys):
             self.tfaw_controller_test(tfaw, valids, readys)
+
+    def test_tfaw_controller_exact_spacing(self):
+        # With a same-cycle valid/ready handshake (as in the multiplexer) and continuous requests,
+        # the 5th ACTIVATE is accepted exactly tfaw cycles after the 1st, never earlier.
+        class DUT(Module):
+            def __init__(self, tfaw):
+                self.submodules.tfawcon = tFAWController(tfaw)
+                self.want = Signal()
+                self.comb += self.tfawcon.valid.eq(self.tfawcon.ready & self.want)
+
+        for tfaw in [2, 4, 5, 6, 8, 9, 12]:
+            with self.subTest(tfaw=tfaw):
+                dut = DUT(tfaw)
+                accepted = []
+
+                def generator(dut):
+                    yield dut.want.eq(1)
+                    yield
+                    for cycle in range(64):
+                        if (yield dut.tfawcon.valid):
+                            accepted.append(cycle)
+                        yield
+
+                run_simulation(dut, generator(dut))
+                for i in range(len(accepted) - 4):
+                    self.assertEqual(accepted[i + 4] - accepted[i], max(tfaw, 4))
