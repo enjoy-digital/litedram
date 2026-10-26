@@ -167,6 +167,8 @@ class DFITimingsChecker(Module):
         ("ACT",  "ACT", "tRC"),
         # tWR
         ("WR",   "PRE", "tWR"),
+        # tRTP
+        ("RD",   "PRE", "tRTP"),
         # tWTR
         ("WR",   "RD",  "tWTR"),
         # tZQCS
