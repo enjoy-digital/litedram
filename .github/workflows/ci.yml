@@ -128,6 +128,8 @@ jobs:
       - name: Install Project
         run: python3 -m pip install --user -e .
 
-      # Test
+      # Test (LITEDRAM_TEST_FULL enables the slow configurations some test files keep optional)
       - name: Run full test suite
+        env:
+          LITEDRAM_TEST_FULL: "1"
         run: python3 -m unittest discover -s test -p "test_*.py"
