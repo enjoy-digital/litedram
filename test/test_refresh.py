@@ -72,9 +72,13 @@ class TestRefresh(unittest.TestCase):
 
     def refresher_test(self, postponing):
         class Obj: pass
+        clk_freq = 100e6
         settings = Obj()
         settings.with_refresh = True
-        settings.refresh_zqcs_freq = 1e0
+        # The Refresher only samples the ZQCS timer on the cycle a refresh sequence completes (the
+        # timer's done pulse is not latched), so request ZQCS permanently (ZQCS timer period of 1
+        # cycle) to get a ZQCS sequence after each refresh sequence.
+        settings.refresh_zqcs_freq = clk_freq
         settings.timing = Obj()
         settings.timing.tREFI = 128
         settings.timing.tRP   = 1
@@ -86,14 +90,21 @@ class TestRefresh(unittest.TestCase):
         settings.phy = Obj()
         settings.phy.nranks = 1
 
+        # ZQCS sequence (cas, ras, we, a): Precharge All then ZQ Short Calibration after tRP.
+        precharge_all = (0, 1, 1, 2**10)
+        zqcs          = (0, 0, 1, 0)
+
         def generator(dut):
             dut.errors = 0
+            dut.zqcs   = 0
             yield dut.cmd.ready.eq(1)
             for i in range(16):
                 while (yield dut.cmd.valid) == 0:
                     yield
                 cmd_valid_gap = 0
+                cmds = []
                 while (yield dut.cmd.valid) == 1:
+                    cmds.append(((yield dut.cmd.cas), (yield dut.cmd.ras), (yield dut.cmd.we), (yield dut.cmd.a)))
                     cmd_valid_gap += 1
                     yield
                 while (yield dut.cmd.valid) == 0:
@@ -102,10 +113,14 @@ class TestRefresh(unittest.TestCase):
                 if cmd_valid_gap != postponing*settings.timing.tREFI:
                     print(cmd_valid_gap)
                     dut.errors += 1
+                for n in range(len(cmds) - settings.timing.tRP):
+                    if cmds[n] == precharge_all and cmds[n + settings.timing.tRP] == zqcs:
+                        dut.zqcs += 1
 
-        dut = Refresher(settings, clk_freq=100e6, postponing=postponing)
+        dut = Refresher(settings, clk_freq=clk_freq, zqcs_freq=settings.refresh_zqcs_freq, postponing=postponing)
         run_simulation(dut, [generator(dut)])
         self.assertEqual(dut.errors, 0)
+        self.assertGreaterEqual(dut.zqcs, 1)
 
     def test_refresher(self):
         for postponing in [1, 2, 4, 8]:
