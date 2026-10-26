@@ -47,6 +47,21 @@ class TestInit(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     get_ddr3_phy_init_sequence(phy, timing)
 
+    def test_ddr3_electrical_settings(self):
+        from types import SimpleNamespace
+        from litedram.init import get_ddr3_phy_init_sequence
+        from litedram.common import PhySettings
+
+        phy = PhySettings(
+            phytype="test", memtype="DDR3", databits=16, dfi_databits=32,
+            nphases=2, rdphase=1, wrphase=0, cl=6,
+            read_latency=0, write_latency=0)
+        timing = SimpleNamespace(tWTR=3)
+        phy.add_electrical_settings(rtt_nom="disabled", ron="34ohm")
+        sequence, registers = get_ddr3_phy_init_sequence(phy, timing)
+        self.assertEqual(registers[1], 0x2)
+        self.assertEqual(phy.rtt_nom, "disabled")
+
     def test_sdr(self):
         from litex_boards.targets.scarabhardware_minispartan6 import BaseSoC
         soc       = BaseSoC()
