@@ -386,8 +386,8 @@ class GW5DDRPHY(Module, AutoCSR):
 
             # DM -----------------------------------------------------------------------------------
             dm_o_data       = Signal(8)
-            dm_o_data_d     = Signal(8)
-            dm_o_data_muxed = Signal(serdes_bits)
+            dm_o_data_d     = Signal(8, reset_less=True) # Write data: DM sampled on writes.
+            dm_o_data_muxed = Signal(serdes_bits, reset_less=True)
             for n in range(8):
                 self.comb += dm_o_data[n].eq(dfi.phases[n//phase_beats].wrdata_mask[n%phase_beats*databits//8+dm_remapping.get(i, i)])
             if nphases == 2:
@@ -418,8 +418,8 @@ class GW5DDRPHY(Module, AutoCSR):
                 dq_i            = Signal()
                 dq_i_data       = Signal(8)
                 dq_o_data       = Signal(8)
-                dq_o_data_d     = Signal(8)
-                dq_o_data_muxed = Signal(serdes_bits)
+                dq_o_data_d     = Signal(8, reset_less=True) # Write data: DQ only driven on writes.
+                dq_o_data_muxed = Signal(serdes_bits, reset_less=True)
                 for n in range(8):
                     self.comb += dq_o_data[n].eq(dfi.phases[n//phase_beats].wrdata[n%phase_beats*databits+j])
                 if nphases == 2:
@@ -460,7 +460,7 @@ class GW5DDRPHY(Module, AutoCSR):
                     **{f"o_Q{n}": dq_i_bitslip.i[n] for n in range(serdes_bits)},
                 )
                 if nphases == 2:
-                    dq_i_bitslip_o_d = Signal(4)
+                    dq_i_bitslip_o_d = Signal(4, reset_less=True) # Read data: with rddata_valid.
                     self.sync += dq_i_bitslip_o_d.eq(dq_i_bitslip.o)
                     self.comb += dq_i_data.eq(Cat(dq_i_bitslip_o_d, dq_i_bitslip.o))
                 else:
