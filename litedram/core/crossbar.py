@@ -13,6 +13,7 @@ from operator import or_
 
 from migen import *
 from migen.genlib import roundrobin
+from migen.genlib.coding import PriorityEncoder
 
 from litex.soc.interconnect import stream
 
@@ -201,17 +202,24 @@ class LiteDRAMCrossbar(Module):
             self.comb += master.rdata.valid.eq(master_rdata_valid)
 
         # Route data writes ------------------------------------------------------------------------
-        wdata_cases = {}
-        for nm, master in enumerate(self.masters):
-            wdata_cases[2**nm] = [
-                controller.wdata.eq(master.wdata.data),
-                controller.wdata_we.eq(master.wdata.we)
+        # The Multiplexer issues at most one write per cycle and a master's wdata.ready is the
+        # (delayed) grant of the bank that issued it, so at most one bit of master_wdata_readys is
+        # set in a given cycle. A binary select on the encoded index is thus sufficient: it is much
+        # smaller than a one-hot Case over all masters and does not need a default (the controller
+        # only samples wdata/wdata_we when a write was issued, i.e. with DFI wrdata_en).
+        if nmasters == 1:
+            self.comb += [
+                controller.wdata.eq(self.masters[0].wdata.data),
+                controller.wdata_we.eq(self.masters[0].wdata.we),
             ]
-        wdata_cases["default"] = [
-            controller.wdata.eq(0),
-            controller.wdata_we.eq(0)
-        ]
-        self.comb += Case(Cat(*master_wdata_readys), wdata_cases)
+        else:
+            wdata_encoder = PriorityEncoder(nmasters)
+            self.submodules += wdata_encoder
+            self.comb += [
+                wdata_encoder.i.eq(Cat(*master_wdata_readys)),
+                controller.wdata.eq(Array([m.wdata.data for m in self.masters])[wdata_encoder.o]),
+                controller.wdata_we.eq(Array([m.wdata.we for m in self.masters])[wdata_encoder.o]),
+            ]
 
         # Route data reads -------------------------------------------------------------------------
         for master in self.masters:
