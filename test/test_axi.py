@@ -71,6 +71,8 @@ def strb_to_mask(strb, data_width):
 class TestAXI(unittest.TestCase):
     def _test_axi2native(self,
         naccesses=16, simultaneous_writes_reads=False,
+        # AXI WRAP burst support of the DUT (the harness only issues INCR/FIXED bursts).
+        with_wrap = True,
         # Random: 0: min (no random), 100: max.
         # Burst randomness
         id_rand_enable   = False,
@@ -200,7 +202,8 @@ class TestAXI(unittest.TestCase):
         # DUT
         axi_port  = LiteDRAMAXIPort(data_width=32, address_width=32, id_width=8)
         dram_port = LiteDRAMNativePort("both", 32, 32)
-        dut       = LiteDRAMAXI2Native(axi_port, dram_port, with_read_modify_write=True, base_address=base_address)
+        dut       = LiteDRAMAXI2Native(axi_port, dram_port, with_read_modify_write=True,
+            base_address=base_address, with_wrap=with_wrap)
         mem       = DRAMMemory(32, 1024)
 
         # Generate writes/reads
@@ -254,6 +257,10 @@ class TestAXI(unittest.TestCase):
 
     def test_axi2native_writes_and_reads_no_random(self):
         self._test_axi2native(simultaneous_writes_reads=True)
+
+    # Test without WRAP burst support (INCR/FIXED bursts only).
+    def test_axi2native_without_wrap(self):
+        self._test_axi2native(simultaneous_writes_reads=False, with_wrap=False)
 
     # Test randomness one parameter at a time
     def test_axi2native_writes_then_reads_random_bursts(self):
