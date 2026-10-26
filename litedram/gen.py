@@ -676,12 +676,17 @@ class LiteDRAMCore(SoCCore):
 
         # USDDRPHY.
         elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:
+            kwargs = {}
+            for name in ["with_hpio_vref", "hpio_vref_tune"]: # USPDDRPHY/DDR4 read VREF scan.
+                if core_config.get(name, None) is not None:
+                    kwargs[name] = core_config[name]
             self.ddrphy = sdram_phy = core_config["sdram_phy"](
                 pads             = platform.request("ddram"),
                 memtype          = core_config["memtype"],
                 sys_clk_freq     = sys_clk_freq,
                 iodelay_clk_freq = core_config["iodelay_clk_freq"],
-                cmd_latency      = core_config["cmd_latency"])
+                cmd_latency      = core_config["cmd_latency"],
+                **kwargs)
             self.ddrphy.settings.add_electrical_settings(**electrical_settings_kwargs)
         else:
             raise NotImplementedError

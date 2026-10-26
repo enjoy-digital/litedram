@@ -17,6 +17,8 @@
     "sdram_module_nb": 8,            # Number of byte groups
     "sdram_rank_nb":   1,            # Number of ranks
     "sdram_phy":       "USPDDRPHY",  # Type of FPGA PHY
+    "with_hpio_vref":  False,        # Per-byte read VREF scan (HPIO_VREF, UltraScale+/DDR4 only)
+    "hpio_vref_tune":  31,           # Read VREF reset code (0-72, 31: 73.5% of VCCO)
 
     # Electrical ---------------------------------------------------------------
     "rtt_nom": "40ohm", # Nominal termination

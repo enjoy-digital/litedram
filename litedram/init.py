@@ -963,6 +963,9 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
         r.define("SDRAM_PHY_DELAYS", phy_settings.delays)
     if phy_settings.bitslips > 0:
         r.define("SDRAM_PHY_BITSLIPS", phy_settings.bitslips)
+    if phy_settings.read_vref_codes > 0:
+        r.define("SDRAM_PHY_READ_VREF_CAPABLE")
+        r.define("SDRAM_PHY_READ_VREF_CODES", phy_settings.read_vref_codes)
 
     r.define(f"SDRAM_PHY_{phy_settings.memtype}")
     if phy_settings.is_rdimm:
