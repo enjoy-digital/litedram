@@ -43,7 +43,7 @@ class TestS7DDRPHYSettings(unittest.TestCase):
     def get_mr0_cl(phy):
         init_sequence, _ = get_ddr3_phy_init_sequence(
             phy_settings    = phy.settings,
-            timing_settings = SimpleNamespace(tWTR=2),
+            timing_settings = SimpleNamespace(tWR=2),
         )
         mr0 = next(address for comment, address, _, _, _ in init_sequence
             if comment.startswith("Load Mode Register 0"))
