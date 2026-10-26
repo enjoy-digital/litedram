@@ -96,16 +96,13 @@ class USDDRPHY(Module, AutoCSR):
         self._rdphase = CSRStorage(2, reset=rdphase)
         self._wrphase = CSRStorage(2, reset=wrphase)
 
-        # Read VREF scan (UltraScale+ HP banks only): one HPIO_VREF per byte group drives the VREF
-        # of that byte's DQ IOBUFE3s, 7 bits per byte in this register. FABRIC_RANGE1 (POD) VREF
-        # in % of VCCO (UG571/UG861 VREF scan table): 58 + 0.5*code for codes 15-72, 57.5 +
-        # 0.5*code for codes 1-14, 65 for code 0. Added after rdphase/wrphase to keep CSR offsets.
+        # Read VREF code of the dly_sel-selected bytes (see DQ VREF below), added last to keep the
+        # offsets of the other CSRs.
         if with_hpio_vref:
             assert phytype == "USPDDRPHY" and memtype == "DDR4"
             assert not x4_dimm_mode
             assert 0 <= hpio_vref_tune <= 72
-            self._rdly_vref = CSRStorage(7*(databits//8),
-                reset=sum(hpio_vref_tune << (7*i) for i in range(databits//8)))
+            self._rd_vref = CSRStorage(7, reset=hpio_vref_tune)
 
         # PHY settings -----------------------------------------------------------------------------
         self.settings = PhySettings(
@@ -378,22 +375,38 @@ class USDDRPHY(Module, AutoCSR):
                     )
                 ]
 
+        # DQ VREF ----------------------------------------------------------------------------------
+        # Read VREF scan (UltraScale+ HP banks, DDR4/POD12): one HPIO_VREF per byte drives the VREF
+        # of the byte's DQ IOBUFE3s (a tuned VREF cannot cross a byte group). Its 7-bit code resets
+        # to hpio_vref_tune (and on rst) and is written through rd_vref to the dly_sel-selected
+        # bytes, as the delays/bitslips. FABRIC_RANGE1 VREF in % of VCCO (UG571/UG861 VREF scan
+        # table): 58 + 0.5*code for codes 15-72, 57.5 + 0.5*code for codes 1-14 and 65 for code 0,
+        # so codes 0-14 are not monotonic. The bank's INTERNAL_VREF still has to be set (and Vivado
+        # may re-derive it at place_design).
+        dq_vref = []
+        if with_hpio_vref:
+            for i in range(databits//8):
+                vref_tune = Signal(7, reset=hpio_vref_tune)
+                vref      = Signal()
+                self.sync += [
+                    If(self._rst.storage,
+                        vref_tune.eq(hpio_vref_tune)
+                    ).Elif(self._dly_sel.storage[i] & self._rd_vref.re,
+                        vref_tune.eq(self._rd_vref.storage)
+                    )
+                ]
+                self.specials += Instance("HPIO_VREF",
+                    p_VREF_CNTR        = "FABRIC_RANGE1",
+                    i_FABRIC_VREF_TUNE = vref_tune,
+                    o_VREF             = vref,
+                )
+                dq_vref.append(vref)
+
         # DQ ---------------------------------------------------------------------------------------
         dq_oe = Signal()
         dq_oe_delay = TappedDelayLine(ntaps=1)
         self.submodules += dq_oe_delay
         self.comb += dq_oe_delay.input.eq(dqs_preamble | dq_oe | dqs_postamble)
-        byte_vref = []
-        if with_hpio_vref:
-            # One per byte: a tuned VREF cannot cross a byte group, each DQ byte sits in one.
-            for j in range(databits//8):
-                vref = Signal()
-                self.specials += Instance("HPIO_VREF",
-                    p_VREF_CNTR        = "FABRIC_RANGE1",
-                    i_FABRIC_VREF_TUNE = self._rdly_vref.storage[7*j:7*(j+1)],
-                    o_VREF             = vref,
-                )
-                byte_vref.append(vref)
         for i in range(databits):
             dq_o_nodelay = Signal()
             dq_o_delayed = Signal()
@@ -485,7 +498,7 @@ class USDDRPHY(Module, AutoCSR):
                     o_O              = dq_i_nodelay,
                     i_T              = dq_t,
                     io_IO            = pads.dq[i],
-                    i_VREF           = byte_vref[i//8],
+                    i_VREF           = dq_vref[i//8],
                     i_OSC_EN         = 0,
                     i_OSC            = 0,
                     i_DCITERMDISABLE = 0,
