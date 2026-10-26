@@ -152,6 +152,78 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
         port = LiteDRAMNativePort("both", address_width=30, data_width=32)
         self.wishbone_readback_test(data["pattern"], data["expected"], wb, port)
 
+    def wishbone_write_data_hold_test(self, wb, port, abort):
+        # Once the write command is accepted, the controller pulls the write data: the bridge must
+        # keep it valid, with the data presented along with the command, even if the master drops
+        # stb (or aborts the cycle) and changes its data before the handshake, and must then be
+        # able to serve the next transactions.
+        class DUT(Module):
+            def __init__(self):
+                self.port = port
+                self.wb   = wb
+                self.submodules += LiteDRAMWishbone2Native(self.wb, self.port)
+                self.mem  = DRAMMemory(port.data_width, 16)
+
+        def main_generator(dut):
+            mask = 2**len(dut.wb.dat_w) - 1
+            data = 0x0123456789abcdef & mask
+            yield dut.wb.cyc.eq(1)
+            yield dut.wb.stb.eq(1)
+            yield dut.wb.we.eq(1)
+            yield dut.wb.sel.eq(2**len(dut.wb.sel) - 1)
+            yield dut.wb.adr.eq(1)
+            yield dut.wb.dat_w.eq(data)
+            yield
+            while not ((yield dut.port.cmd.valid) and (yield dut.port.cmd.ready)):
+                yield
+            # The command is accepted: drop stb (and cyc when aborting) and change the data before
+            # the write data handshake.
+            yield dut.wb.stb.eq(0)
+            yield dut.wb.cyc.eq(0 if abort else 1)
+            yield dut.wb.dat_w.eq(~data & mask)
+            yield dut.wb.sel.eq(0)
+            acks = 0
+            for _ in range(32):
+                yield
+                acks += (yield dut.wb.ack)
+            yield dut.wb.cyc.eq(0)
+            yield
+            # An aborted cycle gets no ack, a held one gets exactly one.
+            self.assertEqual(acks, 0 if abort else 1)
+            # The bridge is idle again and wrote the latched data (not the changed one).
+            self.assertEqual((yield from dut.wb.read(1)), data)
+            yield from dut.wb.write(2, ~data & mask)
+            self.assertEqual((yield from dut.wb.read(2)), ~data & mask)
+
+        dut = DUT()
+        run_simulation(dut, [
+            main_generator(dut),
+            dut.mem.write_handler(dut.port),
+            dut.mem.read_handler(dut.port),
+            timeout_generator(1000),
+        ])
+
+    def test_wishbone_write_data_hold_32bit(self):
+        wb   = wishbone.Interface(adr_width=30, data_width=32)
+        port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+        self.wishbone_write_data_hold_test(wb, port, abort=False)
+
+    def test_wishbone_write_data_hold_32bit_abort(self):
+        wb   = wishbone.Interface(adr_width=30, data_width=32)
+        port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+        self.wishbone_write_data_hold_test(wb, port, abort=True)
+
+    def test_wishbone_write_data_hold_64bit_to_32bit(self):
+        # Through the native port DownConverter.
+        wb   = wishbone.Interface(adr_width=30, data_width=64)
+        port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+        self.wishbone_write_data_hold_test(wb, port, abort=False)
+
+    def test_wishbone_write_data_hold_64bit_to_32bit_abort(self):
+        wb   = wishbone.Interface(adr_width=30, data_width=64)
+        port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+        self.wishbone_write_data_hold_test(wb, port, abort=True)
+
     def test_wishbone_64bit(self):
         # Verify Wishbone with 64-bit data width.
         data = self.pattern_test_data["64bit"]
