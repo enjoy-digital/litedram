@@ -75,10 +75,8 @@ class TestRefresh(unittest.TestCase):
         clk_freq = 100e6
         settings = Obj()
         settings.with_refresh = True
-        # The Refresher only samples the ZQCS timer on the cycle a refresh sequence completes (the
-        # timer's done pulse is not latched), so request ZQCS permanently (ZQCS timer period of 1
-        # cycle) to get a ZQCS sequence after each refresh sequence.
-        settings.refresh_zqcs_freq = clk_freq
+        # ZQCS every 1000 cycles: executed after the refresh sequence that follows the request.
+        settings.refresh_zqcs_freq = clk_freq/1000
         settings.timing = Obj()
         settings.timing.tREFI = 128
         settings.timing.tRP   = 1
@@ -120,7 +118,11 @@ class TestRefresh(unittest.TestCase):
         dut = Refresher(settings, clk_freq=clk_freq, zqcs_freq=settings.refresh_zqcs_freq, postponing=postponing)
         run_simulation(dut, [generator(dut)])
         self.assertEqual(dut.errors, 0)
+        # 16 refresh sequences of postponing*tREFI cycles, a ZQCS request every 1000 cycles: the
+        # timer restarts after each ZQCS sequence, so the period is 1000 cycles plus the wait for
+        # the following refresh sequence (the request is executed after it).
         self.assertGreaterEqual(dut.zqcs, 1)
+        self.assertLessEqual(dut.zqcs, (16*postponing*settings.timing.tREFI)//1000)
 
     def test_refresher(self):
         for postponing in [1, 2, 4, 8]:
