@@ -167,6 +167,11 @@ class BankMachine(Module):
         self.submodules.trascon = trascon = tXXDController(settings.timing.tRAS)
         self.comb += trascon.valid.eq(cmd.valid & cmd.ready & row_open)
 
+        # tRTP (read-to-precharge) controller ------------------------------------------------------
+        # Also the delay of the internal precharge of an auto-precharged read (AL=0).
+        self.submodules.trtpcon = trtpcon = tXXDController(settings.timing.tRTP)
+        self.comb += trtpcon.valid.eq(cmd.valid & cmd.ready & cmd.is_read)
+
         # Auto Precharge generation ----------------------------------------------------------------
         # generate auto precharge when current and next cmds are to different rows
         if settings.with_auto_precharge:
@@ -210,7 +215,7 @@ class BankMachine(Module):
         )
         fsm.act("PRECHARGE",
             # Note: we are presenting the column address, A10 is always low
-            If(twtpcon.ready & trascon.ready,
+            If(twtpcon.ready & trtpcon.ready & trascon.ready,
                 cmd.valid.eq(1),
                 If(cmd.ready,
                     NextState("TRP")
@@ -222,7 +227,7 @@ class BankMachine(Module):
             row_close.eq(1)
         )
         fsm.act("AUTOPRECHARGE",
-            If(twtpcon.ready & trascon.ready,
+            If(twtpcon.ready & trtpcon.ready & trascon.ready,
                 NextState("TRP")
             ),
             row_close.eq(1)
@@ -242,7 +247,7 @@ class BankMachine(Module):
         fsm.act("REFRESH",
             # The refresher precharges all banks: respect tRAS (and tWTP) from this bank's last
             # ACTIVATE/write, as PRECHARGE/AUTOPRECHARGE do.
-            If(twtpcon.ready & trascon.ready,
+            If(twtpcon.ready & trtpcon.ready & trascon.ready,
                 refresh_gnt.eq(1),
             ),
             row_close.eq(1),
