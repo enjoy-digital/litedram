@@ -441,6 +441,36 @@ class TestMultiplexer(unittest.TestCase):
         ]
         run_simulation(dut, generators)
 
+    def test_fsm_refresh_exit_to_pending_direction(self):
+        # After a refresh the FSM resumes in the direction of the pending requests: WRITE when only
+        # writes are pending (without going through READ and the read-to-write delay), READ
+        # otherwise.
+        def main_generator(dut, with_reads):
+            # Pending writes (and reads)
+            yield from dut.bm_drivers[0].write()
+            while (yield from dut.fsm_state()) != "WRITE":
+                yield
+            if with_reads:
+                yield from dut.bm_drivers[1].read()
+            # Refresh request granted by all bank machines
+            yield from dut.refresh_driver.refresh()
+            for bm in dut.bank_machines:
+                yield bm.refresh_gnt.eq(1)
+            while (yield from dut.fsm_state()) != "REFRESH":
+                yield
+            # End of the refresh sequence
+            yield dut.refresher.cmd.last.eq(1)
+            yield
+            yield dut.refresher.cmd.last.eq(0)
+            yield dut.refresher.cmd.valid.eq(0)
+            yield
+            self.assertEqual((yield from dut.fsm_state()), "READ" if with_reads else "WRITE")
+
+        for with_reads in [False, True]:
+            with self.subTest(with_reads=with_reads):
+                dut = MultiplexerDUT()
+                run_simulation(dut, [main_generator(dut, with_reads), timeout_generator(100)])
+
     def test_refresh_requires_gnt(self):
         # After refresher command request, multiplexer waits for permission from all bank machines.
         def main_generator(dut):
