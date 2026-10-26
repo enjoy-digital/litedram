@@ -24,11 +24,17 @@ setup(
     install_requires              = ["pyyaml", "litex"],
     extras_require                = {
         "develop": [
-          "meson"
-          "pexpect"
-          "setuptools"
-          "requests"
-        ]
+            "meson",
+            "pexpect",
+            "setuptools",
+            "requests",
+        ],
+        "benchmark": [
+            "numpy",
+            "pandas",
+            "matplotlib",
+            "jinja2",
+        ],
     },
     packages                      = find_packages(exclude=("test*", "sim*", "doc*", "examples*")),
     include_package_data          = True,
