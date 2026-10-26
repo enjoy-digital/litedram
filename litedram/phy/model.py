@@ -194,25 +194,27 @@ class DFITimingsChecker(Module):
     def ns_to_ps(self, val):
         return int(val * 1e3)
 
-    def ck_ns_to_ps(self, val, tck):
+    def ck_ns_to_ps(self, val, tck_ps):
+        # Clock counts use the same integer ps tCK as the timestamps, so that n clocks measured
+        # on the timestamps never fall 1ps short of a n*tCK timing.
         c, t = val
-        c = 0 if c is None else c * tck
-        t = 0 if t is None else t
-        return self.ns_to_ps(max(c, t))
+        c = 0 if c is None else c * tck_ps
+        t = 0 if t is None else self.ns_to_ps(t)
+        return max(c, t)
 
     def prepare_timings(self, timings, refresh_mode, memtype):
         self.timings = timings
         new_timings  = {}
 
-        tck = self.timings["tCK"]
+        tck_ps = self.ns_to_ps(self.timings["tCK"])
 
         for key, val in self.timings.items():
             if val is None:
                 val = 0
             elif key == "tCK":
-                val = self.ns_to_ps(val)
+                val = tck_ps
             else:
-                val = self.ck_ns_to_ps(val, tck)
+                val = self.ck_ns_to_ps(val, tck_ps)
 
             new_timings[key] = val
 
@@ -228,6 +230,7 @@ class DFITimingsChecker(Module):
 
     def __init__(self, dfi, nbanks, nphases, timings, refresh_mode, memtype, verbose=False):
         self.logging_enabled = Signal(reset=1)
+        self.errors          = Signal(32) # Violations (cycles with at least one violation).
 
         self.prepare_timings(timings, refresh_mode, memtype)
         self.add_cmds()
@@ -240,6 +243,7 @@ class DFITimingsChecker(Module):
 
         last_cmd_ps = [[Signal.like(cnt) for _ in range(len(self.cmds))] for _ in range(nbanks)]
         last_cmd    = [Signal(4) for i in range(nbanks)]
+        last_rda    = [Signal() for i in range(nbanks)] # Last command was a READ with auto-precharge.
 
         act_ps   = Array([Signal().like(cnt) for i in range(4)])
         act_curr = Signal(max=4)
@@ -267,9 +271,9 @@ class DFITimingsChecker(Module):
                     self.sync += [
                         If((state == cmd.enc) & self.logging_enabled,
                             If(all_banks,
-                                Display("[%016dps] P%0d " + cmd.name, ps, np)
+                                Display("[%016dps] P{} {}".format(np, cmd.name), ps)
                             ).Else(
-                                Display("[%016dps] P%0d B%0d " + cmd.name, ps, np, phase.bank)
+                                Display("[%016dps] P{} B%0d {}".format(np, cmd.name), ps, phase.bank)
                             )
                         )
                     ]
@@ -287,12 +291,26 @@ class DFITimingsChecker(Module):
                                 self.sync += [
                                     If(self.logging_enabled & cmd_recv & (last_cmd[i] == prev.enc) &
                                        (ps < (last_cmd_ps[i][prev.idx] + rule.delay)),
-                                        Display("[%016dps] {} violation on bank %0d".format(rule.name), ps, i)
+                                        Display("[%016dps] {} violation on bank {}".format(rule.name, i), ps),
+                                        self.errors.eq(self.errors + 1)
                                     )
                                 ]
 
                     # Save command timestamp in an array
                     self.sync += If(cmd_recv, last_cmd_ps[i][curr.idx].eq(ps), last_cmd[i].eq(state))
+
+                    # READ with auto-precharge: the DRAM precharges tRTP after it, so the next
+                    # ACTIVATE has to come tRTP + tRP after the READ.
+                    if curr.name == "RD":
+                        self.sync += If(cmd_recv, last_rda[i].eq(phase.address[10]))
+                    elif curr.name == "ACT":
+                        self.sync += [
+                            If(self.logging_enabled & cmd_recv & last_rda[i] &
+                               (ps < (last_cmd_ps[i][self.cmds["RD"].idx] + self.timings["tRTP"] + self.timings["tRP"])),
+                                Display("[%016dps] RDA->ACT (tRTP + tRP) violation on bank {}".format(i), ps),
+                                self.errors.eq(self.errors + 1)
+                            )
+                        ]
 
                     # tRRD & tFAW
                     if curr.name == "ACT":
@@ -302,25 +320,29 @@ class DFITimingsChecker(Module):
                         # act_curr points to newest ACT timestamp
                         self.sync += [
                             If(self.logging_enabled & cmd_recv & (ps < (act_ps[act_curr] + self.timings["tRRD"])),
-                                Display("[%016dps] tRRD violation on bank %0d", ps, i)
+                                Display("[%016dps] tRRD violation on bank {}".format(i), ps),
+                                self.errors.eq(self.errors + 1)
                             )
                         ]
 
                         # act_next points to the oldest ACT timestamp
                         self.sync += [
                             If(self.logging_enabled & cmd_recv & (ps < (act_ps[act_next] + self.timings["tFAW"])),
-                                Display("[%016dps] tFAW violation on bank %0d", ps, i)
+                                Display("[%016dps] tFAW violation on bank {}".format(i), ps),
+                                self.errors.eq(self.errors + 1)
                             )
                         ]
 
                         # Save ACT timestamp in a circular buffer
                         self.sync += If(cmd_recv, act_ps[act_next].eq(ps), act_curr.eq(act_next))
 
-        # tREFI
+        # tREFI: over each 64ms period, the refresh intervals must not exceed tREFI on average (the
+        # refresher may postpone refreshes and catch up later).
         ref_ps      = Signal().like(cnt)
         ref_ps_mod  = Signal().like(cnt)
-        ref_ps_diff = Signal(min=-2**63, max=2**63)
+        ref_ps_diff = Signal(min=-2**63, max=2**63) # Accumulated excess of the intervals over tREFI.
         curr_diff   = Signal().like(ref_ps_diff)
+        ref_seen    = Signal()
 
         self.comb += curr_diff.eq(ps - (ref_ps + self.timings["tREFI"]))
 
@@ -333,12 +355,21 @@ class DFITimingsChecker(Module):
             )
         ]
 
-        # Update timestamp and difference
-        self.sync += If(ref_issued != 0, ref_ps.eq(ps), ref_ps_diff.eq(ref_ps_diff - curr_diff))
-
+        # Accumulate the excess (from the first refresh on) and check it at the end of each period.
         self.sync += [
-            If((self.logging_enabled & ref_ps_mod == 0) & (ref_ps_diff > 0),
-                Display("[%016dps] tREFI violation (64ms period): %0d", ps, ref_ps_diff)
+            If(ref_issued != 0,
+                ref_ps.eq(ps),
+                ref_seen.eq(1),
+                If(ref_seen,
+                    ref_ps_diff.eq(ref_ps_diff + curr_diff)
+                )
+            ),
+            If(ref_ps_mod == 0,
+                ref_ps_diff.eq(0),
+                If(self.logging_enabled & (ref_ps_diff > 0),
+                    Display("[%016dps] tREFI violation (64ms period): %0d", ps, ref_ps_diff),
+                    self.errors.eq(self.errors + 1)
+                )
             )
         ]
 
@@ -573,7 +604,7 @@ class SDRAMPHYModel(Module):
                 refresh_mode = self.module.timing_settings.fine_refresh_mode,
                 memtype      = settings.memtype,
                 verbose      = verbosity > SDRAM_VERBOSE_DBG)
-            self.submodules += timing_checker
+            self.submodules.timing_checker = timing_checker
 
         # Bank init data ---------------------------------------------------------------------------
         bank_init  = [None for i in range(nbanks)]
