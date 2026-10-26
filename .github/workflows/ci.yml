@@ -1,61 +1,120 @@
 name: ci
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly full run (Monday 03:00 UTC) to catch regressions coming from upstream LiteX/Verilator.
+    - cron: "0 3 * * 1"
+
+# Cancel superseded runs of the same ref (e.g. force-pushes to a PR branch).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  # Fast job: runs on every push / pull request.
+  #
+  # Everything under test/ is a pure Python (migen/LiteX) simulation, so this job needs neither
+  # Verilator, nor GHDL, nor the RISC-V GCC toolchain. Only the tests that need an external tool
+  # or are very slow are left to the "full" job:
+  # - test/test_examples.py: runs litedram/gen.py on the examples, which compiles the LiteX BIOS
+  #   (RISC-V GCC + meson/ninja).
+  # - test/test_lpddr4.py, test/test_lpddr5.py: ~10 min each of migen simulation.
+  unit:
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.12"]
     steps:
       # Checkout Repository
       - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup CCache
-        uses: hendrikmuhs/ccache-action@v1.2
-
-      # Install Tools
-      - name: Install Tools
-        run: |
-          sudo apt-get install wget build-essential ninja-build
-          sudo apt-get install libevent-dev libjson-c-dev flex bison
-          sudo apt-get install libfl-dev libfl2 zlib1g-dev
+        uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: ${{ matrix.python-version }}
           cache: "pip"
           cache-dependency-path: "setup.py"
 
+      # "develop" extras (setuptools, requests, pexpect, meson) + pytest.
       - name: Install Python dependencies
-        run: |
-          python3 -m pip install setuptools requests pexpect meson pytest
+        run: python3 -m pip install setuptools requests pexpect meson pytest
 
-      # Install (n)Migen / LiteX / Cores
+      # Install Migen / LiteX / Cores
       - name: Install LiteX
         run: |
           wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
           python3 litex_setup.py --init --install --user --clone-depth=1
 
-      # Install GCC Toolchains
-      - name: Install GCC Toolchains
+      # Install Project (replaces the LiteDRAM clone done by litex_setup.py with this checkout)
+      - name: Install Project
+        run: python3 -m pip install --user -e .
+
+      # Test
+      - name: Run unit tests
+        run: >
+          python3 -m pytest test
+          --ignore=test/test_examples.py
+          --ignore=test/test_lpddr4.py
+          --ignore=test/test_lpddr5.py
+
+  # Full job: complete test suite with the RISC-V GCC toolchain and Verilator available.
+  # Only runs on pushes to master, on manual dispatch and on the weekly schedule.
+  full:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/master')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      # Checkout Repository
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup CCache
+        uses: hendrikmuhs/ccache-action@v1.2
+
+      # Install Tools (Verilator build + LiteX simulation/BIOS build dependencies)
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget build-essential ninja-build
+          sudo apt-get install -y libevent-dev libjson-c-dev flex bison
+          sudo apt-get install -y libfl-dev libfl2 zlib1g-dev
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "setup.py"
+
+      # "develop" extras (setuptools, requests, pexpect, meson) + pytest.
+      - name: Install Python dependencies
+        run: python3 -m pip install setuptools requests pexpect meson pytest
+
+      # Install Migen / LiteX / Cores
+      - name: Install LiteX
+        run: |
+          wget https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
+          python3 litex_setup.py --init --install --user --clone-depth=1
+
+      # Install GCC Toolchain (needed by test_examples.py: BIOS compilation).
+      # On Ubuntu this is an apt package (gcc-riscv64-unknown-elf), so it is not cached.
+      - name: Install RISC-V GCC Toolchain
         run: |
           sudo python3 litex_setup.py --gcc=riscv
-
-      # Build / Install GHDL
-      - name: Build GHDL
-        run: |
-          sudo apt-get install gnat llvm
-          git clone https://github.com/ghdl/ghdl.git
-          cd ghdl
-          ./configure --with-llvm-config
-          make
-          sudo make install
 
       # Build / Install Verilator
       - name: Build Verilator
         run: |
-          sudo apt-get install help2man
+          sudo apt-get install -y help2man
           export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           git clone https://github.com/verilator/verilator
           cd verilator
@@ -65,10 +124,10 @@ jobs:
           make -j$(nproc)
           sudo make install
 
-      # Install Project
+      # Install Project (replaces the LiteDRAM clone done by litex_setup.py with this checkout)
       - name: Install Project
-        run: python3 setup.py develop --user
+        run: python3 -m pip install --user -e .
 
       # Test
-      - name: Run Tests
+      - name: Run full test suite
         run: python3 -m unittest discover -s test -p "test_*.py"
