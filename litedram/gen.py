@@ -698,6 +698,12 @@ class LiteDRAMCore(SoCCore):
                 controller_settings_kwargs[name] = core_config[name]
         controller_settings = controller_settings = ControllerSettings(**controller_settings_kwargs)
 
+        # Collect DFI ECC Settings (core/ecc.py: SECDED on a 72-bit channel, per-DQ error counters).
+        sdram_kwargs = {}
+        for name in ["with_ecc", "with_ecc_bit_stats"]:
+            if core_config.get(name, None) is not None:
+                sdram_kwargs[name] = core_config[name]
+
         # Add LiteDRAM Core to SoC.
         self.add_sdram("sdram",
             phy                     = sdram_phy,
@@ -707,6 +713,7 @@ class LiteDRAMCore(SoCCore):
             l2_cache_size           = 8,
             l2_cache_min_data_width = 0,
             controller_settings     = controller_settings,
+            **sdram_kwargs,
         )
 
         # DRAM Control/Status ----------------------------------------------------------------------
