@@ -99,6 +99,41 @@ class TestECC(unittest.TestCase):
         dut = DUT()
         run_simulation(dut, main_generator(dut))
 
+    def test_eccw_we_error(self):
+        # Verify LiteDRAMNativePortECCW flags writes whose byte enables do not cover full ECC words.
+        class DUT(Module):
+            def __init__(self):
+                eccw = LiteDRAMNativePortECCW(data_width_from=32*8, data_width_to=39*8)
+                self.submodules.eccw = eccw
+
+        def main_generator(dut):
+            full_from = 2**(32*8//8) - 1
+            full_to   = 2**39 - 1
+            yield dut.eccw.sink.valid.eq(1)
+            yield dut.eccw.sink.we.eq(full_from)
+            yield
+            self.assertEqual((yield dut.eccw.we_error), 0)
+            self.assertEqual((yield dut.eccw.source.we), full_to)
+            # One byte enable cleared in the 3rd word: error flagged, the word is still fully written.
+            yield dut.eccw.sink.we.eq(full_from & ~(1 << (2*4 + 1)))
+            yield
+            self.assertEqual((yield dut.eccw.we_error), 1)
+            self.assertEqual((yield dut.eccw.source.we), full_to)
+            # All byte enables of the 3rd word cleared: error flagged, that ECC word is not written
+            # (its byte enables are bits (2*39)//8 to (3*39)//8 of the 39-bit vector).
+            lo, hi = (2*39)//8, (3*39)//8
+            yield dut.eccw.sink.we.eq(full_from & ~(0b1111 << (2*4)))
+            yield
+            self.assertEqual((yield dut.eccw.we_error), 1)
+            self.assertEqual((yield dut.eccw.source.we), full_to & ~((2**(hi-lo)-1) << lo))
+            # No error without a valid beat.
+            yield dut.eccw.sink.valid.eq(0)
+            yield
+            self.assertEqual((yield dut.eccw.we_error), 0)
+
+        dut = DUT()
+        run_simulation(dut, main_generator(dut))
+
     def test_eccr_connected(self):
         # Verify LiteDRAMNativePortECCR ECC decoding.
         class DUT(Module):
