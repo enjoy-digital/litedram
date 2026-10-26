@@ -159,6 +159,14 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
         # Verify 32-bit to 256-bit up-conversion.
         self.converter_test(test_data="32bit_to_256bit", user_data_width=32, native_data_width=256)
 
+    def test_converter_1to16(self):
+        # Verify 8-bit to 128-bit up-conversion.
+        self.converter_test(test_data="8bit_to_128bit", user_data_width=8, native_data_width=128)
+
+    def test_converter_1to32(self):
+        # Verify 8-bit to 256-bit up-conversion.
+        self.converter_test(test_data="8bit_to_256bit", user_data_width=8, native_data_width=256)
+
     def test_up_converter_read_latencies(self):
         # Verify that up-conversion works with different port reader latencies
         cases = {
