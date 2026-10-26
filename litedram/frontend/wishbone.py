@@ -52,6 +52,9 @@ class LiteDRAMWishbone2Native(LiteXModule):
         # # #
 
         aborted = Signal()
+        wdata_pending = Signal()
+        wdata_data    = Signal.like(wishbone.dat_w)
+        wdata_sel     = Signal.like(wishbone.sel)
         offset  = base_address >> log2_int(port.data_width//8)
 
         self.fsm = fsm = FSM(reset_state="CMD")
@@ -63,20 +66,24 @@ class LiteDRAMWishbone2Native(LiteXModule):
         ]
         fsm.act("CMD",
             port.cmd.valid.eq(wishbone.cyc & wishbone.stb),
-            If(port.cmd.valid & port.cmd.ready &  wishbone.we, NextState("WRITE")),
+            If(port.cmd.valid & port.cmd.ready & wishbone.we,
+                NextValue(wdata_pending, 1),
+                NextValue(wdata_data,    wishbone.dat_w),
+                NextValue(wdata_sel,     wishbone.sel),
+                NextState("WRITE")),
             If(port.cmd.valid & port.cmd.ready & ~wishbone.we, NextState("READ")),
             NextValue(aborted, 0),
         )
         self.comb += [
-            port.wdata.valid.eq(wishbone.stb & wishbone.we),
-            If(ratio <= 1, If(~fsm.ongoing("WRITE"), port.wdata.valid.eq(0))),
-            port.wdata.data.eq(wishbone.dat_w),
-            port.wdata.we.eq(wishbone.sel),
+            port.wdata.valid.eq(wdata_pending),
+            port.wdata.data.eq(wdata_data),
+            port.wdata.we.eq(wdata_sel),
         ]
         fsm.act("WRITE",
             NextValue(aborted, ~wishbone.cyc | aborted),
             If(port.wdata.valid & port.wdata.ready,
                 wishbone.ack.eq(wishbone.cyc & ~aborted),
+                NextValue(wdata_pending, 0),
                 NextState("CMD")
             ),
         )

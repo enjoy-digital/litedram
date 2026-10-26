@@ -152,6 +152,45 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
         port = LiteDRAMNativePort("both", address_width=30, data_width=32)
         self.wishbone_readback_test(data["pattern"], data["expected"], wb, port)
 
+    def test_wishbone_write_data_hold(self):
+        # Once the write command is accepted, the write data must stay valid
+        # until its handshake, even if stb is deasserted in between.
+        class DUT(Module):
+            def __init__(self):
+                self.port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+                self.wb   = wishbone.Interface(adr_width=30, data_width=32)
+                self.submodules += LiteDRAMWishbone2Native(self.wb, self.port)
+                self.mem  = DRAMMemory(self.port.data_width, 8)
+
+        def main_generator(dut):
+            yield dut.wb.cyc.eq(1)
+            yield dut.wb.stb.eq(1)
+            yield dut.wb.we.eq(1)
+            yield dut.wb.sel.eq(0xf)
+            yield dut.wb.adr.eq(0)
+            yield dut.wb.dat_w.eq(0xdeadbeef)
+            yield
+            while not ((yield dut.port.cmd.valid) and (yield dut.port.cmd.ready)):
+                yield
+            # The command is accepted; drop stb before the wdata handshake.
+            yield dut.wb.stb.eq(0)
+            for _ in range(100):
+                yield
+                if (yield dut.wb.ack):
+                    break
+            else:
+                self.fail("write acknowledgement never arrived")
+            yield dut.wb.cyc.eq(0)
+            yield
+
+        dut = DUT()
+        run_simulation(dut, [
+            main_generator(dut),
+            dut.mem.write_handler(dut.port),
+            timeout_generator(1000),
+        ])
+        self.assertEqual(dut.mem.mem[0], 0xdeadbeef)
+
     def test_wishbone_64bit(self):
         # Verify Wishbone with 64-bit data width.
         data = self.pattern_test_data["64bit"]
