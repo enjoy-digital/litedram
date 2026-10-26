@@ -38,6 +38,7 @@ class BankMachineDUT(Module):
     default_timing_settings = dict(
         tRAS = None,
         tRC  = None,
+        tRTP = None,
         tCCD = 1,
         tRCD = 2,
         tRP  = 2,
@@ -305,7 +306,7 @@ class TestBankMachine(unittest.TestCase):
         ]
         self.bankmachine_commands_test(dut=dut, requests=requests, generators=[lock_checker])
 
-    def timing_test(self, from_cmd, to_cmd, time_expected, **dut_kwargs):
+    def timing_test(self, from_cmd, to_cmd, time_expected, we=1, **dut_kwargs):
         @passive
         def timing_checker(dut):
             def is_cmd(cmd_type, test_ready):
@@ -327,8 +328,8 @@ class TestBankMachine(unittest.TestCase):
         dut = BankMachineDUT(1, **dut_kwargs)
         # Simple sequence with row change
         requests = [
-            dict(addr=dut.req_address(row=0xba, col=0xad), we=1),
-            dict(addr=dut.req_address(row=0xda, col=0xad), we=1),
+            dict(addr=dut.req_address(row=0xba, col=0xad), we=we),
+            dict(addr=dut.req_address(row=0xda, col=0xad), we=we),
         ]
         self.bankmachine_commands_test(dut=dut, requests=requests, generators=[timing_checker])
 
@@ -341,6 +342,13 @@ class TestBankMachine(unittest.TestCase):
         self.timing_test("write", "precharge", precharge_time,
             controller_settings = controller_settings,
             phy_settings        = phy_settings,
+            timing_settings     = timing_settings)
+
+    def test_timing_read_to_precharge(self):
+        controller_settings = dict(with_auto_precharge=False)
+        timing_settings = dict(tRTP=6)
+        self.timing_test("read", "precharge", time_expected=6, we=0,
+            controller_settings = controller_settings,
             timing_settings     = timing_settings)
 
     def test_timing_activate_to_activate(self):

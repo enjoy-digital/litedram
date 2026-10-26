@@ -48,6 +48,21 @@ class TestSDRAMModules(unittest.TestCase):
                 with self.subTest(module=name, speedgrade=speedgrade):
                     cls(clk_freq=100e6, rate=rate, speedgrade=speedgrade)
 
+    def test_trtp(self):
+        # READ to PRECHARGE: JEDEC default per technology, from the SPD when it provides it.
+        from litedram.modules import MT47H64M16, MT41K128M16, MT40A512M8, MT48LC16M16, MT8JTF12864, Timing
+        for module_cls, rate, trtp in [
+            (MT47H64M16,  "1:2", (2, 7.5)),
+            (MT41K128M16, "1:4", (4, 7.5)),
+            (MT40A512M8,  "1:4", (4, 7.5)),
+        ]:
+            with self.subTest(module=module_cls.__name__):
+                module = module_cls(100e6, rate)
+                self.assertEqual(module.get("tRTP"), Timing(*trtp))
+                self.assertEqual(module.timing_settings.tRTP, module.ck_ns_to_cycles(Timing(*trtp)))
+        self.assertIsNone(MT48LC16M16(100e6, "1:1").timing_settings.tRTP)
+        self.assertIsNotNone(MT8JTF12864(100e6, "1:4").timing_settings.tRTP)
+
     def test_ddr4_rdimm_tfaw_uses_ck_minimum(self):
         for name in ["HMA82GR7DJR4N", "M393A2K40DB3"]:
             cls = getattr(litedram.modules, name)
