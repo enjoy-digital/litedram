@@ -139,24 +139,29 @@ class LiteDRAMWishbone2Native(LiteXModule):
         wr_can_merge  = Signal()
         wr_next_sel   = Signal(ratio)
         wr_flush      = Signal()
-        wr_chunk_data = Signal(port_data_width)
         wr_chunk_we   = Signal(port_sel_width)
 
         wr_chunk_cases = {}
+        wr_data_cases  = {}
         for i in range(ratio):
-            # Place the current Wishbone beat and byte enables in their native lane.
-            wr_chunk_cases[i] = [
-                wr_chunk_data[i*wishbone_data_width:(i + 1)*wishbone_data_width].eq(wishbone.dat_w),
-                wr_chunk_we[i*wishbone_sel_width:(i + 1)*wishbone_sel_width].eq(wishbone.sel),
-            ]
+            # Place the current Wishbone byte enables in their native lane.
+            wr_chunk_cases[i] = wr_chunk_we[i*wishbone_sel_width:(i + 1)*wishbone_sel_width].eq(wishbone.sel)
+            # Load the current Wishbone beat directly into its native lane (used by the FSM). A lane
+            # is written at most once per native word and wr_we masks the lanes that were not
+            # written, so the other lanes can keep their stale data instead of being merged/cleared.
+            wr_data_cases[i] = NextValue(
+                wr_data[i*wishbone_data_width:(i + 1)*wishbone_data_width], wishbone.dat_w)
         self.comb += [
-            wr_chunk_data.eq(0),
             wr_chunk_we.eq(0),
             Case(chunk, wr_chunk_cases),
             # Merge only when the next beat targets the same native word and a free lane.
             wr_can_merge.eq(~wr_valid | ((wr_addr == wide_addr) & ((wr_sel & chunk_bit) == 0))),
             wr_next_sel.eq(wr_sel | chunk_bit),
             wr_flush.eq(wishbone_last | (wr_next_sel == 2**ratio - 1)),
+            # The native port only samples wdata when it pulls it (wdata.ready, after a write command
+            # was accepted), so data/we are driven unconditionally; only valid is gated by the FSM.
+            port.wdata.data.eq(wr_data),
+            port.wdata.we.eq(wr_we),
         ]
 
         # Read path ---------------------------------------------------------------------------------
@@ -185,6 +190,9 @@ class LiteDRAMWishbone2Native(LiteXModule):
             rd_port_rdata.eq(0),
             Case(chunk, rd_cache_cases),
             Case(rd_chunk, rd_port_cases),
+            # Wishbone masters only sample dat_r with ack (and hold adr until then), so dat_r is
+            # driven unconditionally: a cache hit is acked from the cache, anything else from the port.
+            wishbone.dat_r.eq(Mux(rd_cache_hit, rd_cache_rdata, rd_port_rdata)),
         ]
 
         self.fsm = fsm = FSM(reset_state="CMD")
@@ -204,7 +212,7 @@ class LiteDRAMWishbone2Native(LiteXModule):
                         wishbone.ack.eq(1),
                         NextValue(wr_valid, 1),
                         NextValue(wr_addr, Mux(wr_valid, wr_addr, wide_addr)),
-                        NextValue(wr_data, Mux(wr_valid, wr_data | wr_chunk_data, wr_chunk_data)),
+                        Case(chunk, wr_data_cases),
                         NextValue(wr_we,   Mux(wr_valid, wr_we   | wr_chunk_we,   wr_chunk_we)),
                         NextValue(wr_sel,  wr_next_sel),
                         NextValue(wr_last, wishbone_last),
@@ -223,7 +231,6 @@ class LiteDRAMWishbone2Native(LiteXModule):
                     ).Elif(rd_cache_hit,
                         # A previous native read already fetched this lane.
                         wishbone.ack.eq(1),
-                        wishbone.dat_r.eq(rd_cache_rdata),
                         If(wishbone_last,
                             NextValue(rd_cache_valid, 0)
                         )
@@ -251,8 +258,6 @@ class LiteDRAMWishbone2Native(LiteXModule):
         )
         fsm.act("WRITE_DATA",
             port.wdata.valid.eq(1),
-            port.wdata.data.eq(wr_data),
-            port.wdata.we.eq(wr_we),
             If(port.wdata.ready,
                 NextValue(wr_valid, 0),
                 NextValue(wr_sel,   0),
@@ -280,7 +285,6 @@ class LiteDRAMWishbone2Native(LiteXModule):
                 NextValue(rd_cache_addr, rd_addr),
                 If(wishbone.cyc & ~aborted,
                     wishbone.ack.eq(1),
-                    wishbone.dat_r.eq(rd_port_rdata),
                     NextValue(rd_cache_valid, ~rd_last)
                 ).Else(
                     NextValue(rd_cache_valid, 0)
