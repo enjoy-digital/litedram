@@ -246,7 +246,7 @@ class PhySettings(Settings):
     def add_electrical_settings(self, rtt_nom=None, rtt_wr=None, ron=None, tdqs=None):
         assert self.memtype in ["DDR3", "DDR4"]
         if rtt_nom is not None:
-            self.rtt = rtt_nom
+            self.rtt_nom = rtt_nom
         if rtt_wr is not None:
             self.rtt_wr = rtt_wr
         if ron is not None:
