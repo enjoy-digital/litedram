@@ -56,7 +56,9 @@ class ControllerSettings(Settings):
 
 class LiteDRAMController(Module):
     def __init__(self, phy_settings, geom_settings, timing_settings, clk_freq,
-        controller_settings=ControllerSettings()):
+        controller_settings=None):
+        if controller_settings is None:
+            controller_settings = ControllerSettings()
         if phy_settings.memtype == "SDR":
             burst_length = phy_settings.nphases
         else:
