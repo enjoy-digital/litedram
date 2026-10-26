@@ -418,6 +418,12 @@ class tXXDController(Module):
 
 
 class tFAWController(Module):
+    """Four Activate Window: at most 4 ACTIVATEs in any window of tfaw cycles.
+
+    valid is asserted on the cycle an ACTIVATE is issued (same-cycle handshake with ready). ready
+    is registered: its value for cycle t is computed at t-1 from the ACTIVATEs of cycles t-tfaw+1
+    to t-1, so that a 5th ACTIVATE is accepted exactly tfaw cycles after the 1st.
+    """
     def __init__(self, tfaw):
         self.valid = valid = Signal()
         self.ready = ready = Signal(reset=1)
@@ -425,16 +431,10 @@ class tFAWController(Module):
 
         # # #
 
-        if tfaw is not None:
-            count  = Signal(max=max(tfaw, 2))
-            window = Signal(tfaw)
+        # With at most one ACTIVATE per cycle, a window of 4 cycles or less never holds 5 of them.
+        if tfaw is not None and tfaw > 4:
+            window = Signal(tfaw - 2) # window[i]: ACTIVATE issued i+1 cycles ago.
+            count  = Signal(max=tfaw)
             self.sync += window.eq(Cat(valid, window))
-            self.comb += count.eq(reduce(add, [window[i] for i in range(tfaw)]))
-            self.sync += \
-                If(count < 4,
-                    If(count == 3,
-                        ready.eq(~valid)
-                    ).Else(
-                        ready.eq(1)
-                    )
-                )
+            self.comb += count.eq(reduce(add, [window[i] for i in range(tfaw - 2)]) + valid)
+            self.sync += ready.eq(count < 4)
