@@ -9,6 +9,9 @@
 # Limitations/TODO
 # - add configurable sdram_clk_freq - using hardcoded value now
 # - sdram_controller_data_width - try to expose the value from litex_sim to avoid duplicated code
+#
+# Run from the repository root as a module, so that "test" resolves to this package and not to
+# the standard library one: python3 -m test.run_benchmarks test/benchmarks.yml [options]
 
 import os
 import re
@@ -30,7 +33,7 @@ except ImportError as e:
     _summary = False
     print("[WARNING] Results summary not available:", e, file=sys.stderr)
 
-from litex.tools.litex_sim import get_sdram_phy_settings, sdram_module_nphases
+from litedram.phy.model import get_sdram_phy_settings, sdram_module_nphases
 from litedram import modules as litedram_modules
 from litedram.common import Settings as _Settings
 
