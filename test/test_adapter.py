@@ -119,7 +119,7 @@ class TestAdapter(MemoryTestDataMixin, unittest.TestCase):
             dut.memory.read_handler(dut.read_crossbar_port),
             timeout_generator(1000),
         ]
-        run_simulation(dut, generators, vcd_name='sim.vcd')
+        run_simulation(dut, generators)
         self.assertEqual(dut.memory.mem, mem_expected)
         self.assertEqual(dut.read_driver.rdata, [data for adr, data in pattern])
 

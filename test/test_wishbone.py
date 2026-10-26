@@ -41,7 +41,7 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
             dut.mem.write_handler(dut.port),
             dut.mem.read_handler(dut.port),
         ]
-        run_simulation(dut, generators, vcd_name='sim.vcd')
+        run_simulation(dut, generators)
         self.assertEqual(dut.mem.mem, mem_expected)
 
     def wishbone_burst_readback_test(self, base_address=0):
@@ -133,7 +133,7 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
             cmd_monitor(dut),
             timeout_generator(1000),
         ]
-        run_simulation(dut, generators, vcd_name='sim.vcd')
+        run_simulation(dut, generators)
         self.assertEqual(readback, values)
         self.assertEqual(dut.native_write_cmds, 1)
         self.assertEqual(dut.native_read_cmds, 1)

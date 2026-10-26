@@ -235,7 +235,7 @@ class TestAXI(unittest.TestCase):
             mem.read_handler(dram_port, rdata_valid_random=r_valid_random),
             mem.write_handler(dram_port, wdata_ready_random=w_ready_random)
         ]
-        run_simulation(dut, generators, vcd_name="sim.vcd")
+        run_simulation(dut, generators)
         #mem.show_content()
         self.assertEqual(self.writes_id_errors, 0)
         self.assertEqual(self.reads_data_errors, 0)
