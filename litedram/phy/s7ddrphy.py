@@ -103,6 +103,33 @@ def _negedge(module, signal, clk):
         )
     return q
 
+# Write Control ------------------------------------------------------------------------------------
+
+class S7DDRPHYWriteControl(Module):
+    """DQ/DQS output enable and DQS preamble/postamble from the DFI write enables.
+
+    The write enables go through a delay line; the tap at the write latency drives the DQ/DQS
+    tristates, the DQS preamble is generated the cycle before it and the postamble the cycle after
+    it, so DQS is driven for at least 3 sys_clk cycles per write. With cwl_sys_latency == 1 (DDR2
+    1:2 at CL3) the preamble comes from the undelayed write enable.
+    """
+    def __init__(self, wrdata_en, cwl_sys_latency):
+        self.dq_oe         = Signal()
+        self.dqs_preamble  = Signal()
+        self.dqs_postamble = Signal()
+
+        # # #
+
+        wrtap = cwl_sys_latency - 1
+        delay = TappedDelayLine(signal=wrdata_en, ntaps=wrtap + 2)
+        self.submodules += delay
+        taps  = [wrdata_en] + list(delay.taps) # taps[i]: write enable delayed by i cycles.
+        self.comb += [
+            self.dq_oe.eq(        taps[wrtap + 1]),
+            self.dqs_preamble.eq( taps[wrtap + 0] & ~taps[wrtap + 1]),
+            self.dqs_postamble.eq(taps[wrtap + 2] & ~taps[wrtap + 1]),
+        ]
+
 # Xilinx Series7 DDR2/DDR3 PHY ---------------------------------------------------------------------
 
 class S7DDRPHY(Module, AutoCSR):
@@ -642,25 +669,14 @@ class S7DDRPHY(Module, AutoCSR):
         self.comb += [phase.rddata_valid.eq(rddata_en.output | self._wlevel_en.storage) for phase in dfi.phases]
 
         # Write Control Path -----------------------------------------------------------------------
-        wrtap = cwl_sys_latency - 1
-
-        # Create a delay line of write commands coming from the DFI interface. This taps are used to
-        # control DQ/DQS tristates.
-        wrdata_en = TappedDelayLine(
-            signal = reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]),
-            ntaps  = wrtap + 2
-        )
-        self.submodules += wrdata_en
-
-        self.comb += dq_oe.eq(wrdata_en.taps[wrtap])
+        write_control = S7DDRPHYWriteControl(
+            wrdata_en       = reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]),
+            cwl_sys_latency = cwl_sys_latency)
+        self.submodules += write_control
+        self.comb += dq_oe.eq(write_control.dq_oe)
         self.comb += If(self._wlevel_en.storage, dqs_oe.eq(1)).Else(dqs_oe.eq(dq_oe))
-
-        # Write DQS Postamble/Preamble Control Path ------------------------------------------------
-        # Generates DQS Preamble 1 cycle before the first write and Postamble 1 cycle after the last
-        # write. During writes, DQS tristate is configured as output for at least 3 sys_clk cycles:
-        # 1 for Preamble, 1 for the Write and 1 for the Postamble.
-        self.comb += dqs_preamble.eq( wrdata_en.taps[wrtap - 1]  & ~wrdata_en.taps[wrtap + 0])
-        self.comb += dqs_postamble.eq(wrdata_en.taps[wrtap + 1]  & ~wrdata_en.taps[wrtap + 0])
+        self.comb += dqs_preamble.eq(write_control.dqs_preamble)
+        self.comb += dqs_postamble.eq(write_control.dqs_postamble)
 
 
     def add_ck_phase_shift(self, sys_clk_freq, nphases, strobes):
