@@ -101,6 +101,19 @@ class TestUSDDRPHYHPIOVREF(unittest.TestCase):
             self.assertEqual(len(ids), 1)
         self.assertEqual(set.union(*byte_vref.values()), {id(v["VREF"]) for v in vrefs})
 
+    def test_hpio_vref_settings(self):
+        # The read VREF scan is announced to the BIOS through PhySettings/sdram_phy.h.
+        from litedram.init    import get_sdram_phy_c_header
+        from litedram.modules import MT40A512M8
+        module = MT40A512M8(125e6, "1:4")
+        for with_hpio_vref in [False, True]:
+            with self.subTest(with_hpio_vref=with_hpio_vref):
+                phy    = self.get_phy(with_hpio_vref=with_hpio_vref)
+                header = get_sdram_phy_c_header(phy.settings, module.timing_settings, module.geom_settings)
+                self.assertEqual(phy.settings.read_vref_codes, 73 if with_hpio_vref else 0)
+                self.assertEqual("#define SDRAM_PHY_READ_VREF_CAPABLE\n" in header, with_hpio_vref)
+                self.assertEqual("#define SDRAM_PHY_READ_VREF_CODES 73\n" in header, with_hpio_vref)
+
     def test_hpio_vref_csr_order(self):
         # rdly_vref is appended after the existing CSRs so their offsets do not change.
         default = [csr.name for csr in self.get_phy().get_csrs()]

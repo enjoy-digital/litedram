@@ -125,6 +125,7 @@ class USDDRPHY(Module, AutoCSR):
             read_leveling             = True,
             delays                    = 512,
             bitslips                  = 8,
+            read_vref_codes           = 73 if with_hpio_vref else 0, # FABRIC_VREF_TUNE codes 0-72.
             is_clam_shell             = is_clam_shell,
             with_dm                   = with_dm,
         )
