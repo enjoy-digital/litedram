@@ -284,3 +284,135 @@ class TestDMA(MemoryTestDataMixin, unittest.TestCase):
 
                 run_simulation(dut, [generator(), mem.read_handler(dut.native_port), mem.write_handler(dut.native_port)])
                 self.assertEqual(data, words)
+
+    # CSR loop mode --------------------------------------------------------------------------------
+
+    def dma_reader_csr_loop_test(self, loop):
+        # With loop set, the reader restarts from base after the last address and keeps streaming
+        # (last marks the end of each pass); clearing loop stops it at the end of the current
+        # pass. Without loop, it stops (done) after a single pass.
+        nbytes   = 4
+        base     = 0x10
+        words    = [0x11111111, 0x22222222, 0x33333333, 0x44444444]
+        mem_init = [0xdeadbeef]*32
+        mem_init[base//nbytes:base//nbytes + len(words)] = words
+
+        class DUT(Module):
+            def __init__(self):
+                self.port = LiteDRAMNativeReadPort(address_width=32, data_width=32)
+                self.submodules.dma = LiteDRAMDMAReader(self.port, with_csr=True)
+
+        dut   = DUT()
+        mem   = DRAMMemory(32, len(mem_init), init=mem_init)
+        data  = []
+        lasts = []
+        done  = {}
+
+        def generator():
+            yield dut.dma._base.storage.eq(base)
+            yield dut.dma._length.storage.eq(len(words)*nbytes)
+            yield dut.dma._loop.storage.eq(loop)
+            yield dut.dma._enable.storage.eq(1)
+            yield dut.dma.source.ready.eq(1)
+            cycles = 0
+            while True:
+                yield
+                cycles += 1
+                if (yield dut.dma.source.valid):
+                    data.append((yield dut.dma.source.data))
+                    lasts.append((yield dut.dma.source.last))
+                if loop:
+                    # Two full passes have been streamed: stop looping.
+                    if len(data) == 2*len(words):
+                        done["two_passes"] = (yield dut.dma._done.status)
+                        yield dut.dma._loop.storage.eq(0)
+                    if len(data) >= 2*len(words) and cycles >= 256:
+                        break
+                elif cycles >= 256:
+                    break
+            done["end"] = (yield dut.dma._done.status)
+
+        run_simulation(dut, [generator(), mem.read_handler(dut.port), timeout_generator(1000)])
+
+        if loop:
+            # At least 2 passes, stopped at a pass boundary once loop is cleared.
+            self.assertGreaterEqual(len(data), 2*len(words))
+            self.assertEqual(len(data) % len(words), 0)
+            self.assertEqual(done["two_passes"], 0)
+        else:
+            # A single pass.
+            self.assertEqual(len(data), len(words))
+        self.assertEqual(data, words*(len(data)//len(words)))
+        self.assertEqual(lasts, [int(i % len(words) == len(words) - 1) for i in range(len(data))])
+        self.assertEqual(done["end"], 1)
+
+    def test_dma_reader_csr_loop(self):
+        self.dma_reader_csr_loop_test(loop=1)
+
+    def test_dma_reader_csr_no_loop(self):
+        self.dma_reader_csr_loop_test(loop=0)
+
+    def dma_writer_csr_loop_test(self, loop):
+        # With loop set, the writer wraps to base after the last address and keeps accepting
+        # data (the memory holds the last pass). Without loop, it stops (done, sink not ready)
+        # after a single pass.
+        nbytes = 4
+        base   = 0x10
+        n      = 4
+        passes = 3
+        values = [0x100*(p + 1) + i for p in range(passes) for i in range(n)]
+
+        class DUT(Module):
+            def __init__(self):
+                self.port = LiteDRAMNativeWritePort(address_width=32, data_width=32)
+                self.submodules.dma = LiteDRAMDMAWriter(self.port, with_csr=True)
+
+        dut      = DUT()
+        mem      = DRAMMemory(32, 32)
+        accepted = []
+        done     = {}
+
+        def generator():
+            yield dut.dma._base.storage.eq(base)
+            yield dut.dma._length.storage.eq(n*nbytes)
+            yield dut.dma._loop.storage.eq(loop)
+            yield dut.dma._enable.storage.eq(1)
+            for value in values:
+                yield dut.dma.sink.valid.eq(1)
+                yield dut.dma.sink.data.eq(value)
+                yield
+                stalled = 0
+                while not (yield dut.dma.sink.ready):
+                    yield
+                    stalled += 1
+                    if stalled == 32:
+                        break
+                if stalled == 32:
+                    break
+                accepted.append(value)
+            yield dut.dma.sink.valid.eq(0)
+            for _ in range(64): # Drain the writes.
+                yield
+            done["end"]   = (yield dut.dma._done.status)
+            done["ready"] = (yield dut.dma.sink.ready)
+
+        run_simulation(dut, [generator(), mem.write_handler(dut.port), timeout_generator(2000)])
+
+        if loop:
+            self.assertEqual(accepted, values)
+            self.assertEqual(mem.mem[base//nbytes:base//nbytes + n], values[-n:])
+            self.assertEqual(done["end"], 0)
+        else:
+            self.assertEqual(accepted, values[:n])
+            self.assertEqual(mem.mem[base//nbytes:base//nbytes + n], values[:n])
+            self.assertEqual(done["end"], 1)
+            self.assertEqual(done["ready"], 0)
+        # Nothing written outside of [base, base + length).
+        self.assertEqual(mem.mem[:base//nbytes], [0]*(base//nbytes))
+        self.assertEqual(mem.mem[base//nbytes + n:], [0]*(len(mem.mem) - base//nbytes - n))
+
+    def test_dma_writer_csr_loop(self):
+        self.dma_writer_csr_loop_test(loop=1)
+
+    def test_dma_writer_csr_no_loop(self):
+        self.dma_writer_csr_loop_test(loop=0)
