@@ -11,10 +11,11 @@ from migen import *
 from litex.gen.sim import run_simulation
 from litex.soc.interconnect import wishbone
 
-from litedram.frontend.wishbone import LiteDRAMWishbone2Native
+from litedram.frontend.wishbone import LiteDRAMWishbone2Native, LiteDRAMNative2Wishbone
 from litedram.common import LiteDRAMNativePort
 
-from test.common import DRAMMemory, MemoryTestDataMixin, timeout_generator
+from test.common import DRAMMemory, MemoryTestDataMixin, NativePortDriver, timeout_generator
+from test.common import seed_to_data
 
 
 class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
@@ -306,3 +307,243 @@ class TestWishbone(MemoryTestDataMixin, unittest.TestCase):
         origin  = 0x10000000
         pattern = [(adr + origin//(32//8), data) for adr, data in data["pattern"]]
         self.wishbone_readback_test(pattern, data["expected"], wb, port, base_address=origin)
+
+
+# LiteDRAMNative2Wishbone --------------------------------------------------------------------------
+
+class WishboneSlaveModel:
+    """Generator-based Wishbone Classic slave (word or byte addressing) with a configurable
+    number of wait states before each ack. Keeps its memory (words from base_address) in a dict
+    and records every access as (we, adr, sel, dat_w) at the cycle of the ack."""
+    def __init__(self, testcase, wb, wait_states=0, init=None, base_address=0):
+        self.testcase     = testcase
+        self.wb           = wb
+        self.wait_states  = wait_states
+        self.data_width   = len(wb.dat_w)
+        self.base_address = base_address
+        self.mem          = {} if init is None else dict(enumerate(init))
+        self.accesses     = []
+
+    def word_address(self, adr):
+        nbytes = self.data_width//8
+        if self.wb.addressing == "byte":
+            return (adr - self.base_address)//nbytes
+        return adr - self.base_address//nbytes
+
+    def request(self):
+        return (
+            (yield self.wb.we),
+            (yield self.wb.adr),
+            (yield self.wb.sel),
+            (yield self.wb.dat_w),
+        )
+
+    @passive
+    def handler(self):
+        while True:
+            while not ((yield self.wb.cyc) and (yield self.wb.stb)):
+                yield
+            request = (yield from self.request())
+            # Wait states: the master must hold the request until the ack.
+            for _ in range(self.wait_states):
+                yield
+                self.testcase.assertEqual(((yield self.wb.cyc), (yield self.wb.stb)), (1, 1))
+                self.testcase.assertEqual((yield from self.request()), request)
+            we, adr, sel, dat_w = request
+            word = self.word_address(adr)
+            if we:
+                mask = 0
+                for i in range(self.data_width//8):
+                    if sel & (1 << i):
+                        mask |= 0xff << (8*i)
+                self.mem[word] = (dat_w & mask) | (self.mem.get(word, 0) & ~mask)
+            else:
+                yield self.wb.dat_r.eq(self.mem.get(word, 0))
+            yield self.wb.ack.eq(1)
+            self.accesses.append(request)
+            yield
+            # Ack is a single cycle pulse and the master must have released the request.
+            yield self.wb.ack.eq(0)
+            yield self.wb.dat_r.eq(0)
+            yield
+            self.testcase.assertEqual(((yield self.wb.cyc), (yield self.wb.stb)), (0, 0))
+
+
+class TestNative2Wishbone(unittest.TestCase):
+    depth = 16
+
+    def native2wishbone_test(self, data_width, main, addressing="word", base_address=0,
+                             wait_states=None, init=None):
+        """Drive a LiteDRAMNativePort through LiteDRAMNative2Wishbone against a Wishbone slave:
+        a wishbone.SRAM (wait_states=None) or a WishboneSlaveModel with wait states."""
+        depth    = self.depth
+        testcase = self
+
+        class DUT(Module):
+            def __init__(self):
+                self.port = LiteDRAMNativePort("both", address_width=30, data_width=data_width)
+                self.wb   = wishbone.Interface(adr_width=30, data_width=data_width, addressing=addressing)
+                if wait_states is None:
+                    self.sram = wishbone.SRAM(depth*data_width//8, init=init, bus=self.wb)
+                    self.submodules += self.sram
+                else:
+                    self.slave = WishboneSlaveModel(testcase, self.wb, wait_states, init, base_address)
+                self.submodules += LiteDRAMNative2Wishbone(
+                    port         = self.port,
+                    wishbone     = self.wb,
+                    base_address = base_address)
+                # Handshakes seen on the Wishbone bus and on the Native port.
+                self.acks   = 0
+                self.writes = 0
+                self.reads  = 0
+
+        @passive
+        def monitor(dut):
+            while True:
+                dut.acks   += (yield dut.wb.cyc) & (yield dut.wb.stb) & (yield dut.wb.ack)
+                dut.writes += (yield dut.port.wdata.valid) & (yield dut.port.wdata.ready)
+                dut.reads  += (yield dut.port.rdata.valid) & (yield dut.port.rdata.ready)
+                yield
+
+        dut    = DUT()
+        driver = NativePortDriver(dut.port)
+        generators = [
+            main(dut, driver),
+            *driver.generators(),
+            monitor(dut),
+            timeout_generator(4000),
+        ]
+        if wait_states is not None:
+            generators.append(dut.slave.handler())
+        run_simulation(dut, generators)
+        return dut, driver
+
+    @staticmethod
+    def byte_mask(we, data_width):
+        mask = 0
+        for i in range(data_width//8):
+            if we & (1 << i):
+                mask |= 0xff << (8*i)
+        return mask
+
+    def native2wishbone_sram_test(self, data_width):
+        depth = self.depth
+        mask  = 2**data_width - 1
+        init  = [seed_to_data(i, nbits=data_width) for i in range(depth)]
+        mem   = list(init)
+        count = {"writes": 0, "reads": 0}
+
+        def main(dut, driver):
+            # Reads return the initial content.
+            for adr in range(depth):
+                self.assertEqual((yield from driver.read(adr)), mem[adr], msg=f"read {adr}")
+                count["reads"] += 1
+
+            # Full writes (all byte enables) are visible to the next reads.
+            for adr in [0, 5, 2, depth - 1]:
+                data = seed_to_data(0x100 + adr, nbits=data_width)
+                mem[adr] = data
+                yield from driver.write(adr, data)
+                self.assertEqual((yield from driver.read(adr)), data, msg=f"write {adr}")
+                count["writes"] += 1
+                count["reads"]  += 1
+
+            # Partial writes: only the enabled bytes are updated (sel = native byte enables).
+            for adr, we in [(3, 0b0101), (4, 0b1000), (6, 0b0001), (7, 0b0110)]:
+                data  = (~mem[adr]) & mask
+                bmask = self.byte_mask(we, data_width)
+                yield from driver.write(adr, data, we=we)
+                mem[adr] = (data & bmask) | (mem[adr] & ~bmask)
+                self.assertEqual((yield from driver.read(adr)), mem[adr], msg=f"partial write {adr}")
+                count["writes"] += 1
+                count["reads"]  += 1
+
+            # Back-to-back commands: the bridge takes one command at a time and keeps the data
+            # order (writes with the data presented along with the command).
+            burst = [(8 + i, seed_to_data(0x200 + i, nbits=data_width)) for i in range(4)]
+            for adr, data in burst:
+                mem[adr] = data
+                yield from driver.write(adr, data, wait_data=False, data_with_cmd=True)
+                count["writes"] += 1
+            n_rdata = len(driver.rdata)
+            for adr, _ in burst:
+                yield from driver.read(adr, wait_data=False)
+                count["reads"] += 1
+            yield from driver.wait_all()
+            self.assertEqual(driver.rdata[n_rdata:], [data for _, data in burst])
+
+            # The content of the SRAM matches.
+            for adr in range(depth):
+                self.assertEqual((yield dut.sram.mem[adr]), mem[adr], msg=f"mem {adr}")
+
+        dut, driver = self.native2wishbone_test(data_width, main, init=init)
+        # One Wishbone ack per native command, one write data / read data handshake per command.
+        self.assertEqual(dut.writes, count["writes"])
+        self.assertEqual(dut.reads,  count["reads"])
+        self.assertEqual(dut.acks,   count["writes"] + count["reads"])
+
+    def test_native2wishbone_sram_32bit(self):
+        # Verify Native -> Wishbone with 32-bit data width against a Wishbone SRAM.
+        self.native2wishbone_sram_test(data_width=32)
+
+    def test_native2wishbone_sram_64bit(self):
+        # Verify Native -> Wishbone with 64-bit data width against a Wishbone SRAM.
+        self.native2wishbone_sram_test(data_width=64)
+
+    def native2wishbone_wait_states_test(self, data_width, wait_states, addressing, base_address):
+        depth = self.depth
+        init  = [seed_to_data(i, nbits=data_width) for i in range(depth)]
+        mem   = list(init)
+        full  = 2**(data_width//8) - 1
+        if addressing == "byte":
+            wb_offset = base_address
+            wb_stride = data_width//8
+        else:
+            wb_offset = base_address//(data_width//8)
+            wb_stride = 1
+        expected = []
+
+        def main(dut, driver):
+            for adr in [0, 3, depth - 1]:
+                self.assertEqual((yield from driver.read(adr)), mem[adr])
+                expected.append((0, wb_offset + wb_stride*adr, full))
+            for adr, we in [(1, full), (2, 0b0011), (depth - 1, 0b0100)]:
+                data  = seed_to_data(0x300 + adr, nbits=data_width)
+                bmask = self.byte_mask(we, data_width)
+                yield from driver.write(adr, data, we=we)
+                expected.append((1, wb_offset + wb_stride*adr, we, data))
+                mem[adr] = (data & bmask) | (mem[adr] & ~bmask)
+                self.assertEqual((yield from driver.read(adr)), mem[adr])
+                expected.append((0, wb_offset + wb_stride*adr, full))
+
+        dut, driver = self.native2wishbone_test(data_width, main,
+            addressing   = addressing,
+            base_address = base_address,
+            wait_states  = wait_states,
+            init         = init)
+        # Each command is seen once by the slave, at the right address, with the right byte
+        # enables (all set for reads) and data.
+        accesses = [(we, adr, sel, dat_w) if we else (we, adr, sel)
+            for (we, adr, sel, dat_w) in dut.slave.accesses]
+        self.assertEqual(accesses, expected)
+        self.assertEqual(dut.acks, len(expected))
+        self.assertEqual(dut.writes, len([e for e in expected if e[0]]))
+        self.assertEqual(dut.reads,  len([e for e in expected if not e[0]]))
+        for adr in range(depth):
+            self.assertEqual(dut.slave.mem.get(adr, 0), mem[adr])
+
+    def test_native2wishbone_wait_states(self):
+        # Verify Native -> Wishbone with a slave inserting wait states before each ack.
+        for wait_states in [1, 3]:
+            with self.subTest(wait_states=wait_states):
+                self.native2wishbone_wait_states_test(32, wait_states, "word", base_address=0)
+
+    def test_native2wishbone_base_address(self):
+        # Verify Native -> Wishbone with a non-zero base address (word addressing: in words).
+        self.native2wishbone_wait_states_test(32, 2, "word", base_address=0x10000000)
+
+    def test_native2wishbone_byte_addressing(self):
+        # Verify Native -> Wishbone with a byte-addressed Wishbone bus and a base address.
+        for data_width in [32, 64]:
+            with self.subTest(data_width=data_width):
+                self.native2wishbone_wait_states_test(data_width, 2, "byte", base_address=0x40000000)
