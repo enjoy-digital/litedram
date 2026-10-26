@@ -356,6 +356,140 @@ class TestECC(unittest.TestCase):
         self.assertEqual(dut.sec_errors_c, 0)
         self.assertEqual(dut.ded_errors_c, 0)
 
+    # Write byte enables ---------------------------------------------------------------------------
+
+    def ecc_we_dut(self, from_width, to_width, **kwargs):
+        """LiteDRAMNativePortECC between two native ports with a DRAMMemory behind port_to and
+        a monitor of the byte enables written to it."""
+        class DUT(Module):
+            def __init__(self):
+                self.port_from = LiteDRAMNativePort("both", 24, from_width)
+                self.port_to   = LiteDRAMNativePort("both", 24, to_width)
+                self.submodules.ecc = LiteDRAMNativePortECC(self.port_from, self.port_to, **kwargs)
+                self.mem   = DRAMMemory(to_width, 4)
+                self.we_to = [] # port_to byte enables, one entry per write data handshake.
+
+        @passive
+        def we_monitor(dut):
+            while True:
+                if (yield dut.port_to.wdata.valid) and (yield dut.port_to.wdata.ready):
+                    dut.we_to.append((yield dut.port_to.wdata.we))
+                yield
+
+        dut = DUT()
+        dut.generators = [
+            we_monitor(dut),
+            dut.mem.write_handler(dut.port_to),
+            dut.mem.read_handler(dut.port_to),
+            timeout_generator(2000),
+        ]
+        return dut
+
+    @staticmethod
+    def ecc_write(port, addr, data, we):
+        yield port.cmd.valid.eq(1)
+        yield port.cmd.we.eq(1)
+        yield port.cmd.addr.eq(addr)
+        yield
+        while (yield port.cmd.ready) == 0:
+            yield
+        yield port.cmd.valid.eq(0)
+        yield
+        yield port.wdata.valid.eq(1)
+        yield port.wdata.we.eq(we)
+        yield port.wdata.data.eq(data)
+        yield
+        while (yield port.wdata.ready) == 0:
+            yield
+        yield port.wdata.valid.eq(0)
+        yield port.wdata.we.eq(0)
+        # Let the write reach the memory before the next access.
+        for _ in range(8):
+            yield
+
+    @staticmethod
+    def ecc_read(port, addr):
+        yield port.cmd.valid.eq(1)
+        yield port.cmd.we.eq(0)
+        yield port.cmd.addr.eq(addr)
+        yield
+        while (yield port.cmd.ready) == 0:
+            yield
+        yield port.cmd.valid.eq(0)
+        yield
+        while (yield port.rdata.valid) == 0:
+            yield
+        data = (yield port.rdata.data)
+        yield port.rdata.ready.eq(1)
+        yield
+        yield port.rdata.ready.eq(0)
+        yield
+        return data
+
+    def test_ecc_we_errors(self):
+        # Verify the write byte enable error counter (with_we_error_detection): a write with all
+        # byte enables set is not an error, a write with partial byte enables (one byte of an
+        # ECC word cleared, or a whole ECC word disabled) is counted once, clear resets it.
+        from_width, to_width = 64*8, 72*8
+        full = 2**(from_width//8) - 1
+        dut  = self.ecc_we_dut(from_width, to_width, with_we_error_detection=True)
+
+        def main_generator(dut):
+            port = dut.port_from
+            # Full write: no error.
+            yield from self.ecc_write(port, 0, seed_to_data(0, nbits=from_width), full)
+            self.assertEqual((yield from dut.ecc.we_errors.read()), 0)
+            # One byte of ECC word 0 cleared: one error.
+            yield from self.ecc_write(port, 1, seed_to_data(1, nbits=from_width), full & ~(1 << 5))
+            self.assertEqual((yield from dut.ecc.we_errors.read()), 1)
+            # A whole ECC word (word 1) disabled: one more error.
+            yield from self.ecc_write(port, 2, seed_to_data(2, nbits=from_width), full & ~(0xff << 8))
+            self.assertEqual((yield from dut.ecc.we_errors.read()), 2)
+            # Full write: no new error.
+            yield from self.ecc_write(port, 3, seed_to_data(3, nbits=from_width), full)
+            self.assertEqual((yield from dut.ecc.we_errors.read()), 2)
+            # Clear.
+            yield from dut.ecc.clear.write(1)
+            yield
+            self.assertEqual((yield from dut.ecc.we_errors.read()), 0)
+
+        run_simulation(dut, [main_generator(dut)] + dut.generators)
+        # All 4 writes (flagged or not) reached the memory.
+        self.assertEqual(len(dut.we_to), 4)
+
+    def test_ecc_we_partial_write(self):
+        # Verify partial writes through LiteDRAMNativePortECC: any byte enable set within an ECC
+        # word writes the full (re-encoded) ECC word, an ECC word with no byte enable set is left
+        # untouched (ECC words of 72 bits are 9 bytes of port_to byte enables).
+        from_width, to_width = 64*8, 72*8
+        words = 8
+        full  = 2**(from_width//8) - 1
+        dut   = self.ecc_we_dut(from_width, to_width)
+        d0, d1, d2 = [seed_to_data(i, nbits=from_width) for i in range(3)]
+
+        def word(data, i):
+            return (data >> (64*i)) & (2**64 - 1)
+
+        def main_generator(dut):
+            port = dut.port_from
+            yield from self.ecc_write(port, 0, d0, full)
+            self.assertEqual((yield from self.ecc_read(port, 0)), d0)
+            # One byte of ECC word 2: the full ECC word 2 is written.
+            yield from self.ecc_write(port, 0, d1, 1 << (2*8 + 3))
+            expected = [word(d1, i) if i == 2 else word(d0, i) for i in range(words)]
+            self.assertEqual((yield from self.ecc_read(port, 0)), sum(w << (64*i) for i, w in enumerate(expected)))
+            # ECC words 0 and 7 fully enabled.
+            yield from self.ecc_write(port, 0, d2, 0xff | (0xff << 56))
+            expected = [word(d2, i) if i in [0, 7] else w for i, w in enumerate(expected)]
+            self.assertEqual((yield from self.ecc_read(port, 0)), sum(w << (64*i) for i, w in enumerate(expected)))
+
+        run_simulation(dut, [main_generator(dut)] + dut.generators)
+        self.assertEqual(dut.we_to, [
+            2**72 - 1,
+            0x1ff << (2*9),
+            0x1ff | (0x1ff << (7*9)),
+        ])
+
 
 if __name__ == "__main__":
     unittest.main()
