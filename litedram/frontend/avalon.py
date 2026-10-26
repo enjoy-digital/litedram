@@ -140,6 +140,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             # FIFO producer
             avalon.waitrequest.eq(~(cmd_fifo.sink.ready & wdata_fifo.sink.ready)),
             cmd_fifo.sink.payload.address.eq(address),
+            cmd_fifo.sink.last.eq(burst_count == 1), # Lets an up-converter flush a partial word.
             cmd_fifo.sink.valid.eq(avalon.write & ~avalon.waitrequest),
 
             wdata_fifo.sink.payload.data.eq(avalon.writedata),
@@ -153,16 +154,19 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
                 )
             ).Else(
                 avalon.waitrequest.eq(1),
-                # Wait for the FIFO to be empty
-                If((cmd_fifo.level == 0) & (wdata_fifo.level == 1) & port.wdata.ready,
+                # Wait for all the beats to be received and for the FIFOs to drain.
+                If((burst_count == 0) & (cmd_fifo.level == 0) & (wdata_fifo.level == 0),
                     NextState("START")
                 )
             ),
 
             # FIFO consumer
             port.cmd.addr.eq(cmd_fifo.source.payload.address),
+            port.cmd.last.eq(cmd_fifo.source.last),
             port.cmd.we.eq(port.cmd.valid),
-            port.cmd.valid.eq(cmd_fifo.source.valid & (0 < wdata_fifo.level)),
+            # Commands and data are pushed together, so the data of a queued command is always
+            # available (it can even have been pulled already, e.g. prefetched by an up-converter).
+            port.cmd.valid.eq(cmd_fifo.source.valid),
             cmd_fifo.source.ready.eq(port.cmd.ready),
 
             port.wdata.data.eq(wdata_fifo.source.payload.data),
@@ -176,6 +180,7 @@ class LiteDRAMAvalonMM2Native(LiteXModule):
             port.cmd.addr.eq(address),
             port.cmd.we.eq(0),
             port.cmd.valid.eq(~cmd_ready_seen),
+            port.cmd.last.eq(cmd_ready_count == 1), # Lets an up-converter flush a partial word.
 
             port.rdata.ready.eq(1),
             avalon.readdata.eq(port.rdata.data),
