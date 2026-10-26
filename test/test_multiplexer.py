@@ -15,7 +15,7 @@ from litex.soc.interconnect import stream
 
 from litedram.common import *
 from litedram.phy import dfi
-from litedram.core.multiplexer import Multiplexer
+from litedram.core.multiplexer import Multiplexer, get_read_to_write_cycles
 
 # load after "* imports" to avoid using Migen version of vcd.py
 from litex.gen.sim import run_simulation
@@ -61,6 +61,7 @@ class MultiplexerDUT(Module):
         rdcmdphase   = 1,
         wrcmdphase   = 0,
         read_latency = 5,
+        cl           = 4,
         cwl          = 3,
         # Indirectly
         nranks       = 1,
@@ -155,7 +156,9 @@ class TestMultiplexer(unittest.TestCase):
     def test_fsm_read_to_write_latency(self):
         # Verify the timing of READ to WRITE transition.
         def main_generator(dut):
-            rtw = dut.settings.phy.read_latency
+            rtw = get_read_to_write_cycles(dut.settings.phy)
+            # DDR2 1:2, CL=4, CWL=3: (4 + 2 + 2 - 3) + 2 + 1 = 8 DRAM clocks -> 4 cycles.
+            self.assertEqual(rtw, 4)
             expected = "r" + (rtw - 1) * ">" + "w"
             states = ""
 
