@@ -43,6 +43,27 @@ def reg(fields):
         written |= mask
     return regval
 
+def get_write_recovery(phy_settings, timing_settings):
+    """Write recovery in DRAM clocks, as programmed in the DRAM's mode register.
+
+    The DRAM uses it to time the internal precharge of auto-precharged writes (and, on DDR4, the
+    read-to-precharge RTP = WR/2), so it must be >= RU(tWR/tCK). TimingSettings.nWR carries that
+    value when the module computed it; otherwise fall back to tWR in sys_clk cycles (rounded up)
+    times the number of phases, which is also >= RU(tWR/tCK).
+    """
+    nwr = getattr(timing_settings, "nWR", None)
+    if nwr is None:
+        nwr = timing_settings.tWR*phy_settings.nphases
+    return nwr
+
+def round_up_to_mr_value(value, table, name):
+    """Smallest key of a mode register encoding table that is >= value."""
+    for key in sorted(table):
+        if key >= value:
+            return key
+    raise ValueError("{} of {} DRAM clocks exceeds what the mode register can encode (max {}).".format(
+        name, value, max(table)))
+
 # SDR ----------------------------------------------------------------------------------------------
 
 def get_sdr_phy_init_sequence(phy_settings, timing_settings):
@@ -112,8 +133,9 @@ def get_lpddr_phy_init_sequence(phy_settings, timing_settings):
 def get_ddr2_phy_init_sequence(phy_settings, timing_settings):
     cl   = phy_settings.cl
     bl   = 4
-    wr   = 2
-    mr   = log2_int(bl) + (cl << 4) + (wr << 9)
+    wr   = get_write_recovery(phy_settings, timing_settings)
+    wr   = round_up_to_mr_value(wr, {2: 0b001, 3: 0b010, 4: 0b011, 5: 0b100, 6: 0b101, 7: 0b110, 8: 0b111}, "Write recovery")
+    mr   = log2_int(bl) + (cl << 4) + ((wr - 1) << 9)
     emr  = 0
     emr2 = 0
     emr3 = 0
@@ -174,6 +196,7 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
             12: 0b110,
             14: 0b111
         }
+        wr  = round_up_to_mr_value(wr, wr_to_mr0, "Write recovery")
         mr0 = bl_to_mr0[bl]
         mr0 |= (cl_to_mr0[cl] & 1) << 2
         mr0 |= ((cl_to_mr0[cl] >> 1) & 0b111) << 4
@@ -224,7 +247,7 @@ def get_ddr3_phy_init_sequence(phy_settings, timing_settings):
         # Neither nominal nor dynamic ODT is supported with the DRAM DLL off.
         rtt_nom = rtt_wr = "disabled"
 
-    wr  = max(timing_settings.tWTR*phy_settings.nphases, 5) # >= ceiling(tWR/tCK)
+    wr  = get_write_recovery(phy_settings, timing_settings)
     mr0 = format_mr0(bl, cl, wr, 1)
     mr1 = format_mr1(z_to_ron[ron], z_to_rtt_nom[rtt_nom], tdqs)
     mr1 |= int(dll_off)
@@ -344,6 +367,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
             26: 0b1000,
             28: 0b1001,
         }
+        wr  = round_up_to_mr_value(wr, wr_to_mr0, "Write recovery")
         mr0 = bl_to_mr0[bl]
         mr0 |= (cl_to_mr0[cl] & 0b1) << 2
         mr0 |= ((cl_to_mr0[cl] >> 1) & 0b111) << 4
@@ -430,7 +454,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     dm      = 1
     assert not (dm and tdqs)
 
-    wr  = max(timing_settings.tWTR*phy_settings.nphases, 10) # >= ceiling(tWR/tCK)
+    wr  = get_write_recovery(phy_settings, timing_settings)
     mr0 = format_mr0(bl, cl, wr, 1)
     mr1 = format_mr1(1, z_to_ron[ron], z_to_rtt_nom[rtt_nom], tdqs)
     mr2 = format_mr2(cwl, z_to_rtt_wr[rtt_wr])
