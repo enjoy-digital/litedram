@@ -4,6 +4,7 @@
 # Copyright (c) 2026 Florent Kermarrec <florent@enjoy-digital.fr>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import os
 import random
 import unittest
 
@@ -11,13 +12,24 @@ from migen import *
 
 from litedram.core.ecc import LiteDRAMDFIECC, ecc_phy_settings, ECC_LATENCY
 
+# The ECC is per phase and per 72-bit beat within a phase (2 beats on a 144-bit DFI phase): a
+# single phase covers the mechanism, including the beat interleaving, and keeps the simulation
+# short. The 4-phase configuration (DDR3/DDR4 PHYs) runs the same checks on every phase and is
+# only enabled with LITEDRAM_TEST_FULL=1.
+LITEDRAM_TEST_FULL = os.environ.get("LITEDRAM_TEST_FULL", "0") == "1"
+
 
 class TestDFIECC(unittest.TestCase):
-    def run_loopback(self, flips, enable=1, n=64, seed=0, read_bits=()):
-        """Write random 64-bit beats on every phase, loop the PHY-side write data back as read
-        data with `flips(beat_index) -> [bit, ...]` raw bits inverted, check the decoded data."""
+    nphases = 1
+
+    def run_loopback(self, flips, enable=1, n=72, seed=0, read_bits=()):
+        """Write random 128-bit phase data (2 beats of 64 bits) on every phase for `n` cycles,
+        loop the PHY-side write data back as read data with `flips(beat_index) -> [bit, ...]`
+        raw bits inverted (0-143 of the phase: beat 0 on 0-71, beat 1 on 72-143), check the
+        decoded data. `n` is at least 72 so that every bit position of a phase is reached by
+        the flips of the single-phase configuration."""
         rng   = random.Random(seed)
-        nph   = 4
+        nph   = self.nphases
         dut   = LiteDRAMDFIECC(addressbits=15, bankbits=3, nranks=1, phy_dfi_databits=144, nphases=nph)
         sent  = []
         got   = []
@@ -129,6 +141,15 @@ class TestDFIECC(unittest.TestCase):
         sent, got, _ = self.run_loopback(lambda k: [3, 17])
         self.assertNotEqual(got[:len(sent)], sent)
 
+
+@unittest.skipUnless(LITEDRAM_TEST_FULL, "4-phase DFI ECC configuration, set LITEDRAM_TEST_FULL=1 to run it")
+class TestDFIECC4Phases(TestDFIECC):
+    # Same checks on a 4-phase DFI (DDR3/DDR4 PHYs): the flips walk the phases, each phase gets
+    # a bit position every 4 beats.
+    nphases = 4
+
+
+class TestDFIECCSettings(unittest.TestCase):
     def test_settings(self):
         class S: pass
         s = S()
