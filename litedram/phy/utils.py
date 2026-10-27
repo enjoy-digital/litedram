@@ -44,6 +44,33 @@ def edge(mod, cond):
     return  ~cond_d & cond
 
 
+class BitSlip(Module):
+    """Runtime bitslip of the Lattice/Gowin DDR PHYs (ECP5/Nexus/GW2A/GW5A read data).
+
+    `slp` slips the output by one bit through the `(cycles+1)*dw` input history, `rst` returns to
+    slip 0. Not litedram.common.BitSlip: the slip counter resets to 0 (not cycles*dw-1) and the
+    taps are r[i:dw+i] (not r[i+1:dw+i+1]), which the read leveling of these PHYs relies on.
+    """
+    def __init__(self, dw, rst=None, slp=None, cycles=1):
+        self.i   = Signal(dw)
+        self.o   = Signal(dw)
+        self.rst = Signal() if rst is None else rst
+        self.slp = Signal() if slp is None else slp
+
+        # # #
+
+        value = Signal(max=cycles*dw)
+        self.sync += If(self.slp, value.eq(value + 1))
+        self.sync += If(self.rst, value.eq(0))
+
+        r = Signal((cycles+1)*dw, reset_less=True)
+        self.sync += r.eq(Cat(r[dw:], self.i))
+        cases = {}
+        for i in range(cycles*dw):
+            cases[i] = self.o.eq(r[i:dw+i])
+        self.comb += Case(value, cases)
+
+
 class ConstBitSlip(Module):
     def __init__(self, dw, slp, cycles, i=None, o=None, register=True):
         self.i = Signal(dw, name='i') if i is None else i

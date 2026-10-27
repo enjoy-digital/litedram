@@ -24,31 +24,7 @@ from litex.soc.interconnect.csr import *
 
 from litedram.common import *
 from litedram.phy.dfi import *
-from litedram.phy.utils import ConstBitSlip
-
-# BitSlip ------------------------------------------------------------------------------------------
-
-# FIXME: Use BitSlip from litedram.common.
-
-class BitSlip(Module):
-    def __init__(self, dw, rst=None, slp=None, cycles=1):
-        self.i   = Signal(dw)
-        self.o   = Signal(dw)
-        self.rst = Signal() if rst is None else rst
-        self.slp = Signal() if slp is None else slp
-
-        # # #
-
-        value = Signal(max=cycles*dw)
-        self.sync += If(self.slp, value.eq(value + 1))
-        self.sync += If(self.rst, value.eq(0))
-
-        r = Signal((cycles+1)*dw, reset_less=True)
-        self.sync += r.eq(Cat(r[dw:], self.i))
-        cases = {}
-        for i in range(cycles*dw):
-            cases[i] = self.o.eq(r[i:dw+i])
-        self.comb += Case(value, cases)
+from litedram.phy.utils import BitSlip, ConstBitSlip # Not litedram.common.BitSlip (see phy/utils).
 
 # Nexus DDR PHY Write BitSlip ----------------------------------------------------------------------
 
@@ -376,8 +352,8 @@ class NexusDDRPHY(Module, AutoCSR):
 
             # DM -----------------------------------------------------------------------------------
             dm_o_data       = Signal(8)
-            dm_o_data_d     = Signal(8)
-            dm_o_data_muxed = Signal(4)
+            dm_o_data_d     = Signal(8, reset_less=True) # Write data: DM sampled on writes.
+            dm_o_data_muxed = Signal(4, reset_less=True)
             dm_o_bitslip    = _NexusDDRPHYWriteBitSlip(4)
             self.submodules += dm_o_bitslip
             for n in range(8):
@@ -405,8 +381,8 @@ class NexusDDRPHY(Module, AutoCSR):
                 dq_i_delayed    = Signal()
                 dq_i_data       = Signal(8)
                 dq_o_data       = Signal(8)
-                dq_o_data_d     = Signal(8)
-                dq_o_data_muxed = Signal(4)
+                dq_o_data_d     = Signal(8, reset_less=True) # Write data: DQ only driven on writes.
+                dq_o_data_muxed = Signal(4, reset_less=True)
                 dq_oe_n_data    = Signal(2)
                 dq_o_bitslip    = _NexusDDRPHYWriteBitSlip(4)
                 dq_oe_n_bitslip = _NexusDDRPHYWriteBitSlip(2)
@@ -459,7 +435,7 @@ class NexusDDRPHY(Module, AutoCSR):
                         **{f"o_Q{n}": dq_i_bitslip.i[n] for n in range(4)},
                     )
                 ]
-                dq_i_bitslip_o_d = Signal(4)
+                dq_i_bitslip_o_d = Signal(4, reset_less=True) # Read data: with rddata_valid.
                 self.sync += dq_i_bitslip_o_d.eq(dq_i_bitslip.o)
                 self.comb += dq_i_data.eq(Cat(dq_i_bitslip_o_d, dq_i_bitslip.o))
                 for n in range(8):

@@ -27,30 +27,7 @@ from litex.soc.interconnect.csr import *
 
 from litedram.common import *
 from litedram.phy.dfi import *
-
-# BitSlip ------------------------------------------------------------------------------------------
-
-# FIXME: Use BitSlip from litedram.common.
-
-class BitSlip(Module):
-    def __init__(self, dw, rst=None, slp=None, cycles=1):
-        self.i = Signal(dw)
-        self.o = Signal(dw)
-        self.rst = Signal() if rst is None else rst
-        self.slp = Signal() if slp is None else slp
-
-        # # #
-
-        value = Signal(max=cycles*dw)
-        self.sync += If(self.slp, value.eq(value + 1))
-        self.sync += If(self.rst, value.eq(0))
-
-        r = Signal((cycles+1)*dw, reset_less=True)
-        self.sync += r.eq(Cat(r[dw:], self.i))
-        cases = {}
-        for i in range(cycles*dw):
-            cases[i] = self.o.eq(r[i:dw+i])
-        self.comb += Case(value, cases)
+from litedram.phy.utils import BitSlip # Not litedram.common.BitSlip (see phy/utils).
 
 # Gowin GW2A DDR PHY Initialization -----------------------------------------------------------------
 
@@ -358,8 +335,8 @@ class GW2DDRPHY(Module, AutoCSR):
 
             # DM -----------------------------------------------------------------------------------
             dm_o_data       = Signal(8)
-            dm_o_data_d     = Signal(8)
-            dm_o_data_muxed = Signal(4)
+            dm_o_data_d     = Signal(8, reset_less=True) # Write data: DM sampled on writes.
+            dm_o_data_muxed = Signal(4, reset_less=True)
             for n in range(8):
                 self.comb += dm_o_data[n].eq(dfi.phases[n//4].wrdata_mask[n%4*databits//8+dm_remapping.get(i, i)])
             self.sync += dm_o_data_d.eq(dm_o_data)
@@ -387,8 +364,8 @@ class GW2DDRPHY(Module, AutoCSR):
                 dq_i            = Signal()
                 dq_i_data       = Signal(8)
                 dq_o_data       = Signal(8)
-                dq_o_data_d     = Signal(8)
-                dq_o_data_muxed = Signal(4)
+                dq_o_data_d     = Signal(8, reset_less=True) # Write data: DQ only driven on writes.
+                dq_o_data_muxed = Signal(4, reset_less=True)
                 for n in range(8):
                     self.comb += dq_o_data[n].eq(dfi.phases[n//4].wrdata[n%4*databits+j])
                 self.sync += dq_o_data_d.eq(dq_o_data)
@@ -426,7 +403,7 @@ class GW2DDRPHY(Module, AutoCSR):
                     i_CALIB = 0,
                     **{f"o_Q{n}": dq_i_bitslip.i[n] for n in range(4)},
                 )
-                dq_i_bitslip_o_d = Signal(4)
+                dq_i_bitslip_o_d = Signal(4, reset_less=True) # Read data: with rddata_valid.
                 self.sync += dq_i_bitslip_o_d.eq(dq_i_bitslip.o)
                 self.comb += dq_i_data.eq(Cat(dq_i_bitslip_o_d, dq_i_bitslip.o))
                 for n in range(8):
