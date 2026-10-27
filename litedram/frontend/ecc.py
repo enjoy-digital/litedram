@@ -46,6 +46,11 @@ class LiteDRAMNativePortECCW(Module):
             ecc_width_from = data_width_from // burst_cycles
             ecc_width_to   = data_width_to   // burst_cycles
 
+            # Byte enables of this ECC word: the slices are (i*width)//8 wide so that they tile the
+            # full byte enable vector even when the ECC word is not a multiple of 8 bits.
+            we_from = sink.we[i*ecc_width_from//8:(i+1)*ecc_width_from//8]
+            we_to   = source.we[i*ecc_width_to//8:(i+1)*ecc_width_to//8]
+
             # Encoder.
             self.submodules.encoder = encoder = ECCEncoder(ecc_width_from)
             self.comb += [
@@ -54,12 +59,12 @@ class LiteDRAMNativePortECCW(Module):
                 # Output.
                 # We always have to store the full ECC-Word so byte enable is not supported within
                 # an ECC word. If any of the byte enable is set, the full ECC-Word is written.
-                If(sink.we[i*ecc_width_from//8:(i+1)*ecc_width_from//8] != 0,
-                    source.we[i*ecc_width_to//8:(i+1)*ecc_width_to//8].eq(2**ecc_width_to//8-1)
+                If(we_from != 0,
+                    we_to.eq(2**len(we_to)-1)
                 ),
                 source.data[i*ecc_width_to:(i+1)*ecc_width_to].eq(encoder.o),
                 # Byte enable granularity  error detection.
-                If(sink.valid & (sink.we[i*ecc_width_from//8:(i+1)*ecc_width_from//8] != (2**ecc_width_from//8-1)),
+                If(sink.valid & (we_from != (2**len(we_from)-1)),
                     self.we_error.eq(1)
                 )
             ]
