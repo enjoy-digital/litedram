@@ -39,7 +39,7 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
             dut.mem.write_handler(dut.port),
             dut.mem.read_handler(dut.port),
         ]
-        run_simulation(dut, generators, vcd_name='sim.vcd')
+        run_simulation(dut, generators)
         self.assertEqual(dut.mem.mem, mem_expected)
 
     def test_avalon_8bit(self):
@@ -169,7 +169,7 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
             dut.mem.read_handler(dut.port),
         ]
 
-        run_simulation(dut, generators, vcd_name='sim.vcd')
+        run_simulation(dut, generators)
         self.assertEqual(dut.mem.mem, data + [0,0,0,0,0])
 
     def avalon_burst_readback_test(self, data, port_data_width, mem_expected):
@@ -249,7 +249,7 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
             dut.mem.read_handler(dut.port),
         ]
 
-        run_simulation(dut, generators, vcd_name="avalon_" + self._testMethodName + ".vcd")
+        run_simulation(dut, generators)
         self.assertEqual(dut.mem.mem, [0x4567, 0x0123, 0xcdef, 0x89ab, 0xbeef, 0xdead, 0xee00, 0xc0ff, 0x3210, 0x7654, 0xba98, 0xfedc])
 
     def test_avalon_burst_upconvert(self):
@@ -291,5 +291,5 @@ class TestAvalon(MemoryTestDataMixin, unittest.TestCase):
             dut.mem.read_handler(dut.port),
         ]
 
-        run_simulation(dut, generators, vcd_name="avalon_" + self._testMethodName + ".vcd")
+        run_simulation(dut, generators)
         self.assertEqual(dut.mem.mem, [0x89abcdef01234567, 0xc0ffee00deadbeef, 0xfedcba9876543210, 0, 0, 0])
