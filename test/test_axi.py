@@ -84,7 +84,9 @@ class TestAXI(unittest.TestCase):
         # Flow ready randomness
         w_ready_random  = 0,
         b_ready_random  = 0,
-        r_ready_random  = 0
+        r_ready_random  = 0,
+        # AXI base address of the DRAM
+        base_address    = 0
         ):
 
         def writes_cmd_generator(axi_port, writes):
@@ -94,7 +96,7 @@ class TestAXI(unittest.TestCase):
                     yield
                 # Send command
                 yield axi_port.aw.valid.eq(1)
-                yield axi_port.aw.addr.eq(write.addr<<2)
+                yield axi_port.aw.addr.eq(base_address + (write.addr<<2))
                 yield axi_port.aw.burst.eq(write.type)
                 yield axi_port.aw.len.eq(write.len)
                 yield axi_port.aw.size.eq(write.size)
@@ -153,7 +155,7 @@ class TestAXI(unittest.TestCase):
                     yield
                 # Send command
                 yield axi_port.ar.valid.eq(1)
-                yield axi_port.ar.addr.eq(read.addr<<2)
+                yield axi_port.ar.addr.eq(base_address + (read.addr<<2))
                 yield axi_port.ar.burst.eq(read.type)
                 yield axi_port.ar.len.eq(read.len)
                 yield axi_port.ar.size.eq(read.size)
@@ -198,7 +200,7 @@ class TestAXI(unittest.TestCase):
         # DUT
         axi_port  = LiteDRAMAXIPort(data_width=32, address_width=32, id_width=8)
         dram_port = LiteDRAMNativePort("both", 32, 32)
-        dut       = LiteDRAMAXI2Native(axi_port, dram_port, with_read_modify_write=True)
+        dut       = LiteDRAMAXI2Native(axi_port, dram_port, with_read_modify_write=True, base_address=base_address)
         mem       = DRAMMemory(32, 1024)
 
         # Generate writes/reads
@@ -243,6 +245,10 @@ class TestAXI(unittest.TestCase):
         self.assertEqual(self.reads_last_errors, 0)
 
     # Test with no randomness
+    def test_axi2native_non_pow2_base_address(self):
+        # The DRAM does not have to be mapped at a power-of-two address.
+        self._test_axi2native(base_address=0x40010000)
+
     def test_axi2native_writes_then_reads_no_random(self):
         self._test_axi2native(simultaneous_writes_reads=False)
 
