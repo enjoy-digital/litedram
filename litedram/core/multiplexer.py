@@ -416,7 +416,14 @@ class Multiplexer(Module, AutoCSR):
             steerer.sel[0].eq(STEER_REFRESH),
             refresher.cmd.ready.eq(1),
             If(refresher.cmd.last,
-                NextState("READ")
+                # Resume in the direction of the pending requests: the refresh sequence (tRFC) is
+                # longer than any read/write turnaround, so WRITE can be entered directly instead
+                # of going through READ and the RTW delay.
+                If(write_available & ~read_available,
+                    NextState("WRITE")
+                ).Else(
+                    NextState("READ")
+                )
             )
         )
         fsm.act("WTR",
