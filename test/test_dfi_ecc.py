@@ -89,6 +89,42 @@ class TestDFIECC(unittest.TestCase):
         self.assertGreater(cnts[21], 0)
         self.assertEqual(cnts[22], 0)
 
+    def test_bit_stats_option(self):
+        # with_bit_stats builds the per-DQ counters and their CSRs (bitsel/bitcnt), nothing else.
+        def csr_names(with_bit_stats):
+            dut = LiteDRAMDFIECC(addressbits=15, bankbits=3, nranks=1, phy_dfi_databits=144, nphases=4,
+                with_bit_stats=with_bit_stats)
+            return {csr.name for csr in dut.get_csrs()}
+        self.assertEqual(csr_names(True),  {"enable", "clear", "sec", "ded", "bitsel", "bitcnt"})
+        self.assertEqual(csr_names(False), {"enable", "clear", "sec", "ded"})
+
+    def test_core_option(self):
+        # LiteDRAMCore(with_ecc=True) builds the per-DQ counters only with with_ecc_bit_stats (off by
+        # default); the option is accepted (and ignored) without the ECC.
+        from litedram.core import LiteDRAMCore
+        from litedram.modules import MT41K128M16
+        from litedram.phy import dfi
+        from litedram.phy.model import get_sdram_phy_settings
+
+        module = MT41K128M16(100e6, "1:4")
+
+        class PHY: # What LiteDRAMCore uses of a PHY: its settings and DFI (72-bit DDR3 channel, 1:4).
+            def __init__(self):
+                self.settings = get_sdram_phy_settings("DDR3", 72, 100e6)
+                self.dfi      = dfi.Interface(module.geom_settings.addressbits, module.geom_settings.bankbits,
+                    self.settings.nranks, self.settings.dfi_databits, self.settings.nphases)
+
+        def core(**kwargs):
+            return LiteDRAMCore(PHY(), module.geom_settings, module.timing_settings, 100e6, **kwargs)
+
+        def ecc_csrs(**kwargs):
+            return {csr.name for csr in core(with_ecc=True, **kwargs).ecc.get_csrs()}
+
+        self.assertNotIn("bitsel", ecc_csrs())
+        self.assertNotIn("bitsel", ecc_csrs(with_ecc_bit_stats=False))
+        self.assertIn("bitsel",    ecc_csrs(with_ecc_bit_stats=True))
+        self.assertFalse(hasattr(core(with_ecc_bit_stats=True), "ecc"))
+
     def test_double_bit_detected(self):
         sent, got, _ = self.run_loopback(lambda k: [3, 17])
         self.assertNotEqual(got[:len(sent)], sent)

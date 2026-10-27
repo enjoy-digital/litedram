@@ -31,7 +31,9 @@
     "iodelay_clk_freq": 300e6, # IODELAYs reference clock frequency
 
     # Core ---------------------------------------------------------------------
-    "cmd_buffer_depth": 16,    # Depth of the command buffer
+    "cmd_buffer_depth":   16,    # Depth of the command buffer
+    "with_ecc":           False, # SECDED on an ECC byte lane (72-bit channel: 9 byte groups)
+    "with_ecc_bit_stats": False, # With ECC, a corrected-error counter per DQ bit (bitsel/bitcnt CSRs)
 
     # User Ports ---------------------------------------------------------------
     "user_ports": {
