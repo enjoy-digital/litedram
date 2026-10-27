@@ -292,6 +292,8 @@ class S7DDRPHY(Module, AutoCSR):
             dqs_clk = ddr_clk if with_odelay else ddr_clk+"_dqs"
 
         # Read-side selection of a DQ bit (dly_sel lanes, dq_dly_sel bits).
+        dq_dqs_ratio = databits // strobes
+        assert (dq_dqs_ratio in [4, 8])
         if with_ck_phase_shift:
             dq_sel = Signal(8)
             self.comb += If(self._dq_dly_sel.storage == 0,
@@ -301,6 +303,33 @@ class S7DDRPHY(Module, AutoCSR):
             )
             def rd_sel(i):
                 return self._dly_sel.storage[i//8] & dq_sel[i%8]
+        else:
+            def rd_sel(i):
+                return self._dly_sel.storage[i//dq_dqs_ratio]
+
+        # BitSlip counters -------------------------------------------------------------------------
+        # The bitslips selected together (dly_sel lane) are always slipped/reset together, so one
+        # slip counter per byte and direction is shared: by the DQS, DM and DQ output bitslips of the
+        # byte (write) and by its DQ input bitslips (read). With the per-bit read selection
+        # (dq_dly_sel), the DQ input bitslip of each bit keeps its own read counter.
+        wr_bitslip_counters = []
+        for i in range(strobes):
+            wr_bitslip_counter = BitSlipCounter(8,
+                rst    = (self._dly_sel.storage[i] & wdly_dq_bitslip_rst) | self._rst.storage,
+                slp    = self._dly_sel.storage[i] & wdly_dq_bitslip,
+                cycles = 1)
+            self.submodules += wr_bitslip_counter
+            wr_bitslip_counters.append(wr_bitslip_counter)
+        rd_bitslip_counters = []
+        for i in range(databits):
+            # One counter per byte (created on its first DQ), or per DQ with the per-bit selection.
+            if (i % dq_dqs_ratio == 0) or with_ck_phase_shift:
+                rd_bitslip_counter = BitSlipCounter(8,
+                    rst    = (rd_sel(i) & rdly_dq_bitslip_rst) | self._rst.storage,
+                    slp    = rd_sel(i) & rdly_dq_bitslip,
+                    cycles = 1)
+                self.submodules += rd_bitslip_counter
+            rd_bitslip_counters.append(rd_bitslip_counter)
 
         # Iterate on pads groups -------------------------------------------------------------------
         for pads_group in range(len(pads.groups)):
@@ -429,9 +458,8 @@ class S7DDRPHY(Module, AutoCSR):
             dqs_t          = Signal()
             dqs_bitslip    = BitSlip(8,
                 i      = dqs_pattern.o,
-                rst    = (self._dly_sel.storage[i] & wdly_dq_bitslip_rst) | self._rst.storage,
-                slp    = self._dly_sel.storage[i] & wdly_dq_bitslip,
-                cycles = 1)
+                cycles = 1,
+                value  = wr_bitslip_counters[i].value)
 
             self.submodules += dqs_bitslip
             self.specials += Instance("OSERDESE2",
@@ -485,9 +513,8 @@ class S7DDRPHY(Module, AutoCSR):
                 dm_o_nodelay = Signal()
                 dm_o_bitslip = BitSlip(8,
                     i      = dm_i,
-                    rst    = (self._dly_sel.storage[i] & wdly_dq_bitslip_rst) | self._rst.storage,
-                    slp    = self._dly_sel.storage[i] & wdly_dq_bitslip,
-                    cycles = 1)
+                    cycles = 1,
+                    value  = wr_bitslip_counters[i].value)
                 self.submodules += dm_o_bitslip
                 self.specials += Instance("OSERDESE2",
                     p_SERDES_MODE    = "MASTER",
@@ -527,12 +554,6 @@ class S7DDRPHY(Module, AutoCSR):
         self.submodules += dq_oe_delay
         self.comb += dq_oe_delay.input.eq(dqs_preamble | dq_oe | dqs_postamble)
 
-        dq_dqs_ratio = databits // strobes
-        assert (dq_dqs_ratio in [4, 8])
-        if not with_ck_phase_shift:
-            def rd_sel(i):
-                return self._dly_sel.storage[i//dq_dqs_ratio]
-
         for i in range(databits):
             dq_o_nodelay = Signal()
             dq_o_delayed = Signal()
@@ -542,9 +563,8 @@ class S7DDRPHY(Module, AutoCSR):
             dq_i_data    = Signal(8)
             dq_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
-                rst    = (self._dly_sel.storage[i//dq_dqs_ratio] & wdly_dq_bitslip_rst) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//dq_dqs_ratio] & wdly_dq_bitslip,
-                cycles = 1)
+                cycles = 1,
+                value  = wr_bitslip_counters[i//dq_dqs_ratio].value)
             self.submodules += dq_o_bitslip
             self.specials += Instance("OSERDESE2",
                 p_SERDES_MODE    = "MASTER",
@@ -563,9 +583,8 @@ class S7DDRPHY(Module, AutoCSR):
                 o_OQ     = dq_o_nodelay,
             )
             dq_i_bitslip = BitSlip(8,
-                rst    = (rd_sel(i) & rdly_dq_bitslip_rst) | self._rst.storage,
-                slp    = rd_sel(i) & rdly_dq_bitslip,
-                cycles = 1)
+                cycles = 1,
+                value  = rd_bitslip_counters[i].value)
             self.submodules += dq_i_bitslip
             self.specials += Instance("ISERDESE2",
                 p_SERDES_MODE    = "MASTER",

@@ -134,8 +134,28 @@ class PHYPadsCombiner:
 
 # BitSlip ------------------------------------------------------------------------------------------
 
+class BitSlipCounter(Module):
+    """Slip count of a BitSlip: incremented on slp, reloaded to its reset value (cycles*dw-1) on rst.
+
+    BitSlips that are always slipped/reset together (same dw/cycles) can share one through their
+    value parameter instead of each keeping its own counter.
+    """
+    def __init__(self, dw, rst=None, slp=None, cycles=1):
+        self.rst   = Signal() if rst is None else rst
+        self.slp   = Signal() if slp is None else slp
+        assert cycles >= 1
+        self.value = Signal(max=cycles*dw, reset=cycles*dw-1)
+
+        # # #
+
+        self.sync += If(self.slp, self.value.eq(self.value + 1))
+        self.sync += If(self.rst, self.value.eq(self.value.reset))
+
+
 class BitSlip(Module):
-    def __init__(self, dw, i=None, o=None, rst=None, slp=None, cycles=1):
+    def __init__(self, dw, i=None, o=None, rst=None, slp=None, cycles=1, value=None):
+        # value: slip count to use (a BitSlipCounter.value of the same dw/cycles) instead of an
+        # internal counter; rst/slp are then ignored (they belong to the counter).
         self.i   = Signal(dw) if i is None else i
         self.o   = Signal(dw) if o is None else o
         self.rst = Signal()   if rst is None else rst
@@ -144,9 +164,10 @@ class BitSlip(Module):
 
         # # #
 
-        value = Signal(max=cycles*dw, reset=cycles*dw-1)
-        self.sync += If(self.slp, value.eq(value + 1))
-        self.sync += If(self.rst, value.eq(value.reset))
+        if value is None:
+            value = Signal(max=cycles*dw, reset=cycles*dw-1)
+            self.sync += If(self.slp, value.eq(value + 1))
+            self.sync += If(self.rst, value.eq(value.reset))
 
         r = Signal((cycles+1)*dw, reset_less=True)
         self.sync += r.eq(Cat(r[dw:], self.i))
