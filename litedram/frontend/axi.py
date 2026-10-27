@@ -12,7 +12,7 @@ Converts AXI ports to Native ports.
 Features:
 - Write/Read arbitration.
 - Write/Read data buffers (configurable depth).
-- Burst support (FIXED/INCR/WRAP).
+- Burst support (FIXED/INCR, WRAP optional).
 - ID support (configurable width).
 - Optional Read-Modify-Write support (When only full words can be written on the DRAM, ex with ECC).
 
@@ -35,7 +35,7 @@ class LiteDRAMAXIPort(AXIInterface): pass
 # LiteDRAMAXI2NativeW ------------------------------------------------------------------------------
 
 class LiteDRAMAXI2NativeW(Module):
-    def __init__(self, axi, port, buffer_depth, base_address, with_read_modify_write=False):
+    def __init__(self, axi, port, buffer_depth, base_address, with_read_modify_write=False, with_wrap=True):
         assert base_address < 2**axi.address_width
         assert axi.data_width    == port.data_width
         self.cmd_request = Signal()
@@ -70,7 +70,11 @@ class LiteDRAMAXI2NativeW(Module):
         aw_buffer = stream.Buffer(aw.description)
         self.submodules += aw_buffer
         self.comb += axi.aw.connect(aw_buffer.sink)
-        aw_burst2beat = AXIBurst2Beat(aw_buffer.source, aw)
+        # with_wrap: WRAP bursts (cache line fills/evictions of cached CPUs) cost ~90 LUTs per
+        # converter; masters issuing only FIXED/INCR bursts (most DMA engines, Wishbone-to-AXI
+        # bridges) can drop them.
+        capabilities  = {BURST_FIXED, BURST_INCR} | ({BURST_WRAP} if with_wrap else set())
+        aw_burst2beat = AXIBurst2Beat(aw_buffer.source, aw, capabilities=capabilities)
         self.submodules.aw_burst2beat = aw_burst2beat
 
         # Write Buffer -----------------------------------------------------------------------------
@@ -298,7 +302,7 @@ class LiteDRAMAXI2NativeW(Module):
 # LiteDRAMAXI2NativeR ------------------------------------------------------------------------------
 
 class LiteDRAMAXI2NativeR(Module):
-    def __init__(self, axi, port, buffer_depth, base_address, with_read_modify_write=False):
+    def __init__(self, axi, port, buffer_depth, base_address, with_read_modify_write=False, with_wrap=True):
         assert base_address < 2**axi.address_width
         assert axi.data_width    == port.data_width
         self.cmd_request = Signal()
@@ -315,7 +319,9 @@ class LiteDRAMAXI2NativeR(Module):
         ar_buffer = stream.Buffer(ar.description)
         self.submodules += ar_buffer
         self.comb += axi.ar.connect(ar_buffer.sink)
-        ar_burst2beat = AXIBurst2Beat(ar_buffer.source, ar)
+        # with_wrap: see LiteDRAMAXI2NativeW.
+        capabilities  = {BURST_FIXED, BURST_INCR} | ({BURST_WRAP} if with_wrap else set())
+        ar_burst2beat = AXIBurst2Beat(ar_buffer.source, ar, capabilities=capabilities)
         self.submodules.ar_burst2beat = ar_burst2beat
 
         # Read buffer ------------------------------------------------------------------------------
@@ -401,15 +407,15 @@ class LiteDRAMAXI2NativeR(Module):
 # LiteDRAMAXI2Native -------------------------------------------------------------------------------
 
 class LiteDRAMAXI2Native(Module):
-    def __init__(self, axi, port, w_buffer_depth=16, r_buffer_depth=16, base_address=0x00000000, with_read_modify_write=False):
+    def __init__(self, axi, port, w_buffer_depth=16, r_buffer_depth=16, base_address=0x00000000, with_read_modify_write=False, with_wrap=True):
 
         # # #
 
         # Write path -------------------------------------------------------------------------------
-        self.submodules.write = LiteDRAMAXI2NativeW(axi, port, w_buffer_depth, base_address, with_read_modify_write)
+        self.submodules.write = LiteDRAMAXI2NativeW(axi, port, w_buffer_depth, base_address, with_read_modify_write, with_wrap)
 
         # Read path --------------------------------------------------------------------------------
-        self.submodules.read = LiteDRAMAXI2NativeR(axi, port, r_buffer_depth, base_address, with_read_modify_write)
+        self.submodules.read = LiteDRAMAXI2NativeR(axi, port, r_buffer_depth, base_address, with_read_modify_write, with_wrap)
 
         # Write / Read arbitration -----------------------------------------------------------------
         arbiter = RoundRobin(2, SP_CE)

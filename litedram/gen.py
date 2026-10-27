@@ -833,7 +833,10 @@ class LiteDRAMCore(SoCCore):
                 axi2native = LiteDRAMAXI2Native(
                     axi  = axi_port,
                     port = user_port,
-                    with_read_modify_write = port.get("ecc", False)
+                    with_read_modify_write = port.get("ecc", False),
+                    # AXI WRAP bursts (cached CPUs) are supported by default; a port driven by a
+                    # master issuing only FIXED/INCR bursts can set with_wrap: False (~180 LUTs).
+                    with_wrap              = port.get("with_wrap", True),
                 )
                 self.submodules += axi2native
                 platform.add_extension(get_axi_user_port_ios(name,
