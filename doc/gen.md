@@ -76,8 +76,8 @@ excepted since it expects a Python class).
 |-----|----------------|---------|---------|
 | `cmd_buffer_depth` | int | `8` | Depth of the per-bank command buffers |
 | `cmd_buffer_buffered` | bool | `False` | Buffered (registered) command buffers |
-| `read_time` | int | `32` | Maximum cycles of reads before switching to writes |
-| `write_time` | int | `16` | Maximum cycles of writes before switching to reads |
+| `read_time` | int | `64` | Maximum cycles of reads before switching to writes |
+| `write_time` | int | `32` | Maximum cycles of writes before switching to reads |
 | `with_bandwidth` | bool | `False` | Bandwidth monitoring CSRs |
 | `with_refresh` | bool | `True` | Periodic refresh |
 | `refresh_zqcs_freq` | float | `1e0` | ZQ short calibration frequency (Hz) |
