@@ -200,6 +200,22 @@ class _Steerer(Module):
                 phase.wrdata_en.eq(wrdata_ens[sel])
             ]
 
+# Read to Write turnaround -------------------------------------------------------------------------
+
+def get_read_to_write_cycles(phy):
+    """Minimum READ to WRITE command distance (sys_clk cycles) for the DRAM bus turnaround.
+
+    The WRITE data, preceded by the DQS preamble that the PHYs drive one sys_clk cycle before it,
+    must not reach the bus before the last READ data burst has left it: in DRAM clocks, READ to
+    WRITE >= RL + BL/2 + 2 - WL (JEDEC) + nphases (PHY preamble), plus nphases - 1 for the worst
+    alignment of the READ and WRITE phases. Memories without that model keep the PHY read latency.
+    """
+    if phy.memtype not in ["DDR2", "DDR3", "DDR4"]:
+        return phy.read_latency
+    nphases = phy.nphases
+    rtw     = phy.cl + burst_lengths[phy.memtype]//2 + 2 - phy.cwl + nphases + (nphases - 1)
+    return max(math.ceil(rtw/nphases), 1)
+
 # Multiplexer --------------------------------------------------------------------------------------
 
 class Multiplexer(Module, AutoCSR):
@@ -408,8 +424,8 @@ class Multiplexer(Module, AutoCSR):
                 NextState("READ")
             )
         )
-        # TODO: reduce this, actual limit is around (cl+1)/nphases
-        fsm.delayed_enter("RTW", "WRITE", settings.phy.read_latency-1)
+        # WRITE is entered get_read_to_write_cycles() cycles after the last READ cycle.
+        fsm.delayed_enter("RTW", "WRITE", get_read_to_write_cycles(settings.phy) - 1)
 
         if settings.with_bandwidth:
             data_width = settings.phy.dfi_databits*settings.phy.nphases
