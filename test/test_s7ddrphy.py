@@ -307,3 +307,32 @@ class TestS7DDRPHYCKPhaseShift(unittest.TestCase):
         ref, _ = self.get_phy(with_ck_phase_shift=False)
         header = get_sdram_phy_c_header(ref.settings, module.timing_settings, module.geom_settings)
         self.assertNotIn("SDRAM_PHY_CKPHASE_STEPS", header)
+
+
+class TestS7DDRPHYWriteControl(unittest.TestCase):
+    def test_dqs_preamble_postamble(self):
+        # The DQS preamble must come the cycle before the DQ output enable and the postamble the
+        # cycle after, including with cwl_sys_latency == 1 (DDR2 1:2 at CL3, i.e. <= 100 MHz
+        # sys_clk) where the preamble tap used to wrap onto the postamble tap.
+        from litedram.phy.s7ddrphy import S7DDRPHYWriteControl
+        for cwl_sys_latency in [1, 2, 3]:
+            with self.subTest(cwl_sys_latency=cwl_sys_latency):
+                wrdata_en = Signal()
+                dut = S7DDRPHYWriteControl(wrdata_en, cwl_sys_latency)
+                log = []
+
+                def gen():
+                    yield wrdata_en.eq(1) # One sys_clk cycle of write data.
+                    yield
+                    yield wrdata_en.eq(0)
+                    for _ in range(cwl_sys_latency + 4):
+                        log.append(((yield dut.dqs_preamble), (yield dut.dq_oe), (yield dut.dqs_postamble)))
+                        yield
+
+                run_simulation(dut, gen())
+                preamble  = [i for i, (p, _, _) in enumerate(log) if p]
+                oe        = [i for i, (_, o, _) in enumerate(log) if o]
+                postamble = [i for i, (_, _, q) in enumerate(log) if q]
+                self.assertEqual(oe,        [cwl_sys_latency])
+                self.assertEqual(preamble,  [cwl_sys_latency - 1])
+                self.assertEqual(postamble, [cwl_sys_latency + 1])
