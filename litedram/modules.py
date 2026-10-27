@@ -337,7 +337,8 @@ class SDRAMModule:
             tRRD  = None if self.get("tRRD") is None else self.ck_ns_to_cycles(self.get("tRRD")),
             tRC   = None if self.get("tRAS") is None else self.ck_ns_to_cycles(self.get("tRP") + self.get("tRAS")),
             tRAS  = None if self.get("tRAS") is None else self.ck_ns_to_cycles(self.get("tRAS")),
-            tZQCS = None if self.get("tZQCS") is None else self.ck_ns_to_cycles(self.get("tZQCS"))
+            tZQCS = None if self.get("tZQCS") is None else self.ck_ns_to_cycles(self.get("tZQCS")),
+            nWR   = self.ck_ns_to_dram_cycles(self.get("tWR")),
         )
         self.timing_settings.fine_refresh_mode = fine_refresh_mode
 
@@ -390,6 +391,12 @@ class SDRAMModule:
 
     def ck_ns_to_cycles(self, timing, **kwargs):
         return max(self.ck_to_cycles(timing.ck), self.ns_to_cycles(timing.ns, **kwargs))
+
+    def ck_ns_to_dram_cycles(self, timing):
+        # In DRAM clocks and without the sys_clk phase margin: what the DRAM itself counts, used for
+        # the mode register fields (tCK is rounded to 1ps to avoid float rounding on exact ratios).
+        tck_ps = round(1e12/(self.clk_freq*self.rate_frac.denom))
+        return max(timing.ck, ceil(timing.ns*1e3/tck_ps))
 
     @property
     def rate_frac(self):

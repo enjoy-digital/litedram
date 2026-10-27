@@ -268,7 +268,10 @@ class GeomSettings(Settings):
 
 
 class TimingSettings(Settings):
-    def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD, tRC, tRAS, tZQCS):
+    # Timings are in sys_clk cycles (rounded up with the command phase margin) and are enforced by
+    # the controller. nWR is the write recovery in DRAM clocks (RU(tWR/tCK)) as programmed in the
+    # DRAM's mode register; when None, the init sequence falls back to tWR*nphases.
+    def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD, tRC, tRAS, tZQCS, nWR=None):
         self.set_attributes(locals())
 
 # Layouts/Interface --------------------------------------------------------------------------------
