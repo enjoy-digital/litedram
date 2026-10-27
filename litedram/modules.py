@@ -24,11 +24,19 @@ from litedram.common import Settings, GeomSettings, TimingSettings
 
 # Timings ------------------------------------------------------------------------------------------
 
-_technology_timings = ["tREFI", "tWTR", "tCCD", "tRRD", "tZQCS"]
+_technology_timings = ["tREFI", "tWTR", "tCCD", "tRRD", "tZQCS", "tRTP"]
 
 class _TechnologyTimings(Settings):
-    def __init__(self, tREFI, tWTR, tCCD, tRRD, tZQCS=None):
+    def __init__(self, tREFI, tWTR, tCCD, tRRD, tZQCS=None, tRTP=None):
         self.set_attributes(locals())
+
+# READ to PRECHARGE (ck, ns) per technology (JEDEC), used when a module does not define tRTP.
+_technology_trtp = {
+    "DDR2":   (2, 7.5),
+    "DDR3":   (4, 7.5),
+    "DDR4":   (4, 7.5),
+    "LPDDR4": (8, 7.5),
+}
 
 
 _speedgrade_timings = ["tRP", "tRCD", "tWR", "tRFC", "tFAW", "tRAS"]
@@ -114,6 +122,7 @@ class DDR3SPDData:
             tCCD  = (4, None),      # min 4 cycles
             tRRD  = (4, trrd_min),  # min 4 cycles
             tZQCS = (64, 80),
+            tRTP  = (4, trtp_min),  # min 4 cycles
         )
         speedgrade_timings = _SpeedgradeTimings(
             tRP  = trp_min,
@@ -339,6 +348,7 @@ class SDRAMModule:
             tRAS  = None if self.get("tRAS") is None else self.ck_ns_to_cycles(self.get("tRAS")),
             tZQCS = None if self.get("tZQCS") is None else self.ck_ns_to_cycles(self.get("tZQCS")),
             nWR   = self.ck_ns_to_dram_cycles(self.get("tWR")),
+            tRTP  = None if self.get("tRTP") is None else self.ck_ns_to_cycles(self.get("tRTP")),
         )
         self.timing_settings.fine_refresh_mode = fine_refresh_mode
 
@@ -373,13 +383,17 @@ class SDRAMModule:
             pass
 
     def get_technology_timing(self, name):
+        timing = None
         if hasattr(self, "technology_timings"):
-            return getattr(self.technology_timings, name)
+            timing = getattr(self.technology_timings, name)
         else:
             try:
-                return getattr(self, name)
+                timing = getattr(self, name)
             except:
                 pass
+        if timing is None and name == "tRTP":
+            timing = _technology_trtp.get(self.memtype)
+        return timing
 
     def ns_to_cycles(self, t, margin=True):
         clk_period_ns = 1e9/self.clk_freq
