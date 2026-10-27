@@ -4,12 +4,13 @@
 # Copyright (c) 2026 Florent Kermarrec <florent@enjoy-digital.fr>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import re
 import unittest
 
 from migen import *
 from migen.fhdl import verilog
 
-from litex.build.io import SDRInput, SDROutput, SDRTristate
+from litex.build.io import SDRIO, SDRInput, SDROutput, SDRTristate
 
 from litedram.phy.gensdrphy import GENSDRPHY, HalfRateGENSDRPHY
 
@@ -273,25 +274,24 @@ class TestGENSDRPHY(unittest.TestCase):
         self.assertEqual(log[i:i + 2], [activate, read], log)
         self.assertEqual(set(log[:i] + log[i + 2:]), {nop}, log)
 
-    @unittest.expectedFailure
+    @unittest.skipUnless("rename_clock_domain" in vars(SDRIO),
+        "needs the LiteX fix making SDRIO follow ClockDomainsRenamer (litex/build/io.py)")
     def test_half_rate_verilog_pads_clock(self):
         # With the generic SDR IO lowering (no vendor override), the full-rate PHY's pad registers
-        # must follow its renaming to sys2x. They do not: LiteX's SDRIO special caches clk_domain
-        # ("sys") at construction, ClockDomainsRenamer only renames its ClockSignal, and
-        # InferredSDRIO is built from the cached name, so the command/address/DM registers (and the
-        # DQ output/input registers) end up in sys while the DQ output enable (InferredSDRIO
-        # without a name, derived from the renamed ClockSignal) is in sys2x.
+        # must follow its renaming to sys2x. LiteX's SDRIO special caches the clock domain name at
+        # construction (the ClockSignal is lowered before the special is), so ClockDomainsRenamer
+        # has to update it: without that LiteX fix the command/address/DM registers end up in sys.
         pads = self.get_pads()
         phy  = HalfRateGENSDRPHY(pads, sys_clk_freq=50e6)
         v    = str(verilog.convert(phy, ios=set(pads.flatten())))
-        blocks = {}
+        clocks = {}
         for block in v.split("always @(")[1:]:
             clk = block.split(")")[0]
-            for pad in ["a", "ba", "ras_n", "cas_n", "we_n", "cs_n", "cke", "dm"]:
-                if f"\n\tpads_{pad} <= " in block or f"\n\tpads_{pad}[" in block:
-                    blocks.setdefault(pad, set()).add(clk)
-        self.assertEqual(blocks, {pad: {"posedge sys2x_clk"} for pad in
-            ["a", "ba", "ras_n", "cas_n", "we_n", "cs_n", "cke", "dm"]})
+            for reg in re.findall(r"^\s*(\w+)(?:\[[^\]]*\])?\s*<=", block, re.M):
+                clocks.setdefault(reg, set()).add(clk)
+        names = ["a", "ba", "ras_n", "cas_n", "we_n", "cs_n", "cke", "dm"]
+        self.assertEqual({pad: clocks.get(pad) for pad in names},
+                         {pad: {"posedge sys2x_clk"} for pad in names})
 
 
 if __name__ == "__main__":
