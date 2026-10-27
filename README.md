@@ -28,12 +28,17 @@ design flow by generating the verilog rtl that you will use as a standard core.
 [> Features
 -----------
 PHY:
-  - Generic SDRAM PHY (vendor agnostic, tested on Xilinx, Altera, Lattice)
+  - Generic SDR PHY (vendor agnostic, tested on Xilinx, Altera, Lattice; 1:1 or 1:2 frequency ratio)
   - Xilinx Spartan6 DDR/LPDDR/DDR2/DDR3 PHY (1:2 or 1:4 frequency ratio)
   - Xilinx Spartan7/Artix7/Kintex7/Virtex7 DDR2/DDR3 PHY (1:2 or 1:4 frequency ratio)
-  - Xilinx Kintex/Virtex Ultrascale (Plus) DDR3/DDR4 PHY (1:4 frequency ratio)
+  - Xilinx Artix7/Kintex7/Virtex7 LPDDR4 PHY and LPDDR5 PHY (each with a Verilator simulation PHY and DRAM model)
+  - Xilinx Artix7 RPC DRAM (Etron Reduced Pin Count) PHY (with a Verilator simulation PHY)
+  - Xilinx Kintex/Virtex Ultrascale (Plus) DDR3/DDR4 PHY (1:4 frequency ratio, optional read VREF scan on Ultrascale+ DDR4)
   - Lattice ECP5 DDR3 PHY (1:2 frequency ratio)
-  - Gowin G2A DDR3 PHY (1:2 frequency ratio)
+  - Lattice Nexus DDR3 PHY (1:2 frequency ratio)
+  - Gowin GW2A DDR3 PHY (1:2 frequency ratio)
+  - Gowin GW5A DDR3 PHY (1:2 or 1:4 frequency ratio)
+  - DFI-level SDRAM simulation PHY/model (SDR/DDR/LPDDR/DDR2/DDR3/DDR4) for Verilator (litex_sim, litedram_gen --sim)
 
 Core:
   - Fully pipelined, high performance.
@@ -73,12 +78,21 @@ enjoy-digital.fr.
 2. Install LiteX and the cores by following the LiteX's wiki [installation guide](https://github.com/enjoy-digital/litex/wiki/Installation).
 3. You can find examples of integration of the core with LiteX in LiteX-Boards and in the examples directory.
 
+[> Standalone core generation
+-----------------------------
+A standalone Verilog core (controller + PHY + init firmware, with native/Wishbone/Avalon/AXI/FIFO
+user ports) can be generated from a YAML description:
+```sh
+$ litedram_gen examples/arty.yml
+```
+See [doc/gen.md](doc/gen.md) for the command line, the YAML keys and the examples.
+
 [> Tests
 --------
 Unit tests are available in ./test/.
 To run all the unit tests:
 ```sh
-$ ./setup.py test
+$ python3 -m unittest discover -s test -p "test_*.py"
 ```
 
 Tests can also be run individually:
