@@ -240,7 +240,9 @@ class BankMachine(Module):
             )
         )
         fsm.act("REFRESH",
-            If(twtpcon.ready,
+            # The refresher precharges all banks: respect tRAS (and tWTP) from this bank's last
+            # ACTIVATE/write, as PRECHARGE/AUTOPRECHARGE do.
+            If(twtpcon.ready & trascon.ready,
                 refresh_gnt.eq(1),
             ),
             row_close.eq(1),

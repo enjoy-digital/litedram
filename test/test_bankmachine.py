@@ -355,6 +355,38 @@ class TestBankMachine(unittest.TestCase):
             time_expected   = 32,
             timing_settings = timing_settings)
 
+    def test_timing_activate_to_refresh(self):
+        # Refresh precharges all banks, so the grant must respect tRAS after the ACTIVATE.
+        tRAS = 32
+
+        @passive
+        def refresh_checker(dut):
+            # Wait for the ACTIVATE to be accepted
+            while True:
+                cmd = (yield from dut.get_cmd())
+                if cmd["valid"] and cmd["ready"] and cmd["type"] == "activate":
+                    break
+                yield
+            # Request a refresh right after it and count the cycles until it is granted
+            yield dut.bankmachine.refresh_req.eq(1)
+            yield
+            time = 1
+            while not (yield dut.bankmachine.refresh_gnt):
+                yield
+                time += 1
+            self.assertEqual(time, tRAS)
+            # Hold the refresh for a while, then release it
+            for _ in range(8):
+                yield
+            yield dut.bankmachine.refresh_req.eq(0)
+
+        dut = BankMachineDUT(1, timing_settings=dict(tRAS=tRAS))
+        requests = [dict(addr=dut.req_address(row=0xba, col=i), we=1) for i in range(4)]
+        commands = self.bankmachine_commands_test(dut=dut, requests=requests,
+                                                  generators=[refresh_checker])
+        # The refresh closed the row, so it is re-activated afterwards
+        self.assertEqual([cmd["type"] for cmd in commands].count("activate"), 2)
+
     def test_refresh(self):
         # Verify that no commands are issued during refresh and after it the row is re-activated.
         @passive
