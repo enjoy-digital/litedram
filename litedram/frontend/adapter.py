@@ -271,8 +271,8 @@ class LiteDRAMNativePortUpConverter(Module):
                 NextState("COMMIT")
             ).Else(  # Acknowledge incoming commands, while filling the request order.
                 port_from.cmd.ready.eq(port_from.cmd.valid),
-                NextValue(cmd_last, port_from.cmd.last),
                 If(port_from.cmd.valid,
+                    NextValue(cmd_last, port_from.cmd.last),
                     NextValue(cmd_count, cmd_count + 1),
                     Case(cmd_count, cmd_order_cases),
                     NextValue(cmd_chunks, cmd_chunks | cmd_sel)
@@ -306,14 +306,16 @@ class LiteDRAMNativePortUpConverter(Module):
             # Collision happens on write to read transition when address does not change.
             rw_collision.eq(cmd_we & (port_from.cmd.valid & ~port_from.cmd.we) & ~addr_changed),
             # Go to the next command if one of the following happens:
-            #  - port_to address changes.
-            #  - cmd type changes.
-            #  - the requested chunk has already been selected.
+            #  - a valid command has a different port_to address.
+            #  - a valid command has a different type.
+            #  - a valid command requests a chunk that has already been selected.
             #  - we received all the `ratio` commands.
             #  - this is the last command in a sequence.
             #  - master requests a flush (even after the command has been sent).
-            next_cmd.eq(addr_changed | (cmd_we != port_from.cmd.we)
-                        | (port_from.cmd.valid & cmd_selected)
+            # The address/type/chunk comparisons are only made on valid commands: a master that
+            # deasserts valid between the beats of a sequence (with don't-care addr/we) must not
+            # make us flush a partial word.
+            next_cmd.eq((port_from.cmd.valid & (addr_changed | (cmd_we != port_from.cmd.we) | cmd_selected))
                         | (cmd_count == ratio) | cmd_last | port_from.flush),
         ]
 
