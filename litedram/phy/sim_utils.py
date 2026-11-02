@@ -171,7 +171,7 @@ class SimLogger(Module, AutoCSR):
         self.time_ps = None
         if clk_freq is not None:
             self.time_ps = Signal(64)
-            cnt = Signal(64)
+            cnt = Signal(40) # Cycles; keeps the cnt*period product below 64 bits (native Verilator arithmetic).
             sd_cnt = self.sync if clk_freq_cd is None else getattr(self.sync, clk_freq_cd)
             sd_cnt += cnt.eq(cnt + 1)
             self.comb += self.time_ps.eq(cnt * int(1e12/clk_freq))

@@ -236,22 +236,26 @@ class DFITimingsChecker(Module):
         self.add_cmds()
         self.add_rules()
 
-        cnt = Signal(64)
+        # Time counters: cycles on 40 bits, picosecond timestamps on 56 bits (~20 hours of simulated
+        # time). The timestamp sums/differences below then fit in 64 bits: wider expressions make
+        # Verilator use its multi-word arithmetic, several times slower for this checker.
+        cnt = Signal(40)
         self.sync += cnt.eq(cnt + nphases)
+        ps_ts = Signal(56) # Timestamp template.
 
         phases = [getattr(dfi, "p" + str(n)) for n in range(nphases)]
 
-        last_cmd_ps = [[Signal.like(cnt) for _ in range(len(self.cmds))] for _ in range(nbanks)]
+        last_cmd_ps = [[Signal.like(ps_ts) for _ in range(len(self.cmds))] for _ in range(nbanks)]
         last_cmd    = [Signal(4) for i in range(nbanks)]
         last_rda    = [Signal() for i in range(nbanks)] # Last command was a READ with auto-precharge.
 
-        act_ps   = Array([Signal().like(cnt) for i in range(4)])
+        act_ps   = Array([Signal.like(ps_ts) for i in range(4)])
         act_curr = Signal(max=4)
 
         ref_issued = Signal(nphases)
 
         for np, phase in enumerate(phases):
-            ps = Signal().like(cnt)
+            ps = Signal.like(ps_ts)
             self.comb += ps.eq((cnt + np)*self.timings["tCK"])
             state = Signal(4)
             self.comb += state.eq(Cat(phase.we_n, phase.cas_n, phase.ras_n, phase.cs_n))
@@ -338,9 +342,9 @@ class DFITimingsChecker(Module):
 
         # tREFI: over each 64ms period, the refresh intervals must not exceed tREFI on average (the
         # refresher may postpone refreshes and catch up later).
-        ref_ps      = Signal().like(cnt)
-        ref_ps_mod  = Signal().like(cnt)
-        ref_ps_diff = Signal(min=-2**63, max=2**63) # Accumulated excess of the intervals over tREFI.
+        ref_ps      = Signal.like(ps_ts)
+        ref_ps_mod  = Signal.like(ps_ts)
+        ref_ps_diff = Signal(min=-2**59, max=2**59) # Accumulated excess of the intervals over tREFI.
         curr_diff   = Signal().like(ref_ps_diff)
         ref_seen    = Signal()
 
