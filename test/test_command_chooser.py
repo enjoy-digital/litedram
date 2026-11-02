@@ -47,9 +47,11 @@ class TestCommandChooser(unittest.TestCase):
             for method, expected_values in helper_methods.items():
                 with self.subTest(method=method):
                     # Set each available command as the first request and verify
-                    # that the helper method returns the correct value. We can
-                    # safely use only the first request because no requests are
-                    # valid as all the want_* signals are 0.
+                    # that the helper method returns the correct value. read()/write()
+                    # follow the selected request's type; activate() is only set for a
+                    # selected (valid) ACT, so ACTs have to be wanted for that check.
+                    yield dut.chooser.want_cmds.eq(method == "activate")
+                    yield dut.chooser.want_activates.eq(method == "activate")
                     for cmd, expected in zip(possible_cmds, expected_values):
                         yield from dut.set_requests(f"{cmd}___")
                         yield
@@ -58,6 +60,8 @@ class TestCommandChooser(unittest.TestCase):
 
             # Test accept helper
             with self.subTest(method="accept"):
+                yield dut.chooser.want_cmds.eq(0)
+                yield dut.chooser.want_activates.eq(0)
                 yield dut.chooser.want_writes.eq(1)
                 yield
 
@@ -177,7 +181,6 @@ class TestCommandChooser(unittest.TestCase):
         dut = CommandChooserDUT(n_requests=8, bankbits=3, addressbits=13)
         run_simulation(dut, main_generator(dut))
 
-    @unittest.skip("Issue #174")
     def test_selects_nothing(self):
         # When want_* = 0, chooser should set cas/ras/we = 0, which means not valid request
         requests = "w_rawpwr"
@@ -194,13 +197,11 @@ class TestCommandChooser(unittest.TestCase):
         order    = "0560560"
         self.selection_test(requests, order, wants=["want_reads"])
 
-    @unittest.skip("Issue #174")
     def test_selects_writes_and_reads(self):
         requests = "rp_awrrw"
         order    = "04567045670"
         self.selection_test(requests, order, wants=["want_reads", "want_writes"])
 
-    @unittest.skip("Issue #174")
     def test_selects_cmds_without_act(self):
         # When want_cmds = 1, but want_activates = 0, activate commands should not be selected
         requests = "pr_aa_pw"
@@ -213,7 +214,6 @@ class TestCommandChooser(unittest.TestCase):
         order    = "034603460"
         self.selection_test(requests, order, wants=["want_cmds", "want_activates"])
 
-    @unittest.skip("Issue #174")
     def test_selects_nothing_when_want_activates_only(self):
         # When only want_activates = 1, nothing will be selected
         requests = "pr_aa_pw"

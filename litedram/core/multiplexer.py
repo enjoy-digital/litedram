@@ -67,10 +67,10 @@ class _CommandChooser(Module):
         valids = Signal(n)
         for i, request in enumerate(requests):
             is_act_cmd = request.ras & ~request.cas & ~request.we
-            command = request.is_cmd & self.want_cmds & (~is_act_cmd | self.want_activates)
-            read = request.is_read == self.want_reads
-            write = request.is_write == self.want_writes
-            self.comb += valids[i].eq(request.valid & (command | (read & write)))
+            command    = request.is_cmd   & self.want_cmds & (~is_act_cmd | self.want_activates)
+            read       = request.is_read  & self.want_reads
+            write      = request.is_write & self.want_writes
+            self.comb += valids[i].eq(request.valid & (command | read | write))
 
 
         arbiter = RoundRobin(n, SP_CE)
@@ -377,6 +377,7 @@ class Multiplexer(Module, AutoCSR):
             If(settings.phy.nphases == 1,
                 choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
             ).Else(
+                choose_cmd.want_cmds.eq(1),
                 choose_cmd.want_activates.eq(ras_allowed),
                 choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_req.cmd.ready.eq(cas_allowed)
@@ -398,6 +399,7 @@ class Multiplexer(Module, AutoCSR):
             If(settings.phy.nphases == 1,
                 choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
             ).Else(
+                choose_cmd.want_cmds.eq(1),
                 choose_cmd.want_activates.eq(ras_allowed),
                 choose_cmd.cmd.ready.eq(~choose_cmd.activate() | ras_allowed),
                 choose_req.cmd.ready.eq(cas_allowed),
