@@ -106,7 +106,8 @@ class HalfRateGENSDRPHY(Module):
 
 
         # Parameters -------------------------------------------------------------------------------
-        cl = get_default_cl(memtype="SDR", tck=1/sys_clk_freq) if cl is None else cl
+        # The SDRAM runs at 2 x sys_clk_freq: CL from the SDRAM clock period.
+        cl = get_default_cl(memtype="SDR", tck=1/(2*sys_clk_freq)) if cl is None else cl
 
         # FullRate PHY -----------------------------------------------------------------------------
         full_rate_phy = GENSDRPHY(pads, 2*sys_clk_freq, cl)

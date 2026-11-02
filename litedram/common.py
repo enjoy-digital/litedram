@@ -36,6 +36,8 @@ def get_default_cl_cwl(memtype, tck):
     if memtype == "SDR":
         f_to_cl_cwl[100e6] = (2, None)
         f_to_cl_cwl[133e6] = (3, None)
+        f_to_cl_cwl[166e6] = (3, None) # -6 grades.
+        f_to_cl_cwl[200e6] = (3, None) # -5 grades.
     elif memtype == "DDR2":
         f_to_cl_cwl[400e6]  = (3, 2)
         f_to_cl_cwl[533e6]  = (4, 3)

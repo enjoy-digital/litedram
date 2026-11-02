@@ -82,12 +82,19 @@ class TestGENSDRPHY(unittest.TestCase):
 
     def test_settings(self):
         for cls, nphases in [(GENSDRPHY, 1), (HalfRateGENSDRPHY, 2)]:
-            for sys_clk_freq, cl, expected_cl in [
-                (100e6, None, 2), # Default CL from the SDR frequency table.
-                ( 50e6, None, 2),
-                (100e6,    2, 2),
-                (100e6,    3, 3),
+            for sdram_clk_freq, cl, expected_cl in [
+                # Default CL from the SDR frequency table, at the SDRAM clock (2 x sys at 1:2).
+                ( 50e6,     None, 2),
+                (100e6,     None, 2),
+                (133.33e6,  None, 3),
+                (142.857e6, None, 3),
+                (166.67e6,  None, 3),
+                (200e6,     None, 3),
+                # Explicit CL.
+                (100e6,        2, 2),
+                (100e6,        3, 3),
             ]:
+                sys_clk_freq = sdram_clk_freq/nphases
                 for with_dm in [True, False]:
                     with self.subTest(cls=cls.__name__, sys_clk_freq=sys_clk_freq, cl=cl, with_dm=with_dm):
                         phy = cls(self.get_pads(with_dm=with_dm), sys_clk_freq=sys_clk_freq, cl=cl)
@@ -111,7 +118,9 @@ class TestGENSDRPHY(unittest.TestCase):
                         self.assertEqual(len(phy.dfi.p0.wrdata), self.databits)
         # No default CL above the SDR table.
         with self.assertRaises(ValueError):
-            GENSDRPHY(self.get_pads(), sys_clk_freq=200e6)
+            GENSDRPHY(self.get_pads(), sys_clk_freq=250e6)
+        with self.assertRaises(ValueError):
+            HalfRateGENSDRPHY(self.get_pads(), sys_clk_freq=125e6)
 
     def test_pads(self):
         # a/ba/ras_n/cas_n/we_n/dq are required, dm/cs_n/cke optional.
