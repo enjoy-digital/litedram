@@ -173,11 +173,25 @@ class HalfRateGENSDRPHY(Module):
         self.comb += full_rate_phy.dfi.phases[0].wrdata_en.eq(wr_data_en | wr_data_en_d)
 
         # Read Datapath
+        # The burst (2 words) has to be in phase 0 (previous sys2x word) and phase 1 (current sys2x
+        # word) at the same sys edge. With commands on phase 0, this holds when the full-rate read
+        # latency (CL + 1) is odd; when it is even (CL3), the full-rate read data is registered once
+        # more in sys2x (read_latency unchanged).
+        rddata       = full_rate_phy.dfi.phases[0].rddata
+        rddata_valid = full_rate_phy.dfi.phases[0].rddata_valid
+        if full_rate_phy.settings.read_latency%2 == 0:
+            rddata_r       = Signal(databits)
+            rddata_valid_r = Signal()
+            self.sync.sys2x += [
+                rddata_r.eq(rddata),
+                rddata_valid_r.eq(rddata_valid),
+            ]
+            rddata, rddata_valid = rddata_r, rddata_valid_r
         rddata_d       = Signal(databits)
-        self.sync.sys2x += rddata_d.eq(full_rate_phy.dfi.phases[0].rddata)
+        self.sync.sys2x += rddata_d.eq(rddata)
         self.comb += [
             dfi.phases[0].rddata.eq(rddata_d),
-            dfi.phases[0].rddata_valid.eq(full_rate_phy.dfi.phases[0].rddata_valid),
-            dfi.phases[1].rddata.eq(full_rate_phy.dfi.phases[0].rddata),
-            dfi.phases[1].rddata_valid.eq(full_rate_phy.dfi.phases[0].rddata_valid),
+            dfi.phases[0].rddata_valid.eq(rddata_valid),
+            dfi.phases[1].rddata.eq(rddata),
+            dfi.phases[1].rddata_valid.eq(rddata_valid),
         ]
