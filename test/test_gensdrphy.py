@@ -137,10 +137,10 @@ class TestGENSDRPHY(unittest.TestCase):
                     GENSDRPHY(pads, sys_clk_freq=100e6)
 
     def test_verilog(self):
-        for cls in [GENSDRPHY, HalfRateGENSDRPHY]:
-            with self.subTest(cls=cls.__name__):
+        for cls, kwargs in [(GENSDRPHY, {}), (HalfRateGENSDRPHY, {}), (HalfRateGENSDRPHY, {"with_dfi_reg": True})]:
+            with self.subTest(cls=cls.__name__, **kwargs):
                 pads = self.get_pads()
-                phy  = cls(pads, sys_clk_freq=100e6)
+                phy  = cls(pads, sys_clk_freq=100e6, **kwargs)
                 v    = str(verilog.convert(phy, ios=set(pads.flatten())))
                 for pad in ["a", "ba", "ras_n", "cas_n", "we_n", "cs_n", "cke", "dm"]:
                     width = len(getattr(pads, pad))
@@ -282,6 +282,84 @@ class TestGENSDRPHY(unittest.TestCase):
         i = log.index(activate)
         self.assertEqual(log[i:i + 2], [activate, read], log)
         self.assertEqual(set(log[:i] + log[i + 2:]), {nop}, log)
+
+    def half_rate_write_log(self, with_dfi_reg):
+        # A WRITE (phase 0, two data words: phases 0 and 1) then a READ (phase 1) through
+        # HalfRateGENSDRPHY: the pads sampled on each sys2x clock (commands, DQ out, DQ OE, DM),
+        # and the sys cycles on which rddata_valid is set.
+        pads  = self.get_pads()
+        phy   = HalfRateGENSDRPHY(pads, sys_clk_freq=50e6, cl=2, with_dfi_reg=with_dfi_reg)
+        dq_o  = [None]*self.databits
+        dq_oe = [None]*self.databits
+        log   = []
+        valid = []
+
+        def command(phase, cs_n=1, ras_n=1, cas_n=1, we_n=1, address=0, bank=0):
+            yield phase.cs_n.eq(cs_n)
+            yield phase.ras_n.eq(ras_n)
+            yield phase.cas_n.eq(cas_n)
+            yield phase.we_n.eq(we_n)
+            yield phase.address.eq(address)
+            yield phase.bank.eq(bank)
+
+        def gen():
+            for _ in range(4):
+                yield
+            yield from command(phy.dfi.p0, cs_n=0, ras_n=1, cas_n=0, we_n=0, address=0x5A, bank=1)
+            yield phy.dfi.p0.wrdata.eq(0xBEEF)
+            yield phy.dfi.p1.wrdata.eq(0xCAFE)
+            yield phy.dfi.p0.wrdata_mask.eq(0b01)
+            yield phy.dfi.p1.wrdata_mask.eq(0b10)
+            yield phy.dfi.p0.wrdata_en.eq(1)
+            yield
+            yield from command(phy.dfi.p0)
+            yield phy.dfi.p0.wrdata_en.eq(0)
+            yield
+            yield from command(phy.dfi.p1, cs_n=0, ras_n=1, cas_n=0, we_n=1, address=0x5A, bank=1)
+            yield phy.dfi.p1.rddata_en.eq(1)
+            yield
+            yield from command(phy.dfi.p1)
+            yield phy.dfi.p1.rddata_en.eq(0)
+            for cycle in range(12):
+                if (yield phy.dfi.p0.rddata_valid):
+                    valid.append(cycle)
+                yield
+
+        def monitor():
+            yield
+            for _ in range(2*20):
+                sample = []
+                for name in ["cs_n", "ras_n", "cas_n", "we_n", "a", "ba", "dm"]:
+                    sample.append((yield getattr(pads, name)))
+                oe = (yield Cat(*dq_oe))
+                sample += [oe, (yield Cat(*dq_o)) if oe else 0]
+                log.append(tuple(sample))
+                yield
+
+        run_simulation(phy, {"sys": [gen()], "sys2x": [monitor()]}, clocks={"sys": 8, "sys2x": (4, 2)},
+            special_overrides={
+                SDROutput:   SDRIOModel,
+                SDRInput:    SDRIOModel,
+                SDRTristate: sdr_tristate_model(dq_o, dq_oe),
+            })
+        return phy, log, valid
+
+    def test_half_rate_dfi_reg(self):
+        # with_dfi_reg: the same pad sequence one sys cycle (two SDRAM clocks) later, write data
+        # still with its WRITE command (write_latency 0), read_latency one sys cycle longer.
+        phy0, log0, valid0 = self.half_rate_write_log(with_dfi_reg=False)
+        phy1, log1, valid1 = self.half_rate_write_log(with_dfi_reg=True)
+        self.assertEqual(phy1.settings.read_latency, phy0.settings.read_latency + 1)
+        self.assertEqual(phy1.settings.write_latency, phy0.settings.write_latency)
+        write = (0, 1, 0, 0, 0x5A, 1, 0b01, 0xFFFF, 0xBEEF)
+        for log in [log0, log1]:
+            self.assertIn(write, log, log)
+            i = log.index(write)
+            self.assertEqual(log[i + 1][6:], (0b10, 0xFFFF, 0xCAFE), log)
+        self.assertEqual(log1.index(write), log0.index(write) + 2)
+        self.assertEqual(log1[2:], log0[:-2])
+        self.assertEqual(len(valid0), 1)
+        self.assertEqual(valid1, [valid0[0] + 1])
 
     @unittest.skipUnless("rename_clock_domain" in vars(SDRIO),
         "needs the LiteX fix making SDRIO follow ClockDomainsRenamer (litex/build/io.py)")

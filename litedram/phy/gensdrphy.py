@@ -95,7 +95,15 @@ class GENSDRPHY(Module):
 # Half-rate Generic SDR PHY ------------------------------------------------------------------------
 
 class HalfRateGENSDRPHY(Module):
-    def __init__(self, pads, sys_clk_freq=100e6, cl=None):
+    """1:2 SDR PHY: the full-rate PHY in sys2x, two DFI phases per sys cycle.
+
+    `with_dfi_reg`: registers the controller-to-PHY DFI signals in sys before they reach the sys2x
+    IO registers. Without it, the controller's write data and commands (combinational from the
+    user ports) have half a sys period to settle at the sys2x IOs, which can limit the SDRAM
+    frequency; with it, commands and write data are delayed together by one sys cycle
+    (write_latency unchanged) and read_latency is one sys cycle longer.
+    """
+    def __init__(self, pads, sys_clk_freq=100e6, cl=None, with_dfi_reg=False):
         pads        = PHYPadsCombiner(pads)
         addressbits = len(pads.a)
         bankbits    = len(pads.ba)
@@ -136,13 +144,23 @@ class HalfRateGENSDRPHY(Module):
             rdphase       = 0,
             wrphase       = 0,
             cl            = cl,
-            read_latency  = full_rate_phy.settings.read_latency//2 + 1,
+            read_latency  = full_rate_phy.settings.read_latency//2 + 1 + int(with_dfi_reg),
             write_latency = 0,
             with_dm       = with_dm,
         )
 
-        # DFI adaptation ---------------------------------------------------------------------------
+        # DFI (optionally registered) --------------------------------------------------------------
         self.dfi = dfi = Interface(addressbits, bankbits, nranks, databits, nphases)
+        if with_dfi_reg:
+            dfi = Interface(addressbits, bankbits, nranks, databits, nphases)
+            for i, o in zip(self.dfi.phases, dfi.phases):
+                for name, _, direction in i.layout:
+                    if direction == DIR_M_TO_S:
+                        self.sync += getattr(o, name).eq(getattr(i, name))
+                    else:
+                        self.comb += getattr(i, name).eq(getattr(o, name))
+
+        # DFI adaptation ---------------------------------------------------------------------------
         self.comb += Case(phase_sel, {
             0: dfi.phases[0].connect(full_rate_phy.dfi.phases[0], omit={"rddata", "rddata_valid", "wrdata_en"}),
             1: dfi.phases[1].connect(full_rate_phy.dfi.phases[0], omit={"rddata", "rddata_valid", "wrdata_en"}),
