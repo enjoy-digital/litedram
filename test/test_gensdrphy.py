@@ -361,6 +361,60 @@ class TestGENSDRPHY(unittest.TestCase):
         self.assertEqual(len(valid0), 1)
         self.assertEqual(valid1, [valid0[0] + 1])
 
+    def test_half_rate_read_cl(self):
+        # HalfRateGENSDRPHY: a READ on phase 0 (where the controller issues it) returns its burst in
+        # phase 0 then phase 1 of the same sys cycle, read_latency sys cycles later, at CL2 and CL3.
+        # The DRAM is modelled at the pads in sys2x: data CL clocks after the command.
+        for cl in [2, 3]:
+            with self.subTest(cl=cl):
+                pads = self.get_pads()
+                phy  = HalfRateGENSDRPHY(pads, sys_clk_freq=50e6, cl=cl)
+                p0   = phy.dfi.phases[0]
+                log  = {}
+
+                def command(cs_n=1, ras_n=1, cas_n=1, we_n=1):
+                    yield p0.cs_n.eq(cs_n)
+                    yield p0.ras_n.eq(ras_n)
+                    yield p0.cas_n.eq(cas_n)
+                    yield p0.we_n.eq(we_n)
+
+                def gen():
+                    for _ in range(4):
+                        yield
+                    yield from command(cs_n=0, ras_n=1, cas_n=0, we_n=1)
+                    yield p0.rddata_en.eq(1)
+                    yield
+                    yield from command()
+                    yield p0.rddata_en.eq(0)
+                    for k in range(1, 8):
+                        yield
+                        log[k] = ((yield phy.dfi.phases[0].rddata), (yield phy.dfi.phases[1].rddata))
+
+                def dram():
+                    # As in test_write_read: a command seen at sample t is answered at sample t - 1 + CL.
+                    t, out = 0, {}
+                    while True:
+                        yield pads.dq.eq(out.pop(t, 0))
+                        yield
+                        t += 1
+                        cmd = []
+                        for name in ["cs_n", "ras_n", "cas_n", "we_n"]:
+                            cmd.append((yield getattr(pads, name)))
+                        if cmd == [0, 1, 0, 1]:
+                            out[t - 1 + cl] = 0x1234
+                            out[t + cl]     = 0xABCD
+
+                run_simulation(phy, {"sys": [gen()], "sys2x": [passive(dram)()]},
+                    clocks={"sys": 8, "sys2x": (4, 2)},
+                    special_overrides={
+                        SDROutput:   SDRIOModel,
+                        SDRInput:    SDRIOModel,
+                        SDRTristate: sdr_tristate_model(),
+                    })
+                latency = phy.settings.read_latency
+                self.assertEqual(log[latency], (0x1234, 0xABCD), log)
+                self.assertEqual({k: v for k, v in log.items() if k != latency and v != (0, 0)}, {}, log)
+
     @unittest.skipUnless("rename_clock_domain" in vars(SDRIO),
         "needs the LiteX fix making SDRIO follow ClockDomainsRenamer (litex/build/io.py)")
     def test_half_rate_verilog_pads_clock(self):
