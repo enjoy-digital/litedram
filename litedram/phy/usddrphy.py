@@ -256,6 +256,25 @@ class USDDRPHY(Module, AutoCSR):
             if hasattr(pads, "ten"):
                 self.comb += pads.ten.eq(0)
 
+        # BitSlip counters -------------------------------------------------------------------------
+        # The bitslips of a byte (dly_sel lane) are always slipped/reset together, so one slip
+        # counter per byte and direction is shared: by the DQS, DM and DQ output bitslips of the
+        # byte (write) and by its DQ input bitslips (read).
+        wr_bitslip_counters = []
+        rd_bitslip_counters = []
+        for i in range(databits//8):
+            wr_bitslip_counter = BitSlipCounter(8,
+                rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.wr_stb) | self._rst.storage,
+                slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.wr_stb,
+                cycles = 1)
+            rd_bitslip_counter = BitSlipCounter(8,
+                rst    = (self._dly_sel.storage[i] & self._rdly_dq_bitslip_rst.wr_stb) | self._rst.storage,
+                slp    = self._dly_sel.storage[i] & self._rdly_dq_bitslip.wr_stb,
+                cycles = 1)
+            self.submodules += wr_bitslip_counter, rd_bitslip_counter
+            wr_bitslip_counters.append(wr_bitslip_counter)
+            rd_bitslip_counters.append(rd_bitslip_counter)
+
         # DQS --------------------------------------------------------------------------------------
         dqs_oe        = Signal()
         dqs_preamble  = Signal()
@@ -271,9 +290,8 @@ class USDDRPHY(Module, AutoCSR):
         for i in range(databits//8):
             dqs_bitslip    = BitSlip(8,
                 i      = dqs_pattern.o,
-                rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.wr_stb) | self._rst.storage,
-                slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.wr_stb,
-                cycles = 1)
+                cycles = 1,
+                value  = wr_bitslip_counters[i].value)
             self.submodules += dqs_bitslip
             if x4_dimm_mode:
                 dqs_pads = ((pads.dqs_p[i*2], pads.dqs_n[i*2]), (pads.dqs_p[i*2 + 1], pads.dqs_n[i*2 + 1]))
@@ -338,9 +356,8 @@ class USDDRPHY(Module, AutoCSR):
                 dm_o_nodelay = Signal()
                 dm_o_bitslip = BitSlip(8,
                     i      = dm_i,
-                    rst    = (self._dly_sel.storage[i] & self._wdly_dq_bitslip_rst.wr_stb) | self._rst.storage,
-                    slp    = self._dly_sel.storage[i] & self._wdly_dq_bitslip.wr_stb,
-                    cycles = 1)
+                    cycles = 1,
+                    value  = wr_bitslip_counters[i].value)
                 self.submodules += dm_o_bitslip
                 self.specials += [
                     Instance("OSERDESE3",
@@ -416,9 +433,8 @@ class USDDRPHY(Module, AutoCSR):
             dq_t         = Signal()
             dq_o_bitslip = BitSlip(8,
                 i      = Cat(*[dfi.phases[n//2].wrdata[n%2*databits+i] for n in range(8)]),
-                rst    = (self._dly_sel.storage[i//8] & self._wdly_dq_bitslip_rst.wr_stb) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//8] & self._wdly_dq_bitslip.wr_stb,
-                cycles = 1)
+                cycles = 1,
+                value  = wr_bitslip_counters[i//8].value)
             self.submodules += dq_o_bitslip
             self.specials += Instance("OSERDESE3",
                 p_SIM_DEVICE         = device,
@@ -436,9 +452,8 @@ class USDDRPHY(Module, AutoCSR):
                 o_T_OUT  = dq_t,
             )
             dq_i_bitslip = BitSlip(8,
-                rst    = (self._dly_sel.storage[i//8] & self._rdly_dq_bitslip_rst.wr_stb) | self._rst.storage,
-                slp    = self._dly_sel.storage[i//8] & self._rdly_dq_bitslip.wr_stb,
-                cycles = 1)
+                cycles = 1,
+                value  = rd_bitslip_counters[i//8].value)
             self.submodules += dq_i_bitslip
             self.specials += Instance("ISERDESE3",
                 p_SIM_DEVICE        = device,
