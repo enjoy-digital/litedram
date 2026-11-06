@@ -149,6 +149,25 @@ the data on `rdata_data`, in command order. `rdata_ready` is ignored: the data h
 (the default) the three channels are held off until `init_done` is set without `init_error`;
 without it the master has to wait for `init_done` itself.
 
+## Wishbone port protocol
+
+A `wishbone` user port is a Wishbone **classic** slave (`adr`, `dat_w`, `dat_r`, `sel`, `cyc`,
+`stb`, `we`, `ack`, `err`), as everywhere in LiteX: one transfer at a time, `cyc` and `stb` held
+high until the `ack` cycle, the next transfer only after it. `adr` is in port words
+(`data_width/8` bytes), `err` is never asserted and, with `block_until_ready`, the port does not
+answer before the DRAM init is done.
+
+There is no `stall` and no pipelined (Wishbone B4) mode: a master that pulses `stb` for one cycle
+per transfer and counts the `ack`s later is not supported. The bridge only looks at `stb` while it
+waits for a command, so the second pulse is lost while the first transfer is in flight, and the
+master then waits forever for an `ack` that will never come. `cmd_buffer_depth` is not involved:
+it is the depth of the controller's per-bank command queues, which only the native and AXI ports
+(several commands in flight) can fill.
+
+For more throughput than one transfer per round trip, use the full port `data_width` (one
+transfer moves a whole DRAM word), an `axi` port (several outstanding bursts) or a `native` port.
+`cti`/`bte` are not exposed, so every transfer is a single classic cycle.
+
 A core generated with `--sim` (the same core around the DFI-level DRAM model) is the simplest way
 to check a master against these rules before going to hardware.
 
