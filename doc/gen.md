@@ -145,7 +145,9 @@ implementation (see `LiteDRAMWishbone2Native` in `litedram/frontend/wishbone.py`
 
 **Read data channel.** For every accepted read command, `rdata_valid` is high for one cycle with
 the data on `rdata_data`, in command order. `rdata_ready` is ignored: the data has to be captured
-(or buffered) on that cycle.
+(or buffered) on that cycle. `rdata_data` is the controller's read data bus, shared by all the
+ports: it also carries the data of the other ports' reads, so it is only meaningful with
+`rdata_valid`.
 
 **Reset and init.** The port is only meaningful in `user_clk`/`user_rst`. With `block_until_ready`
 (the default) the three channels are held off until `init_done` is set without `init_error`;
