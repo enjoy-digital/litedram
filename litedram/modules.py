@@ -344,7 +344,9 @@ class SDRAMModule:
             tRFC  = self.ck_ns_to_cycles(self.get("tRFC", fine_refresh_mode)),
             tWTR  = self.ck_ns_to_cycles(self.get("tWTR")),
             tFAW  = None if self.get("tFAW") is None else self.ck_ns_to_cycles(self.get("tFAW")),
-            tCCD  = None if self.get("tCCD") is None else self.ck_ns_to_cycles(self.get("tCCD")),
+            # No phase margin on tCCD: consecutive CAS commands of the same type are issued on the
+            # same DFI phase, so their spacing is an exact number of sys_clk cycles.
+            tCCD  = None if self.get("tCCD") is None else self.ck_ns_to_cycles(self.get("tCCD"), margin=False),
             tRRD  = None if self.get("tRRD") is None else self.ck_ns_to_cycles(self.get("tRRD")),
             tRC   = None if self.get("tRAS") is None else self.ck_ns_to_cycles(self.get("tRP") + self.get("tRAS")),
             tRAS  = None if self.get("tRAS") is None else self.ck_ns_to_cycles(self.get("tRAS")),
@@ -1140,6 +1142,9 @@ class EM6GA16L(RPCModule):
 
 # DDR4 (Chips) -------------------------------------------------------------------------------------
 
+# tCCD is tCCD_L (same bank group), which applies since the controller has a single tCCD: 6.25ns at
+# DDR4-1600, 5.355ns at DDR4-1866/2133, 5ns from DDR4-2400 (Micron 8Gb DDR4 datasheet, Table 161/162,
+# with 4nCK as minimum where JEDEC gives 5nCK).
 class DDR4Module(SDRAMModule):                     memtype = "DDR4"
 class DDR4RegisteredModule(SDRAMRegisteredModule): memtype = "DDR4"
 
@@ -1153,7 +1158,7 @@ class EDY4016A(DDR4Module):
     # timings
     trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
     trfc  = {"1x": (None, 260), "2x": (None, 160),   "4x": (None, 110)}
-    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
         "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(28, 30), tRAS=32),
     }
@@ -1169,7 +1174,7 @@ class MT40A1G8(DDR4Module):
     # timings
     trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
-    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6.4), tZQCS=(128, 80))
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 6.4), tZQCS=(128, 80))
     speedgrade_timings = {
         "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
         "2666": _SpeedgradeTimings(tRP=13.50, tRCD=13.50, tWR=15, tRFC=trfc, tFAW=(20, 21), tRAS=32),
@@ -1186,7 +1191,7 @@ class MT40A2G8(DDR4Module):
     # timings
     trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
-    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6.4), tZQCS=(128, 80))
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 6.4), tZQCS=(128, 80))
     speedgrade_timings = {
         "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
         "2666": _SpeedgradeTimings(tRP=13.50, tRCD=13.50, tWR=15, tRFC=trfc, tFAW=(20, 21), tRAS=32),
@@ -1206,7 +1211,7 @@ class MT40A256M16(DDR4Module):
     # timings
     trefi = {"1x": 64e6/8192, "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
     trfc  = {"1x": (None, 260), "2x": (None, 160), "4x": (None, 110)}
-    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
         "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(28, 35), tRAS=32),
     }
@@ -1222,7 +1227,7 @@ class MT40A512M8(DDR4Module):
     # timings
     trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
-    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
         "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
         "2666": _SpeedgradeTimings(tRP=13.50, tRCD=13.50, tWR=15, tRFC=trfc, tFAW=(20, 21), tRAS=32),
@@ -1239,7 +1244,7 @@ class MT40A512M16(DDR4Module):
     # timings
     trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
-    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
         # JEDEC DDR4 x16 organisation requires the 28 nCK tFAW floor (vs 20 nCK for x4/x8).
         "2400": _SpeedgradeTimings(tRP=13.32, tRCD=13.32, tWR=15, tRFC=trfc, tFAW=(28, 25), tRAS=32),
@@ -1258,9 +1263,9 @@ class KVR21SE15S84(DDR4Module):
     # timings
     trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
-    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "2133": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=33),
+        "2133": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=33, tCCD=(4, 5.355)),
     }
     speedgrade_timings["default"] = speedgrade_timings["2133"]
 
@@ -1274,11 +1279,11 @@ class MTA4ATF51264HZ(DDR4Module):
     # timings
     trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
-    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
         # ngroups=2 characterises this SODIMM as built from DDR4 x16 devices.
         # JEDEC DDR4 x16 organisation requires the 28 nCK tFAW floor (vs 20 nCK for x4/x8).
-        "2133": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=trfc, tFAW=(28, 25), tRAS=33),
+        "2133": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=trfc, tFAW=(28, 25), tRAS=33, tCCD=(4, 5.355)),
     }
     speedgrade_timings["default"] = speedgrade_timings["2133"]
 
@@ -1294,7 +1299,7 @@ class MTA18ASF2G72PZ(DDR4RegisteredModule):
     # timings
     trefi = {"1x": 64e6/8192,   "2x": (64e6/8192)/2, "4x": (64e6/8192)/4}
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
-    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 4.9), tZQCS=(128, 80))
+    technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
         "2400": _SpeedgradeTimings(tRP=14.16, tRCD=14.16, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),
         "2666": _SpeedgradeTimings(tRP=14.25, tRCD=14.25, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=32),

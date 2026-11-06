@@ -63,6 +63,19 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertIsNone(MT48LC16M16(100e6, "1:1").timing_settings.tRTP)
         self.assertIsNotNone(MT8JTF12864(100e6, "1:4").timing_settings.tRTP)
 
+    def test_ddr4_tccd_uses_same_bank_group_limit_without_margin(self):
+        # (sys_clk_freq, expected tCCD): 4CK (one sys_clk at 1:4) is enough up to 5ns.
+        for clk_freq, tccd in [(100e6, 1), (125e6, 1), (156.25e6, 1), (200e6, 1), (300e6, 2), (333.333e6, 2), (400e6, 2)]:
+            for name in ["MT40A256M16", "MT40A512M8", "HMA82GR7DJR4N"]:
+                module = getattr(litedram.modules, name)(clk_freq, "1:4")
+                with self.subTest(module=name, clk_freq=clk_freq):
+                    self.assertEqual(module.timing_settings.tCCD, tccd)
+
+    def test_ddr4_2133_tccd_override(self):
+        cls = litedram.modules.KVR21SE15S84
+        self.assertEqual(cls.speedgrade_timings["2133"].tCCD, (4, 5.355))
+        self.assertEqual(cls(200e6, "1:4").timing_settings.tCCD, 2) # 5ns period < 5.355ns.
+
     def test_speedgrade_overrides(self):
         _SG = litedram.modules._SpeedgradeTimings
         kwargs = dict(tRP=13.32, tRCD=13.32, tWR=15, tFAW=(28, 35), tRAS=32)
@@ -77,6 +90,7 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(base.get("tRRD"), (4, 4.9))
         self.assertEqual(base.get_cl_cwl(), (None, None))
         self.assertEqual(fast.get("tRRD"), (4, 20))
+        self.assertEqual(fast.timing_settings.tCCD, 2)
         self.assertEqual(fast.get_cl_cwl(), (17, 12))
 
     def test_ddr4_rdimm_tfaw_uses_ck_minimum(self):
