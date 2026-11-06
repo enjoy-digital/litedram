@@ -102,8 +102,10 @@ class LiteDRAMNativePortReorder(Module):
     Without it, the crossbar locks a port on a bank until its commands are issued, which is what
     keeps the port's data in command order. Here, commands carry a tag to the bank machines and the
     data is kept in buffers so that banks can complete out of order:
-    - Writes: the data is stored when pulled from the master, the cycle after the command is
-      accepted (the native port contract), and sent to the controller from the tag it returns.
+    - Writes: the data is stored when the master presents it and sent to the controller from the
+      tag it returns. Commands wait in a small queue and a write only goes to the controller once
+      its data is stored: the master's data can come any time after its command (behind a clock
+      domain crossing, a buffer...) without being sampled too early.
     - Reads: the data is stored at the tag returned by the controller and given back to the master
       in command order.
 
@@ -134,11 +136,13 @@ class LiteDRAMNativePortReorder(Module):
         wr_store   = Signal(tag_width) # Next slot to store the master's data in.
         wr_pending = Signal(tag_width + 1)
         wr_busy    = Array(Signal() for _ in range(depth))
+        wr_stored  = Signal(tag_width + 1) # Writes with their data stored, not sent yet.
         wr_accept  = Signal()
         wr_pull    = Signal()
+        wr_send    = Signal()
         wr_done    = Signal()
         self.comb += [
-            wr_pull.eq(wr_pending != 0),
+            wr_pull.eq((wr_pending != 0) & port_from.wdata.valid),
             port_from.wdata.ready.eq(wr_pull),
             wr_write.adr.eq(wr_store),
             wr_write.dat_w.eq(Cat(port_from.wdata.data, port_from.wdata.we)),
@@ -157,6 +161,7 @@ class LiteDRAMNativePortReorder(Module):
             If(wr_done, wr_busy[port_to.wdata_tag].eq(0)),
             If(wr_pull, wr_store.eq(wr_store + 1)),
             wr_pending.eq(wr_pending + wr_accept - wr_pull),
+            wr_stored.eq(wr_stored + wr_pull - wr_send),
         ]
 
         # Read buffer ------------------------------------------------------------------------------
@@ -192,22 +197,39 @@ class LiteDRAMNativePortReorder(Module):
         ]
 
         # Command ----------------------------------------------------------------------------------
+        # 4 entries are enough for one command per cycle: a write waits 2 cycles for its data.
+        cmd_queue = stream.SyncFIFO([("we", 1), ("addr", port_from.address_width), ("tag", tag_width)], 4)
+        self.submodules += cmd_queue
+
         allowed = Signal()
+        tag     = Signal(tag_width)
+        send    = Signal()
         self.comb += [
             If(port_from.cmd.we,
                 allowed.eq(~wr_busy[wr_tail]),
-                port_to.cmd_tag.eq(wr_tail),
+                tag.eq(wr_tail),
             ).Else(
                 allowed.eq(rd_level != depth),
-                port_to.cmd_tag.eq(rd_tail),
+                tag.eq(rd_tail),
             ),
-            port_to.cmd.valid.eq(port_from.cmd.valid & allowed),
-            port_to.cmd.we.eq(port_from.cmd.we),
-            port_to.cmd.addr.eq(port_from.cmd.addr),
-            port_to.cmd.last.eq(port_from.cmd.last),
-            port_from.cmd.ready.eq(port_to.cmd.ready & allowed),
-            wr_accept.eq(port_to.cmd.valid & port_to.cmd.ready &  port_to.cmd.we),
-            rd_accept.eq(port_to.cmd.valid & port_to.cmd.ready & ~port_to.cmd.we),
+            cmd_queue.sink.valid.eq(port_from.cmd.valid & allowed),
+            cmd_queue.sink.we.eq(port_from.cmd.we),
+            cmd_queue.sink.addr.eq(port_from.cmd.addr),
+            cmd_queue.sink.last.eq(port_from.cmd.last),
+            cmd_queue.sink.tag.eq(tag),
+            port_from.cmd.ready.eq(cmd_queue.sink.ready & allowed),
+            wr_accept.eq(port_from.cmd.valid & port_from.cmd.ready &  port_from.cmd.we),
+            rd_accept.eq(port_from.cmd.valid & port_from.cmd.ready & ~port_from.cmd.we),
+
+            send.eq(cmd_queue.source.valid & (~cmd_queue.source.we | (wr_stored != 0))),
+            port_to.cmd.valid.eq(send),
+            port_to.cmd.we.eq(cmd_queue.source.we),
+            port_to.cmd.addr.eq(cmd_queue.source.addr),
+            port_to.cmd.last.eq(cmd_queue.source.last),
+            port_to.cmd_tag.eq(cmd_queue.source.tag),
+            cmd_queue.source.ready.eq(send & port_to.cmd.ready),
+            wr_send.eq(send & port_to.cmd.ready & cmd_queue.source.we),
+
             port_to.flush.eq(port_from.flush),
             port_from.lock.eq(port_to.lock),
         ]
