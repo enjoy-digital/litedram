@@ -85,7 +85,7 @@ user ports) can be generated from a YAML description:
 ```sh
 $ litedram_gen examples/arty.yml
 ```
-See [doc/gen.md](doc/gen.md) for the command line, the YAML keys and the examples.
+See [doc/gen.md](doc/gen.md) for the command line, the YAML keys, the native port protocol and the examples.
 
 [> Tests
 --------
