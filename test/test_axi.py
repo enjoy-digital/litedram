@@ -10,6 +10,7 @@ import random
 from migen import *
 
 from litedram.common import *
+from litedram.frontend.adapter import LiteDRAMNativePortConverter
 from litedram.frontend.axi import *
 
 from test.common import *
@@ -460,6 +461,94 @@ class TestAXI(unittest.TestCase):
         self.assertEqual(mem.mem[16], 0x01010101)
         self.assertEqual(mem.mem[17], 0x02020202)
         self.assertEqual(mem.mem[18], 0x112233dd)
+
+    def _axi2native_rmw_burst(self, data_width, beats, addr=0x40):
+        # Issue one INCR burst on a port converted to 128-bit and return the memory: read-modify-write
+        # has to get its read data back in the middle of a burst, with the up-converter gathering.
+        class DUT(Module):
+            def __init__(self):
+                self.axi  = LiteDRAMAXIPort(data_width=data_width, address_width=32, id_width=8)
+                self.port = LiteDRAMNativePort("both", 20, data_width)
+                self.dram = LiteDRAMNativePort("both", 20, 128)
+                self.submodules.converter = LiteDRAMNativePortConverter(self.port, self.dram)
+                self.submodules.bridge    = LiteDRAMAXI2Native(self.axi, self.port, with_read_modify_write=True)
+
+        dut      = DUT()
+        mem_init = [0x0f0e0d0c_0b0a0908_07060504_03020100 + i*(1 << 124) for i in range(8)]
+        mem      = DRAMMemory(128, 32, init=mem_init)
+        done     = []
+
+        def generator():
+            yield dut.axi.aw.valid.eq(1)
+            yield dut.axi.aw.addr.eq(addr)
+            yield dut.axi.aw.burst.eq(BURST_INCR)
+            yield dut.axi.aw.len.eq(len(beats) - 1)
+            yield dut.axi.aw.size.eq(log2_int(data_width//8))
+            yield
+            while not (yield dut.axi.aw.ready):
+                yield
+            yield dut.axi.aw.valid.eq(0)
+            for i, (data, strb) in enumerate(beats):
+                yield dut.axi.w.valid.eq(1)
+                yield dut.axi.w.data.eq(data)
+                yield dut.axi.w.strb.eq(strb)
+                yield dut.axi.w.last.eq(i == len(beats) - 1)
+                yield
+                while not (yield dut.axi.w.ready):
+                    yield
+            yield dut.axi.w.valid.eq(0)
+            yield dut.axi.b.ready.eq(1)
+            yield
+            while not (yield dut.axi.b.valid):
+                yield
+            yield dut.axi.b.ready.eq(0)
+            for _ in range(32):
+                yield
+            done.append(True)
+
+        run_simulation(dut, [
+            generator(),
+            mem.read_handler(dut.dram),
+            mem.write_handler(dut.dram),
+            timeout_generator(2000),
+        ])
+        self.assertTrue(done)
+        return mem.mem, mem_init
+
+    def _axi2native_rmw_burst_check(self, data_width, beats, addr=0x40):
+        # Expected memory, byte by byte (128-bit words, little endian lanes).
+        mem, mem_init = self._axi2native_rmw_burst(data_width, beats, addr)
+        expected = bytearray(b"".join(word.to_bytes(16, "little") for word in mem_init))
+        expected += bytes(len(mem)*16 - len(expected))
+        nbytes = data_width//8
+        for i, (data, strb) in enumerate(beats):
+            for n in range(nbytes):
+                if (strb >> n) & 1:
+                    expected[addr + i*nbytes + n] = (data >> 8*n) & 0xff
+        self.assertEqual(
+            [word.to_bytes(16, "little") for word in mem],
+            [bytes(expected[i*16:(i + 1)*16]) for i in range(len(mem))])
+
+    def test_axi2native_rmw_burst_up_converted(self):
+        # A partial beat that isn't the last of its burst used to hang: its read stayed in the
+        # up-converter, which was waiting for the next beats of a word to gather.
+        for data_width, full in [(32, 0xf), (64, 0xff)]:
+            data = [0xa0a1a2a3_a4a5a6a7_a8a9aaab_acadaeaf >> (128 - data_width) ^ i for i in range(6)]
+            patterns = {
+                "all partial"       : [0x1, 0x2, 0x4, 0x8],
+                "partial then full" : [0x1, full, full, full],
+                "full then partial" : [full, full, full, 0x8],
+                "full burst"        : [full, full],
+                "across words"      : [0x1, full, 0x2, full, 0x4, 0x8],
+            }
+            for name, strbs in patterns.items():
+                with self.subTest(data_width=data_width, pattern=name):
+                    self._axi2native_rmw_burst_check(data_width, list(zip(data, strbs)))
+
+    def test_axi2native_rmw_burst_same_width(self):
+        # Reference without up-conversion.
+        data = [0xa0a1a2a3_a4a5a6a7_a8a9aaab_acadaeaf ^ i for i in range(4)]
+        self._axi2native_rmw_burst_check(128, list(zip(data, [0x1, 0xffff, 0x8000, 0x00f0])))
 
     # Now let's stress things a bit... :)
     def test_axi2native_random_all(self):
