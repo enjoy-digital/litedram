@@ -17,7 +17,9 @@
     "sdram_phy":       "GENSDRPHY",   # Type of FPGA PHY
 
     # Frequency ----------------------------------------------------------------
+    "input_clk_freq":   25e6,  # Input clock frequency (PLL in the core, sdram_clk output)
     "sys_clk_freq":     50e6,  # System clock frequency (SDR_clk = sys_clk)
+    "sdram_clk_phase":  90,    # SDRAM clock phase relative to sys_clk (degrees)
 
     # Core ---------------------------------------------------------------------
     "cmd_buffer_depth": 16,    # Depth of the command buffer
