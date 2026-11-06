@@ -30,20 +30,23 @@ floats and the strings `"True"`/`"False"`/`"None"` to the Python values; unknown
 | `csr_data_width` | int | `32` | CSR bus data width |
 | `uart` | `rs232`, `fifo` | `rs232` | Firmware UART: RS232 pins or a valid/ready/data FIFO interface (CPU only) |
 | `speedgrade` | int (`-1`, `-2`, ...) | required (A7/K7/V7/US/USP) | FPGA speedgrade, used to configure the PLL/MMCM |
-| `device` | string | required (GENSDRPHY/ECP5) | Lattice device name (e.g. `LFE5U-45F-6BG381C`) |
+| `device` | string | required (GENSDRPHY/ECP5/GW2A/GW5A) | Lattice or Gowin device name (e.g. `LFE5U-45F-6BG381C`, `GW2A-LV18PG256C8/I7`) |
+| `devicename` | string | required (GW2A/GW5A) | Gowin device name for the PLL configuration (e.g. `GW2A-18C`, `GW5AST-138B`) |
 
 ### PHY / SDRAM module
 
 | Key | Type / choices | Default | Meaning |
 |-----|----------------|---------|---------|
-| `sdram_phy` | `GENSDRPHY`, `ECP5DDRPHY`, `A7DDRPHY`, `K7DDRPHY`, `V7DDRPHY`, `USDDRPHY`, `USPDDRPHY` | required | PHY class from `litedram.phy` (selects the vendor platform and CRG) |
-| `memtype` | `SDR`, `DDR2`, `DDR3`, `DDR4` | required | DRAM type; must match the PHY (GENSDRPHY: SDR, ECP5: DDR3, A7/K7/V7: DDR2/DDR3, US/USP: DDR3/DDR4) |
+| `sdram_phy` | `GENSDRPHY`, `ECP5DDRPHY`, `GW2DDRPHY`, `GW5DDRPHY`, `A7DDRPHY`, `K7DDRPHY`, `V7DDRPHY`, `USDDRPHY`, `USPDDRPHY` | required | PHY class from `litedram.phy` (selects the vendor platform and CRG) |
+| `memtype` | `SDR`, `DDR2`, `DDR3`, `DDR4` | required | DRAM type; must match the PHY (GENSDRPHY: SDR, ECP5/GW2A/GW5A: DDR3, A7/K7/V7: DDR2/DDR3, US/USP: DDR3/DDR4) |
 | `sdram_module` | string | required | SDRAM module/chip class name from `litedram.modules` (e.g. `MT41K128M16`) |
 | `sdram_module_nb` | int | required | Number of byte groups (DQ width = 8 x `sdram_module_nb`, one DM/DQS pair per group) |
 | `sdram_rank_nb` | int | required (DDR2/DDR3/DDR4) | Number of ranks (number of `cs_n`/`cke`/`odt`/`clk` pins) |
 | `cmd_latency` | int | required (A7/K7/V7/US/USP) | Additional command latency added to CL/CWL |
-| `cmd_delay` | int (`< 128`) | `0` | ECP5DDRPHY only: command/address DELAYG delay value |
-| `dm_swap` | bool | `False` | ECP5DDRPHY only: swap DM lines 0 and 1 |
+| `cmd_delay` | int (`< 128`) | `0` | ECP5DDRPHY/GW2DDRPHY/GW5DDRPHY only: command/address delay value |
+| `dm_swap` | bool | `False` | ECP5DDRPHY/GW2DDRPHY/GW5DDRPHY only: swap DM lines 0 and 1 |
+| `dll_off` | bool | `False` | GW2DDRPHY/GW5DDRPHY only: DDR3 DLL-off mode (CL6/CWL6, for DDR clocks <= 125 MHz) |
+| `sdram_rate` | `1:2`, `1:4` | `1:2` | GW5DDRPHY only: PHY frequency ratio (GW2DDRPHY is 1:2) |
 | `with_hpio_vref` | bool | `False` | USPDDRPHY/DDR4 only: per-byte read VREF scan through HPIO_VREF (`rd_vref` CSR) |
 | `hpio_vref_tune` | int (`0`-`72`) | `31` | Read VREF reset code (58 + 0.5 x code % of VCCO for codes 15-72, 31 = 73.5%) |
 
@@ -51,8 +54,8 @@ floats and the strings `"True"`/`"False"`/`"None"` to the Python values; unknown
 
 | Key | Type | Default | Meaning |
 |-----|------|---------|---------|
-| `sys_clk_freq` | float (Hz) | required | System/controller clock; DRAM clock = sys_clk x1 (SDR), x2 (ECP5 DDR3, A7/K7/V7 DDR2) or x4 (A7/K7/V7 DDR3, US/USP) |
-| `input_clk_freq` | float (Hz) | required (ECP5/A7/K7/V7/US/USP) | Input clock (PLL/MMCM reference); GENSDRPHY clocks `sys_clk` directly from `clk` |
+| `sys_clk_freq` | float (Hz) | required | System/controller clock; DRAM clock = sys_clk x1 (SDR), x2 (ECP5/GW2A DDR3, GW5A at 1:2, A7/K7/V7 DDR2) or x4 (GW5A at 1:4, A7/K7/V7 DDR3, US/USP) |
+| `input_clk_freq` | float (Hz) | required (ECP5/GW2A/GW5A/A7/K7/V7/US/USP) | Input clock (PLL/MMCM reference); GENSDRPHY clocks `sys_clk` directly from `clk`; the Gowin PHYs also run their init from it |
 | `iodelay_clk_freq` | float (Hz) | required (A7/K7/V7/US/USP) | IDELAYCTRL reference clock frequency |
 | `init_clk_freq` | float (Hz) | required (ECP5) | ECP5 init clock domain frequency |
 
@@ -107,6 +110,8 @@ options:
 Complete configurations in `examples/`:
 - `ulx3s.yml`: SDR (MT48LC16M16) with the generic SDR PHY on Lattice ECP5.
 - `versa_ecp5.yml`: DDR3 (MT41K64M16) with the ECP5 DDR3 PHY.
+- `tang_primer_20k.yml`: DDR3 (IMD128M16R39CG8GNF) with the Gowin GW2A PHY (1:2).
+- `tang_mega_138k_pro.yml`: DDR3 (H5TQ4G63EFR) with the Gowin GW5A PHY (1:2, DLL-off).
 - `nexys4ddr.yml`: DDR2 (MT47H64M16) with the Artix-7 PHY (1:2).
 - `arty.yml`: DDR3 (MT41K128M16) with the Artix-7 PHY (1:4).
 - `genesys2.yml`: DDR3 (MT41J256M16) with the Kintex-7 PHY.

@@ -1,0 +1,40 @@
+#
+# This file is part of LiteDRAM.
+#
+# Copyright (c) 2026 Florent Kermarrec <florent@enjoy-digital.fr>
+# SPDX-License-Identifier: BSD-2-Clause
+
+# DDR3 on the Sipeed Tang Primer 20K (Gowin GW2A), same settings as the LiteX-Boards target.
+{
+    # General ------------------------------------------------------------------
+    "cpu":        "vexriscv",      # CPU type (ex vexriscv, serv, None)
+    "memtype":    "DDR3",          # DRAM type
+    "uart":       "rs232",         # Type of UART interface (rs232, fifo)
+    "device":     "GW2A-LV18PG256C8/I7", # Gowin device
+    "devicename": "GW2A-18C",      # Gowin device name (PLL configuration)
+
+    # PHY ----------------------------------------------------------------------
+    "cmd_delay":       0,                    # Command/Address delay
+    "sdram_module":    "IMD128M16R39CG8GNF", # SDRAM modules of the board or SO-DIMM
+    "sdram_module_nb": 2,                    # Number of byte groups
+    "sdram_rank_nb":   1,                    # Number of ranks
+    "sdram_phy":       "GW2DDRPHY",          # Type of FPGA PHY
+    "dll_off":         False,                # DDR3 DLL-off mode (CL6/CWL6)
+
+    # Electrical ---------------------------------------------------------------
+    "rtt_nom": "disabled", # Nominal termination
+
+    # Frequency ----------------------------------------------------------------
+    "input_clk_freq": 27e6, # Input clock frequency (also used for the PHY init)
+    "sys_clk_freq":   48e6, # System clock frequency (DDR_clk = 2 x sys_clk)
+
+    # Core ---------------------------------------------------------------------
+    "cmd_buffer_depth": 16, # Depth of the command buffer
+
+    # User Ports ---------------------------------------------------------------
+    "user_ports": {
+        "wishbone_0" : {
+            "type": "wishbone",
+        },
+    },
+}

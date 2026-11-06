@@ -33,3 +33,11 @@ class TestExamples(unittest.TestCase):
     def test_genesys2(self):
         errors = build_config("genesys2")
         self.assertEqual(errors, 0)
+
+    def test_tang_primer_20k(self):
+        errors = build_config("tang_primer_20k")
+        self.assertEqual(errors, 0)
+
+    def test_tang_mega_138k_pro(self):
+        errors = build_config("tang_mega_138k_pro")
+        self.assertEqual(errors, 0)
