@@ -118,7 +118,7 @@ options:
 | `data_width` | int | controller data width | Port data width (crossbar port width; required with `ecc`; FIFO data width for `fifo`) |
 | `ecc` | bool | `False` | `native`/`wishbone`/`avalon`/`axi`: add ECC on the port (`data_width` required; AXI gets read-modify-write) |
 | `id_width` | int | required (`axi`) | AXI ID width |
-| `reorder` | bool | `False` | Experimental: commands in several banks at once, needs `port_reorder_depth` (see Controller). Only tested on `native` ports so far |
+| `reorder` | bool | `False` | Experimental: commands in several banks at once, needs `port_reorder_depth` (see Controller). Tested in simulation with `native`, `wishbone`, `avalon` and `axi` ports at several data widths, and across clock domains |
 | `pipelined` | bool | `False` | `wishbone`: Wishbone B4 pipelined mode (adds a `stall` output, several transfers in flight) instead of classic |
 | `pipelined_depth` | int | `8` | `wishbone`: transfers in flight in pipelined mode |
 | `base` | int | required (`fifo`) | FIFO base address in DRAM (bytes) |
