@@ -1003,6 +1003,14 @@ class LiteDRAMCore(SoCCore):
 
 # Build --------------------------------------------------------------------------------------------
 
+def remove_sim_harness(gateware_dir, name):
+    # The SimPlatform toolchain writes a Verilator harness for a LiteX "sim" top level. A standalone
+    # core is instantiated in the user's testbench, so this harness can only fail: remove it.
+    for filename in [f"build_{name}.sh", "sim_header.h", "sim_init.cpp", "variables.mak"]:
+        path = os.path.join(gateware_dir, filename)
+        if os.path.exists(path):
+            os.remove(path)
+
 def main():
     parser = argparse.ArgumentParser(description="LiteDRAM standalone core generator")
     builder_args(parser)
@@ -1048,6 +1056,8 @@ def main():
     soc     = LiteDRAMCore(platform, core_config, integrated_rom_size=0xC000)
     builder = Builder(soc, **builder_arguments)
     builder.build(build_name=args.name)
+    if args.sim:
+        remove_sim_harness(builder.gateware_dir, args.name)
 
 if __name__ == "__main__":
     main()

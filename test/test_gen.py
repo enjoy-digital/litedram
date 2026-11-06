@@ -4,6 +4,10 @@
 # Copyright (c) 2026 Florent Kermarrec <florent@enjoy-digital.fr>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import os
+import subprocess
+import sys
+import tempfile
 import unittest
 
 from migen import *
@@ -180,6 +184,29 @@ class TestGENSDRPHYCRG(unittest.TestCase):
     def test_input_clk_freq_rejected_outside_ecp5(self):
         with self.assertRaises(ValueError):
             self.crg(device="LCMXO3LF-6900C-5BG256C", input_clk_freq=25e6)
+
+
+class TestGenSim(unittest.TestCase):
+    def test_sim_core_has_no_verilator_harness(self):
+        # The generated core is instantiated in the user's testbench: the "sim" top
+        # level expected by the Verilator harness does not exist (#325).
+        config = """{
+            "cpu": None, "memtype": "DDR3", "cmd_latency": 0, "speedgrade": -1,
+            "sdram_module": "MT41K128M16", "sdram_module_nb": 2, "sdram_rank_nb": 1,
+            "sdram_phy": "A7DDRPHY", "input_clk_freq": 100e6, "sys_clk_freq": 100e6,
+            "iodelay_clk_freq": 200e6, "cmd_buffer_depth": 16,
+            "user_ports": {"native_0": {"type": "native"}},
+        }"""
+        with tempfile.TemporaryDirectory() as d:
+            yml = os.path.join(d, "core.yml")
+            with open(yml, "w") as f:
+                f.write(config)
+            subprocess.run([sys.executable, "-m", "litedram.gen", "--sim", "--no-compile",
+                "--output-dir", d, yml], check=True, capture_output=True)
+            files = os.listdir(os.path.join(d, "gateware"))
+            self.assertIn("litedram_core.v", files)
+            for filename in ["build_litedram_core.sh", "sim_header.h", "sim_init.cpp", "variables.mak"]:
+                self.assertNotIn(filename, files)
 
 
 if __name__ == "__main__":
