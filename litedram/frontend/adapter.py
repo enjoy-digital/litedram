@@ -94,6 +94,124 @@ class LiteDRAMNativePortCDC(Module):
                     )
                 ]
 
+# LiteDRAMNativePortReorder ------------------------------------------------------------------------
+
+class LiteDRAMNativePortReorder(Module):
+    """Let a native port have commands in several banks at once.
+
+    Without it, the crossbar locks a port on a bank until its commands are issued, which is what
+    keeps the port's data in command order. Here, commands carry a tag to the bank machines and the
+    data is kept in buffers so that banks can complete out of order:
+    - Writes: the data is stored when pulled from the master, the cycle after the command is
+      accepted (the native port contract), and sent to the controller from the tag it returns.
+    - Reads: the data is stored at the tag returned by the controller and given back to the master
+      in command order.
+
+    The master sees the usual native port protocol, with up to depth commands in flight per
+    direction. Commands of a bank keep their order, so accesses to a given address do too.
+    """
+    def __init__(self, port_from, port_to, depth):
+        assert port_from.clock_domain == port_to.clock_domain
+        assert port_from.data_width   == port_to.data_width
+        assert depth >= 2 and (depth & (depth - 1)) == 0
+        tag_width = log2_int(depth)
+        port_to.cmd_tag   = Signal(tag_width)
+        port_to.wdata_tag = Signal(tag_width)
+        port_to.rdata_tag = Signal(tag_width)
+
+        # # #
+
+        data_width = port_from.data_width
+        we_width   = data_width//8
+
+        # Write buffer -----------------------------------------------------------------------------
+        wr_mem   = Memory(data_width + we_width, depth)
+        wr_write = wr_mem.get_port(write_capable=True)
+        wr_read  = wr_mem.get_port(async_read=True)
+        self.specials += wr_mem, wr_write, wr_read
+
+        wr_tail    = Signal(tag_width) # Next slot given to a write command.
+        wr_store   = Signal(tag_width) # Next slot to store the master's data in.
+        wr_pending = Signal(tag_width + 1)
+        wr_busy    = Array(Signal() for _ in range(depth))
+        wr_accept  = Signal()
+        wr_pull    = Signal()
+        wr_done    = Signal()
+        self.comb += [
+            wr_pull.eq(wr_pending != 0),
+            port_from.wdata.ready.eq(wr_pull),
+            wr_write.adr.eq(wr_store),
+            wr_write.dat_w.eq(Cat(port_from.wdata.data, port_from.wdata.we)),
+            wr_write.we.eq(wr_pull),
+            wr_read.adr.eq(port_to.wdata_tag),
+            port_to.wdata.valid.eq(1),
+            port_to.wdata.data.eq(wr_read.dat_r[:data_width]),
+            port_to.wdata.we.eq(wr_read.dat_r[data_width:]),
+            wr_done.eq(port_to.wdata.ready),
+        ]
+        self.sync += [
+            If(wr_accept,
+                wr_tail.eq(wr_tail + 1),
+                wr_busy[wr_tail].eq(1),
+            ),
+            If(wr_done, wr_busy[port_to.wdata_tag].eq(0)),
+            If(wr_pull, wr_store.eq(wr_store + 1)),
+            wr_pending.eq(wr_pending + wr_accept - wr_pull),
+        ]
+
+        # Read buffer ------------------------------------------------------------------------------
+        rd_mem   = Memory(data_width, depth)
+        rd_write = rd_mem.get_port(write_capable=True)
+        rd_read  = rd_mem.get_port(async_read=True)
+        self.specials += rd_mem, rd_write, rd_read
+
+        rd_tail   = Signal(tag_width) # Next slot given to a read command.
+        rd_head   = Signal(tag_width) # Next slot to give back to the master.
+        rd_level  = Signal(tag_width + 1)
+        rd_valid  = Array(Signal() for _ in range(depth))
+        rd_accept = Signal()
+        rd_pop    = Signal()
+        self.comb += [
+            port_to.rdata.ready.eq(1),
+            rd_write.adr.eq(port_to.rdata_tag),
+            rd_write.dat_w.eq(port_to.rdata.data),
+            rd_write.we.eq(port_to.rdata.valid),
+            rd_read.adr.eq(rd_head),
+            rd_pop.eq(rd_valid[rd_head]),
+            port_from.rdata.valid.eq(rd_pop),
+            port_from.rdata.data.eq(rd_read.dat_r),
+        ]
+        self.sync += [
+            If(rd_accept, rd_tail.eq(rd_tail + 1)),
+            If(rd_pop,
+                rd_head.eq(rd_head + 1),
+                rd_valid[rd_head].eq(0),
+            ),
+            If(port_to.rdata.valid, rd_valid[port_to.rdata_tag].eq(1)),
+            rd_level.eq(rd_level + rd_accept - rd_pop),
+        ]
+
+        # Command ----------------------------------------------------------------------------------
+        allowed = Signal()
+        self.comb += [
+            If(port_from.cmd.we,
+                allowed.eq(~wr_busy[wr_tail]),
+                port_to.cmd_tag.eq(wr_tail),
+            ).Else(
+                allowed.eq(rd_level != depth),
+                port_to.cmd_tag.eq(rd_tail),
+            ),
+            port_to.cmd.valid.eq(port_from.cmd.valid & allowed),
+            port_to.cmd.we.eq(port_from.cmd.we),
+            port_to.cmd.addr.eq(port_from.cmd.addr),
+            port_to.cmd.last.eq(port_from.cmd.last),
+            port_from.cmd.ready.eq(port_to.cmd.ready & allowed),
+            wr_accept.eq(port_to.cmd.valid & port_to.cmd.ready &  port_to.cmd.we),
+            rd_accept.eq(port_to.cmd.valid & port_to.cmd.ready & ~port_to.cmd.we),
+            port_to.flush.eq(port_from.flush),
+            port_from.lock.eq(port_to.lock),
+        ]
+
 # LiteDRAMNativePortDownConverter ------------------------------------------------------------------
 
 class LiteDRAMNativePortDownConverter(Module):

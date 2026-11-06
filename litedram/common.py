@@ -279,8 +279,14 @@ class TimingSettings(Settings):
 
 # Layouts/Interface --------------------------------------------------------------------------------
 
-def cmd_layout(address_width):
-    return [
+def cmd_layout(address_width, tag_width=0):
+    # tag: optional command tag returned with wdata_ready/rdata_valid (see LiteDRAMNativePortReorder).
+    tags = [] if tag_width == 0 else [
+        ("tag",       tag_width, DIR_M_TO_S),
+        ("wdata_tag", tag_width, DIR_S_TO_M),
+        ("rdata_tag", tag_width, DIR_S_TO_M),
+    ]
+    return tags + [
         ("valid",            1, DIR_M_TO_S),
         ("ready",            1, DIR_S_TO_M),
         ("we",               1, DIR_M_TO_S),
@@ -325,7 +331,8 @@ class LiteDRAMInterface(Record):
         self.nranks   = settings.phy.nranks
         self.settings = settings
 
-        layout = [("bank"+str(i), cmd_layout(self.address_width)) for i in range(self.nbanks)]
+        self.tag_width = log2_int(max(getattr(settings, "port_reorder_depth", 0), 1))
+        layout = [("bank"+str(i), cmd_layout(self.address_width, self.tag_width)) for i in range(self.nbanks)]
         layout += data_layout(self.data_width)
         Record.__init__(self, layout)
 
