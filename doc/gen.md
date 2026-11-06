@@ -9,6 +9,9 @@ $ litedram_gen examples/arty.yml                 # Output in ./build (--output-d
 $ litedram_gen --name my_core examples/arty.yml  # Name of the generated module/files
 $ litedram_gen --sim examples/arty.yml           # Same core built around the DFI-level simulation PHY
 ```
+A `--sim` core has no vendor primitives and no build script: instantiate it in your own testbench,
+with the simulator of your choice.
+
 This produces the Verilog netlist and its memory initialization files under `build/gateware/`,
 the init/calibration firmware under `build/software/` and the register map with `--csr-csv`
 (the usual LiteX `Builder` arguments are accepted). The generated module exposes the DRAM pads,
