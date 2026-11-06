@@ -87,11 +87,19 @@ class TestSDRAMModules(unittest.TestCase):
             }
             speedgrade_timings["default"] = speedgrade_timings["2400"]
         base, fast = Module(100e6, "1:4"), Module(100e6, "1:4", speedgrade="fast")
-        self.assertEqual(base.get("tRRD"), (4, 4.9))
+        self.assertEqual(base.get("tRRD"), (4, 6.4))
         self.assertEqual(base.get_cl_cwl(), (None, None))
         self.assertEqual(fast.get("tRRD"), (4, 20))
         self.assertEqual(fast.timing_settings.tCCD, 2)
         self.assertEqual(fast.get_cl_cwl(), (17, 12))
+
+    def test_ddr4_x16_trrd_uses_2kb_page_limit(self):
+        for name in ["EDY4016A", "MT40A256M16", "MT40A512M16", "MTA4ATF51264HZ"]:
+            cls = getattr(litedram.modules, name)
+            with self.subTest(module=name):
+                self.assertEqual(cls.ngroups, 2) # x16 parts have 2 bank groups.
+                self.assertEqual(cls.technology_timings.tRRD, (4, 6.4))
+                self.assertEqual(cls(400e6, "1:4").timing_settings.tRRD, 4)
 
     def test_ddr4_rdimm_tfaw_uses_ck_minimum(self):
         for name in ["HMA82GR7DJR4N", "M393A2K40DB3"]:
