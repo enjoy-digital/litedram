@@ -147,13 +147,17 @@ class S7DDRPHY(Module, AutoCSR):
         is_rdimm         = False,
         write_latency_calibration = True,
         with_ck_phase_shift       = False,
+        with_dqs_preamble         = False,
         name                      = "ddrphy",
         mmcm_loc                  = None):
         # with_ck_phase_shift: DDR3 1:4 without ODELAYE2, see CK Phase Shift. The PHY then has its
         # own MMCM (optionally placed at mmcm_loc) and clock domains prefixed with name (unique per
         # PHY of a SoC).
+        # with_dqs_preamble: Experimental, not validated on hardware. Drive the DQS preamble/postamble
+        # patterns instead of toggling DQS through these cycles (1:4 only, patterns are 8-bit).
         assert memtype in ["DDR2", "DDR3", "DDR4"]
         assert not (memtype == "DDR3" and nphases == 2)
+        assert not (with_dqs_preamble and nphases != 4)
         if with_ck_phase_shift:
             assert memtype == "DDR3" and nphases == 4 and not with_odelay
             assert ddr_clk is None and not is_rdimm
@@ -443,11 +447,10 @@ class S7DDRPHY(Module, AutoCSR):
         dqs_postamble = Signal()
         dqs_oe_delay  = TappedDelayLine(ntaps=2 if nphases == 4 else 1)
         dqs_pattern   = DQSPattern(
-            #preamble      = dqs_preamble,  # FIXME
-            #postamble     = dqs_postamble, # FIXME
             wlevel_en     = self._wlevel_en.storage,
             wlevel_strobe = wlevel_strobe,
-            register      = not with_odelay)
+            # The preamble is due right after wrdata_en at the lowest write latency: no register.
+            register      = not with_odelay and not with_dqs_preamble)
         self.submodules += dqs_oe_delay, dqs_pattern
         self.comb += dqs_oe_delay.input.eq(dqs_preamble | dqs_oe | dqs_postamble)
         for i in range(strobes):
@@ -677,6 +680,15 @@ class S7DDRPHY(Module, AutoCSR):
         self.comb += If(self._wlevel_en.storage, dqs_oe.eq(1)).Else(dqs_oe.eq(dq_oe))
         self.comb += dqs_preamble.eq(write_control.dqs_preamble)
         self.comb += dqs_postamble.eq(write_control.dqs_postamble)
+        if with_dqs_preamble:
+            dqs_preamble_control = DQSPreambleControl(
+                wrdata_en     = reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]),
+                write_latency = cwl_sys_latency - 1)
+            self.submodules += dqs_preamble_control
+            self.comb += [
+                dqs_pattern.preamble.eq(dqs_preamble_control.preamble),
+                dqs_pattern.postamble.eq(dqs_preamble_control.postamble),
+            ]
 
 
     def add_ck_phase_shift(self, sys_clk_freq, nphases, strobes):
