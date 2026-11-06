@@ -47,6 +47,10 @@ class ControllerSettings(Settings):
         # Address mapping.
         address_mapping     = "ROW_BANK_COL", # Address mapping scheme (e.g., row-bank-column).
 
+        # Out-of-order banks: commands in flight per reorder port (power of 2, 0: disabled), see
+        # LiteDRAMNativePortReorder. Ports use it with crossbar.get_port(reorder=True).
+        port_reorder_depth  = 0,
+
         # Bank byte alignment.
         bank_byte_alignment = 0):             # Minimum byte alignment between bank changes. Ensures a
                                               # specific byte distance between consecutive banks to optimize

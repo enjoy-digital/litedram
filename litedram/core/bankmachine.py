@@ -99,7 +99,8 @@ class BankMachine(Module):
         Stream of commands to the Multiplexer
     """
     def __init__(self, n, address_width, address_align, nranks, settings):
-        self.req = req = Record(cmd_layout(address_width))
+        tag_width = log2_int(max(getattr(settings, "port_reorder_depth", 0), 1))
+        self.req = req = Record(cmd_layout(address_width, tag_width))
         self.refresh_req = refresh_req = Signal()
         self.refresh_gnt = refresh_gnt = Signal()
 
@@ -113,17 +114,25 @@ class BankMachine(Module):
 
         # Command buffer ---------------------------------------------------------------------------
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
+        if tag_width:
+            cmd_buffer_layout += [("tag", tag_width)]
         cmd_buffer_lookahead = stream.SyncFIFO(
             cmd_buffer_layout, settings.cmd_buffer_depth,
             buffered=settings.cmd_buffer_buffered)
         cmd_buffer = stream.Buffer(cmd_buffer_layout) # 1 depth buffer to detect row change
         self.submodules += cmd_buffer_lookahead, cmd_buffer
         self.comb += [
-            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"}),
+            req.connect(cmd_buffer_lookahead.sink, keep={"valid", "ready", "we", "addr"} | ({"tag"} if tag_width else set())),
             cmd_buffer_lookahead.source.connect(cmd_buffer.sink),
             cmd_buffer.source.ready.eq(req.wdata_ready | req.rdata_valid),
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
         ]
+
+        if tag_width:
+            self.comb += [
+                req.wdata_tag.eq(cmd_buffer.source.tag),
+                req.rdata_tag.eq(cmd_buffer.source.tag),
+            ]
 
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
