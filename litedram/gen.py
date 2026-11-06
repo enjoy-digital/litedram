@@ -44,9 +44,12 @@ from litex.build.tools            import replace_in_file
 from litex.build.generic_platform import *
 from litex.build.xilinx           import XilinxPlatform
 from litex.build.lattice          import LatticePlatform
+from litex.build.gowin.platform   import GowinPlatform
 from litex.build.sim              import SimPlatform
 
 from litex.soc.cores.clock          import *
+from litex.soc.cores.clock.gowin_gw2a import GW2APLL
+from litex.soc.cores.clock.gowin_gw5a import GW5APLL
 from litex.soc.integration.soc import *
 from litex.soc.integration.builder  import *
 from litex.soc.interconnect         import wishbone
@@ -402,6 +405,66 @@ class LiteDRAMECP5DDRPHYCRG(LiteXModule):
         ]
         self.comb += platform.request("pll_locked").eq(pll.locked)
 
+class LiteDRAMGowinDDRPHYCRG(LiteXModule):
+    def __init__(self, platform, core_config, pll_cls, nphases=2):
+        assert core_config["memtype"] in ["DDR3"]
+        self.rst     = Signal()
+        self.cd_init = ClockDomain()
+        self.cd_por  = ClockDomain(reset_less=True)
+        self.cd_sys  = ClockDomain()
+        cd_ddr   = ClockDomain(f"sys{nphases}x")
+        cd_ddr_i = ClockDomain(f"sys{nphases}x_i", reset_less=True)
+        setattr(self, f"cd_sys{nphases}x",   cd_ddr)
+        setattr(self, f"cd_sys{nphases}x_i", cd_ddr_i)
+
+        # # #
+
+        self.stop  = Signal()
+        self.reset = Signal()
+
+        # Clk / Rst.
+        clk = platform.request("clk")
+        rst = platform.request("rst")
+
+        # Power On Reset.
+        por_count = Signal(16, reset=2**16-1)
+        por_done  = Signal()
+        self.comb += self.cd_por.clk.eq(clk)
+        self.comb += por_done.eq(por_count == 0)
+        self.sync.por += If(~por_done, por_count.eq(por_count - 1))
+
+        # PLL: only the DDR clock comes from the PLL, sys is divided from it so that both stay
+        # phase-aligned across the PHY stop/reset sequence (same scheme as the LiteX-Boards targets).
+        self.pll = pll = pll_cls(devicename=platform.devicename, device=platform.device)
+        self.comb += pll.reset.eq(~por_done | rst | self.rst)
+        pll.register_clkin(clk, core_config["input_clk_freq"])
+        pll.create_clkout(cd_ddr_i, nphases*core_config["sys_clk_freq"])
+        if pll_cls is GW2APLL:
+            self.specials += Instance("DHCEN",
+                i_CLKIN  = cd_ddr_i.clk,
+                i_CE     = self.stop,
+                o_CLKOUT = cd_ddr.clk)
+        else:
+            self.specials += Instance("DHCE",
+                i_CLKIN  = cd_ddr_i.clk,
+                i_CEN    = self.stop,
+                o_CLKOUT = cd_ddr.clk)
+        self.specials += [
+            Instance("CLKDIV",
+                p_DIV_MODE = str(nphases),
+                i_CALIB    = 0,
+                i_HCLKIN   = cd_ddr.clk,
+                i_RESETN   = ~self.reset,
+                o_CLKOUT   = self.cd_sys.clk),
+            AsyncResetSynchronizer(self.cd_sys, ~pll.locked | self.reset),
+            AsyncResetSynchronizer(cd_ddr,      ~pll.locked | self.reset),
+        ]
+        self.comb += platform.request("pll_locked").eq(pll.locked)
+
+        # Init clock domain: the PHY init runs from the input clock.
+        self.comb += self.cd_init.clk.eq(clk)
+        self.comb += self.cd_init.rst.eq(pll.reset)
+
 class LiteDRAMS7DDRPHYCRG(LiteXModule):
     def __init__(self, platform, core_config):
         assert core_config["memtype"] in ["DDR2", "DDR3"]
@@ -605,6 +668,13 @@ class LiteDRAMCore(SoCCore):
         elif core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
             crg  = LiteDRAMECP5DDRPHYCRG(platform, core_config)
             rate = {"DDR3": "1:2"}[core_config["memtype"]]
+        elif core_config["sdram_phy"] in [litedram_phys.GW2DDRPHY]:
+            crg  = LiteDRAMGowinDDRPHYCRG(platform, core_config, pll_cls=GW2APLL, nphases=2)
+            rate = {"DDR3": "1:2"}[core_config["memtype"]]
+        elif core_config["sdram_phy"] in [litedram_phys.GW5DDRPHY]:
+            rate = core_config.get("sdram_rate", "1:2")
+            assert rate in ["1:2", "1:4"]
+            crg  = LiteDRAMGowinDDRPHYCRG(platform, core_config, pll_cls=GW5APLL, nphases=int(rate[-1]))
         elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
             crg  = LiteDRAMS7DDRPHYCRG(platform, core_config)
             rate = {"DDR2": "1:2", "DDR3": "1:4"}[core_config["memtype"]]
@@ -656,6 +726,24 @@ class LiteDRAMCore(SoCCore):
                 pads         = platform.request("ddram"),
                 sys_clk_freq = sys_clk_freq,
                 cmd_delay    = core_config.get("cmd_delay", 0),
+                **kwargs)
+            self.ddrphy.settings.add_electrical_settings(**electrical_settings_kwargs)
+            self.comb += crg.stop.eq(self.ddrphy.init.stop)
+            self.comb += crg.reset.eq(self.ddrphy.init.reset)
+
+        # GW2DDRPHY / GW5DDRPHY.
+        elif core_config["sdram_phy"] in [litedram_phys.GW2DDRPHY, litedram_phys.GW5DDRPHY]:
+            assert core_config["memtype"] in ["DDR3"]
+            kwargs = {}
+            if core_config.get("dm_swap", False):
+                kwargs["dm_remapping"] = {0:1, 1:0}
+            if core_config["sdram_phy"] is litedram_phys.GW5DDRPHY:
+                kwargs["nphases"] = int(rate[-1])
+            self.ddrphy = sdram_phy = core_config["sdram_phy"](
+                pads         = platform.request("ddram"),
+                sys_clk_freq = sys_clk_freq,
+                cmd_delay    = core_config.get("cmd_delay", 0),
+                dll_off      = core_config.get("dll_off", False),
                 **kwargs)
             self.ddrphy.settings.add_electrical_settings(**electrical_settings_kwargs)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
@@ -912,6 +1000,8 @@ def main():
         platform = LatticePlatform(core_config["device"], io=[], toolchain="trellis") # FIXME: Allow other Vendors.
     elif core_config["sdram_phy"] in [litedram_phys.ECP5DDRPHY]:
         platform = LatticePlatform(core_config["device"], io=[], toolchain="trellis")
+    elif core_config["sdram_phy"] in [litedram_phys.GW2DDRPHY, litedram_phys.GW5DDRPHY]:
+        platform = GowinPlatform(core_config["device"], io=[], toolchain="gowin", devicename=core_config["devicename"])
     elif core_config["sdram_phy"] in [litedram_phys.A7DDRPHY, litedram_phys.K7DDRPHY, litedram_phys.V7DDRPHY]:
         platform = XilinxPlatform("", io=[], toolchain="vivado")
     elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:
