@@ -19,6 +19,106 @@ from litedram.common           import LiteDRAMNativePort
 from litedram.frontend.adapter import LiteDRAMNativePortConverter
 
 
+# LiteDRAMWishbonePipelined2Native -----------------------------------------------------------------
+
+class LiteDRAMWishbonePipelined2Native(LiteXModule):
+    """Wishbone B4 pipelined slave on a LiteDRAM native port.
+
+    A beat is accepted on every cycle with cyc & stb & ~stall and the acks come later, in order, one
+    per transfer (with dat_r for reads): up to `depth` transfers can be in flight. LiteX's Wishbone
+    Interface has no stall signal, it is the `stall` attribute of this module. The Wishbone and
+    native port data widths must match (adapt the native port with crossbar.get_port(data_width=...)).
+    Classic masters (stb held until ack) must use LiteDRAMWishbone2Native: their held stb would be
+    seen as repeated beats here.
+    """
+    def __init__(self, wishbone, port, base_address=0x00000000, depth=8):
+        assert wishbone.addressing == "word"
+        assert len(wishbone.dat_w) == port.data_width
+        assert depth >= 1
+        self.stall = Signal()
+
+        # # #
+
+        offset = base_address >> log2_int(port.data_width//8)
+
+        # Transfers in flight (in order), the write data the native port pulls in order and the read
+        # data waiting to be acked in order.
+        pending = stream.SyncFIFO([("we", 1)], depth)
+        wdata   = stream.SyncFIFO([("data", port.data_width), ("we", port.data_width//8)], depth)
+        rdata   = stream.SyncFIFO([("data", port.data_width)], depth)
+        self.submodules += pending, wdata, rdata
+
+        # Abort: cyc dropped with transfers in flight, complete them silently and stall new beats
+        # until they are drained.
+        aborted = Signal()
+        self.sync += [
+            If(~wishbone.cyc & pending.source.valid,
+                aborted.eq(1)
+            ).Elif(~pending.source.valid,
+                aborted.eq(0)
+            )
+        ]
+
+        # Command: a beat is accepted when cyc & stb & ~stall. cmd.ready is combinational from
+        # cmd.valid, so cmd.valid must not depend on stall (nor on cmd.ready).
+        can_accept = Signal()
+        accept     = Signal()
+        self.comb += [
+            can_accept.eq(~aborted & pending.sink.ready & wdata.sink.ready),
+            port.cmd.valid.eq(wishbone.cyc & wishbone.stb & can_accept),
+            port.cmd.we.eq(wishbone.we),
+            port.cmd.addr.eq(wishbone.adr - offset),
+            port.cmd.last.eq(~wishbone.we),
+            port.flush.eq(~wishbone.cyc),
+            self.stall.eq(~(port.cmd.ready & can_accept)),
+            accept.eq(port.cmd.valid & port.cmd.ready),
+            pending.sink.valid.eq(accept),
+            pending.sink.we.eq(wishbone.we),
+            wdata.sink.valid.eq(accept & wishbone.we),
+            wdata.sink.data.eq(wishbone.dat_w),
+            wdata.sink.we.eq(wishbone.sel),
+        ]
+
+        # Write data: pulled by the native port (wdata.ready pulse) in command order, available
+        # from the cycle after the command acceptance.
+        wdone = Signal()
+        self.comb += [
+            port.wdata.valid.eq(wdata.source.valid),
+            port.wdata.data.eq(wdata.source.data),
+            port.wdata.we.eq(wdata.source.we),
+            wdata.source.ready.eq(port.wdata.ready),
+            wdone.eq(wdata.source.valid & wdata.source.ready),
+        ]
+
+        # Read data: returned in command order (rdata.ready is ignored by the controller), buffered
+        # until acked; the pending FIFO bounds the reads in flight to the buffer depth.
+        self.comb += [
+            port.rdata.ready.eq(1),
+            rdata.sink.valid.eq(port.rdata.valid),
+            rdata.sink.data.eq(port.rdata.data),
+        ]
+
+        # Acks: one per transfer, in command order. Completed writes are counted, read data waits in
+        # rdata, so a write and a read completing in the same cycle are both acked.
+        wcount = Signal(max=depth + 1)
+        ack_w  = Signal()
+        ack_r  = Signal()
+        self.comb += [
+            ack_w.eq(pending.source.valid &  pending.source.we & (wcount != 0)),
+            ack_r.eq(pending.source.valid & ~pending.source.we & rdata.source.valid),
+            pending.source.ready.eq(ack_w | ack_r),
+            rdata.source.ready.eq(ack_r),
+            wishbone.ack.eq((ack_w | ack_r) & wishbone.cyc & ~aborted),
+            wishbone.dat_r.eq(rdata.source.data),
+        ]
+        self.sync += [
+            If(wdone & ~ack_w,
+                wcount.eq(wcount + 1)
+            ).Elif(~wdone & ack_w,
+                wcount.eq(wcount - 1)
+            )
+        ]
+
 # LiteDRAMWishbone2Native --------------------------------------------------------------------------
 
 class LiteDRAMWishbone2Native(LiteXModule):

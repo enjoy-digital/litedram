@@ -5,6 +5,7 @@
 # Copyright (c) 2020 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
+import random
 import unittest
 
 from migen import *
@@ -12,6 +13,7 @@ from litex.gen.sim import run_simulation
 from litex.soc.interconnect import wishbone
 
 from litedram.frontend.wishbone import LiteDRAMWishbone2Native, LiteDRAMNative2Wishbone
+from litedram.frontend.wishbone import LiteDRAMWishbonePipelined2Native
 from litedram.common import LiteDRAMNativePort
 
 from test.common import DRAMMemory, MemoryTestDataMixin, NativePortDriver, timeout_generator
@@ -547,3 +549,164 @@ class TestNative2Wishbone(unittest.TestCase):
         for data_width in [32, 64]:
             with self.subTest(data_width=data_width):
                 self.native2wishbone_wait_states_test(data_width, 2, "byte", base_address=0x40000000)
+
+
+class PipelinedNativePortModel:
+    """Native port model with several commands in flight.
+
+    Accepts commands whenever cmd.ready is high (random stalls with cmd_ready_random %) and
+    completes them in order `latency` cycles later: a one-cycle wdata.ready pulse for writes, with
+    the data sampled on that cycle whatever wdata.valid is (as the controller does), a one-cycle
+    rdata.valid pulse for reads.
+    """
+    def __init__(self, port, mem, latency=4, cmd_ready_random=0):
+        self.port             = port
+        self.mem              = mem
+        self.latency          = latency
+        self.cmd_ready_random = cmd_ready_random
+
+    @passive
+    def handler(self):
+        prng       = random.Random(42)
+        pending    = []
+        completing = None
+        cycle      = 0
+        while True:
+            # Handshakes of the current cycle.
+            if completing is not None:
+                self.mem._write(completing, (yield self.port.wdata.data), (yield self.port.wdata.we))
+                completing = None
+            if (yield self.port.cmd.valid) and (yield self.port.cmd.ready):
+                pending.append((cycle + self.latency, (yield self.port.cmd.we), (yield self.port.cmd.addr)))
+            # Drive the next cycle.
+            yield self.port.wdata.ready.eq(0)
+            yield self.port.rdata.valid.eq(0)
+            if pending and pending[0][0] <= cycle:
+                _, we, addr = pending.pop(0)
+                if we:
+                    yield self.port.wdata.ready.eq(1)
+                    completing = addr
+                else:
+                    yield self.port.rdata.valid.eq(1)
+                    yield self.port.rdata.data.eq(self.mem._read(addr))
+            yield self.port.cmd.ready.eq(prng.randrange(100) >= self.cmd_ready_random)
+            yield
+            cycle += 1
+
+
+class TestWishbonePipelined(unittest.TestCase):
+    def pipelined_master(self, wb, stall, ops, acks, stats, abort_after=None):
+        # Wishbone B4 pipelined master: presents the beats of ops [(we, adr, dat_w), ...] back to
+        # back (holding a beat while stall is high), collects the acks (dat_r for reads) in acks and
+        # the maximum number of transfers in flight in stats. With abort_after, drops cyc once that
+        # many beats have been accepted.
+        yield wb.cyc.eq(1)
+        yield wb.sel.eq(2**len(wb.sel) - 1)
+        yield wb.stb.eq(1)
+        yield wb.we.eq(ops[0][0])
+        yield wb.adr.eq(ops[0][1])
+        yield wb.dat_w.eq(ops[0][2])
+        yield
+        i           = 0
+        outstanding = 0
+        stats["max_outstanding"] = 0
+        for _ in range(2000):
+            if (yield wb.ack):
+                acks.append((yield wb.dat_r))
+                outstanding -= 1
+            if i < len(ops) and (yield wb.stb) and not (yield stall):
+                i           += 1
+                outstanding += 1
+                stats["max_outstanding"] = max(stats["max_outstanding"], outstanding)
+                if abort_after is not None and i == abort_after:
+                    yield wb.stb.eq(0)
+                    yield wb.cyc.eq(0)
+                    yield
+                    return
+                if i < len(ops):
+                    yield wb.we.eq(ops[i][0])
+                    yield wb.adr.eq(ops[i][1])
+                    yield wb.dat_w.eq(ops[i][2])
+                else:
+                    yield wb.stb.eq(0)
+            if len(acks) == len(ops):
+                break
+            yield
+        yield wb.cyc.eq(0)
+        yield
+
+    def pipelined_dut(self, depth=8):
+        class DUT(Module):
+            def __init__(self):
+                self.wb   = wishbone.Interface(adr_width=30, data_width=32)
+                self.port = LiteDRAMNativePort("both", address_width=30, data_width=32)
+                self.bridge = LiteDRAMWishbonePipelined2Native(self.wb, self.port, depth=depth)
+                self.submodules += self.bridge
+                self.mem  = DRAMMemory(32, 32)
+        return DUT()
+
+    def pipelined_test(self, latency, cmd_ready_random, depth=8, nops=8):
+        dut     = self.pipelined_dut(depth)
+        pattern = [seed_to_data(i, nbits=32) for i in range(nops)]
+        ops     = [(1, i, pattern[i]) for i in range(nops)] + [(0, i, 0) for i in range(nops)]
+        acks, stats = [], {}
+        model = PipelinedNativePortModel(dut.port, dut.mem, latency=latency, cmd_ready_random=cmd_ready_random)
+        run_simulation(dut, [
+            self.pipelined_master(dut.wb, dut.bridge.stall, ops, acks, stats),
+            model.handler(),
+            timeout_generator(3000),
+        ])
+        # One ack per transfer, in order, the reads returning the written pattern.
+        self.assertEqual(len(acks), 2*nops)
+        self.assertEqual(acks[nops:], pattern)
+        self.assertEqual(dut.mem.mem[:nops], pattern)
+        return stats
+
+    def test_wishbone_pipelined_back_to_back(self):
+        # With an immediately ready controller, several transfers are in flight (no wait for ack).
+        stats = self.pipelined_test(latency=4, cmd_ready_random=0)
+        self.assertGreaterEqual(stats["max_outstanding"], 2)
+
+    def test_wishbone_pipelined_random_stalls(self):
+        # Random cmd.ready stalls: stall is honored and the acks stay in order.
+        self.pipelined_test(latency=6, cmd_ready_random=50)
+
+    def test_wishbone_pipelined_depth(self):
+        # A slow controller: no more than depth transfers in flight, then stall.
+        stats = self.pipelined_test(latency=40, cmd_ready_random=0, depth=4, nops=8)
+        self.assertEqual(stats["max_outstanding"], 4)
+
+    def test_wishbone_pipelined_sequential_controller(self):
+        # The DRAMMemory handlers (one command at a time, cmd.ready after cmd.valid): stall holds
+        # the master until the controller takes the command.
+        dut     = self.pipelined_dut()
+        pattern = [seed_to_data(i, nbits=32) for i in range(8)]
+        ops     = [(1, i, pattern[i]) for i in range(8)] + [(0, i, 0) for i in range(8)]
+        acks, stats = [], {}
+        run_simulation(dut, [
+            self.pipelined_master(dut.wb, dut.bridge.stall, ops, acks, stats),
+            dut.mem.write_handler(dut.port),
+            dut.mem.read_handler(dut.port),
+            timeout_generator(3000),
+        ])
+        self.assertEqual(len(acks), 16)
+        self.assertEqual(acks[8:], pattern)
+
+    def test_wishbone_pipelined_abort(self):
+        # cyc dropped with 4 writes in flight: no ack for them, the bridge drains them and serves
+        # the next transaction (whose read sees the writes, the controller had accepted them).
+        dut   = self.pipelined_dut()
+        model = PipelinedNativePortModel(dut.port, dut.mem, latency=8)
+        pattern = [seed_to_data(i, nbits=32) for i in range(4)]
+        acks1, acks2, stats = [], [], {}
+
+        def main_generator():
+            yield from self.pipelined_master(dut.wb, dut.bridge.stall, [(1, i, pattern[i]) for i in range(4)], acks1, stats, abort_after=4)
+            for _ in range(32):
+                acks1.append((yield dut.wb.ack)) if (yield dut.wb.ack) else None
+                yield
+            yield from self.pipelined_master(dut.wb, dut.bridge.stall, [(1, 4, 0xcafe), (0, 1, 0), (0, 4, 0)], acks2, stats)
+
+        run_simulation(dut, [main_generator(), model.handler(), timeout_generator(3000)])
+        self.assertEqual(acks1, [])
+        self.assertEqual(acks2, [0, pattern[1], 0xcafe])
