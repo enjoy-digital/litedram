@@ -207,7 +207,7 @@ def get_native_user_port_ios(_id, aw, dw):
         ),
     ]
 
-def get_wishbone_user_port_ios(_id, aw, dw):
+def get_wishbone_user_port_ios(_id, aw, dw, pipelined=False):
     return [
         ("user_port_{}".format(_id), 0,
             Subsignal("adr",   Pins(aw)),
@@ -219,6 +219,7 @@ def get_wishbone_user_port_ios(_id, aw, dw):
             Subsignal("ack",   Pins(1)),
             Subsignal("we",    Pins(1)),
             Subsignal("err",   Pins(1)),
+            *([Subsignal("stall", Pins(1))] if pipelined else []), # Wishbone B4 pipelined mode.
         ),
     ]
 
@@ -880,12 +881,22 @@ class LiteDRAMCore(SoCCore):
                 wb_port = wishbone.Interface(
                     user_port.data_width,
                     user_port.address_width)
-                wishbone2native = LiteDRAMWishbone2Native(wb_port, user_port)
+                # Classic (default) or B4 pipelined (stall output, several transfers in flight).
+                pipelined = port.get("pipelined", False)
+                if pipelined:
+                    wishbone2native = LiteDRAMWishbonePipelined2Native(wb_port, user_port,
+                        depth = port.get("pipelined_depth", 8))
+                else:
+                    wishbone2native = LiteDRAMWishbone2Native(wb_port, user_port)
                 self.submodules += wishbone2native
                 platform.add_extension(get_wishbone_user_port_ios(name,
                         len(wb_port.adr),
-                        len(wb_port.dat_w)))
+                        len(wb_port.dat_w),
+                        pipelined))
                 _wb_port_io = platform.request("user_port_{}".format(name))
+                if pipelined:
+                    # Hold the master while the port is blocked: a beat it presents must not look accepted.
+                    self.comb += _wb_port_io.stall.eq(wishbone2native.stall | ~user_enable)
                 self.comb += [
                     wb_port.adr.eq(_wb_port_io.adr),
                     wb_port.dat_w.eq(_wb_port_io.dat_w),

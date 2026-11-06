@@ -102,6 +102,8 @@ options:
 | `data_width` | int | controller data width | Port data width (crossbar port width; required with `ecc`; FIFO data width for `fifo`) |
 | `ecc` | bool | `False` | `native`/`wishbone`/`avalon`/`axi`: add ECC on the port (`data_width` required; AXI gets read-modify-write) |
 | `id_width` | int | required (`axi`) | AXI ID width |
+| `pipelined` | bool | `False` | `wishbone`: Wishbone B4 pipelined mode (adds a `stall` output, several transfers in flight) instead of classic |
+| `pipelined_depth` | int | `8` | `wishbone`: transfers in flight in pipelined mode |
 | `base` | int | required (`fifo`) | FIFO base address in DRAM (bytes) |
 | `depth` | int | required (`fifo`) | FIFO depth (bytes) |
 
@@ -151,22 +153,30 @@ without it the master has to wait for `init_done` itself.
 
 ## Wishbone port protocol
 
-A `wishbone` user port is a Wishbone **classic** slave (`adr`, `dat_w`, `dat_r`, `sel`, `cyc`,
-`stb`, `we`, `ack`, `err`), as everywhere in LiteX: one transfer at a time, `cyc` and `stb` held
+By default a `wishbone` user port is a Wishbone **classic** slave (`adr`, `dat_w`, `dat_r`, `sel`,
+`cyc`, `stb`, `we`, `ack`, `err`), as everywhere in LiteX: one transfer at a time, `cyc` and `stb` held
 high until the `ack` cycle, the next transfer only after it. `adr` is in port words
 (`data_width/8` bytes), `err` is never asserted and, with `block_until_ready`, the port does not
 answer before the DRAM init is done.
 
-There is no `stall` and no pipelined (Wishbone B4) mode: a master that pulses `stb` for one cycle
-per transfer and counts the `ack`s later is not supported. The bridge only looks at `stb` while it
-waits for a command, so the second pulse is lost while the first transfer is in flight, and the
+The classic port has no `stall` and no pipelining: a master that pulses `stb` for one cycle per
+transfer and counts the `ack`s later is not supported by it. The bridge only looks at `stb` while
+it waits for a command, so the second pulse is lost while the first transfer is in flight, and the
 master then waits forever for an `ack` that will never come. `cmd_buffer_depth` is not involved:
-it is the depth of the controller's per-bank command queues, which only the native and AXI ports
-(several commands in flight) can fill.
+it is the depth of the controller's per-bank command queues, which the native, AXI and pipelined
+Wishbone ports (several commands in flight) can fill.
+
+**Pipelined mode** (`"pipelined": true` on the port) makes the port a Wishbone B4 pipelined slave
+with a `stall` output: a beat is accepted on every cycle where `cyc` and `stb` are high and `stall`
+is low, the master can present the next beat right after, and the `ack`s (with `dat_r` for reads)
+come later, in order, one per transfer. Up to `pipelined_depth` transfers (default 8) are in
+flight before `stall` is held. A classic master must not be connected to a pipelined port: its
+`stb` held until `ack` would be seen as repeated beats. Dropping `cyc` with transfers in flight
+aborts them: no `ack`, and new beats are stalled until they are drained.
 
 For more throughput than one transfer per round trip, use the full port `data_width` (one
-transfer moves a whole DRAM word), an `axi` port (several outstanding bursts) or a `native` port.
-`cti`/`bte` are not exposed, so every transfer is a single classic cycle.
+transfer moves a whole DRAM word), the pipelined mode, an `axi` port (several outstanding bursts)
+or a `native` port. `cti`/`bte` are not exposed, so every transfer is a single cycle.
 
 A core generated with `--sim` (the same core around the DFI-level DRAM model) is the simplest way
 to check a master against these rules before going to hardware.
