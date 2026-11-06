@@ -102,6 +102,53 @@ options:
 | `base` | int | required (`fifo`) | FIFO base address in DRAM (bytes) |
 | `depth` | int | required (`fifo`) | FIFO depth (bytes) |
 
+## Native port protocol
+
+A `native` user port is the controller's own interface (`LiteDRAMNativePort` in Python, exposed
+as `user_port_<name>_*` by the generated core). It is three independent channels in the `user_clk`
+domain, and the Wishbone/Avalon/AXI user ports are bridges built on it (`litedram/frontend/`).
+Masters that do not speak it natively should prefer one of those: the bridge then owns the
+handshakes described here.
+
+| Channel | Signals | Direction (core side) |
+|---------|---------|-----------------------|
+| Command | `cmd_valid`, `cmd_ready`, `cmd_we`, `cmd_addr` | in, out, in, in |
+| Write data | `wdata_valid`, `wdata_ready`, `wdata_we`, `wdata_data` | in, out, in, in |
+| Read data | `rdata_valid`, `rdata_ready`, `rdata_data` | out, in, out |
+
+`cmd_addr` is in port words (`data_width/8` bytes). The port `data_width` is the controller's
+unless the `data_width` option is set: DRAM data width x 2 x frequency ratio, e.g. 128 bits for
+a x16 DDR3 at 1:4, 512 bits for a x64 DDR3/DDR4 at 1:4. `wdata_we` has one bit per byte, `1`
+writes the byte.
+
+**Command channel.** A command is accepted on a cycle where `cmd_valid` and `cmd_ready` are both
+high; `cmd_we` selects a write (`1`) or a read (`0`) of one port word. `cmd_ready` is
+combinational from `cmd_valid` (and the controller state), so `cmd_valid` must not depend on
+`cmd_ready`. Several commands can be outstanding: each bank queues up to `cmd_buffer_depth`
+commands, and the crossbar does not grant a port in another bank while it has pending commands
+in one, so the commands of a port always execute and complete in order.
+
+**Write data channel.** The controller does not wait for `wdata_valid` (it is currently ignored).
+For every accepted write command it asserts `wdata_ready` for one cycle when the write is sent to
+the DRAM and samples `wdata_data`/`wdata_we` on that cycle. The master has to present the data of
+its oldest accepted write from the acceptance of the command until that pulse, and move to the
+next write's data on the pulse. On an idle controller the pulse comes a few cycles after the
+command; data presented later is not waited for: the write goes out with whatever is on the bus
+and the pulse is lost, which corrupts the data and deadlocks a master waiting for the handshake.
+A FIFO filled with the data when the command is accepted and popped by `wdata_ready` is the usual
+implementation (see `LiteDRAMWishbone2Native` in `litedram/frontend/wishbone.py`).
+
+**Read data channel.** For every accepted read command, `rdata_valid` is high for one cycle with
+the data on `rdata_data`, in command order. `rdata_ready` is ignored: the data has to be captured
+(or buffered) on that cycle.
+
+**Reset and init.** The port is only meaningful in `user_clk`/`user_rst`. With `block_until_ready`
+(the default) the three channels are held off until `init_done` is set without `init_error`;
+without it the master has to wait for `init_done` itself.
+
+A core generated with `--sim` (the same core around the DFI-level DRAM model) is the simplest way
+to check a master against these rules before going to hardware.
+
 ## Examples
 
 Complete configurations in `examples/`:
