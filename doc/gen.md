@@ -120,6 +120,29 @@ options:
 | `base` | int | required (`fifo`) | FIFO base address in DRAM (bytes) |
 | `depth` | int | required (`fifo`) | FIFO depth (bytes) |
 
+## Initialization with `cpu: None`
+
+With a CPU in the core, its firmware initializes the DRAM at boot. With `cpu: None` there is no
+firmware: the core exposes a `wb_ctrl` Wishbone slave and your own logic or software has to do it.
+
+**Addresses.** `csr.csv` and `csr.h` give byte addresses, while `wb_ctrl_adr` is a word address:
+shift right by 2 (a register at `0x1004` is `wb_ctrl_adr = 0x401`).
+
+**Sequence.** The generated `sdram_phy.h` has `init_sequence()`, but this only sends the JEDEC
+commands. A complete initialization, as done by `sdram_init()` in LiteX's `liblitedram`, is:
+1. Switch the DFI to software control (`sdram_dfii_control`).
+2. Reset the PHY (`ddrphy_rst`), on the PHYs that have it.
+3. Run `init_sequence()`.
+4. Run the write and read leveling, on the PHYs that support it.
+5. Switch the DFI back to hardware control.
+6. Optionally run a memory test.
+7. Write `1` to `ddrctrl_init_done` (and to `ddrctrl_init_error` on failure).
+
+**Step 7 is required with `block_until_ready`** (the default): the user ports do not answer until
+`ddrctrl_init_done` is set, so a Wishbone port never acks and a native port never accepts a command.
+`init_sequence()` does not write it. This also applies to a `--sim` core: it needs no DRAM
+initialization, but the ports stay blocked until this register is written.
+
 ## Native port protocol
 
 A `native` user port is the controller's own interface (`LiteDRAMNativePort` in Python, exposed
