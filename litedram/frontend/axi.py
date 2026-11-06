@@ -252,9 +252,10 @@ class LiteDRAMAXI2NativeW(Module):
             )
             rmw_fsm.act("READ",
                 self.rmw_request.eq(1),
-                # Issue Read Cmd.
+                # Issue Read Cmd. Last, even in a burst: MODIFY waits for this read's data and no other
+                # command follows it, an up-converter must not wait for more words to gather.
                 port.cmd.valid.eq(1),
-                port.cmd.last.eq(aw.last),
+                port.cmd.last.eq(1),
                 port.cmd.we.eq(0),
                 port.cmd.addr.eq((aw.addr - base_address) >> ashift),
                 If(port.cmd.ready,
