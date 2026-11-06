@@ -76,6 +76,11 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertEqual(cls.speedgrade_timings["2133"].tCCD, (4, 5.355))
         self.assertEqual(cls(200e6, "1:4").timing_settings.tCCD, 2) # 5ns period < 5.355ns.
 
+    def test_ddr4_2133_x8_trrd_override(self):
+        cls = litedram.modules.KVR21SE15S84
+        self.assertEqual(cls.speedgrade_timings["2133"].tRRD, (4, 5.3))
+        self.assertEqual(cls(100e6, "1:4").get("tRRD"), (4, 5.3))
+
     def test_speedgrade_overrides(self):
         _SG = litedram.modules._SpeedgradeTimings
         kwargs = dict(tRP=13.32, tRCD=13.32, tWR=15, tFAW=(28, 35), tRAS=32)

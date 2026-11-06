@@ -1266,7 +1266,7 @@ class KVR21SE15S84(DDR4Module):
     trfc  = {"1x": (None, 350), "2x": (None, 260),   "4x": (None, 160)}
     technology_timings = _TechnologyTimings(tREFI=trefi, tWTR=(4, 7.5), tCCD=(4, 5), tRRD=(4, 4.9), tZQCS=(128, 80))
     speedgrade_timings = {
-        "2133": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=33, tCCD=(4, 5.355)),
+        "2133": _SpeedgradeTimings(tRP=13.5, tRCD=13.5, tWR=15, tRFC=trfc, tFAW=(20, 25), tRAS=33, tCCD=(4, 5.355), tRRD=(4, 5.3)),
     }
     speedgrade_timings["default"] = speedgrade_timings["2133"]
 
