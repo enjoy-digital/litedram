@@ -20,7 +20,7 @@ from litex.gen.sim      import run_simulation
 from litedram import modules as litedram_modules
 from litedram import phy     as litedram_phys
 from litedram.frontend.axi import LiteDRAMAXIPort
-from litedram.gen import LiteDRAMCore, LiteDRAMGENSDRPHYCRG, connect_axi_user_port, get_common_ios
+from litedram.gen import LiteDRAMCore, LiteDRAMGENSDRPHYCRG, connect_axi_user_port, get_cl_cwl_kwargs, get_common_ios
 
 
 axi_user_port_layout = [
@@ -184,6 +184,16 @@ class TestGENSDRPHYCRG(unittest.TestCase):
     def test_input_clk_freq_rejected_outside_ecp5(self):
         with self.assertRaises(ValueError):
             self.crg(device="LCMXO3LF-6900C-5BG256C", input_clk_freq=25e6)
+
+
+class TestGenClCwl(unittest.TestCase):
+    def test_priority(self):
+        class Module:
+            def __init__(self, cl, cwl): self.cl_cwl = (cl, cwl)
+            def get_cl_cwl(self): return self.cl_cwl
+        self.assertEqual(get_cl_cwl_kwargs({}, Module(None, None)), {})
+        self.assertEqual(get_cl_cwl_kwargs({}, Module(17, 12)), {"cl": 17, "cwl": 12})
+        self.assertEqual(get_cl_cwl_kwargs({"cl": 19}, Module(17, 12)), {"cl": 19, "cwl": 12})
 
 
 class TestGenSim(unittest.TestCase):

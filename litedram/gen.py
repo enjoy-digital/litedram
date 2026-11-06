@@ -75,6 +75,12 @@ from litedram.frontend.ecc      import LiteDRAMNativePortECC
 
 # IOs/Interfaces -----------------------------------------------------------------------------------
 
+def get_cl_cwl_kwargs(core_config, sdram_module):
+    # CL/CWL given to the PHY: YAML keys first, then the module's speed grade, else the PHY defaults.
+    cl, cwl = sdram_module.get_cl_cwl()
+    cl_cwl  = {"cl": core_config.get("cl", cl), "cwl": core_config.get("cwl", cwl)}
+    return {k: v for k, v in cl_cwl.items() if v is not None}
+
 def get_common_ios():
     return [
         # Clk/Rst.
@@ -711,7 +717,10 @@ class LiteDRAMCore(SoCCore):
 
         # DRAM -------------------------------------------------------------------------------------
         platform.add_extension(get_dram_ios(core_config))
-        sdram_module = core_config["sdram_module"](sys_clk_freq, rate=rate)
+        sdram_module_speedgrade = core_config.get("sdram_module_speedgrade", None)
+        sdram_module = core_config["sdram_module"](sys_clk_freq, rate=rate,
+            speedgrade = None if sdram_module_speedgrade is None else str(sdram_module_speedgrade))
+        cl_cwl_kwargs = get_cl_cwl_kwargs(core_config, sdram_module)
 
         # Collect Electrical Settings.
         electrical_settings_kwargs = {}
@@ -736,12 +745,13 @@ class LiteDRAMCore(SoCCore):
             assert core_config["memtype"] in ["SDR"]
             self.sdrphy = sdram_phy = core_config["sdram_phy"](
                 pads         = platform.request("sdram"),
-                sys_clk_freq = sys_clk_freq)
+                sys_clk_freq = sys_clk_freq,
+                **{k: v for k, v in cl_cwl_kwargs.items() if k == "cl"})
 
         # ECP5DDRPHY.
         elif core_config["sdram_phy"] in  [litedram_phys.ECP5DDRPHY]:
             assert core_config["memtype"] in ["DDR3"]
-            kwargs = {}
+            kwargs = dict(cl_cwl_kwargs)
             if core_config.get("dm_swap", False):
                 kwargs['dm_remapping'] = {0:1, 1:0}
 
@@ -757,7 +767,7 @@ class LiteDRAMCore(SoCCore):
         # GW2DDRPHY / GW5DDRPHY.
         elif core_config["sdram_phy"] in [litedram_phys.GW2DDRPHY, litedram_phys.GW5DDRPHY]:
             assert core_config["memtype"] in ["DDR3"]
-            kwargs = {}
+            kwargs = dict(cl_cwl_kwargs)
             if core_config.get("dm_swap", False):
                 kwargs["dm_remapping"] = {0:1, 1:0}
             if core_config["sdram_phy"] is litedram_phys.GW5DDRPHY:
@@ -781,13 +791,14 @@ class LiteDRAMCore(SoCCore):
                 nphases          = {"DDR2": 2, "DDR3": 4}[core_config["memtype"]],
                 sys_clk_freq     = sys_clk_freq,
                 iodelay_clk_freq = core_config["iodelay_clk_freq"],
-                cmd_latency      = core_config["cmd_latency"])
+                cmd_latency      = core_config["cmd_latency"],
+                **cl_cwl_kwargs)
             if core_config["memtype"] ==  "DDR3":
                 self.ddrphy.settings.add_electrical_settings(**electrical_settings_kwargs)
 
         # USDDRPHY.
         elif core_config["sdram_phy"] in [litedram_phys.USDDRPHY, litedram_phys.USPDDRPHY]:
-            kwargs = {}
+            kwargs = dict(cl_cwl_kwargs)
             for name in ["with_hpio_vref", "hpio_vref_tune"]: # USPDDRPHY/DDR4 read VREF scan.
                 if core_config.get(name, None) is not None:
                     kwargs[name] = core_config[name]

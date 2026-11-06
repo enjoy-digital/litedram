@@ -43,6 +43,8 @@ floats and the strings `"True"`/`"False"`/`"None"` to the Python values; unknown
 | `sdram_phy` | `GENSDRPHY`, `ECP5DDRPHY`, `GW2DDRPHY`, `GW5DDRPHY`, `A7DDRPHY`, `K7DDRPHY`, `V7DDRPHY`, `USDDRPHY`, `USPDDRPHY` | required | PHY class from `litedram.phy` (selects the vendor platform and CRG) |
 | `memtype` | `SDR`, `DDR2`, `DDR3`, `DDR4` | required | DRAM type; must match the PHY (GENSDRPHY: SDR, ECP5/GW2A/GW5A: DDR3, A7/K7/V7: DDR2/DDR3, US/USP: DDR3/DDR4) |
 | `sdram_module` | string | required | SDRAM module/chip class name from `litedram.modules` (e.g. `MT41K128M16`) |
+| `sdram_module_speedgrade` | string | module default | Speed grade of `sdram_module` (e.g. `2400`), selecting its timings |
+| `cl`, `cwl` | int | speed grade, else PHY default | CAS latency and CAS write latency (`cwl` not on GENSDRPHY); not used with `--sim` |
 | `sdram_module_nb` | int | required | Number of byte groups (DQ width = 8 x `sdram_module_nb`, one DM/DQS pair per group) |
 | `sdram_rank_nb` | int | required (DDR2/DDR3/DDR4) | Number of ranks (number of `cs_n`/`cke`/`odt`/`clk` pins) |
 | `cmd_latency` | int | required (A7/K7/V7/US/USP) | Additional command latency added to CL/CWL |
