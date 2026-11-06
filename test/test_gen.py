@@ -8,6 +8,7 @@ import unittest
 
 from migen import *
 
+from litex.build.lattice import LatticePlatform
 from litex.build.sim    import SimPlatform
 from litex.build.xilinx import XilinxPlatform
 from litex.gen.sim      import run_simulation
@@ -15,7 +16,7 @@ from litex.gen.sim      import run_simulation
 from litedram import modules as litedram_modules
 from litedram import phy     as litedram_phys
 from litedram.frontend.axi import LiteDRAMAXIPort
-from litedram.gen import LiteDRAMCore, connect_axi_user_port
+from litedram.gen import LiteDRAMCore, LiteDRAMGENSDRPHYCRG, connect_axi_user_port, get_common_ios
 
 
 axi_user_port_layout = [
@@ -149,6 +150,36 @@ class TestGen(unittest.TestCase):
 
         for name in ["ddrctrl", "ddrphy", "sdram"]:
             self.assertEqual(sim_locations[name], hw_locations[name])
+
+
+class TestGENSDRPHYCRG(unittest.TestCase):
+    def crg(self, device="LFE5U-45F-6BG381C", **config):
+        platform = LatticePlatform(device, io=[], toolchain="trellis")
+        platform.add_extension(get_common_ios())
+        config = {"memtype": "SDR", "sys_clk_freq": 50e6, **config}
+        return platform, LiteDRAMGENSDRPHYCRG(platform, config)
+
+    def test_without_input_clk_freq_has_no_pll_nor_sdram_clk(self):
+        platform, crg = self.crg()
+        self.assertFalse(hasattr(crg, "pll"))
+        self.assertNotIn("sdram_clk", [io[0] for io in platform.constraint_manager.available])
+
+    def test_with_input_clk_freq_generates_sdram_clk(self):
+        platform, crg = self.crg(input_clk_freq=25e6)
+        self.assertTrue(hasattr(crg, "pll"))
+        phases = [clkout.phase for clkout in crg.pll.clkouts.values()]
+        self.assertEqual(phases, [0, 90])
+        # sdram_clk was requested by the CRG: it can't be requested again.
+        with self.assertRaises(Exception):
+            platform.request("sdram_clk")
+
+    def test_sdram_clk_phase(self):
+        _, crg = self.crg(input_clk_freq=25e6, sdram_clk_phase=180)
+        self.assertEqual([clkout.phase for clkout in crg.pll.clkouts.values()], [0, 180])
+
+    def test_input_clk_freq_rejected_outside_ecp5(self):
+        with self.assertRaises(ValueError):
+            self.crg(device="LCMXO3LF-6900C-5BG256C", input_clk_freq=25e6)
 
 
 if __name__ == "__main__":

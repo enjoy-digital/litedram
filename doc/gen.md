@@ -55,9 +55,19 @@ floats and the strings `"True"`/`"False"`/`"None"` to the Python values; unknown
 | Key | Type | Default | Meaning |
 |-----|------|---------|---------|
 | `sys_clk_freq` | float (Hz) | required | System/controller clock; DRAM clock = sys_clk x1 (SDR), x2 (ECP5/GW2A DDR3, GW5A at 1:2, A7/K7/V7 DDR2) or x4 (GW5A at 1:4, A7/K7/V7 DDR3, US/USP) |
-| `input_clk_freq` | float (Hz) | required (ECP5/GW2A/GW5A/A7/K7/V7/US/USP) | Input clock (PLL/MMCM reference); GENSDRPHY clocks `sys_clk` directly from `clk`; the Gowin PHYs also run their init from it |
+| `input_clk_freq` | float (Hz) | required (ECP5/GW2A/GW5A/A7/K7/V7/US/USP), optional (GENSDRPHY on ECP5) | Input clock (PLL/MMCM reference); the Gowin PHYs also run their init from it; see SDR clocking below for GENSDRPHY |
+| `sdram_clk_phase` | int (degrees) | `90` | GENSDRPHY with `input_clk_freq`: `sdram_clk` phase relative to `sys_clk` |
 | `iodelay_clk_freq` | float (Hz) | required (A7/K7/V7/US/USP) | IDELAYCTRL reference clock frequency |
 | `init_clk_freq` | float (Hz) | required (ECP5) | ECP5 init clock domain frequency |
+
+**SDR clocking.** The SDRAM clock has to be phase-shifted from `sys_clk`, otherwise the reads have
+no margin. There are two modes with `GENSDRPHY`:
+- With `input_clk_freq` (ECP5 only): a PLL in the core generates `sys_clk` from `clk`, and the core
+  drives the new `sdram_clk` output (to connect to the SDRAM clock pin) and `pll_locked`. `sys_clk_freq`
+  can differ from the board clock, as in `examples/ulx3s.yml` (25 MHz board clock, 50 MHz SDRAM).
+- Without it: there is no PLL and no SDRAM clock output. `clk` is used directly as `sys_clk`, and
+  the integrator has to generate it at `sys_clk_freq` and drive the SDRAM clock pin with a
+  phase-shifted copy. `user_clk` is `sys_clk`: do not forward it to the SDRAM clock pin.
 
 ### Electrical settings
 

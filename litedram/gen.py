@@ -41,6 +41,7 @@ from migen.genlib.resetsync import AsyncResetSynchronizer
 from litex.gen import *
 
 from litex.build.tools            import replace_in_file
+from litex.build.io               import DDROutput
 from litex.build.generic_platform import *
 from litex.build.xilinx           import XilinxPlatform
 from litex.build.lattice          import LatticePlatform
@@ -349,8 +350,29 @@ class LiteDRAMGENSDRPHYCRG(LiteXModule):
         # # #
 
         # Clk / Rst.
-        self.comb += self.cd_sys.clk.eq(platform.request("clk"))
-        self.specials += AsyncResetSynchronizer(self.cd_sys, platform.request("rst"))
+        clk = platform.request("clk")
+        rst = platform.request("rst")
+
+        # Without input_clk_freq: sys_clk is clk and the integrator generates the SDRAM clock.
+        if core_config.get("input_clk_freq", None) is None:
+            self.comb += self.cd_sys.clk.eq(clk)
+            self.specials += AsyncResetSynchronizer(self.cd_sys, rst)
+            return
+
+        # With input_clk_freq: PLL generating sys_clk and the phase-shifted SDRAM clock.
+        if not platform.device.startswith(("LFE5U", "LFE5UM")):
+            raise ValueError("GENSDRPHY input_clk_freq (PLL) is only supported on ECP5.")
+        self.cd_sys_ps = ClockDomain()
+        self.pll = pll = ECP5PLL()
+        self.comb += pll.reset.eq(rst)
+        pll.register_clkin(clk, core_config["input_clk_freq"])
+        pll.create_clkout(self.cd_sys,    core_config["sys_clk_freq"])
+        pll.create_clkout(self.cd_sys_ps, core_config["sys_clk_freq"], phase=core_config.get("sdram_clk_phase", 90))
+        self.comb += platform.request("pll_locked").eq(pll.locked)
+
+        # SDRAM clock.
+        platform.add_extension([("sdram_clk", 0, Pins(1))])
+        self.specials += DDROutput(1, 0, platform.request("sdram_clk"), ClockSignal("sys_ps"))
 
 
 class LiteDRAMECP5DDRPHYCRG(LiteXModule):
