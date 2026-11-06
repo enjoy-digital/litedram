@@ -122,9 +122,12 @@ handshakes described here.
 | Read data | `rdata_valid`, `rdata_ready`, `rdata_data` | out, in, out |
 
 `cmd_addr` is in port words (`data_width/8` bytes). The port `data_width` is the controller's
-unless the `data_width` option is set: DRAM data width x 2 x frequency ratio, e.g. 128 bits for
-a x16 DDR3 at 1:4, 512 bits for a x64 DDR3/DDR4 at 1:4. `wdata_we` has one bit per byte, `1`
-writes the byte.
+unless the `data_width` option is set: DRAM data width x 2 x frequency ratio, i.e. the data of one
+DRAM burst (the burst length is fixed per DRAM type: 4 for DDR2, 8 for DDR3/DDR4), e.g. 64 bits
+for a x16 DDR2 at 1:2, 128 bits for a x16 DDR3 at 1:4, 512 bits for a x64 DDR3/DDR4 at 1:4. A
+wider or narrower `data_width` goes through a width converter in the crossbar (several DRAM
+accesses per transfer, or several transfers per access): it changes the bytes per transfer, not
+the bandwidth, which is the DRAM's. `wdata_we` has one bit per byte, `1` writes the byte.
 
 **Command channel.** A command is accepted on a cycle where `cmd_valid` and `cmd_ready` are both
 high; `cmd_we` selects a write (`1`) or a read (`0`) of one port word. `cmd_ready` is
