@@ -63,6 +63,22 @@ class TestSDRAMModules(unittest.TestCase):
         self.assertIsNone(MT48LC16M16(100e6, "1:1").timing_settings.tRTP)
         self.assertIsNotNone(MT8JTF12864(100e6, "1:4").timing_settings.tRTP)
 
+    def test_speedgrade_overrides(self):
+        _SG = litedram.modules._SpeedgradeTimings
+        kwargs = dict(tRP=13.32, tRCD=13.32, tWR=15, tFAW=(28, 35), tRAS=32)
+        class Module(litedram.modules.MT40A256M16):
+            speedgrade_timings = {
+                "2400": _SG(tRFC=litedram.modules.MT40A256M16.trfc, **kwargs),
+                "fast": _SG(tRFC=litedram.modules.MT40A256M16.trfc, tRRD=(4, 20), tCCD=(4, 20), cl=17, cwl=12, **kwargs),
+                "default": None,
+            }
+            speedgrade_timings["default"] = speedgrade_timings["2400"]
+        base, fast = Module(100e6, "1:4"), Module(100e6, "1:4", speedgrade="fast")
+        self.assertEqual(base.get("tRRD"), (4, 4.9))
+        self.assertEqual(base.get_cl_cwl(), (None, None))
+        self.assertEqual(fast.get("tRRD"), (4, 20))
+        self.assertEqual(fast.get_cl_cwl(), (17, 12))
+
     def test_ddr4_rdimm_tfaw_uses_ck_minimum(self):
         for name in ["HMA82GR7DJR4N", "M393A2K40DB3"]:
             cls = getattr(litedram.modules, name)

@@ -42,7 +42,9 @@ _technology_trtp = {
 _speedgrade_timings = ["tRP", "tRCD", "tWR", "tRFC", "tFAW", "tRAS"]
 
 class _SpeedgradeTimings(Settings):
-    def __init__(self, tRP, tRCD, tWR, tRFC, tFAW, tRAS):
+    # tCCD/tRRD: optional per speed grade values, overriding the technology timings when set.
+    # cl/cwl:    optional per speed grade CAS latencies, see SDRAMModule.get_cl_cwl.
+    def __init__(self, tRP, tRCD, tWR, tRFC, tFAW, tRAS, tCCD=None, tRRD=None, cl=None, cwl=None):
         self.set_attributes(locals())
 
 # SPD ----------------------------------------------------------------------------------------------
@@ -370,12 +372,23 @@ class SDRAMModule:
     def get_timing(self, name):
         if name in _speedgrade_timings:
             return self.get_speedgrade_timing(name)
+        # Technology timings that a speed grade can override.
+        if name in ["tCCD", "tRRD"] and hasattr(self, "speedgrade_timings"):
+            timing = self.get_speedgrade_timing(name)
+            if timing is not None:
+                return timing
         return self.get_technology_timing(name)
+
+    def get_cl_cwl(self):
+        """Return the (CL, CWL) of the speed grade, None when not defined (PHY defaults then apply)."""
+        if not hasattr(self, "speedgrade_timings"):
+            return None, None
+        return self.get_speedgrade_timing("cl"), self.get_speedgrade_timing("cwl")
 
     def get_speedgrade_timing(self, name):
         if hasattr(self, "speedgrade_timings"):
             speedgrade = "default" if self.speedgrade is None else self.speedgrade
-            return getattr(self.speedgrade_timings[speedgrade], name)
+            return getattr(self.speedgrade_timings[speedgrade], name, None)
         name = name + "_" + self.speedgrade if self.speedgrade is not None else name
         try:
             return getattr(self, name)
