@@ -65,6 +65,16 @@ floats and the strings `"True"`/`"False"`/`"None"` to the Python values; unknown
 | `iodelay_clk_freq` | float (Hz) | required (A7/K7/V7/US/USP) | IDELAYCTRL reference clock frequency |
 | `init_clk_freq` | float (Hz) | required (ECP5) | ECP5 init clock domain frequency |
 
+**Clock and IO constraints.** The generated constraint files don't constrain the input clock and
+don't set the IO standards or locations of the DRAM pins: the project integrating the core has to.
+- Define `clk` at `input_clk_freq` (at `sys_clk_freq` when `clk` is used directly as `sys_clk`),
+  e.g. `create_clock -period 10.000 [get_ports clk]` for 100 MHz with Vivado. The toolchain then
+  derives the PLL/MMCM output clocks.
+- Take the IO standards, termination and VREF from a `litex-boards` platform with the same FPGA
+  family and memory type.
+- With Vivado, also add the generated `litedram_core.xdc`: it holds the false paths of the core's
+  reset synchronizers.
+
 **SDR clocking.** The SDRAM clock has to be phase-shifted from `sys_clk`, otherwise the reads have
 no margin. There are two modes with `GENSDRPHY`:
 - With `input_clk_freq` (ECP5 only): a PLL in the core generates `sys_clk` from `clk`, and the core
