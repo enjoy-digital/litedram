@@ -220,6 +220,12 @@ class _LiteDRAMBISTGenerator(Module):
 
 @ResetInserter()
 class _LiteDRAMPatternGenerator(Module):
+    """Write a fixed pattern to DRAM.
+
+    `init` is a list of `(address, data)`, one per write, in this order. Unlike the BIST
+    `base`/`end`/`length` (in bytes), the address is in `dram_port` words (`dram_port.data_width`
+    bits each) and the data is a full port word.
+    """
     def __init__(self, dram_port, init=[]):
         ashift, awidth = get_ashift_awidth(dram_port)
         self.start  = Signal()
@@ -309,13 +315,13 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
         The module has completed writing the pattern.
 
     base : in
-        DRAM address to start from.
+        DRAM byte address to start from (aligned to the port data width).
 
     end : in
-        Max DRAM address.
+        Max DRAM byte address.
 
     length : in
-        Number of DRAM words to write.
+        Number of bytes to write (a multiple of the port data width in bytes).
 
     random_data : in
         Enable random data (LFSR)
@@ -534,6 +540,12 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
 
 @ResetInserter()
 class _LiteDRAMPatternChecker(Module, AutoCSR):
+    """Read a fixed pattern from DRAM and count the mismatches.
+
+    `init` is a list of `(address, data)`, one per read, in this order. Unlike the BIST
+    `base`/`end`/`length` (in bytes), the address is in `dram_port` words (`dram_port.data_width`
+    bits each) and the data is the expected full port word.
+    """
     def __init__(self, dram_port, init=[]):
         ashift, awidth = get_ashift_awidth(dram_port)
         self.start  = Signal()
@@ -658,11 +670,11 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
         The module has completed checking
 
     base : in
-        DRAM address to start from.
+        DRAM byte address to start from (aligned to the port data width).
     end : in
-        Max DRAM address.
+        Max DRAM byte address.
     length : in
-        Number of DRAM words to check.
+        Number of bytes to check (a multiple of the port data width in bytes).
 
     random_data : in
         Enable random data (LFSR)
