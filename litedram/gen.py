@@ -414,6 +414,10 @@ class LiteDRAMECP5DDRPHYCRG(LiteXModule):
         pll.register_clkin(clk, core_config["input_clk_freq"])
         pll.create_clkout(self.cd_sys2x_i, 2*core_config["sys_clk_freq"])
         pll.create_clkout(self.cd_init, core_config["init_clk_freq"])
+        if core_config.get("cmd_gearing", "x2") == "x1":
+            # CK of the ODDRX1F gearing (see ECP5DDRPHY), later than the ECLK input by ck_phase.
+            self.cd_sys2x_ck = ClockDomain(reset_less=True)
+            pll.create_clkout(self.cd_sys2x_ck, 2*core_config["sys_clk_freq"], phase=core_config.get("ck_phase", 45))
         self.specials += [
             Instance("ECLKBRIDGECS",
                 i_CLK0   = self.cd_sys2x_i.clk,

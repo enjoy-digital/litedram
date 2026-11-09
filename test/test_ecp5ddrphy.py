@@ -106,7 +106,7 @@ class TestECP5DDRPHY(unittest.TestCase):
         self.assertTrue(len(r) > 0 and all(e is phy.init.reset for e in r))
 
     def test_cmd_gearing_x1(self):
-        # x1: CK and commands on ODDRX1F (no edge clock), CK from sys2x_i, each command delayed by one
+        # x1: CK and commands on ODDRX1F (no edge clock), CK from sys2x_ck, each command delayed by one
         # phase (D0: phase 1 of the previous cycle, D1: phase 0) to output on the same CK edges as
         # ODDRX2F (checked with the Lattice simulation models).
         pads = test_ddr3_phy_settings.TestDDR3PHYSettings.get_pads()
@@ -117,7 +117,7 @@ class TestECP5DDRPHY(unittest.TestCase):
             return {p.name: p.expr for p in s.items if isinstance(p, (Instance.Input, Instance.Output))}
         self.assertEqual([s for s in instances if s.of == "ODDRX2F"], [])
         oddrx1f = [ports(s) for s in instances if s.of == "ODDRX1F"]
-        ck  = [p for p in oddrx1f if isinstance(p["SCLK"], ClockSignal) and p["SCLK"].cd == "sys2x_i"]
+        ck  = [p for p in oddrx1f if isinstance(p["SCLK"], ClockSignal) and p["SCLK"].cd == "sys2x_ck"]
         cmd = [p for p in oddrx1f if isinstance(p["SCLK"], ClockSignal) and p["SCLK"].cd == "sys"]
         npads = sum(len(getattr(pads, n)) for n in ["a", "ba", "ras_n", "cas_n", "we_n", "cs_n", "cke", "odt", "reset_n"] if hasattr(pads, n))
         self.assertEqual(len(ck), len(pads.clk_p))
@@ -146,11 +146,11 @@ class TestECP5DDRPHY(unittest.TestCase):
         run_simulation(fragment, {"sys": generator()}, clocks=CLOCKS[1])
         self.assertEqual(errors, [])
 
-        # 1:4 wrapper: CK from sys4x_i, commands from sys2x (the PHY clock).
+        # 1:4 wrapper: CK from sys4x_ck, commands from sys2x (the PHY clock).
         phy = ecp5ddrphy_with_ratio(2)(test_ddr3_phy_settings.TestDDR3PHYSettings.get_pads(), sys_clk_freq=50e6, cmd_gearing="x1")
         domains = {p["SCLK"].cd for s in phy.get_fragment().specials if isinstance(s, Instance) and s.of == "ODDRX1F"
             for p in [ports(s)]}
-        self.assertEqual(domains, {"sys4x_i", "sys2x"})
+        self.assertEqual(domains, {"sys4x_ck", "sys2x"})
 
     def test_ratio_settings(self):
         phy_12, _ = get_phy(1)

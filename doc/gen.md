@@ -50,7 +50,8 @@ floats and the strings `"True"`/`"False"`/`"None"` to the Python values; unknown
 | `cmd_latency` | int | required (A7/K7/V7/US/USP) | Additional command latency added to CL/CWL |
 | `cmd_delay` | int (`< 128`) | `0` | ECP5DDRPHY/GW2DDRPHY/GW5DDRPHY only: command/address delay value |
 | `dm_swap` | bool | `False` | ECP5DDRPHY/GW2DDRPHY/GW5DDRPHY only: swap DM lines 0 and 1 |
-| `cmd_gearing` | `x2`, `x1` | `x2` | ECP5DDRPHY only: CK/address/command output primitives. `x2` (ODDRX2F) needs the left/right banks; `x1` (ODDRX1F, same DRAM timings) also allows the top banks. Experimental: works up to DDR3-400 on ECPIX-5, not at DDR3-600 |
+| `cmd_gearing` | `x2`, `x1` | `x2` | ECP5DDRPHY only: CK/address/command output primitives. `x2` (ODDRX2F) needs the left/right banks; `x1` (ODDRX1F, same DRAM timings) also allows the top banks. Experimental |
+| `ck_phase` | int (degrees) | `45` | ECP5DDRPHY with `cmd_gearing: x1`: CK phase from the PLL, after the edge clock input (CK would otherwise come out early). 45 worked from DDR3-300 to DDR3-600 on ECPIX-5 |
 | `dll_off` | bool | `False` | GW2DDRPHY/GW5DDRPHY only: DDR3 DLL-off mode (CL6/CWL6, for DDR clocks <= 125 MHz) |
 | `sdram_rate` | `1:2`, `1:4` | `1:2` | GW5DDRPHY only: PHY frequency ratio (GW2DDRPHY is 1:2) |
 | `with_hpio_vref` | bool | `False` | USPDDRPHY/DDR4 only: per-byte read VREF scan through HPIO_VREF (`rd_vref` CSR) |

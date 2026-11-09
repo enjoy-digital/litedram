@@ -127,13 +127,16 @@ class ECP5DDRPHY(Module, AutoCSR):
 
         # CK/command gearing: "x2" (default) uses ODDRX2F (ECLK), only available on the left/right
         # banks. "x1" uses ODDRX1F, without ECLK, so CK/address/command can also be placed on the
-        # top banks (as in Lattice's DDR3 pinout guidelines): CK from the 2x clock before the
-        # ECLKSYNCB (`sys2x_i` domain, primary clock), commands from `sys` (each DFI phase on one
-        # SCLK edge). ODDRX1F outputs one DRAM clock cycle earlier than ODDRX2F: the commands are
-        # delayed by one phase (phase 1 of the previous cycle on D0) to keep the same DRAM timings.
-        # DQS/DQ/DM stay on ODDRX2F/IDDRX2F (left/right banks). CK is then on a primary clock while
-        # DQS is on ECLK: tested up to DDR3-400 (ECPIX-5, 1:2 and 1:4), not working at DDR3-600
-        # where "x2" works.
+        # top banks (as in Lattice's DDR3 pinout guidelines):
+        # - Commands from `sys` (each DFI phase on one SCLK edge). ODDRX1F outputs one DRAM clock
+        #   cycle earlier than ODDRX2F: the commands are delayed by one phase (phase 1 of the
+        #   previous cycle on D0) to keep the same DRAM timings.
+        # - CK from `sys2x_ck`, which the CRG has to provide: a PLL output at the DRAM clock
+        #   frequency (2x sys), phase shifted from the ECLKSYNCB input. `sys` and DQS go through the
+        #   ECLKSYNCB (and CLKDIVF for `sys`) but a CK from the PLL doesn't, so it would come out
+        #   early: 45 degrees later works from DDR3-300 to DDR3-600 on ECPIX-5 (1:2 and 1:4), while
+        #   0 and 135 or more fail at DDR3-600.
+        # DQS/DQ/DM stay on ODDRX2F/IDDRX2F (left/right banks).
 
         # Parameters -------------------------------------------------------------------------------
         cl  = get_default_cl( memtype, tck) if cl  is None else cl
@@ -210,11 +213,11 @@ class ECP5DDRPHY(Module, AutoCSR):
                         o_Q    = pad_oddrx2f
                     )
                 else:
-                    # Same CK edges as the ODDRX2F pattern (one CK period per sys2x_i period).
+                    # Same CK edges as the ODDRX2F pattern for a sys2x_ck in phase with the ECLK.
                     pad_oddrx1f = Signal()
                     self.specials += Instance("ODDRX1F",
                         i_RST  = io_rst,
-                        i_SCLK = ClockSignal("sys2x_i"),
+                        i_SCLK = ClockSignal("sys2x_ck"),
                         **{f"i_D{n}": (clk_pattern >> n) & 0b1 for n in range(2)},
                         o_Q    = pad_oddrx1f
                     )
@@ -617,7 +620,7 @@ def ecp5ddrphy_with_ratio(ratio=2, phy_cls=ECP5DDRPHY, serdes_reset_cnt=0, io_rs
             phy_cls          = phy_cls,
             ratio            = ratio,
             phy_attrs        = ["init", "datavalid"],
-            clock_mapping    = {"sys": f"sys{ratio}x", "sys2x": f"sys{2*ratio}x", "sys2x_i": f"sys{2*ratio}x_i"},
+            clock_mapping    = {"sys": f"sys{ratio}x", "sys2x": f"sys{2*ratio}x", "sys2x_ck": f"sys{2*ratio}x_ck"},
             serdes_reset_cnt = serdes_reset_cnt,
             **converter_kwargs,
         )
