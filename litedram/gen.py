@@ -759,6 +759,7 @@ class LiteDRAMCore(SoCCore):
                 pads         = platform.request("ddram"),
                 sys_clk_freq = sys_clk_freq,
                 cmd_delay    = core_config.get("cmd_delay", 0),
+                cmd_gearing  = core_config.get("cmd_gearing", "x2"),
                 **kwargs)
             self.ddrphy.settings.add_electrical_settings(**electrical_settings_kwargs)
             self.comb += crg.stop.eq(self.ddrphy.init.stop)
