@@ -280,6 +280,47 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
             self.assertEqual(checker.errors, 0)
         return dut, checker
 
+    def test_bist_random_addr_range(self):
+        # With random_addr, the BIST generator/checker addresses must stay in [base, end), whatever
+        # the port data width (base/end are in bytes, the random offset in port words), and both must
+        # access the same addresses.
+        for data_width in [8, 32, 128]:
+            nbytes = data_width//8
+            base   = 16*nbytes
+            span   = 16*nbytes      # (end - base) must be a power of 2.
+            length = 64*nbytes      # More accesses than words in the range: wraps.
+            accesses = {}
+            for name, port_cls, bist_cls in [
+                ("generator", LiteDRAMNativeWritePort, _LiteDRAMBISTGenerator),
+                ("checker",   LiteDRAMNativeReadPort,  _LiteDRAMBISTChecker)]:
+                class DUT(Module):
+                    def __init__(self):
+                        self.port = port_cls(address_width=32, data_width=data_width)
+                        self.submodules.bist = bist_cls(self.port)
+                        self.mem = DRAMMemory(data_width, 1024)
+                dut   = DUT()
+                addrs = []
+                def main_generator(driver):
+                    yield from driver.reset()
+                    yield from driver.configure(base=base, end=base + span, length=length, random_addr=1)
+                    yield from driver.run()
+                @passive
+                def monitor():
+                    while True:
+                        if (yield dut.port.cmd.valid) and (yield dut.port.cmd.ready):
+                            addrs.append((yield dut.port.cmd.addr))
+                        yield
+                handler = dut.mem.write_handler(dut.port) if name == "generator" else dut.mem.read_handler(dut.port)
+                run_simulation(dut, [main_generator(GenCheckDriver(dut.bist)), handler, monitor()])
+                accesses[name] = addrs
+                with self.subTest(data_width=data_width, module=name):
+                    self.assertEqual(len(addrs), length//nbytes)
+                    self.assertTrue(all(base <= a*nbytes < base + span for a in addrs),
+                        msg=f"accesses outside [{base:#x}, {base + span:#x}): {sorted({a*nbytes for a in addrs})}")
+                    self.assertGreater(len(set(addrs)), 1)
+            with self.subTest(data_width=data_width):
+                self.assertEqual(accesses["generator"], accesses["checker"])
+
     def test_bist_checker_8bit(self):
         # Verify BISTChecker with a 8-bit datapath.
         data = self.bist_test_data["8bit"]

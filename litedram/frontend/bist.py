@@ -152,9 +152,10 @@ class _LiteDRAMBISTGenerator(Module):
         self.comb += data_gen.random_enable.eq(self.random_data)
         self.comb += addr_gen.random_enable.eq(self.random_addr)
 
-        # mask random address to the range <base, end), range size must be power of 2
+        # mask random address to the range <base, end), range size must be power of 2. base/end are
+        # in bytes and the random address is a port word offset: mask with the range size in words.
         addr_mask = Signal(awidth)
-        self.comb += addr_mask.eq((self.end - self.base) - 1)
+        self.comb += addr_mask.eq(((self.end - self.base) >> ashift) - 1)
 
         # DMA --------------------------------------------------------------------------------------
         dma = LiteDRAMDMAWriter(dram_port)
@@ -455,9 +456,10 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.comb += data_gen.random_enable.eq(self.random_data)
         self.comb += addr_gen.random_enable.eq(self.random_addr)
 
-        # mask random address to the range <base, end), range size must be power of 2
+        # mask random address to the range <base, end), range size must be power of 2. base/end are
+        # in bytes and the random address is a port word offset: mask with the range size in words.
         addr_mask = Signal(awidth)
-        self.comb += addr_mask.eq((self.end - self.base) - 1)
+        self.comb += addr_mask.eq(((self.end - self.base) >> ashift) - 1)
 
         # DMA --------------------------------------------------------------------------------------
         dma = LiteDRAMDMAReader(dram_port)

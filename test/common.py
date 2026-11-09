@@ -302,7 +302,7 @@ class MemoryTestDataMixin:
             ),
             "32bit": dict(
                 base     = 0x04,
-                end      = 0x04 + 8,
+                end      = 0x04 + 8 * 4,  # 8 words
                 length   = 5 * 4,
                 expected = [
                     0x00000000,  # 0x00
@@ -317,7 +317,7 @@ class MemoryTestDataMixin:
             ),
             "64bit": dict(
                 base     = 0x10,
-                end      = 0x10 + 8,
+                end      = 0x10 + 8 * 8,  # 8 words
                 length   = 5 * 8,
                 expected = [
                     0x0000000000000000,  # 0x00
@@ -332,14 +332,14 @@ class MemoryTestDataMixin:
             ),
             "32bit_masked": dict(
                 base     = 0x04,
-                end      = 0x04 + 0x04,  # TODO: fix address masking to be consistent
+                end      = 0x04 + 2 * 4,  # 2 words: the 6 writes wrap in <base, end)
                 length   = 6 * 4,
                 expected = [  # due to masking
                     0x00000000,  # 0x00
                     0x00000004,  # 0x04
                     0x00000005,  # 0x08
-                    0x00000002,  # 0x0c
-                    0x00000003,  # 0x10
+                    0x00000000,  # 0x0c
+                    0x00000000,  # 0x10
                     0x00000000,  # 0x14
                     0x00000000,  # 0x18
                     0x00000000,  # 0x1c
