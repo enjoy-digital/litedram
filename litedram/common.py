@@ -199,6 +199,27 @@ class DQSPattern(Module):
             self.sync += o.eq(self.o)
             self.o = o
 
+class DQSPreambleControl(Module):
+    """DQS pattern preamble/postamble controls, aligned on the write data entering the PHY.
+
+    DFI write data comes write_latency cycles after wrdata_en. The controls go through the same
+    bitslip as the data, so this alignment holds with the write bitslip set by the calibration.
+    """
+    def __init__(self, wrdata_en, write_latency):
+        assert write_latency >= 1
+        self.preamble  = Signal()
+        self.postamble = Signal()
+
+        # # #
+
+        delay = TappedDelayLine(signal=wrdata_en, ntaps=write_latency + 1)
+        self.submodules += delay
+        taps = [wrdata_en] + list(delay.taps) # taps[i]: write enable delayed by i cycles.
+        self.comb += [
+            self.preamble.eq( taps[write_latency - 1] & ~taps[write_latency]),
+            self.postamble.eq(taps[write_latency + 1] & ~taps[write_latency]),
+        ]
+
 # Settings -----------------------------------------------------------------------------------------
 
 class Settings:

@@ -36,6 +36,7 @@ class USDDRPHY(Module, AutoCSR):
         is_rdimm         = False,
         is_clam_shell    = False,
         with_hpio_vref   = False,
+        with_dqs_preamble = False, # Experimental, not validated on hardware: drive the DQS preamble/postamble patterns.
         hpio_vref_tune   = 31):
         phytype     = self.__class__.__name__
         device      = {"USDDRPHY": "ULTRASCALE", "USPDDRPHY": "ULTRASCALE_PLUS"}[phytype]
@@ -262,8 +263,6 @@ class USDDRPHY(Module, AutoCSR):
         dqs_postamble = Signal()
         dqs_oe_delay  = TappedDelayLine(ntaps=1)
         dqs_pattern   = DQSPattern(
-            #preamble      = dqs_preamble,  # FIXME
-            #postamble     = dqs_postamble, # FIXME
             wlevel_en     = self._wlevel_en.storage,
             wlevel_strobe = self._wlevel_strobe.wr_stb)
         self.submodules += dqs_oe_delay, dqs_pattern
@@ -547,6 +546,15 @@ class USDDRPHY(Module, AutoCSR):
         # 1 for Preamble, 1 for the Write and 1 for the Postamble.
         self.comb += dqs_preamble.eq( wrdata_en.taps[wrtap - 1]  & ~wrdata_en.taps[wrtap + 0])
         self.comb += dqs_postamble.eq(wrdata_en.taps[wrtap + 1]  & ~wrdata_en.taps[wrtap + 0])
+        if with_dqs_preamble:
+            dqs_preamble_control = DQSPreambleControl(
+                wrdata_en     = reduce(or_, [dfi.phases[i].wrdata_en for i in range(nphases)]),
+                write_latency = cwl_sys_latency - 1)
+            self.submodules += dqs_preamble_control
+            self.comb += [
+                dqs_pattern.preamble.eq(dqs_preamble_control.preamble),
+                dqs_pattern.postamble.eq(dqs_preamble_control.postamble),
+            ]
 
 # Xilinx Ultrascale Plus DDR3/DDR4 PHY -------------------------------------------------------------
 
