@@ -352,6 +352,7 @@ class SDRAMModule:
             tRAS  = None if self.get("tRAS") is None else self.ck_ns_to_cycles(self.get("tRAS")),
             tZQCS = None if self.get("tZQCS") is None else self.ck_ns_to_cycles(self.get("tZQCS")),
             nWR   = self.ck_ns_to_dram_cycles(self.get("tWR")),
+            nCCD  = None if self.get("tCCD") is None else self.ck_ns_to_dram_cycles(self.get("tCCD")),
             tRTP  = None if self.get("tRTP") is None else self.ck_ns_to_cycles(self.get("tRTP")),
         )
         self.timing_settings.fine_refresh_mode = fine_refresh_mode
