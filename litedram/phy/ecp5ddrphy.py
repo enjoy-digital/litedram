@@ -99,8 +99,10 @@ class ECP5DDRPHY(Module, AutoCSR):
         dm_remapping = None,
         with_dm      = True,
         csr_cdc      = None,
-        io_rst_init  = False):
+        io_rst_init  = False,
+        cmd_gearing  = "x2"):
         assert isinstance(cmd_delay, int) and cmd_delay < 128
+        assert cmd_gearing in ["x2", "x1"]
         pads        = PHYPadsCombiner(pads)
         memtype     = "DDR3"
         tck         = 2/(2*2*sys_clk_freq)
@@ -122,6 +124,19 @@ class ECP5DDRPHY(Module, AutoCSR):
         # IOLOGICs with more than one ECLK period of skew (placement dependent, not timed by
         # nextpnr): pins then come out of reset on different ECLK edges (commands/data misaligned).
         io_rst = self.init.reset if io_rst_init else ResetSignal("sys")
+
+        # CK/command gearing: "x2" (default) uses ODDRX2F (ECLK), only available on the left/right
+        # banks. "x1" uses ODDRX1F, without ECLK, so CK/address/command can also be placed on the
+        # top banks (as in Lattice's DDR3 pinout guidelines):
+        # - Commands from `sys` (each DFI phase on one SCLK edge). ODDRX1F outputs one DRAM clock
+        #   cycle earlier than ODDRX2F: the commands are delayed by one phase (phase 1 of the
+        #   previous cycle on D0) to keep the same DRAM timings.
+        # - CK from `sys2x_ck`, which the CRG has to provide: a PLL output at the DRAM clock
+        #   frequency (2x sys), phase shifted from the ECLKSYNCB input. `sys` and DQS go through the
+        #   ECLKSYNCB (and CLKDIVF for `sys`) but a CK from the PLL doesn't, so it would come out
+        #   early: 45 degrees later works from DDR3-300 to DDR3-600 on ECPIX-5 (1:2 and 1:4), while
+        #   0 and 135 or more fail at DDR3-600.
+        # DQS/DQ/DM stay on ODDRX2F/IDDRX2F (left/right banks).
 
         # Parameters -------------------------------------------------------------------------------
         cl  = get_default_cl( memtype, tck) if cl  is None else cl
@@ -188,17 +203,27 @@ class ECP5DDRPHY(Module, AutoCSR):
             # Clock --------------------------------------------------------------------------------
             clk_pattern = {0: 0b1010, 1: 0b0101}[clk_polarity]
             for i in range(len(pads.clk_p)):
-                pad_oddrx2f = Signal()
-                self.specials += Instance("ODDRX2F",
-                    i_RST  = io_rst,
-                    i_SCLK = ClockSignal("sys"),
-                    i_ECLK = ClockSignal("sys2x"),
-                    **{f"i_D{n}": (clk_pattern >> n) & 0b1 for n in range(4)},
-                    o_Q    = pad_oddrx2f
-                )
+                if cmd_gearing == "x2":
+                    pad_oddrx2f = Signal()
+                    self.specials += Instance("ODDRX2F",
+                        i_RST  = io_rst,
+                        i_SCLK = ClockSignal("sys"),
+                        i_ECLK = ClockSignal("sys2x"),
+                        **{f"i_D{n}": (clk_pattern >> n) & 0b1 for n in range(4)},
+                        o_Q    = pad_oddrx2f
+                    )
+                else:
+                    # Same CK edges as the ODDRX2F pattern for a sys2x_ck in phase with the ECLK.
+                    pad_oddrx1f = Signal()
+                    self.specials += Instance("ODDRX1F",
+                        i_RST  = io_rst,
+                        i_SCLK = ClockSignal("sys2x_ck"),
+                        **{f"i_D{n}": (clk_pattern >> n) & 0b1 for n in range(2)},
+                        o_Q    = pad_oddrx1f
+                    )
                 self.specials += Instance("DELAYG",
                     p_DEL_VALUE = cmd_delay,
-                    i_A         = pad_oddrx2f,
+                    i_A         = pad_oddrx2f if cmd_gearing == "x2" else pad_oddrx1f,
                     o_Z         = pads.clk_p[i]
                 )
 
@@ -222,17 +247,29 @@ class ECP5DDRPHY(Module, AutoCSR):
                         raise ValueError(f"DRAM pad {pad_name} required but not found in pads.")
                     continue
                 for i in range(len(pad)):
-                    pad_oddrx2f = Signal()
-                    self.specials += Instance("ODDRX2F",
-                        i_RST  = io_rst,
-                        i_SCLK = ClockSignal("sys"),
-                        i_ECLK = ClockSignal("sys2x"),
-                        **{f"i_D{n}": getattr(dfi.phases[n//2], dfi_name)[i] for n in range(4)},
-                        o_Q    = pad_oddrx2f
-                    )
+                    if cmd_gearing == "x2":
+                        pad_oddrx2f = Signal()
+                        self.specials += Instance("ODDRX2F",
+                            i_RST  = io_rst,
+                            i_SCLK = ClockSignal("sys"),
+                            i_ECLK = ClockSignal("sys2x"),
+                            **{f"i_D{n}": getattr(dfi.phases[n//2], dfi_name)[i] for n in range(4)},
+                            o_Q    = pad_oddrx2f
+                        )
+                    else:
+                        phase1_d    = Signal(reset_less=True)
+                        pad_oddrx1f = Signal()
+                        self.sync += phase1_d.eq(getattr(dfi.phases[1], dfi_name)[i])
+                        self.specials += Instance("ODDRX1F",
+                            i_RST  = io_rst,
+                            i_SCLK = ClockSignal("sys"),
+                            i_D0   = phase1_d,
+                            i_D1   = getattr(dfi.phases[0], dfi_name)[i],
+                            o_Q    = pad_oddrx1f
+                        )
                     self.specials += Instance("DELAYG",
                         p_DEL_VALUE = cmd_delay,
-                        i_A         = pad_oddrx2f,
+                        i_A         = pad_oddrx2f if cmd_gearing == "x2" else pad_oddrx1f,
                         o_Z         = pad[i]
                     )
 
@@ -583,7 +620,7 @@ def ecp5ddrphy_with_ratio(ratio=2, phy_cls=ECP5DDRPHY, serdes_reset_cnt=0, io_rs
             phy_cls          = phy_cls,
             ratio            = ratio,
             phy_attrs        = ["init", "datavalid"],
-            clock_mapping    = {"sys": f"sys{ratio}x", "sys2x": f"sys{2*ratio}x"},
+            clock_mapping    = {"sys": f"sys{ratio}x", "sys2x": f"sys{2*ratio}x", "sys2x_ck": f"sys{2*ratio}x_ck"},
             serdes_reset_cnt = serdes_reset_cnt,
             **converter_kwargs,
         )
