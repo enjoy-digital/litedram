@@ -56,6 +56,15 @@ def get_write_recovery(phy_settings, timing_settings):
         nwr = timing_settings.tWR*phy_settings.nphases
     return nwr
 
+def get_ddr4_tccd_l(phy_settings, timing_settings):
+    """DDR4 tCCD_L in DRAM clocks, as programmed in MR6: TimingSettings.nCCD (RU(tCCD_L/tCK)) when
+    the module computed it; otherwise tCCD in sys_clk cycles times the number of phases (the spacing
+    the controller enforces, also >= RU(tCCD_L/tCK)). JEDEC minimum: 4 clocks."""
+    nccd = getattr(timing_settings, "nCCD", None)
+    if nccd is None:
+        nccd = 4 if timing_settings.tCCD is None else timing_settings.tCCD*phy_settings.nphases
+    return max(nccd, 4)
+
 def round_up_to_mr_value(value, table, name):
     """Smallest key of a mode register encoding table that is >= value."""
     for key in sorted(table):
@@ -419,6 +428,9 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
             7: 0b011,
             8: 0b100
         }
+        # tCCD_L in DRAM clocks, rounded up to an encodable value. The controller spaces CAS commands
+        # by tCCD sys_clk cycles (>= tCCD_L), so any programmed value <= that spacing is honored.
+        tccd = round_up_to_mr_value(min(tccd, max(tccd_to_mr6)), tccd_to_mr6, "tCCD_L")
         mr6 = tccd_to_mr6[tccd] << 10
         return mr6
 
@@ -461,7 +473,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     mr3 = format_mr3(timing_settings.fine_refresh_mode)
     mr4 = 0
     mr5 = (dm << 10)
-    mr6 = format_mr6(4) # FIXME: tCCD
+    mr6 = format_mr6(get_ddr4_tccd_l(phy_settings, timing_settings))
 
     rdimm_init = []
     if phy_settings.is_rdimm:

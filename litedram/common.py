@@ -272,9 +272,10 @@ class GeomSettings(Settings):
 class TimingSettings(Settings):
     # Timings are in sys_clk cycles (rounded up with the command phase margin) and are enforced by
     # the controller. nWR is the write recovery in DRAM clocks (RU(tWR/tCK)) as programmed in the
-    # DRAM's mode register; when None, the init sequence falls back to tWR*nphases. tRTP is the
-    # READ to PRECHARGE delay (None: not enforced).
-    def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD, tRC, tRAS, tZQCS, nWR=None, tRTP=None):
+    # DRAM's mode register; when None, the init sequence falls back to tWR*nphases. nCCD is tCCD in
+    # DRAM clocks (RU(tCCD/tCK), tCCD_L on DDR4, programmed in MR6); when None, tCCD*nphases. tRTP is
+    # the READ to PRECHARGE delay (None: not enforced).
+    def __init__(self, tRP, tRCD, tWR, tWTR, tREFI, tRFC, tFAW, tCCD, tRRD, tRC, tRAS, tZQCS, nWR=None, tRTP=None, nCCD=None):
         self.set_attributes(locals())
 
 # Layouts/Interface --------------------------------------------------------------------------------

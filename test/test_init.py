@@ -159,3 +159,30 @@ class TestInit(unittest.TestCase):
             decode_wr  = lambda mr0: wr_table[(((mr0 >> 13) & 0b1) << 3) | ((mr0 >> 9) & 0b111)], # A13,A11:A9
             encodable  = wr_table.values(),
             configs    = [(100e6, "1:4"), (125e6, "1:4"), (250e6, "1:4"), (300e6, "1:4")])
+
+    def test_ddr4_tccd_l(self):
+        # MR6 A12:A10 programs tCCD_L in DRAM clocks: it must be >= RU(tCCD_L/tCK) (JEDEC min 4)
+        # and <= the CAS to CAS spacing enforced by the controller (tCCD sys_clk cycles).
+        import math
+        from litedram.common import PhySettings
+        from litedram.modules import MT40A512M8, EDY4016A
+        from litedram.init import get_ddr4_phy_init_sequence
+        tccd_table = {0b000: 4, 0b001: 5, 0b010: 6, 0b011: 7, 0b100: 8}
+        for module_cls in [MT40A512M8, EDY4016A]:
+            for sys_clk_freq, rate in [(125e6, "1:4"), (200e6, "1:4"), (250e6, "1:4"), (300e6, "1:4"),
+                (150e6, "1:8")]:
+                with self.subTest(module=module_cls.__name__, sys_clk_freq=sys_clk_freq, rate=rate):
+                    nphases = int(rate.split(":")[1])
+                    module  = module_cls(sys_clk_freq, rate)
+                    phy     = PhySettings(phytype="test", memtype="DDR4", databits=16,
+                        dfi_databits=16*2*nphases, nphases=nphases, rdphase=0, wrphase=0,
+                        cl=14, cwl=11, read_latency=0, write_latency=0)
+                    sequence, _ = get_ddr4_phy_init_sequence(phy, module.timing_settings)
+                    mr6 = [addr for label, addr, bank, cmd, delay in sequence
+                        if label == "Load Mode Register 6"][-1]
+                    tccd_l = tccd_table[(mr6 >> 10) & 0b111]
+                    tck_ps = round(1e12/(nphases*sys_clk_freq))
+                    ck, ns = module.get("tCCD")
+                    self.assertEqual(tccd_l, max(4, ck, math.ceil(ns*1e3/tck_ps)))
+                    self.assertLessEqual(tccd_l, module.timing_settings.tCCD*nphases)
+                    self.assertEqual(mr6 & ~(0b111 << 10), 0) # No other MR6 field set.
