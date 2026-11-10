@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="230" viewBox="0 0 760 230">
+<defs>
+  <marker id="arrow-ctrl" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#5b5b5b"/></marker>
+  <marker id="arrow-ctrl-rev" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
+    <path d="M8,0 L0,4 L8,8 Z" fill="#5b5b5b"/></marker>
+  <marker id="arrow-stream" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto">
+    <path d="M0,0 L9,4.5 L0,9 Z" fill="#606060"/></marker>
+  <marker id="arrow-accent" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto">
+    <path d="M0,0 L9,4.5 L0,9 Z" fill="#2eaadc"/></marker>
+  <marker id="arrow-accent-rev" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="0" refY="4.5" orient="auto">
+    <path d="M9,0 L0,4.5 L9,9 Z" fill="#2eaadc"/></marker>
+  <marker id="arrow-stream-rev" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="0" refY="4.5" orient="auto">
+    <path d="M9,0 L0,4.5 L9,9 Z" fill="#606060"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<polyline points="130,43 130,27 144,27 144,43 158,43 158,27 172,27 172,43 186,43 186,27 200,27 200,43 214,43 214,27 228,27 228,43 242,43 242,27 256,27 256,43 270,43 270,27 284,27 284,43 298,43 298,27 312,27 312,43 326,43 326,27 340,27 340,43 354,43 354,27 368,27 368,43 382,43 382,27 396,27 396,43 410,43 410,27 424,27 424,43 438,43 438,27 452,27 452,43 466,43 466,27 480,27 480,43 494,43 494,27 508,27 508,43 522,43 522,27 536,27 536,43 550,43 550,27 564,27 564,43 578,43 578,27 592,27 592,43 606,43 606,27 620,27 620,43 634,43 634,27 648,27 648,43 662,43 662,27 676,27 676,43 690,43 690,27 704,27 704,43 718,43 718,27 732,27 732,43 746,43" fill="none" stroke="#5b5b5b" stroke-width="1.0"/>
+<polyline points="130,80 270,80" fill="none" stroke="#5b5b5b" stroke-width="1.0" marker-end="url(#arrow-ctrl)" marker-start="url(#arrow-ctrl-rev)"/>
+<text x="200" y="73" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="12" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="200" dy="0">tRCD</tspan></text>
+<polyline points="550,80 690,80" fill="none" stroke="#5b5b5b" stroke-width="1.0" marker-end="url(#arrow-ctrl)" marker-start="url(#arrow-ctrl-rev)"/>
+<text x="620" y="73" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="12" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="620" dy="0">tRP</tspan></text>
+<polyline points="270,145 410,145" fill="none" stroke="#5b5b5b" stroke-width="1.0" marker-end="url(#arrow-ctrl)" marker-start="url(#arrow-ctrl-rev)"/>
+<text x="340" y="138" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="12" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="340" dy="0">CL</tspan></text>
+<polyline points="130,210 550,210" fill="none" stroke="#5b5b5b" stroke-width="1.0" marker-end="url(#arrow-ctrl)" marker-start="url(#arrow-ctrl-rev)"/>
+<text x="340" y="203" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="12" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="340" dy="0">tRAS</tspan></text>
+<g fill="#bfe6f5" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<rect x="130" y="97" width="28" height="26" rx="0" ry="0"/>
+</g>
+<text x="144" y="110" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="144" dy="0">ACT</tspan></text>
+<g fill="#bfe6f5" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<rect x="270" y="97" width="28" height="26" rx="0" ry="0"/>
+</g>
+<text x="284" y="110" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="284" dy="0">RD</tspan></text>
+<g fill="#e6f5fb" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<rect x="550" y="97" width="34" height="26" rx="0" ry="0"/>
+</g>
+<text x="567" y="110" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="567" dy="0">PRE</tspan></text>
+<g fill="#bfe6f5" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<rect x="690" y="97" width="34" height="26" rx="0" ry="0"/>
+</g>
+<text x="707" y="110" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="707" dy="0">ACT</tspan></text>
+<g fill="#bfe6f5" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<rect x="410" y="162" width="112" height="26" rx="0" ry="0"/>
+</g>
+<text x="466" y="175" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="466" dy="0">burst of 8</tspan></text>
+<text x="120" y="35" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="end" dominant-baseline="central"><tspan x="120" dy="0">CK</tspan></text>
+<text x="120" y="110" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="end" dominant-baseline="central"><tspan x="120" dy="0">Command</tspan></text>
+<text x="120" y="175" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="end" dominant-baseline="central"><tspan x="120" dy="0">DQ</tspan></text>
+</svg>
