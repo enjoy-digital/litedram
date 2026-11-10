@@ -211,8 +211,8 @@ class Refresher(Module):
     Manage DRAM refresh.
 
     The DRAM needs to be periodically refreshed with a tREFI period to avoid data corruption. During
-    a refresh, the controller send a "Precharge All" command to close and precharge all rows and then
-    send a "Auto Refresh" command.
+    a refresh, the controller sends a "Precharge All" command to close and precharge all rows and then
+    sends an "Auto Refresh" command.
 
     Before executing the refresh, the Refresher advertises the Controller that a refresh should occur,
     this allows the Controller to finish the current transaction and block next transactions. Once all
@@ -232,7 +232,7 @@ class Refresher(Module):
 
         # Refresh Timer ----------------------------------------------------------------------------
         if settings.timing.tREFI < 100: # FIXME: Reduce Margin.
-            raise ValueError("Clk/tREFI is ratio too low , please increase Clk frequency or disable Refresh.")
+            raise ValueError("Clk/tREFI ratio is too low, please increase Clk frequency or disable Refresh.")
         timer = RefreshTimer(settings.timing.tREFI)
         self.submodules.timer = timer
         self.comb += timer.wait.eq(~timer.done)
