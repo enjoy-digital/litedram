@@ -106,6 +106,7 @@ excepted since it expects a Python class).
 |-----|----------------|---------|---------|
 | `cmd_buffer_depth` | int | `8` | Depth of the per-bank command buffers |
 | `cmd_buffer_buffered` | bool | `False` | Buffered (registered) command buffers |
+| `nbankmachines` | int | per bank | Number of bank machines, shared by consecutive banks when lower than the number of banks (power of 2, single rank): fewer resources (DDR3 controller and crossbar: ~1180 LUTs with 8, ~470 with 2), one open row per bank machine |
 | `read_time` | int | `64` | Maximum cycles of reads before switching to writes |
 | `write_time` | int | `32` | Maximum cycles of writes before switching to reads |
 | `with_bandwidth` | bool | `False` | Bandwidth monitoring CSRs |
