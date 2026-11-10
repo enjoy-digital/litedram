@@ -452,7 +452,7 @@ below lists the commands; [Debugging](#debugging) shows how to use them.
 | `sdram_rst_bitslip` | Let the calibration find the write bitslip of a lane |
 | `sdram_force_bitslip` | Force the write bitslip of a lane |
 | `sdram_mr_write` | Write a mode register |
-| `sdram_spd` | Read the SPD EEPROM of a module |
+| `sdram_spd` | Read the SPD EEPROM of a module, compare it with the SPD memory of the build |
 | `sdram_bist` | Run the BIST and print its throughput |
 | `sdram_hw_test` | Memory test with the BIST |
 | `sdram_debug` | Debug tests |

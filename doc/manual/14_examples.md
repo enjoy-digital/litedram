@@ -40,8 +40,7 @@ data rate is computed here from it, since the YAML files do not state it.
 | `xcu1525` | `MT40A512M8` | 150 MHz | 1:4 | 1200 MT/s |
 
 The data rate is the system clock times the number of DFI phases, times two for the double data
-rate memories. The comments of `versa_ecp5.yml` and `nexys4ddr.yml` give the DRAM clock as four
-times the system clock; the generator runs both at 1:2, as in the table. Every example runs the `vexriscv` CPU except `ulx3s`, which runs `serv`. The
+rate memories. Every example runs the `vexriscv` CPU except `ulx3s`, which runs `serv`. The
 boards are described in [Supported FPGAs and boards](#boards), and
 [Build options](#build-options) lists every key of the YAML files.
 
@@ -143,10 +142,8 @@ litex_server --udp &
 litex_term crossover
 ```
 
-`bench/arty.py` does not elaborate with the LiteX-Boards platform of the Arty A7: it requests a
-`cpu_reset` pin that the platform names `cpu_reset_n`. The four other targets elaborate.
-
-Without `--build`, a target only elaborates the SoC and compiles its BIOS. `--with-bist` and
+Without `--build`, a target only elaborates the SoC and compiles its BIOS; the five targets do so
+with the LiteX-Boards platforms of their boards. `--with-bist` and
 `--with-analyzer` add the hardware tests and the DFI analyzer that [Debugging](#debugging) uses;
 `--load-bios`, `--sys-clk-freq` and `--test` act on a running board through the bridge. [Bench
 target options](#opt-bench) lists every option.
@@ -176,11 +173,9 @@ logs a complete BIOS boot at each step. The bridge (`litex_server`) must be runn
 Only distinct dividers are tested, so the real steps are coarser than 1 MHz at high frequency. The
 second PLL follows the first one, so all the clocks of the PHY move together.
 
-The `kcu105` and `xcu1525` targets compute the dividers from the VCO of the second PLL but write
-them into the first one. Both VCOs run at 1000 MHz on `kcu105`, so its sweep is right; on
-`xcu1525` they differ (1500 and 1562.5 MHz) and each step runs about 4% below the frequency it
-announces. Read the measured system clock that each step prints. Each step prints the
-whole calibration log, which [Reading the boot log](#debug-boot-log) explains.
+Each target computes the dividers from the VCO of the first PLL (`main_pll`), the one it
+reprograms. Each step prints the measured system clock and the whole calibration log, which
+[Reading the boot log](#debug-boot-log) explains.
 
 ```sh
 python3 bench/genesys2.py --test | tee sweep.log

@@ -113,7 +113,8 @@ driven by the PHYs, plus `nphases` - 1 for the worst phase alignment. `get_read_
 rounds it up to `sys` cycles.
 
 The write to read turnaround starts after the write data: WTR waits tWTR plus the write latency
-(CWL in `sys` cycles) plus tCCD after the last WR, since tWTR counts from the end of the burst. After REFRESH, the multiplexer resumes in the direction of the waiting
+(CWL in `sys` cycles) plus tCCD after the last WR, since tWTR counts from the end of the burst; a
+module without tCCD leaves out only that term. After REFRESH, the multiplexer resumes in the direction of the waiting
 requests, since a refresh lasts longer than any turnaround.
 
 ### Command scheduling {#ctrl-scheduling}

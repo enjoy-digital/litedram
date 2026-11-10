@@ -206,25 +206,25 @@ dump to simulate a DIMM (`--sdram-from-spd-dump`).
 from litedram.modules import SDRAMModule, parse_spd_hexdump
 
 spd_data = parse_spd_hexdump("spd_dump.txt")
-module   = SDRAMModule.from_spd_data(spd_data, sys_clk_freq)
+module   = SDRAMModule.from_spd_data(spd_data, sys_clk_freq, rate="1:2")
 ```
+
+`rate` is the frequency ratio of the PHY the module runs with. Without it, `from_spd_data` takes the
+usual ratio of the memory type, 1:4 for DDR3 and DDR4. Pass it on a 1:2 PHY (ECP5, Nexus, Gowin):
+the DRAM clock counts are divided by the number of phases, so at the default 1:4 tCCD, 4 DRAM
+clocks, would become one controller cycle instead of two.
 
 A module built from SPD data keeps that data. LiteX `add_sdram` then adds it to the SoC as a
 read-only memory named `sdram_spd`, so that software can compare the EEPROM of the board with the
-data the bitstream was built for. The BIOS command has that comparison, but does not compile it
-in ([Limitations](#mod-limitations)).
+data the bitstream was built for. The `sdram_spd` command of the BIOS compares the bytes it read
+with that memory (`SDRAM_SPD_BASE`), up to the smaller of the two sizes. It prints "Memory contents
+match the data used for gateware generation", or a warning followed by the contents of the
+memory.
 
 `test/spd_data/` holds ten SPD dumps of Micron DDR3 and DDR4 modules, used by the tests.
 
 ## Limitations {#mod-limitations}
 
-- **SPD ratio.** A module built from SPD data assumes 1:4 for DDR3 and DDR4, whatever the ratio
-  of the PHY. On a 1:2 PHY (ECP5, Nexus, Gowin), its DRAM clock counts are divided by 4 instead
-  of 2: tCCD, 4 DRAM clocks, becomes one controller cycle instead of two. Use a module class on
-  these PHYs.
-- **SPD check.** The `sdram_spd` command of the BIOS compares the EEPROM with a `SPD_BASE` region
-  that no generated header defines, since the read-only memory is `SDRAM_SPD_BASE`; the
-  comparison is never compiled.
 - **SPD types.** Only DDR3 and DDR4 SPD data is decoded.
 - **Registered flag.** The `registered` flag of a class is not used by the code; the PHY setting
   decides.
