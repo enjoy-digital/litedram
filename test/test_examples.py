@@ -41,3 +41,15 @@ class TestExamples(unittest.TestCase):
     def test_tang_mega_138k_pro(self):
         errors = build_config("tang_mega_138k_pro")
         self.assertEqual(errors, 0)
+
+    def test_versa_ecp5(self):
+        errors = build_config("versa_ecp5")
+        self.assertEqual(errors, 0)
+
+    def test_kcu105(self):
+        errors = build_config("kcu105")
+        self.assertEqual(errors, 0)
+
+    def test_xcu1525(self):
+        errors = build_config("xcu1525")
+        self.assertEqual(errors, 0)
