@@ -1,0 +1,266 @@
+{
+ "argv": [
+  "examples/versa_ecp5.yml"
+ ],
+ "banks": {
+  "ddrctrl": [
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "init_done",
+    "offset": 0,
+    "reset": 0,
+    "size": 1
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "init_error",
+    "offset": 4,
+    "reset": 0,
+    "size": 1
+   }
+  ],
+  "ddrphy_ecp5": [
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "dly_sel",
+    "offset": 0,
+    "reset": 0,
+    "size": 2
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "rdly_dq_rst",
+    "offset": 4,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "rdly_dq_inc",
+    "offset": 8,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "rdly_dq_bitslip_rst",
+    "offset": 12,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "rdly_dq_bitslip",
+    "offset": 16,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "burstdet_clr",
+    "offset": 20,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "ro",
+    "description": "",
+    "fields": [],
+    "name": "burstdet_seen",
+    "offset": 24,
+    "reset": null,
+    "size": 2
+   }
+  ],
+  "sdram_dfii": [
+   {
+    "access": "rw",
+    "description": "Control DFI signals common to all phases",
+    "fields": [
+     {
+      "description": "",
+      "name": "sel",
+      "offset": 0,
+      "reset": 1,
+      "size": 1,
+      "values": [
+       [
+        "``0b0``",
+        "Software (CPU) control."
+       ],
+       [
+        "``0b1``",
+        "Hardware control (default)."
+       ]
+      ]
+     },
+     {
+      "description": "DFI clock enable bus",
+      "name": "cke",
+      "offset": 1,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI on-die termination bus",
+      "name": "odt",
+      "offset": 2,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI clock reset bus",
+      "name": "reset_n",
+      "offset": 3,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     }
+    ],
+    "name": "control",
+    "offset": 0,
+    "reset": 1,
+    "size": 4
+   },
+   {
+    "access": "rw",
+    "description": "Control DFI signals on a single phase",
+    "fields": [
+     {
+      "description": "DFI chip select bus",
+      "name": "cs",
+      "offset": 0,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI write enable bus",
+      "name": "we",
+      "offset": 1,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI column address strobe bus",
+      "name": "cas",
+      "offset": 2,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI row address strobe bus",
+      "name": "ras",
+      "offset": 3,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI write data enable bus",
+      "name": "wren",
+      "offset": 4,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI read data enable bus",
+      "name": "rden",
+      "offset": 5,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI chip select bus for top half only",
+      "name": "cs_top",
+      "offset": 6,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI chip select bus for bottom half only",
+      "name": "cs_bottom",
+      "offset": 7,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     }
+    ],
+    "name": "pi0_command",
+    "offset": 4,
+    "reset": 0,
+    "size": 8
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "pi0_command_issue",
+    "offset": 8,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "rw",
+    "description": "DFI address bus",
+    "fields": [],
+    "name": "pi0_address",
+    "offset": 12,
+    "reset": 0,
+    "size": 13
+   },
+   {
+    "access": "rw",
+    "description": "DFI bank address bus",
+    "fields": [],
+    "name": "pi0_baddress",
+    "offset": 16,
+    "reset": 0,
+    "size": 3
+   },
+   {
+    "access": "rw",
+    "description": "DFI write data bus",
+    "fields": [],
+    "name": "pi0_wrdata",
+    "offset": 20,
+    "reset": 0,
+    "size": 64
+   },
+   {
+    "access": "ro",
+    "description": "DFI read data bus",
+    "fields": [],
+    "name": "pi0_rddata",
+    "offset": 28,
+    "reset": null,
+    "size": 64
+   }
+  ]
+ },
+ "config": "versa_ecp5",
+ "target": "gen"
+}

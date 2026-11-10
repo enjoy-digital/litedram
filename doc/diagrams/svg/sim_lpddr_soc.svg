@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="260" viewBox="0 0 760 260">
+<defs>
+  <marker id="arrow-ctrl" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#5b5b5b"/></marker>
+  <marker id="arrow-ctrl-rev" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
+    <path d="M8,0 L0,4 L8,8 Z" fill="#5b5b5b"/></marker>
+  <marker id="arrow-stream" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto">
+    <path d="M0,0 L9,4.5 L0,9 Z" fill="#606060"/></marker>
+  <marker id="arrow-accent" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto">
+    <path d="M0,0 L9,4.5 L0,9 Z" fill="#2eaadc"/></marker>
+  <marker id="arrow-accent-rev" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="0" refY="4.5" orient="auto">
+    <path d="M9,0 L0,4.5 L9,9 Z" fill="#2eaadc"/></marker>
+  <marker id="arrow-stream-rev" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="0" refY="4.5" orient="auto">
+    <path d="M9,0 L0,4.5 L9,9 Z" fill="#606060"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M21.2,22 L719.2,22 L741.2,44 L741.2,242 Q741.2,242 741.2,242 L43.2,242 L21.2,220 L21.2,22 Q21.2,22 21.2,22 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M21.2,22 L719.2,22 L741.2,44 L741.2,242 Q741.2,242 741.2,242 L43.2,242 L21.2,220 L21.2,22 Q21.2,22 21.2,22 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M21,21.5 L719,21.5 L741,43.5 L741,241.5 Q741,241.5 741,241.5 L43,241.5 L21,219.5 L21,21.5 Q21,21.5 21,21.5 Z"/>
+</g>
+<g fill="#eeeeee" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M20,20 L718,20 L740,42 L740,240 Q740,240 740,240 L42,240 L20,218 L20,20 Q20,20 20,20 Z"/>
+</g>
+<text x="44" y="219.2" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="18" fill="#000000" text-anchor="start" font-style="italic" dominant-baseline="central"><tspan x="44" dy="0">Verilator simulation (simsoc.py)</tspan></text>
+<polyline points="170,85 195,85" fill="none" stroke="#606060" stroke-width="2.0" marker-end="url(#arrow-stream)" marker-start="url(#arrow-stream-rev)"/>
+<polyline points="330,85 375,85" fill="none" stroke="#606060" stroke-width="2.0" marker-end="url(#arrow-stream)" marker-start="url(#arrow-stream-rev)"/>
+<text x="352.5" y="75" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="12" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="352.5" dy="0">DFI</tspan></text>
+<polyline points="525,85 560,85" fill="none" stroke="#2eaadc" stroke-width="2.0" marker-end="url(#arrow-accent)" marker-start="url(#arrow-accent-rev)"/>
+<text x="542.5" y="75" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="12" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="542.5" dy="0">pads</tspan></text>
+<polyline points="640,110 640,140" fill="none" stroke="#5b5b5b" stroke-width="1.0" stroke-dasharray="1,3" marker-end="url(#arrow-ctrl)"/>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M41.2,62 L159.2,62 L171.2,74 L171.2,112 Q171.2,112 171.2,112 L53.2,112 L41.2,100 L41.2,62 Q41.2,62 41.2,62 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M41.2,62 L159.2,62 L171.2,74 L171.2,112 Q171.2,112 171.2,112 L53.2,112 L41.2,100 L41.2,62 Q41.2,62 41.2,62 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M41,61.5 L159,61.5 L171,73.5 L171,111.5 Q171,111.5 171,111.5 L53,111.5 L41,99.5 L41,61.5 Q41,61.5 41,61.5 Z"/>
+</g>
+<g fill="#fafafa" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M40,60 L158,60 L170,72 L170,110 Q170,110 170,110 L52,110 L40,98 L40,60 Q40,60 40,60 Z"/>
+</g>
+<text x="105" y="85" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="105" dy="0">CPU and BIOS</tspan></text>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M196.2,62 L319.2,62 L331.2,74 L331.2,112 Q331.2,112 331.2,112 L208.2,112 L196.2,100 L196.2,62 Q196.2,62 196.2,62 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M196.2,62 L319.2,62 L331.2,74 L331.2,112 Q331.2,112 331.2,112 L208.2,112 L196.2,100 L196.2,62 Q196.2,62 196.2,62 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M196,61.5 L319,61.5 L331,73.5 L331,111.5 Q331,111.5 331,111.5 L208,111.5 L196,99.5 L196,61.5 Q196,61.5 196,61.5 Z"/>
+</g>
+<g fill="#fafafa" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M195,60 L318,60 L330,72 L330,110 Q330,110 330,110 L207,110 L195,98 L195,60 Q195,60 195,60 Z"/>
+</g>
+<text x="262.5" y="85" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="262.5" dy="0">LiteDRAM core</tspan></text>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M376.2,62 L514.2,62 L526.2,74 L526.2,112 Q526.2,112 526.2,112 L388.2,112 L376.2,100 L376.2,62 Q376.2,62 376.2,62 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M376.2,62 L514.2,62 L526.2,74 L526.2,112 Q526.2,112 526.2,112 L388.2,112 L376.2,100 L376.2,62 Q376.2,62 376.2,62 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M376,61.5 L514,61.5 L526,73.5 L526,111.5 Q526,111.5 526,111.5 L388,111.5 L376,99.5 L376,61.5 Q376,61.5 376,61.5 Z"/>
+</g>
+<g fill="#bfe6f5" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M375,60 L513,60 L525,72 L525,110 Q525,110 525,110 L387,110 L375,98 L375,60 Q375,60 375,60 Z"/>
+</g>
+<text x="450" y="76" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="450" dy="0">Simulation PHY</tspan><tspan x="450" dy="18">(serializers)</tspan></text>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M561.2,62 L709.2,62 L721.2,74 L721.2,112 Q721.2,112 721.2,112 L573.2,112 L561.2,100 L561.2,62 Q561.2,62 561.2,62 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M561.2,62 L709.2,62 L721.2,74 L721.2,112 Q721.2,112 721.2,112 L573.2,112 L561.2,100 L561.2,62 Q561.2,62 561.2,62 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M561,61.5 L709,61.5 L721,73.5 L721,111.5 Q721,111.5 721,111.5 L573,111.5 L561,99.5 L561,61.5 Q561,61.5 561,61.5 Z"/>
+</g>
+<g fill="#bfe6f5" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M560,60 L708,60 L720,72 L720,110 Q720,110 720,110 L572,110 L560,98 L560,60 Q560,60 560,60 Z"/>
+</g>
+<text x="640" y="76" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="640" dy="0">DRAM simulator</tspan><tspan x="640" dy="18">(sim.py)</tspan></text>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M561.2,142 L709.2,142 L721.2,154 L721.2,192 Q721.2,192 721.2,192 L573.2,192 L561.2,180 L561.2,142 Q561.2,142 561.2,142 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M561.2,142 L709.2,142 L721.2,154 L721.2,192 Q721.2,192 721.2,192 L573.2,192 L561.2,180 L561.2,142 Q561.2,142 561.2,142 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M561,141.5 L709,141.5 L721,153.5 L721,191.5 Q721,191.5 721,191.5 L573,191.5 L561,179.5 L561,141.5 Q561,141.5 561,141.5 Z"/>
+</g>
+<g fill="#e6f5fb" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M560,140 L708,140 L720,152 L720,190 Q720,190 720,190 L572,190 L560,178 L560,140 Q560,140 560,140 Z"/>
+</g>
+<text x="640" y="156" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="640" dy="0">SimLogger</tspan><tspan x="640" dy="18">(commands, errors)</tspan></text>
+</svg>
