@@ -607,7 +607,7 @@ class SDRAMPHYModel(Module):
                 timings      = timings,
                 refresh_mode = self.module.timing_settings.fine_refresh_mode,
                 memtype      = settings.memtype,
-                verbose      = verbosity > SDRAM_VERBOSE_DBG)
+                verbose      = verbosity >= SDRAM_VERBOSE_DBG)
             self.submodules.timing_checker = timing_checker
 
         # Bank init data ---------------------------------------------------------------------------
