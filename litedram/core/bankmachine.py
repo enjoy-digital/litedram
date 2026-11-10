@@ -149,13 +149,24 @@ class BankMachine(Module):
             bank_bits = log2_int(nbanks)
             cmd_bank  = cmd_buffer.source.bank # Bank of the current command.
 
-            # Round-robin between the requests of the banks: switch when the granted bank has no
-            # request or when its request is accepted.
-            arbiter = roundrobin.RoundRobin(nbanks, roundrobin.SP_CE)
+            # Round-robin between the requests of the banks, keeping the granted bank while it has
+            # requests (runs of row hits, as with a bank machine per bank: switching on each request
+            # would interleave the banks in the command buffer and close the row on almost every
+            # command) for at most run_length accepted requests (no starvation of the other banks).
+            run_length = 8*settings.cmd_buffer_depth
+            arbiter    = roundrobin.RoundRobin(nbanks, roundrobin.SP_CE)
+            run        = Signal(max=run_length + 1)
+            run_end    = Signal()
             self.submodules += arbiter
+            self.sync += If(arbiter.ce,
+                run.eq(0)
+            ).Elif(req.valid & req.ready,
+                run.eq(run + 1)
+            )
             self.comb += [
+                run_end.eq(req.valid & req.ready & (run == run_length - 1)),
                 arbiter.request.eq(Cat(*[r.valid for r in reqs])),
-                arbiter.ce.eq(~req.valid | req.ready),
+                arbiter.ce.eq(~req.valid | run_end),
                 req.valid.eq(Array(r.valid for r in reqs)[arbiter.grant]),
                 req.we.eq(Array(r.we for r in reqs)[arbiter.grant]),
                 req.addr.eq(Array(r.addr for r in reqs)[arbiter.grant]),

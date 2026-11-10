@@ -230,6 +230,45 @@ class TestSharedBankMachines(unittest.TestCase):
             with self.subTest(nbankmachines=nbankmachines):
                 self.data_test(_DDR4, "1:4", 200e6, nbankmachines, naccesses=NACCESSES)
 
+    # Arbitration ----------------------------------------------------------------------------------
+
+    def test_no_starvation(self):
+        # A port streaming to bank 0 does not starve a request to bank 1 of the same bank machine:
+        # the granted bank keeps the bank machine for at most run_length requests.
+        dut = SharedBankMachinesDUT(_DDR3, "1:4", 100e6, 2, ControllerSettings(nbankmachines=1))
+        streamer, other = dut.ports
+        res = {}
+        def address(bank, col):
+            return (bank << dut.colbits) | (col % 2**dut.colbits)
+        def stream():
+            yield streamer.rdata.ready.eq(1)
+            yield streamer.cmd.valid.eq(1)
+            yield streamer.cmd.we.eq(0)
+            n = 0
+            while "done" not in res:
+                yield streamer.cmd.addr.eq(address(0, n))
+                yield
+                if (yield streamer.cmd.ready):
+                    n += 1
+            yield streamer.cmd.valid.eq(0)
+        def single():
+            yield other.rdata.ready.eq(1)
+            for _ in range(64): # The stream is running.
+                yield
+            yield other.cmd.valid.eq(1)
+            yield other.cmd.we.eq(0)
+            yield other.cmd.addr.eq(address(1, 0))
+            for cycles in range(1000):
+                yield
+                if (yield other.cmd.ready):
+                    break
+            yield other.cmd.valid.eq(0)
+            res["cycles"] = cycles
+            res["done"]   = True
+        run_simulation(dut, [stream(), single()])
+        # run_length (8*cmd_buffer_depth = 64) requests of the stream at most, then the request.
+        self.assertLess(res["cycles"], 2*8*8)
+
     # Settings -------------------------------------------------------------------------------------
 
     def test_invalid_nbankmachines(self):
