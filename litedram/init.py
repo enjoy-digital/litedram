@@ -968,7 +968,8 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
     for setting in ["cl", "cwl", "cmd_latency", "cmd_delay"]:
         if getattr(phy_settings, setting, None) is not None:
             r.define(f"SDRAM_PHY_{setting.upper()}", getattr(phy_settings, setting))
-    # Fine CK phase steps per tCK (PHYs that write-level by moving CK, e.g. S7HRDDRPHY).
+    # Fine CK phase steps per tCK (PHYs that write-level by moving CK, e.g. S7DDRPHY with
+    # with_ck_phase_shift).
     if getattr(phy_settings, "ckphase_steps", None) is not None:
         r.define("SDRAM_PHY_CKPHASE_STEPS", phy_settings.ckphase_steps)
 
@@ -999,6 +1000,9 @@ def get_sdram_phy_c_header(phy_settings, timing_settings, geom_settings):
         r.define("SDRAM_PHY_DELAYS", phy_settings.delays)
     if phy_settings.bitslips > 0:
         r.define("SDRAM_PHY_BITSLIPS", phy_settings.bitslips)
+    # Read VREF codes of the PHY (USPDDRPHY with_hpio_vref: ddrphy_rd_vref CSR) for a read VREF
+    # sweep in the calibration software (not done by the LiteX BIOS yet: the read VREF stays at
+    # its reset code).
     if phy_settings.read_vref_codes > 0:
         r.define("SDRAM_PHY_READ_VREF_CAPABLE")
         r.define("SDRAM_PHY_READ_VREF_CODES", phy_settings.read_vref_codes)

@@ -32,9 +32,9 @@ from litedram.phy.dfi import *
 # commands run on MMCM fine phase shift outputs while DQ/DQS/read capture stay on static outputs of
 # the same MMCM, so moving CK against DQ/DQS does the write leveling. Commands cross from sys
 # through falling edge registers, the per-lane write latency is calibrated with the write bitslips
-# and the read side gets per-bit selection (dq_dly_sel). The BIOS (liblitedram's sdram_s7hr.c) scans
-# the CK phase over one tCK with a traffic test (LiteDRAM BIST) and settles in the middle of the
-# longest passing run.
+# and the read side gets per-bit selection (dq_dly_sel). The BIOS (liblitedram's sdram.c,
+# sdram_ckphase_leveling()) scans the CK phase over one tCK with a traffic test (LiteDRAM BIST) and
+# settles in the middle of the longest passing run.
 
 class S7DDRPHYCKPhase(Module, AutoCSR):
     """The MMCM fine phase shift of CK, one step per CSR write (PSCLK = sys).
