@@ -178,7 +178,7 @@ defaults are CL 5, CWL 5, `60ohm`, `60ohm` and `34ohm` for DDR3 (`bench/ddr3_mr_
 | `--sdram-data-width` | `32` | Data width of the memory |
 | `--sdram-init` | none | Initial contents (`.bin` or `.json`); no memtest |
 | `--sdram-from-spd-dump` | none | Module from an SPD dump |
-| `--sdram-verbosity` | `0` | Timings checker (above 0), command trace (above 2) |
+| `--sdram-verbosity` | `0` | Timings checker (above 0), command trace (above 1) |
 | `--with-sdram-bist` | off | BIST generator and checker |
 
 ### LPDDR4, LPDDR5 and RPC simulation SoCs {#opt-sim-lpddr}

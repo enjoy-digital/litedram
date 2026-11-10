@@ -62,9 +62,9 @@ is per bank:
 | tRRD, tFAW | ACT and ACT on any bank; four ACT in a window |
 | tREFI | Late refresh, too many postponed refreshes, refresh rate over 64 ms |
 
-The model builds the checker only when its verbosity is above 0, and prints each command when the
-verbosity is above 2: level 1 reports the violations, level 3 also traces the commands, and level 2
-prints nothing more than level 1. `test/test_controller_timing.py` instantiates the checker alone, against the
+The model builds the checker only when its verbosity is above 0: level 1 reports the violations,
+and level 2 (`SDRAM_VERBOSE_DBG`) also prints each DFI command with its phase and bank, and each
+late refresh. `test/test_model.py` checks the prints of each level. `test/test_controller_timing.py` instantiates the checker alone, against the
 whole controller under random traffic, for DDR2, DDR3 and DDR4 modules.
 
 In the code: `litedram/phy/model.py` (`SDRAMPHYModel`, `DFITimingsChecker`, `BankModel`,
@@ -80,9 +80,10 @@ groups the files by area.
 | Controller | `test_bankmachine`, `test_shared_bankmachines`, `test_multiplexer`, `test_command_chooser`, `test_steerer`, `test_refresh`, `test_controller`, `test_controller_timing`, `test_timing`, `test_dynamic_odt`, `test_bandwidth`, `test_crossbar` |
 | Frontends | `test_adapter`, `test_wishbone`, `test_axi`, `test_avalon`, `test_dma`, `test_dma_byte_enable`, `test_fifo`, `test_bist`, `test_ecc` |
 | DFI and ECC | `test_dfi`, `test_dfii`, `test_dfi_ecc` |
-| PHYs | `test_gensdrphy`, `test_s6ddrphy`, `test_s7ddrphy`, `test_usddrphy`, `test_ecp5ddrphy`, `test_nxddrphy`, `test_gw5ddrphy`, `test_rpcphy`, `test_ddr3_phy_settings`, `test_phy_utils`, `test_sim_utils` |
+| PHYs | `test_gensdrphy`, `test_s6ddrphy`, `test_s7ddrphy`, `test_usddrphy`, `test_ecp5ddrphy`, `test_nxddrphy`, `test_gw2ddrphy`, `test_gw5ddrphy`, `test_rpcphy`, `test_ddr3_phy_settings`, `test_phy_utils`, `test_sim_utils` |
 | LPDDR4, LPDDR5 | `test_lpddr4`, `test_lpddr5` |
 | Modules and init | `test_modules`, `test_cl_cwl`, `test_init` |
+| DRAM model | `test_model` |
 | Generator | `test_gen`, `test_examples` |
 
 `test_init` compares the generated initialization headers with the reference files of

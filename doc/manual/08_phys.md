@@ -531,9 +531,7 @@ the DFI injector. The memory test through the controller does ([Debugging](#debu
 - **ECP5 rate crossing.** The BIOS does not search the `rate` register of `rate_crossing`, so that
   variant needs its own init software (LiteX issue #2770).
 - **ECP5 command gearing.** The `x1` gearing is marked experimental in the generator.
-- **Nexus.** 1:2 only, and not supported by the generator. The file header is a copy of the ECP5
-  one and names ECP5.
-- **Gowin GW2A.** No unit test, unlike the other PHYs.
+- **Nexus.** 1:2 only, and not supported by the generator.
 - **Efinix.** No LiteDRAM PHY: DDR on Efinix goes through the hard controller that LiteX wraps.
 
 ## In the code {#phys-code}
@@ -552,7 +550,7 @@ the DFI injector. The memory test through the controller does ([Debugging](#debu
 | `utils.py` | Bitslips, DQS pattern, serializers of the rate converter |
 
 The files are in `litedram/phy/`; the pads and latency helpers are in `litedram/common.py`. The
-unit tests are `test/test_<name>.py`, one per PHY file except GW2A.
+unit tests are `test/test_<name>.py`, one per PHY file.
 
 Where to go next: [LPDDR4, LPDDR5 and RPC DRAM PHYs](#lpddr-phys) for the other PHYs,
 [Memory modules](#modules) for the timings a PHY runs with, [Supported FPGAs and boards](#boards)
