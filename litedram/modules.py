@@ -283,7 +283,7 @@ class DDR4SPDData(DDR3SPDData):
         }
 
 def parse_spd_hexdump(filename):
-    """Parse data dumped using the `spdread` command in LiteX BIOS
+    """Parse data dumped using the `sdram_spd` command in LiteX BIOS
 
     This will read files in format:
         Memory dump:

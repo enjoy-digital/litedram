@@ -251,7 +251,7 @@ def get_read_to_write_cycles(phy):
 # Multiplexer --------------------------------------------------------------------------------------
 
 class Multiplexer(Module, AutoCSR):
-    """Multplexes requets from BankMachines to DFI
+    """Multiplexes requests from BankMachines to DFI
 
     This module multiplexes requests from BankMachines (and Refresher) and
     connects them to DFI. Refresh commands are coordinated between the Refresher
