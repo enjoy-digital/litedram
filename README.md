@@ -66,11 +66,31 @@ LiteDRAM is already used in commercial and open-source designs:
 ------------------------
 - add Avalon-ST interface.
 - add support for Altera devices.
-- add more documentation
 - ... See below Support and consulting :)
 
 If you want to support these features, please contact us at florent [AT]
 enjoy-digital.fr.
+
+[> Documentation
+----------------
+The **DRAM Controller & PHYs manual** is the reference of LiteDRAM: a nightly
+[PDF](https://github.com/enjoy-digital/litedram/releases/download/manual-nightly/litedram_manual.pdf)
+and [HTML page](https://github.com/enjoy-digital/litedram/releases/download/manual-nightly/litedram_manual.html)
+are published on the [manual-nightly](https://github.com/enjoy-digital/litedram/releases/tag/manual-nightly)
+release. Sources in [doc/manual](doc/manual/README.md) (build: `python3 doc/manual/build.py`, outputs in
+`build/doc/`):
+
+- **Understand**: [introduction](doc/manual/01_introduction.md), [DRAM in a nutshell](doc/manual/02_dram_primer.md),
+  [the DRAM interface and the PHY](doc/manual/03_dram_interface.md).
+- **The core**: [architecture](doc/manual/04_architecture.md), [controller](doc/manual/05_controller.md),
+  [ports and frontends](doc/manual/06_frontends.md), [initialization and calibration](doc/manual/07_calibration.md).
+- **The PHYs and memories**: [DDR PHYs](doc/manual/08_phys.md), [LPDDR4, LPDDR5 and RPC](doc/manual/09_lpddr_rpc.md)
+  (in development), [memory modules](doc/manual/10_modules.md).
+- **Use it**: [supported FPGAs and boards](doc/manual/11_boards.md), [getting started](doc/manual/12_getting_started.md),
+  [integration](doc/manual/13_integration.md), [examples](doc/manual/14_examples.md), [simulation](doc/manual/15_simulation.md),
+  [debugging](doc/manual/16_debugging.md).
+- **Appendices**: [registers](doc/manual/A_registers.md), [build options](doc/manual/B_build_options.md),
+  [glossary](doc/manual/C_glossary.md), [performance and resources](doc/manual/D_performance.md).
 
 [> Getting started
 ------------------
@@ -85,7 +105,8 @@ user ports) can be generated from a YAML description:
 ```sh
 $ litedram_gen examples/arty.yml
 ```
-See [doc/gen.md](doc/gen.md) for the command line, the YAML keys, the native/Wishbone port protocols and the examples.
+See [doc/gen.md](doc/gen.md) for the command line, the YAML keys, the native/Wishbone port protocols and the examples, and
+the [Integration](doc/manual/13_integration.md) chapter of the manual.
 
 [> Tests
 --------
