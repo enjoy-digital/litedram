@@ -254,7 +254,7 @@ class Refresher(Module):
 
             # ZQCS Executer ------------------------------------------------------------------------
             zqcs_executer = ZQCSExecuter(cmd, settings.timing.tRP, settings.timing.tZQCS)
-            self.submodules.zqs_executer = zqcs_executer
+            self.submodules.zqcs_executer = zqcs_executer
             self.comb += zqcs_timer.wait.eq(~zqcs_executer.done)
 
             # ZQCS Request -------------------------------------------------------------------------
