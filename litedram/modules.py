@@ -441,7 +441,7 @@ class SDRAMModule:
         return clk_period_ns * (1 - frac.num/frac.denom)
 
     @classmethod
-    def from_spd_data(cls, spd_data, clk_freq, fine_refresh_mode=None):
+    def from_spd_data(cls, spd_data, clk_freq, fine_refresh_mode=None, rate=None):
         # set parameters from SPD data based on memory type
         spd_cls = {
             0x0b: DDR3SPDData,
@@ -460,15 +460,18 @@ class SDRAMModule:
             # Save data for runtime verification
             _spd_data = spd_data
 
-        nphases = {
-            "SDR":   1,
-            "DDR":   2,
-            "LPDDR": 2,
-            "DDR2":  2,
-            "DDR3":  4,
-            "DDR4":  4,
-        }[spd.memtype]
-        rate = "1:{}".format(nphases)
+        # Rate of the PHY the module is used with (ex "1:2" on ECP5/Nexus/Gowin DDR3 PHYs), defaults
+        # to the usual rate of the memory type.
+        if rate is None:
+            nphases = {
+                "SDR":   1,
+                "DDR":   2,
+                "LPDDR": 2,
+                "DDR2":  2,
+                "DDR3":  4,
+                "DDR4":  4,
+            }[spd.memtype]
+            rate = "1:{}".format(nphases)
 
         return _SDRAMModule(clk_freq,
             rate              = rate,

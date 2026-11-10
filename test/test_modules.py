@@ -315,6 +315,16 @@ class TestSPD(unittest.TestCase):
         module = SDRAMModule.from_spd_data(data, 125e6)
         self.assertEqual(module._spd_data, data)
 
+    def test_spd_data_rate(self):
+        # Verify that the DRAM clocks parts of the timings use the PHY rate (tCCD=4ck).
+        data = load_spd_reference("MT16KTF1G64HZ-1G6P1.csv")
+        module = SDRAMModule.from_spd_data(data, 100e6)
+        self.assertEqual(module.rate, "1:4")
+        self.assertEqual(module.timing_settings.tCCD, 1)
+        module = SDRAMModule.from_spd_data(data, 100e6, rate="1:2")
+        self.assertEqual(module.rate, "1:2")
+        self.assertEqual(module.timing_settings.tCCD, 2)
+
     def compare_geometry(self, module, module_ref):
         self.assertEqual(module.nbanks, module_ref.nbanks)
         self.assertEqual(module.nrows, module_ref.nrows)
