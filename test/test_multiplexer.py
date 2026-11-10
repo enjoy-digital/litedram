@@ -242,7 +242,7 @@ class TestMultiplexer(unittest.TestCase):
         ]
         run_simulation(dut, generators)
 
-    def test_steer_write_correct_phases(self):
+    def steer_write_correct_phases_test(self, phy_settings=None):
         # Check that correct phases are being used during WRITE.
         def main_generator(dut):
             yield from dut.bm_drivers[2].write()
@@ -261,14 +261,20 @@ class TestMultiplexer(unittest.TestCase):
                 else:
                     self.assertEqual((yield dut.dfi.phases[phase].bank), 0)
 
-        dut = MultiplexerDUT()
+        dut = MultiplexerDUT(phy_settings=phy_settings)
         generators = [
             main_generator(dut),
             timeout_generator(50),
         ]
         run_simulation(dut, generators)
 
-    def test_single_phase_cmd_req(self):
+    def test_steer_write_correct_phases(self):
+        self.steer_write_correct_phases_test()
+
+    def test_steer_write_correct_phases_rdphase_signal(self):
+        # Read phase as a Signal (runtime configurable), write phase as an int.
+        self.steer_write_correct_phases_test(phy_settings=dict(rdphase=Signal(reset=0)))
+
         # Verify that, for a single phase, commands are sent sequentially.
         def main_generator(dut):
             yield from dut.bm_drivers[2].write()

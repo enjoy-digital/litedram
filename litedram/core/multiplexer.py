@@ -291,7 +291,7 @@ class Multiplexer(Module, AutoCSR):
             self.comb += rdcmdphase.eq(rdphase - 1) # Implicit %nphases.
         else:
             rdcmdphase = (rdphase - 1)%nphases
-        if isinstance(rdphase, Signal):
+        if isinstance(wrphase, Signal):
             wrcmdphase = Signal.like(wrphase)
             self.comb += wrcmdphase.eq(wrphase - 1) # Implicit %nphases.
         else:
