@@ -276,8 +276,7 @@ class Multiplexer(Module, AutoCSR):
             self.comb += choose_req.want_activates.eq(ras_allowed)
 
         # Command steering -------------------------------------------------------------------------
-        nop = Record(cmd_request_layout(settings.geom.addressbits,
-                                        log2_int(len(bank_machines))))
+        nop = Record(cmd_request_layout(settings.geom.addressbits, len(requests[0].ba)))
         # nop must be 1st
         commands = [nop, choose_cmd.cmd, choose_req.cmd, refresher.cmd]
         steerer = _Steerer(commands, dfi)

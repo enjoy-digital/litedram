@@ -10,6 +10,7 @@
 import math
 
 from migen import *
+from migen.genlib import roundrobin
 
 from litex.soc.interconnect import stream
 
@@ -74,10 +75,16 @@ class BankMachine(Module):
      - there is a valid command in `cmd_buffer` - `cmd_buffer` becomes ready
        when the BankMachine sends wdata_ready/rdata_valid back to the crossbar
 
+    A BankMachine can also be shared between several consecutive banks (nbanks > 1, to reduce
+    resource usage): requests of its banks are arbitrated (round-robin) into the command buffer and
+    only one row of one of its banks is kept open at a time: a request to another bank of the
+    machine closes the open row first (precharge or auto-precharge). The timings it enforces are
+    then shared by its banks (conservative).
+
     Parameters
     ----------
     n : int
-        Bank number
+        Bank number (first bank number when nbanks > 1)
     address_width : int
         LiteDRAMInterface address width
     address_align : int
@@ -86,11 +93,15 @@ class BankMachine(Module):
         Number of separate DRAM chips (width of chip select)
     settings : ControllerSettings
         LiteDRAMController settings
+    nbanks : int
+        Number of consecutive banks (n to n+nbanks-1) handled by the BankMachine
 
     Attributes
     ----------
     req : Record(cmd_layout)
-        Stream of requests from LiteDRAMCrossbar
+        Stream of requests from LiteDRAMCrossbar (nbanks == 1)
+    reqs : [Record(cmd_layout), ...]
+        Streams of requests from LiteDRAMCrossbar, one per bank ([req] when nbanks == 1)
     refresh_req : Signal(), in
         Indicates that refresh needs to be done, connects to Refresher.cmd.valid
     refresh_gnt : Signal(), out
@@ -98,8 +109,14 @@ class BankMachine(Module):
     cmd : Endpoint(cmd_request_rw_layout)
         Stream of commands to the Multiplexer
     """
-    def __init__(self, n, address_width, address_align, nranks, settings):
+    def __init__(self, n, address_width, address_align, nranks, settings, nbanks=1):
+        assert nbanks >= 1 and (nbanks & (nbanks - 1)) == 0
+        assert n % nbanks == 0
+        shared = (nbanks > 1)
         self.req = req = Record(cmd_layout(address_width))
+        self.reqs = [req]
+        if shared:
+            self.reqs = reqs = [Record(cmd_layout(address_width)) for i in range(nbanks)]
         self.refresh_req = refresh_req = Signal()
         self.refresh_gnt = refresh_gnt = Signal()
 
@@ -113,6 +130,8 @@ class BankMachine(Module):
 
         # Command buffer ---------------------------------------------------------------------------
         cmd_buffer_layout    = [("we", 1), ("addr", len(req.addr))]
+        if shared:
+            cmd_buffer_layout += [("bank", log2_int(nbanks))]
         cmd_buffer_lookahead = stream.SyncFIFO(
             cmd_buffer_layout, settings.cmd_buffer_depth,
             buffered=settings.cmd_buffer_buffered)
@@ -125,6 +144,54 @@ class BankMachine(Module):
             req.lock.eq(cmd_buffer_lookahead.source.valid | cmd_buffer.source.valid),
         ]
 
+        # Shared BankMachine: requests arbitration and per-bank responses --------------------------
+        if shared:
+            bank_bits = log2_int(nbanks)
+            cmd_bank  = cmd_buffer.source.bank # Bank of the current command.
+
+            # Round-robin between the requests of the banks, keeping the granted bank while it has
+            # requests (runs of row hits, as with a bank machine per bank: switching on each request
+            # would interleave the banks in the command buffer and close the row on almost every
+            # command) for at most run_length accepted requests (no starvation of the other banks).
+            run_length = 8*settings.cmd_buffer_depth
+            arbiter    = roundrobin.RoundRobin(nbanks, roundrobin.SP_CE)
+            run        = Signal(max=run_length + 1)
+            run_end    = Signal()
+            self.submodules += arbiter
+            self.sync += If(arbiter.ce,
+                run.eq(0)
+            ).Elif(req.valid & req.ready,
+                run.eq(run + 1)
+            )
+            self.comb += [
+                run_end.eq(req.valid & req.ready & (run == run_length - 1)),
+                arbiter.request.eq(Cat(*[r.valid for r in reqs])),
+                arbiter.ce.eq(~req.valid | run_end),
+                req.valid.eq(Array(r.valid for r in reqs)[arbiter.grant]),
+                req.we.eq(Array(r.we for r in reqs)[arbiter.grant]),
+                req.addr.eq(Array(r.addr for r in reqs)[arbiter.grant]),
+                cmd_buffer_lookahead.sink.bank.eq(arbiter.grant),
+            ]
+            for i, r in enumerate(reqs):
+                # Lock each bank while it has commands in the BankMachine (as an unshared BankMachine
+                # does): locking all the banks would block the crossbar's masters on the other banks.
+                pending = Signal(bits_for(settings.cmd_buffer_depth + 2))
+                push    = Signal()
+                pop     = Signal()
+                self.comb += [
+                    r.ready.eq(req.ready & (arbiter.grant == i)),
+                    r.wdata_ready.eq(req.wdata_ready & (cmd_bank == i)),
+                    r.rdata_valid.eq(req.rdata_valid & (cmd_bank == i)),
+                    push.eq(r.valid & r.ready),
+                    pop.eq((req.wdata_ready | req.rdata_valid) & (cmd_bank == i)),
+                    r.lock.eq(pending != 0),
+                ]
+                self.sync += If(push & ~pop,
+                    pending.eq(pending + 1)
+                ).Elif(~push & pop,
+                    pending.eq(pending - 1)
+                )
+
         slicer = _AddressSlicer(settings.geom.colbits, address_align)
 
         # Row tracking -----------------------------------------------------------------------------
@@ -133,7 +200,13 @@ class BankMachine(Module):
         row_hit    = Signal()
         row_open   = Signal()
         row_close  = Signal()
-        self.comb += row_hit.eq(row == slicer.row(cmd_buffer.source.addr))
+        same_row   = (row == slicer.row(cmd_buffer.source.addr))
+        if shared:
+            # Bank of the open row: a hit also needs the same bank.
+            row_bank = Signal(bank_bits, reset_less=True) # Only compared when row_opened.
+            same_row = same_row & (row_bank == cmd_bank)
+            self.sync += If(row_open, row_bank.eq(cmd_bank))
+        self.comb += row_hit.eq(same_row)
         self.sync += \
             If(row_close,
                 row_opened.eq(0)
@@ -144,8 +217,13 @@ class BankMachine(Module):
 
         # Address generation -----------------------------------------------------------------------
         row_col_n_addr_sel = Signal()
+        ba = n
+        if shared:
+            # ACTIVATE: bank of the command. CAS (row hit: same bank) and PRECHARGE: bank of the
+            # open row.
+            ba = n + Mux(row_col_n_addr_sel, cmd_bank, row_bank)
         self.comb += [
-            cmd.ba.eq(n),
+            cmd.ba.eq(ba),
             If(row_col_n_addr_sel,
                 cmd.a.eq(slicer.row(cmd_buffer.source.addr))
             ).Else(
@@ -175,10 +253,14 @@ class BankMachine(Module):
         # Auto Precharge generation ----------------------------------------------------------------
         # generate auto precharge when current and next cmds are to different rows
         if settings.with_auto_precharge:
+            other_row = (slicer.row(cmd_buffer_lookahead.source.addr) !=
+                         slicer.row(cmd_buffer.source.addr))
+            if shared:
+                # Shared BankMachine: also close the row when the next command is to another bank.
+                other_row = other_row | (cmd_buffer_lookahead.source.bank != cmd_bank)
             self.comb += \
                 If(cmd_buffer_lookahead.source.valid & cmd_buffer.source.valid,
-                    If(slicer.row(cmd_buffer_lookahead.source.addr) !=
-                       slicer.row(cmd_buffer.source.addr),
+                    If(other_row,
                         auto_precharge.eq(row_close == 0)
                     )
                 )

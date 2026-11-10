@@ -175,6 +175,30 @@ class TestControllerTiming(unittest.TestCase):
     def test_ddr4_1to4(self):
         self.controller_timing_test(_DDR4, "1:4", clk_freq=300e6)
 
+    # Shared bank machines: a request to another bank of a bank machine closes its open row first,
+    # with the bank machine's timings shared by its banks (and tRRD/tFAW/tCCD/tWTR in the multiplexer).
+    def test_ddr2_1to2_shared_bankmachines(self):
+        self.controller_timing_test(_DDR2, "1:2", clk_freq=150e6,
+            controller_settings=ControllerSettings(nbankmachines=2))
+
+    def test_ddr3_1to4_shared_bankmachines(self):
+        for nbankmachines in [4, 2, 1]:
+            with self.subTest(nbankmachines=nbankmachines):
+                self.controller_timing_test(_DDR3, "1:4", clk_freq=200e6,
+                    controller_settings=ControllerSettings(nbankmachines=nbankmachines))
+
+    def test_ddr3_1to4_shared_bankmachines_without_auto_precharge(self):
+        self.controller_timing_test(_DDR3, "1:4", clk_freq=200e6,
+            controller_settings=ControllerSettings(nbankmachines=2, with_auto_precharge=False))
+
+    def test_ddr4_1to4_shared_bankmachines(self):
+        self.controller_timing_test(_DDR4, "1:4", clk_freq=300e6,
+            controller_settings=ControllerSettings(nbankmachines=4))
+
+    def test_ddr3_1to4_shared_bankmachines_directed(self):
+        self.directed_timing_test(_DDR3, "1:4", clk_freq=200e6,
+            controller_settings=ControllerSettings(nbankmachines=1))
+
     def test_ddr3_1to4_directed(self):
         self.directed_timing_test(_DDR3, "1:4", clk_freq=200e6)
 

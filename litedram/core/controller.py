@@ -23,6 +23,13 @@ class ControllerSettings(Settings):
         cmd_buffer_depth    = 8,              # Depth of the command buffer (number of entries).
         cmd_buffer_buffered = False,          # Enable or disable buffered command mode.
 
+        # Bank machines.
+        nbankmachines       = None,           # Number of bank machines (None: one per bank). Fewer
+                                              # bank machines share them between consecutive banks
+                                              # (power of 2 dividing nbanks, nranks=1): less resources
+                                              # but one open row per bank machine, so less efficiency
+                                              # when accesses alternate between banks.
+
         # Read/Write times (anti-starvation): maximum time (in cycles) the multiplexer keeps issuing
         # reads (resp. writes) while writes (resp. reads) are pending, before switching. Each switch
         # costs a read-to-write or write-to-read turnaround (several cycles), so longer windows give
@@ -99,16 +106,25 @@ class LiteDRAMController(Module):
             postponing = self.settings.refresh_postponing)
 
         # Bank Machines ----------------------------------------------------------------------------
+        nbankmachines = getattr(self.settings, "nbankmachines", None) or nranks*nbanks
+        if (nbankmachines & (nbankmachines - 1)) or (nranks*nbanks) % nbankmachines:
+            raise ValueError("nbankmachines ({}) must be a power of 2 dividing nranks*nbanks ({}).".format(
+                nbankmachines, nranks*nbanks))
+        if (nbankmachines != nranks*nbanks) and (nranks > 1):
+            raise NotImplementedError("Shared bank machines (nbankmachines) only support nranks=1.")
+        banks_per_bm  = (nranks*nbanks)//nbankmachines
         bank_machines = []
-        for n in range(nranks*nbanks):
+        for n in range(0, nranks*nbanks, banks_per_bm):
             bank_machine = BankMachine(n,
                 address_width = interface.address_width,
                 address_align = address_align,
                 nranks        = nranks,
-                settings      = self.settings)
+                settings      = self.settings,
+                nbanks        = banks_per_bm)
             bank_machines.append(bank_machine)
             self.submodules += bank_machine
-            self.comb += getattr(interface, "bank"+str(n)).connect(bank_machine.req)
+            for i, req in enumerate(bank_machine.reqs):
+                self.comb += getattr(interface, "bank"+str(n+i)).connect(req)
 
         # Multiplexer ------------------------------------------------------------------------------
         self.submodules.multiplexer = Multiplexer(
