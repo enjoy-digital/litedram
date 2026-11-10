@@ -5,7 +5,7 @@
 # Copyright (c) 2019-2020 Florent Kermarrec <florent@enjoy-digital.fr>
 # SPDX-License-Identifier: BSD-2-Clause
 
-# 1:2 frequency-ratio DDR3 PHY for Lattice's ECP5
+# 1:2 frequency-ratio DDR3 PHY for Lattice's Nexus
 # DDR3: 800 MT/s
 
 from functools import reduce
@@ -109,7 +109,7 @@ class NexusDDRPHYInit(Module):
             self.move.eq(move),
         ]
 
-# Lattice ECP5 DDR PHY -----------------------------------------------------------------------------
+# Lattice Nexus DDR PHY ----------------------------------------------------------------------------
 
 class NexusDDRPHY(Module, AutoCSR):
     def __init__(self, pads,
