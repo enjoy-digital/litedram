@@ -181,11 +181,11 @@ class TestMultiplexer(unittest.TestCase):
         dut = MultiplexerDUT()
         run_simulation(dut, main_generator(dut))
 
-    def test_fsm_write_to_read_latency(self):
+    def fsm_write_to_read_latency_test(self, timing_settings=None):
         # Verify the timing of WRITE to READ transition.
         def main_generator(dut):
             write_latency = math.ceil(dut.settings.phy.cwl / dut.settings.phy.nphases)
-            wtr = dut.settings.timing.tWTR + write_latency + dut.settings.timing.tCCD or 0
+            wtr = dut.settings.timing.tWTR + write_latency + (dut.settings.timing.tCCD or 0)
 
             expected = "w" + (wtr - 1) * ">" + "r"
             states   = ""
@@ -209,12 +209,19 @@ class TestMultiplexer(unittest.TestCase):
 
             self.assertEqual(states, expected)
 
-        dut = MultiplexerDUT()
+        dut = MultiplexerDUT(timing_settings=timing_settings)
         generators = [
             main_generator(dut),
             timeout_generator(50),
         ]
         run_simulation(dut, generators)
+
+    def test_fsm_write_to_read_latency(self):
+        self.fsm_write_to_read_latency_test()
+
+    def test_fsm_write_to_read_latency_no_tccd(self):
+        # Without tCCD, tWTR and the write latency must still be applied.
+        self.fsm_write_to_read_latency_test(timing_settings=dict(tCCD=None))
 
     def test_steer_read_correct_phases(self):
         # Check that correct phases are being used during READ.

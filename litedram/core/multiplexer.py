@@ -342,7 +342,7 @@ class Multiplexer(Module, AutoCSR):
         self.submodules.twtrcon = twtrcon = tXXDController(
             settings.timing.tWTR + write_latency +
             # tCCD must be added since tWTR begins after the transfer is complete
-            settings.timing.tCCD if settings.timing.tCCD is not None else 0)
+            (settings.timing.tCCD if settings.timing.tCCD is not None else 0))
         self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
 
         # Read/write turnaround --------------------------------------------------------------------
