@@ -282,6 +282,7 @@ def main():
     group.add_argument("--no-run",               action="store_true",     help="Don't run the simulation, just generate files")
     group.add_argument("--double-rate-phy",      action="store_true",     help="Use sim PHY with 2-stage serialization")
     group.add_argument("--finish-after-memtest", action="store_true",     help="Stop simulation after DRAM memory test")
+    group.add_argument("--opt-level",            default="O3",            help="Verilator C++ compilation optimization level")
     args = parser.parse_args()
 
     soc_kwargs     = soc_core_argdict(args)
@@ -321,7 +322,8 @@ def main():
         trace       = args.trace,
         trace_fst   = args.trace_fst,
         trace_start = int(args.trace_start),
-        trace_end   = int(args.trace_end)
+        trace_end   = int(args.trace_end),
+        opt_level   = args.opt_level,
     )
     vns = builder.build(run=False, **build_kwargs)
 
