@@ -4,7 +4,7 @@
                                / /__/ / __/ -_) // / , _/ __ |/ /|_/ /
                               /____/_/\__/\__/____/_/|_/_/ |_/_/  /_/
 
-                                   Copyright 2015-2024 / EnjoyDigital
+                                   Copyright 2015-2026 / EnjoyDigital
                                A small footprint and configurable DRAM core
                                         powered by Migen & LiteX
 ```
@@ -92,12 +92,19 @@ See [doc/gen.md](doc/gen.md) for the command line, the YAML keys, the native/Wis
 Unit tests are available in ./test/.
 To run all the unit tests:
 ```sh
-$ python3 -m unittest discover -s test -p "test_*.py"
+$ python3 -m pytest test
+```
+
+test_examples.py builds the LiteX BIOS (RISC-V GCC toolchain) and test_lpddr4.py/test_lpddr5.py
+are long simulations: the CI runs them only in its full job (with `LITEDRAM_TEST_FULL=1` to enable
+the slow configurations); skip them with:
+```sh
+$ python3 -m pytest test --ignore=test/test_examples.py --ignore=test/test_lpddr4.py --ignore=test/test_lpddr5.py
 ```
 
 Tests can also be run individually:
 ```sh
-$ python3 -m unittest test.test_name
+$ python3 -m pytest test/test_name.py
 ```
 
 [> License
