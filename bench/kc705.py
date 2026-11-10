@@ -139,8 +139,8 @@ def main():
         load_bios("build/xilinx_kc705/software/bios/bios.bin")
 
     if args.sys_clk_freq is not None:
-        from common import us_set_sys_clk
-        us_set_sys_clk(clk_freq=float(args.sys_clk_freq), vco_freq=soc.crg.main_pll.compute_config()["vco"])
+        from common import s7_set_sys_clk
+        s7_set_sys_clk(clk_freq=float(args.sys_clk_freq), vco_freq=soc.crg.main_pll.compute_config()["vco"])
 
     if args.test:
         from common import s7_bench_test

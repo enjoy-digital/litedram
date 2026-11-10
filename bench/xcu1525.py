@@ -157,7 +157,7 @@ def main():
             freq_min      = 80e6,
             freq_max      = 180e6,
             freq_step     = 1e6,
-            vco_freq      = soc.crg.pll.compute_config()["vco"],
+            vco_freq      = soc.crg.main_pll.compute_config()["vco"],
             bios_filename = f"build/sqrl_xcu1525_ch{args.channel}/software/bios/bios.bin")
 
 if __name__ == "__main__":
