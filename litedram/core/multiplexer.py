@@ -291,7 +291,7 @@ class Multiplexer(Module, AutoCSR):
             self.comb += rdcmdphase.eq(rdphase - 1) # Implicit %nphases.
         else:
             rdcmdphase = (rdphase - 1)%nphases
-        if isinstance(rdphase, Signal):
+        if isinstance(wrphase, Signal):
             wrcmdphase = Signal.like(wrphase)
             self.comb += wrcmdphase.eq(wrphase - 1) # Implicit %nphases.
         else:
@@ -342,7 +342,7 @@ class Multiplexer(Module, AutoCSR):
         self.submodules.twtrcon = twtrcon = tXXDController(
             settings.timing.tWTR + write_latency +
             # tCCD must be added since tWTR begins after the transfer is complete
-            settings.timing.tCCD if settings.timing.tCCD is not None else 0)
+            (settings.timing.tCCD if settings.timing.tCCD is not None else 0))
         self.comb += twtrcon.valid.eq(choose_req.accept() & choose_req.write())
 
         # Read/write turnaround --------------------------------------------------------------------
