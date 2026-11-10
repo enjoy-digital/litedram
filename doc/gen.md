@@ -113,6 +113,7 @@ excepted since it expects a Python class).
 | `with_refresh` | bool | `True` | Periodic refresh |
 | `refresh_zqcs_freq` | float | `1e0` | ZQ short calibration frequency (Hz) |
 | `refresh_postponing` | int | `1` | Maximum number of postponed refreshes |
+| `with_dynamic_odt` | bool | `False` | Drive ODT only around writes (DDR3, single rank) instead of statically: DRAM termination off during reads, as JEDEC requires when `rtt_nom`/`rtt_wr` are enabled |
 | `with_auto_precharge` | bool | `True` | Auto-precharge after reads/writes |
 | `address_mapping` | `ROW_BANK_COL` | `ROW_BANK_COL` | Address mapping scheme |
 | `bank_byte_alignment` | int | `0` | Minimum byte distance between consecutive banks (e.g. L2 cache set size) |

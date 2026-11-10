@@ -48,6 +48,11 @@ class ControllerSettings(Settings):
         refresh_zqcs_freq   = 1e0,            # Frequency of ZQCS (ZQ Calibration Short) commands.
         refresh_postponing  = 1,              # Maximum number of refresh postponements allowed.
 
+        # ODT.
+        with_dynamic_odt    = False,          # Drive ODT only around WRITEs (DDR3, nranks=1) instead
+                                              # of statically: the DRAM termination (RTT_NOM/RTT_WR)
+                                              # is then off during READs, as the JEDEC requires.
+
         # Auto-Precharge.
         with_auto_precharge = True,           # Enable auto-precharge after read/write operations.
 
