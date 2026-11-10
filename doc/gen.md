@@ -54,7 +54,7 @@ floats and the strings `"True"`/`"False"`/`"None"` to the Python values; unknown
 | `ck_phase` | int (degrees) | `45` | ECP5DDRPHY with `cmd_gearing: x1`: CK phase from the PLL, after the edge clock input (CK would otherwise come out early). 45 worked from DDR3-300 to DDR3-600 on ECPIX-5 |
 | `dll_off` | bool | `False` | GW2DDRPHY/GW5DDRPHY only: DDR3 DLL-off mode (CL6/CWL6, for DDR clocks <= 125 MHz) |
 | `sdram_rate` | `1:2`, `1:4` | `1:2` | GW5DDRPHY only: PHY frequency ratio (GW2DDRPHY is 1:2) |
-| `with_hpio_vref` | bool | `False` | USPDDRPHY/DDR4 only: per-byte read VREF scan through HPIO_VREF (`rd_vref` CSR) |
+| `with_hpio_vref` | bool | `False` | USPDDRPHY/DDR4 only: per-byte read VREF through HPIO_VREF (`rd_vref` CSR), for a read VREF scan by the init software (not done by the LiteX BIOS yet: the code stays at `hpio_vref_tune`) |
 | `hpio_vref_tune` | int (`0`-`72`) | `31` | Read VREF reset code (58 + 0.5 x code % of VCCO for codes 15-72, 31 = 73.5%) |
 
 ### Frequencies
