@@ -20,7 +20,7 @@
 
     # Frequency ----------------------------------------------------------------
     "input_clk_freq":   100e6, # Input clock frequency
-    "sys_clk_freq":     100e6, # System clock frequency (DDR_clk = 4 x sys_clk)
+    "sys_clk_freq":     100e6, # System clock frequency (DDR_clk = 2 x sys_clk)
     "iodelay_clk_freq": 200e6, # IODELAYs reference clock frequency
 
     # Core ---------------------------------------------------------------------
