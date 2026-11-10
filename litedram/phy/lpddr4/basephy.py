@@ -54,11 +54,11 @@ class LPDDR4PHY(Module, AutoCSR):
     is treated specially in that DFI ZQC is translated into LPDDR4 MPC and has
     different interpretation depending on DFI.address.
 
-    Due to the fact that LPDDR4 has 256-bit Mode Register space, the DFI MRS
-    command encodes both register address *and* value in DFI.address (instead
-    of the default in LiteDRAM to split them between DFI.address and DFI.bank).
-    The MRS command is used both for Mode Register Write and Mode Register Read.
-    The command is selected based on the value of DFI.bank.
+    The DFI MRS command is translated into LPDDR4 Mode Register Write (MRW):
+    the Mode Register address is taken from DFI.bank and the value from
+    DFI.address. Mode Register Read (MRR) goes through the DFI ZQC command
+    with DFI.bank=1 (`SpecialCmd.MRR`), the Mode Register address being taken
+    from DFI.address.
 
     Refer to the documentation in `commands.py` for further information.
 
