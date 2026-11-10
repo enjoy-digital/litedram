@@ -32,36 +32,40 @@ burst_lengths = {
 }
 
 def get_default_cl_cwl(memtype, tck):
+    """Default (CL, CWL) at a DRAM clock period tck (s): the latencies of the slowest bin whose
+    maximum rate is at least the DRAM's. The bins are keyed on their exact JEDEC rates (in MT/s
+    for the DDRs: DDR3-1066 is 3200/3 MT/s, i.e. tCK = 1.875 ns), with 1 fs of tolerance for the
+    tck computed from a sys_clk frequency."""
     f_to_cl_cwl = OrderedDict()
     if memtype == "SDR":
-        f_to_cl_cwl[100e6] = (2, None)
-        f_to_cl_cwl[133e6] = (3, None)
-        f_to_cl_cwl[166e6] = (3, None) # -6 grades.
-        f_to_cl_cwl[200e6] = (3, None) # -5 grades.
+        f_to_cl_cwl[100e6]    = (2, None)
+        f_to_cl_cwl[400e6/3]  = (3, None)
+        f_to_cl_cwl[500e6/3]  = (3, None) # -6 grades.
+        f_to_cl_cwl[200e6]    = (3, None) # -5 grades.
     elif memtype == "DDR2":
-        f_to_cl_cwl[400e6]  = (3, 2)
-        f_to_cl_cwl[533e6]  = (4, 3)
-        f_to_cl_cwl[677e6]  = (5, 4)
-        f_to_cl_cwl[800e6]  = (6, 5)
-        f_to_cl_cwl[1066e6] = (7, 5)
+        f_to_cl_cwl[400e6]    = (3, 2)
+        f_to_cl_cwl[1600e6/3] = (4, 3)
+        f_to_cl_cwl[2000e6/3] = (5, 4)
+        f_to_cl_cwl[800e6]    = (6, 5)
+        f_to_cl_cwl[3200e6/3] = (7, 5)
     elif memtype == "DDR3":
-        f_to_cl_cwl[800e6]  = ( 6, 5)
-        f_to_cl_cwl[1066e6] = ( 7, 6)
-        f_to_cl_cwl[1333e6] = (10, 7)
-        f_to_cl_cwl[1600e6] = (11, 8)
-        f_to_cl_cwl[1866e6] = (13, 9)
+        f_to_cl_cwl[800e6]    = ( 6, 5)
+        f_to_cl_cwl[3200e6/3] = ( 7, 6)
+        f_to_cl_cwl[4000e6/3] = (10, 7)
+        f_to_cl_cwl[1600e6]   = (11, 8)
+        f_to_cl_cwl[5600e6/3] = (13, 9)
     elif memtype == "DDR4":
-        f_to_cl_cwl[1333e6] = (9,   9)
-        f_to_cl_cwl[1600e6] = (11,  9)
-        f_to_cl_cwl[1866e6] = (13, 10)
-        f_to_cl_cwl[2133e6] = (15, 11)
-        f_to_cl_cwl[2400e6] = (16, 12)
-        f_to_cl_cwl[2666e6] = (18, 14)
+        f_to_cl_cwl[4000e6/3] = (9,   9)
+        f_to_cl_cwl[1600e6]   = (11,  9)
+        f_to_cl_cwl[5600e6/3] = (13, 10)
+        f_to_cl_cwl[6400e6/3] = (15, 11)
+        f_to_cl_cwl[2400e6]   = (16, 12)
+        f_to_cl_cwl[8000e6/3] = (18, 14)
     else:
         raise ValueError
     for f, (cl, cwl) in f_to_cl_cwl.items():
         m = 2 if "DDR" in memtype else 1
-        if tck >= m/f:
+        if tck >= m/f - 1e-15:
             return cl, cwl
     raise ValueError
 
