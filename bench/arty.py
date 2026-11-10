@@ -41,7 +41,7 @@ class _CRG(Module, AutoCSR):
 
         # Main PLL.
         self.submodules.main_pll = main_pll = S7PLL(speedgrade=-1)
-        self.comb += main_pll.reset.eq(~platform.request("cpu_reset"))
+        self.comb += main_pll.reset.eq(~platform.request("cpu_reset_n"))
         main_pll.register_clkin(platform.request("clk100"), 100e6)
         main_pll.create_clkout(self.cd_sys_pll, sys_clk_freq)
         main_pll.create_clkout(self.cd_clk200,  200e6)
