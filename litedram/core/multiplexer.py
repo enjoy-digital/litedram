@@ -135,6 +135,9 @@ class _Steerer(Module):
         always considered invalid (because of lack of the `valid` attribute).
     dfi : dfi.Interface
         DFI interface connected to PHY
+    odt_hold : int or None
+        None: ODT statically asserted on all the ranks. Otherwise (single rank): ODT asserted with
+        each WRITE command and held for odt_hold DRAM clocks (ODTH8), deasserted otherwise.
 
     Attributes
     ----------
@@ -143,7 +146,7 @@ class _Steerer(Module):
         DFI phase. The signals should take one of the values from STEER_* to
         select given source.
     """
-    def __init__(self, commands, dfi):
+    def __init__(self, commands, dfi, odt_hold=None):
         ncmd = len(commands)
         nph  = len(dfi.phases)
         self.sel = [Signal(max=ncmd) for i in range(nph)]
@@ -162,7 +165,7 @@ class _Steerer(Module):
             if hasattr(phase, "reset_n"):
                 self.comb += phase.reset_n.eq(1)
             self.comb += phase.cke.eq(Replicate(Signal(reset=1), nranks))
-            if hasattr(phase, "odt"):
+            if hasattr(phase, "odt") and odt_hold is None:
                 # FIXME: add dynamic drive for multi-rank (will be needed for high frequencies)
                 self.comb += phase.odt.eq(Replicate(Signal(reset=1), nranks))
             # Bank and address registers are reset-less: at reset the command (cs_n, ras_n, cas_n,
@@ -199,6 +202,35 @@ class _Steerer(Module):
                 phase.rddata_en.eq(rddata_ens[sel]),
                 phase.wrdata_en.eq(wrdata_ens[sel])
             ]
+
+        # Dynamic ODT ------------------------------------------------------------------------------
+        # ODT asserted with each WRITE command (on its DFI phase, so with the command's latency
+        # through the PHY) and held for odt_hold DRAM clocks, then deasserted: the DRAM applies
+        # RTT_WR (or RTT_NOM) ODTLon = CWL-2 clocks later for the write burst and its termination
+        # is off for the reads, as required when RTT_NOM/RTT_WR are enabled (the DRAM cannot
+        # terminate and drive at the same time). The controller's WRITE to READ (tWTR) and READ
+        # to WRITE (get_read_to_write_cycles) distances keep RTT off from before the READ preamble
+        # to after the READ postamble.
+        if hasattr(dfi.phases[0], "odt") and odt_hold is not None:
+            assert len(dfi.phases[0].cs_n) == 1, "Dynamic ODT only supports nranks=1."
+            # WRITE commands on the (registered) DFI phases.
+            writes = [~p.cs_n & p.ras_n & ~p.cas_n & ~p.we_n for p in dfi.phases]
+            # ODT DRAM clocks still to assert after the current sys_clk cycle.
+            remaining = Signal(max=odt_hold + 1)
+            for i, phase in enumerate(dfi.phases):
+                odt = (remaining > i)
+                for j in range(max(0, i - odt_hold + 1), i + 1):
+                    odt = odt | writes[j]
+                self.comb += phase.odt.eq(odt)
+            # Next cycle: the longest of the current hold and of the holds started this cycle.
+            candidates = [Mux(remaining > nph, remaining - nph, 0)]
+            for j in range(nph):
+                if j + odt_hold - nph > 0:
+                    candidates.append(Mux(writes[j], j + odt_hold - nph, 0))
+            remaining_next = candidates[0]
+            for c in candidates[1:]:
+                remaining_next = Mux(c > remaining_next, c, remaining_next)
+            self.sync += remaining.eq(remaining_next)
 
 # Read to Write turnaround -------------------------------------------------------------------------
 
@@ -279,7 +311,12 @@ class Multiplexer(Module, AutoCSR):
         nop = Record(cmd_request_layout(settings.geom.addressbits, len(requests[0].ba)))
         # nop must be 1st
         commands = [nop, choose_cmd.cmd, choose_req.cmd, refresher.cmd]
-        steerer = _Steerer(commands, dfi)
+        odt_hold = None
+        if getattr(settings, "with_dynamic_odt", False):
+            if (settings.phy.memtype != "DDR3") or (settings.phy.nranks != 1):
+                raise NotImplementedError("Dynamic ODT only supports DDR3 with nranks=1.")
+            odt_hold = 6 # ODTH8: ODT high time with WRITE commands (BL8), in DRAM clocks.
+        steerer = _Steerer(commands, dfi, odt_hold=odt_hold)
         self.submodules += steerer
 
         # tRRD timing (Row to Row delay) -----------------------------------------------------------
