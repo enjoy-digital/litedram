@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="270" viewBox="0 0 760 270">
+<defs>
+  <marker id="arrow-ctrl" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#5b5b5b"/></marker>
+  <marker id="arrow-ctrl-rev" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
+    <path d="M8,0 L0,4 L8,8 Z" fill="#5b5b5b"/></marker>
+  <marker id="arrow-stream" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto">
+    <path d="M0,0 L9,4.5 L0,9 Z" fill="#606060"/></marker>
+  <marker id="arrow-accent" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto">
+    <path d="M0,0 L9,4.5 L0,9 Z" fill="#2eaadc"/></marker>
+  <marker id="arrow-accent-rev" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="0" refY="4.5" orient="auto">
+    <path d="M9,0 L0,4.5 L9,9 Z" fill="#2eaadc"/></marker>
+  <marker id="arrow-stream-rev" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="0" refY="4.5" orient="auto">
+    <path d="M9,0 L0,4.5 L9,9 Z" fill="#606060"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<polyline points="230,40 640,40" fill="none" stroke="#606060" stroke-width="2.0"/>
+<polyline points="250,85 250,200" fill="none" stroke="#606060" stroke-width="2.0"/>
+<polyline points="390,40 390,75" fill="none" stroke="#5b5b5b" stroke-width="1.0" marker-end="url(#arrow-ctrl)"/>
+<text x="398" y="57" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="12" fill="#000000" text-anchor="start" dominant-baseline="central"><tspan x="398" dy="0">select</tspan></text>
+<polyline points="330,100 250,100" fill="none" stroke="#606060" stroke-width="2.0"/>
+<polyline points="390,125 390,150" fill="none" stroke="#606060" stroke-width="2.0"/>
+<polyline points="330,222 500,222 500,100 450,100" fill="none" stroke="#5b5b5b" stroke-width="1.0" stroke-dasharray="1,3" marker-end="url(#arrow-ctrl)"/>
+<text x="510" y="160" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="12" fill="#000000" text-anchor="start" dominant-baseline="central"><tspan x="510" dy="0">restore</tspan></text>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M331.2,77 L439.2,77 L451.2,89 L451.2,127 Q451.2,127 451.2,127 L343.2,127 L331.2,115 L331.2,77 Q331.2,77 331.2,77 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M331.2,77 L439.2,77 L451.2,89 L451.2,127 Q451.2,127 451.2,127 L343.2,127 L331.2,115 L331.2,77 Q331.2,77 331.2,77 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M331,76.5 L439,76.5 L451,88.5 L451,126.5 Q451,126.5 451,126.5 L343,126.5 L331,114.5 L331,76.5 Q331,76.5 331,76.5 Z"/>
+</g>
+<g fill="#bfe6f5" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M330,75 L438,75 L450,87 L450,125 Q450,125 450,125 L342,125 L330,113 L330,75 Q330,75 330,75 Z"/>
+</g>
+<text x="390" y="91" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="390" dy="0">Access</tspan><tspan x="390" dy="18">transistor</tspan></text>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M331.2,152 L439.2,152 L451.2,164 L451.2,202 Q451.2,202 451.2,202 L343.2,202 L331.2,190 L331.2,152 Q331.2,152 331.2,152 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M331.2,152 L439.2,152 L451.2,164 L451.2,202 Q451.2,202 451.2,202 L343.2,202 L331.2,190 L331.2,152 Q331.2,152 331.2,152 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M331,151.5 L439,151.5 L451,163.5 L451,201.5 Q451,201.5 451,201.5 L343,201.5 L331,189.5 L331,151.5 Q331,151.5 331,151.5 Z"/>
+</g>
+<g fill="#bfe6f5" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M330,150 L438,150 L450,162 L450,200 Q450,200 450,200 L342,200 L330,188 L330,150 Q330,150 330,150 Z"/>
+</g>
+<text x="390" y="166" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="390" dy="0">Capacitor</tspan><tspan x="390" dy="18">one bit</tspan></text>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M171.2,202 L320.2,202 L331.2,213 L331.2,246 Q331.2,246 331.2,246 L182.2,246 L171.2,235 L171.2,202 Q171.2,202 171.2,202 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M171.2,202 L320.2,202 L331.2,213 L331.2,246 Q331.2,246 331.2,246 L182.2,246 L171.2,235 L171.2,202 Q171.2,202 171.2,202 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M171,201.5 L320,201.5 L331,212.5 L331,245.5 Q331,245.5 331,245.5 L182,245.5 L171,234.5 L171,201.5 Q171,201.5 171,201.5 Z"/>
+</g>
+<g fill="#e6f5fb" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M170,200 L319,200 L330,211 L330,244 Q330,244 330,244 L181,244 L170,233 L170,200 Q170,200 170,200 Z"/>
+</g>
+<text x="250" y="222" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="250" dy="0">Sense amplifier</tspan></text>
+<text x="220" y="40" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="end" dominant-baseline="central"><tspan x="220" dy="0">word line (row)</tspan></text>
+<text x="240" y="140" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="end" dominant-baseline="central"><tspan x="240" dy="0">bit line (column)</tspan></text>
+</svg>

@@ -1,0 +1,545 @@
+{
+ "argv": [
+  "--with-bist"
+ ],
+ "banks": {
+  "ddrphy_k7": [
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "rst",
+    "offset": 0,
+    "reset": 0,
+    "size": 1
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "dly_sel",
+    "offset": 4,
+    "reset": 0,
+    "size": 4
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "half_sys8x_taps",
+    "offset": 8,
+    "reset": 6,
+    "size": 5
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "wlevel_en",
+    "offset": 12,
+    "reset": 0,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "wlevel_strobe",
+    "offset": 16,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "cdly_rst",
+    "offset": 20,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "cdly_inc",
+    "offset": 24,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "rdly_dq_rst",
+    "offset": 28,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "rdly_dq_inc",
+    "offset": 32,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "rdly_dq_bitslip_rst",
+    "offset": 36,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "rdly_dq_bitslip",
+    "offset": 40,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "wdly_dq_rst",
+    "offset": 44,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "wdly_dq_inc",
+    "offset": 48,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "wdly_dqs_rst",
+    "offset": 52,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "wdly_dqs_inc",
+    "offset": 56,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "wdly_dq_bitslip_rst",
+    "offset": 60,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "wdly_dq_bitslip",
+    "offset": 64,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "rdphase",
+    "offset": 68,
+    "reset": 1,
+    "size": 2
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "wrphase",
+    "offset": 72,
+    "reset": 2,
+    "size": 2
+   }
+  ],
+  "sdram_checker": [
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "reset",
+    "offset": 0,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "start",
+    "offset": 4,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "ro",
+    "description": "",
+    "fields": [],
+    "name": "done",
+    "offset": 8,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "base",
+    "offset": 12,
+    "reset": 0,
+    "size": 30
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "end",
+    "offset": 16,
+    "reset": 0,
+    "size": 30
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "length",
+    "offset": 20,
+    "reset": 0,
+    "size": 30
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [
+     {
+      "description": "",
+      "name": "data",
+      "offset": 0,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "",
+      "name": "addr",
+      "offset": 1,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     }
+    ],
+    "name": "random",
+    "offset": 24,
+    "reset": 0,
+    "size": 2
+   },
+   {
+    "access": "ro",
+    "description": "",
+    "fields": [],
+    "name": "ticks",
+    "offset": 28,
+    "reset": null,
+    "size": 32
+   },
+   {
+    "access": "ro",
+    "description": "",
+    "fields": [],
+    "name": "errors",
+    "offset": 32,
+    "reset": null,
+    "size": 32
+   }
+  ],
+  "sdram_dfii": [
+   {
+    "access": "rw",
+    "description": "Control DFI signals common to all phases",
+    "fields": [
+     {
+      "description": "",
+      "name": "sel",
+      "offset": 0,
+      "reset": 1,
+      "size": 1,
+      "values": [
+       [
+        "``0b0``",
+        "Software (CPU) control."
+       ],
+       [
+        "``0b1``",
+        "Hardware control (default)."
+       ]
+      ]
+     },
+     {
+      "description": "DFI clock enable bus",
+      "name": "cke",
+      "offset": 1,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI on-die termination bus",
+      "name": "odt",
+      "offset": 2,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI clock reset bus",
+      "name": "reset_n",
+      "offset": 3,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     }
+    ],
+    "name": "control",
+    "offset": 0,
+    "reset": 1,
+    "size": 4
+   },
+   {
+    "access": "rw",
+    "description": "Control DFI signals on a single phase",
+    "fields": [
+     {
+      "description": "DFI chip select bus",
+      "name": "cs",
+      "offset": 0,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI write enable bus",
+      "name": "we",
+      "offset": 1,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI column address strobe bus",
+      "name": "cas",
+      "offset": 2,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI row address strobe bus",
+      "name": "ras",
+      "offset": 3,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI write data enable bus",
+      "name": "wren",
+      "offset": 4,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI read data enable bus",
+      "name": "rden",
+      "offset": 5,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI chip select bus for top half only",
+      "name": "cs_top",
+      "offset": 6,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "DFI chip select bus for bottom half only",
+      "name": "cs_bottom",
+      "offset": 7,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     }
+    ],
+    "name": "pi0_command",
+    "offset": 4,
+    "reset": 0,
+    "size": 8
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "pi0_command_issue",
+    "offset": 8,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "rw",
+    "description": "DFI address bus",
+    "fields": [],
+    "name": "pi0_address",
+    "offset": 12,
+    "reset": 0,
+    "size": 15
+   },
+   {
+    "access": "rw",
+    "description": "DFI bank address bus",
+    "fields": [],
+    "name": "pi0_baddress",
+    "offset": 16,
+    "reset": 0,
+    "size": 3
+   },
+   {
+    "access": "rw",
+    "description": "DFI write data bus",
+    "fields": [],
+    "name": "pi0_wrdata",
+    "offset": 20,
+    "reset": 0,
+    "size": 64
+   },
+   {
+    "access": "ro",
+    "description": "DFI read data bus",
+    "fields": [],
+    "name": "pi0_rddata",
+    "offset": 28,
+    "reset": null,
+    "size": 64
+   }
+  ],
+  "sdram_generator": [
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "reset",
+    "offset": 0,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "wo",
+    "description": "",
+    "fields": [],
+    "name": "start",
+    "offset": 4,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "ro",
+    "description": "",
+    "fields": [],
+    "name": "done",
+    "offset": 8,
+    "reset": null,
+    "size": 1
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "base",
+    "offset": 12,
+    "reset": 0,
+    "size": 30
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "end",
+    "offset": 16,
+    "reset": 0,
+    "size": 30
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [],
+    "name": "length",
+    "offset": 20,
+    "reset": 0,
+    "size": 30
+   },
+   {
+    "access": "rw",
+    "description": "",
+    "fields": [
+     {
+      "description": "",
+      "name": "data",
+      "offset": 0,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     },
+     {
+      "description": "",
+      "name": "addr",
+      "offset": 1,
+      "reset": 0,
+      "size": 1,
+      "values": []
+     }
+    ],
+    "name": "random",
+    "offset": 24,
+    "reset": 0,
+    "size": 2
+   },
+   {
+    "access": "ro",
+    "description": "",
+    "fields": [],
+    "name": "ticks",
+    "offset": 28,
+    "reset": null,
+    "size": 32
+   }
+  ]
+ },
+ "config": "genesys2_bist",
+ "target": "bench/genesys2"
+}

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="230" viewBox="0 0 760 230">
+<defs>
+  <marker id="arrow-ctrl" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#5b5b5b"/></marker>
+  <marker id="arrow-ctrl-rev" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
+    <path d="M8,0 L0,4 L8,8 Z" fill="#5b5b5b"/></marker>
+  <marker id="arrow-stream" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto">
+    <path d="M0,0 L9,4.5 L0,9 Z" fill="#606060"/></marker>
+  <marker id="arrow-accent" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="9" refY="4.5" orient="auto">
+    <path d="M0,0 L9,4.5 L0,9 Z" fill="#2eaadc"/></marker>
+  <marker id="arrow-accent-rev" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="0" refY="4.5" orient="auto">
+    <path d="M9,0 L0,4.5 L9,9 Z" fill="#2eaadc"/></marker>
+  <marker id="arrow-stream-rev" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="0" refY="4.5" orient="auto">
+    <path d="M9,0 L0,4.5 L9,9 Z" fill="#606060"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<polyline points="210,84 210,150" fill="none" stroke="#606060" stroke-width="2.0" marker-end="url(#arrow-stream)"/>
+<polyline points="420,84 420,150" fill="none" stroke="#606060" stroke-width="2.0" marker-end="url(#arrow-stream)"/>
+<polyline points="590,84 590,150" fill="none" stroke="#606060" stroke-width="2.0" marker-end="url(#arrow-stream)"/>
+<g fill="#e6f5fb" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<rect x="60" y="40" width="300" height="44" rx="0" ry="0"/>
+</g>
+<text x="210" y="62" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="210" dy="0">Row</tspan></text>
+<g fill="#bfe6f5" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<rect x="360" y="40" width="120" height="44" rx="0" ry="0"/>
+</g>
+<text x="420" y="62" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="420" dy="0">Bank</tspan></text>
+<g fill="#e6f5fb" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<rect x="480" y="40" width="220" height="44" rx="0" ry="0"/>
+</g>
+<text x="590" y="62" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="590" dy="0">Column</tspan></text>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M131.2,152 L279.2,152 L291.2,164 L291.2,208 Q291.2,208 291.2,208 L143.2,208 L131.2,196 L131.2,152 Q131.2,152 131.2,152 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M131.2,152 L279.2,152 L291.2,164 L291.2,208 Q291.2,208 291.2,208 L143.2,208 L131.2,196 L131.2,152 Q131.2,152 131.2,152 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M131,151.5 L279,151.5 L291,163.5 L291,207.5 Q291,207.5 291,207.5 L143,207.5 L131,195.5 L131,151.5 Q131,151.5 131,151.5 Z"/>
+</g>
+<g fill="#fafafa" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M130,150 L278,150 L290,162 L290,206 Q290,206 290,206 L142,206 L130,194 L130,150 Q130,150 130,150 Z"/>
+</g>
+<text x="210" y="169" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="210" dy="0">ACT</tspan><tspan x="210" dy="18">row address</tspan></text>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M356.2,152 L474.2,152 L486.2,164 L486.2,208 Q486.2,208 486.2,208 L368.2,208 L356.2,196 L356.2,152 Q356.2,152 356.2,152 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M356.2,152 L474.2,152 L486.2,164 L486.2,208 Q486.2,208 486.2,208 L368.2,208 L356.2,196 L356.2,152 Q356.2,152 356.2,152 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M356,151.5 L474,151.5 L486,163.5 L486,207.5 Q486,207.5 486,207.5 L368,207.5 L356,195.5 L356,151.5 Q356,151.5 356,151.5 Z"/>
+</g>
+<g fill="#bfe6f5" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M355,150 L473,150 L485,162 L485,206 Q485,206 485,206 L367,206 L355,194 L355,150 Q355,150 355,150 Z"/>
+</g>
+<text x="420" y="169" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="420" dy="0">Bank machine</tspan><tspan x="420" dy="18">selection</tspan></text>
+<g fill="#000000" stroke="#000000" stroke-width="3.0" opacity="0.05" stroke-linejoin="round" aria-hidden="true">
+<path d="M516.2,152 L654.2,152 L666.2,164 L666.2,208 Q666.2,208 666.2,208 L528.2,208 L516.2,196 L516.2,152 Q516.2,152 516.2,152 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="1.5" opacity="0.08" stroke-linejoin="round" aria-hidden="true">
+<path d="M516.2,152 L654.2,152 L666.2,164 L666.2,208 Q666.2,208 666.2,208 L528.2,208 L516.2,196 L516.2,152 Q516.2,152 516.2,152 Z"/>
+</g>
+<g fill="#000000" stroke="#000000" stroke-width="0" opacity="0.12" stroke-linejoin="round" aria-hidden="true">
+<path d="M516,151.5 L654,151.5 L666,163.5 L666,207.5 Q666,207.5 666,207.5 L528,207.5 L516,195.5 L516,151.5 Q516,151.5 516,151.5 Z"/>
+</g>
+<g fill="#fafafa" stroke="#5b5b5b" stroke-width="0.9" stroke-linejoin="round">
+<path d="M515,150 L653,150 L665,162 L665,206 Q665,206 665,206 L527,206 L515,194 L515,150 Q515,150 515,150 Z"/>
+</g>
+<text x="590" y="169" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="15" fill="#000000" text-anchor="middle" dominant-baseline="central"><tspan x="590" dy="0">RD or WR</tspan><tspan x="590" dy="18">column address</tspan></text>
+<text x="60" y="22" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="start" dominant-baseline="central"><tspan x="60" dy="0">most significant</tspan></text>
+<text x="700" y="22" font-family="Carlito, Calibri, &#x27;Liberation Sans&#x27;, Arial, sans-serif" font-size="13" fill="#000000" text-anchor="end" dominant-baseline="central"><tspan x="700" dy="0">least significant</tspan></text>
+</svg>

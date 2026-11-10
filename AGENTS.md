@@ -13,6 +13,8 @@ verify a change, contribute back). Index of the whole wiki for agents: https://g
 - `litedram/modules.py`: DRAM chip/module timings; `litedram/init.py`: init sequences.
 - `litedram/gen.py` (`litedram_gen examples/<board>.yml`): standalone Verilog core; `bench/`: hardware benches.
 - Software side (calibration/leveling, memtest): LiteX `litex/soc/software/liblitedram/`.
+- `doc/manual/`: the manual (Markdown chapters, pandoc PDF/HTML, `python3 doc/manual/build.py --check`);
+  `doc/diagrams/`: its figures. Update the chapter with the code it describes (`doc/manual/STYLE.md`).
 
 ## Verify a change
 
