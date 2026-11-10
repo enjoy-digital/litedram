@@ -1,0 +1,27 @@
+# Manual of this project: output name and chapters, in order (read by build.py; the pandoc defaults
+# files and the theme are generic, from the manual kit).
+name: litedram_manual
+chapters:
+  - 00_front.md
+  - 01_introduction.md
+  - 02_dram_primer.md
+  - 03_dram_interface.md
+  - 04_architecture.md
+  - 05_controller.md
+  - 06_frontends.md
+  - 07_calibration.md
+  - 08_phys.md
+  - 09_lpddr_rpc.md
+  - 10_modules.md
+  - 11_boards.md
+  - 12_getting_started.md
+  - 13_integration.md
+  - 14_examples.md
+  - 15_simulation.md
+  - 16_debugging.md
+  - Z_appendix.md
+  - A_registers.md
+  - B_build_options.md
+  - C_glossary.md
+  - D_performance.md
+  - E_maintenance.md
