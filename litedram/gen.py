@@ -888,7 +888,9 @@ class LiteDRAMCore(SoCCore):
                     setattr(self.submodules, f"ecc_{name}", ecc)
                 # Without ECC.
                 else:
-                    user_port = self.sdram.crossbar.get_port(data_width=port.get("data_width", None))
+                    user_port = self.sdram.crossbar.get_port(
+                        data_width = port.get("data_width", None),
+                        reorder    = port.get("reorder", False))
 
             # Native -------------------------------------------------------------------------------
             if port["type"] == "native":

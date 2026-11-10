@@ -77,7 +77,7 @@ class LiteDRAMCrossbar(Module):
 
         self.masters = []
 
-    def get_port(self, mode="both", data_width=None, clock_domain="sys", reverse=False):
+    def get_port(self, mode="both", data_width=None, clock_domain="sys", reverse=False, reorder=False):
         if self.finalized:
             raise FinalizeError
 
@@ -93,6 +93,20 @@ class LiteDRAMCrossbar(Module):
             clock_domain  = "sys",
             id            = len(self.masters))
         self.masters.append(port)
+
+        # Out-of-order banks -----------------------------------------------------------------------
+        if reorder:
+            depth = getattr(self.controller.settings, "port_reorder_depth", 0)
+            if depth == 0:
+                raise ValueError("get_port(reorder=True) requires ControllerSettings(port_reorder_depth=N).")
+            new_port = LiteDRAMNativePort(
+                mode          = mode,
+                address_width = port.address_width,
+                data_width    = port.data_width,
+                clock_domain  = "sys",
+                id            = port.id)
+            self.submodules += LiteDRAMNativePortReorder(new_port, port, depth)
+            port = new_port
 
         # Clock domain crossing --------------------------------------------------------------------
         if clock_domain != "sys":
@@ -141,6 +155,9 @@ class LiteDRAMCrossbar(Module):
         master_readys       = [0]*nmasters
         master_wdata_readys = [0]*nmasters
         master_rdata_valids = [0]*nmasters
+        tag_width           = getattr(controller, "tag_width", 0)
+        master_wdata_tags   = [0]*nmasters
+        master_rdata_tags   = [0]*nmasters
 
         arbiters = [roundrobin.RoundRobin(nmasters, roundrobin.SP_CE) for n in range(self.nbanks)]
         self.submodules += arbiters
@@ -156,7 +173,8 @@ class LiteDRAMCrossbar(Module):
                     if other_nb != nb:
                         other_bank = getattr(controller, "bank"+str(other_nb))
                         locked = locked | (other_bank.lock & (other_arbiter.grant == nm))
-                master_locked.append(locked)
+                # A reorder port can have commands in several banks: it restores the order itself.
+                master_locked.append(Constant(0, 1) if hasattr(master, "cmd_tag") else locked)
 
             # Arbitrate ----------------------------------------------------------------------------
             bank_selected  = [(ba == nb) & ~locked for ba, locked in zip(m_ba, master_locked)]
@@ -172,6 +190,12 @@ class LiteDRAMCrossbar(Module):
                 bank.we.eq(Array(self.masters)[arbiter.grant].cmd.we),
                 bank.valid.eq(Array(bank_requested)[arbiter.grant])
             ]
+            if tag_width:
+                self.comb += bank.tag.eq(Array(getattr(m, "cmd_tag", Constant(0, tag_width)) for m in self.masters)[arbiter.grant])
+                master_wdata_tags = [tag | Mux((arbiter.grant == nm) & bank.wdata_ready, bank.wdata_tag, 0)
+                    for nm, tag in enumerate(master_wdata_tags)]
+                master_rdata_tags = [tag | Mux((arbiter.grant == nm) & bank.rdata_valid, bank.rdata_tag, 0)
+                    for nm, tag in enumerate(master_rdata_tags)]
             master_readys = [master_ready | ((arbiter.grant == nm) & bank_selected[nm] & bank.ready)
                 for nm, master_ready in enumerate(master_readys)]
             master_wdata_readys = [master_wdata_ready | ((arbiter.grant == nm) & bank.wdata_ready)
@@ -200,6 +224,19 @@ class LiteDRAMCrossbar(Module):
             self.comb += master.wdata.ready.eq(master_wdata_ready)
         for master, master_rdata_valid in zip(self.masters, master_rdata_valids):
             self.comb += master.rdata.valid.eq(master_rdata_valid)
+
+        # Route tags, with the latency of the ready/valid signals they come with -------------------
+        for nm, master in enumerate(self.masters):
+            if hasattr(master, "cmd_tag"):
+                for tag, tags, latency in [
+                    (master.wdata_tag, master_wdata_tags, self.write_latency),
+                    (master.rdata_tag, master_rdata_tags, self.read_latency)]:
+                    delayed = tags[nm]
+                    for i in range(latency):
+                        new_delayed = Signal(tag_width)
+                        self.sync += new_delayed.eq(delayed)
+                        delayed = new_delayed
+                    self.comb += tag.eq(delayed)
 
         # Route data writes ------------------------------------------------------------------------
         # The Multiplexer issues at most one write per cycle and a master's wdata.ready is the
