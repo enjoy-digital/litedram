@@ -29,6 +29,7 @@ ratios; [DDR PHYs](#phys) describes each PHY.
 | Virtex-7 | `V7DDRPHY` | DDR2, DDR3 | 1:2, 1:4 | Validated |
 | Kintex UltraScale | `USDDRPHY` | DDR3, DDR4 | 1:4 | Validated (DDR4) |
 | Kintex/Virtex UltraScale+ | `USPDDRPHY` | DDR3, DDR4 | 1:4 | Validated (DDR4) |
+| Altera Cyclone V | `CycloneVDDRPHY` | DDR3 | 1:4 | Validated on Cyclone V GT DDR3B |
 | Lattice ECP5 | `ECP5DDRPHY` | DDR3 | 1:2, 1:4 | Validated |
 | Lattice Nexus (CrossLink-NX, Certus-NX) | `NexusDDRPHY` | DDR3 | 1:2 | Validated |
 | Gowin GW2A | `GW2DDRPHY` | DDR3 | 1:2 | Validated |
@@ -75,7 +76,7 @@ for the KC705, `lambdaconcept_ecpix5` for the ECPIX-5. The widths are those of t
 board.
 
 | Board | Memory | Module | PHY |
-|------------------|---------------|-------------------------------|-------------------|
+|------------------|---------------|----------------------------|----------------------|
 | Arty A7 | DDR3, 16-bit | `MT41K128M16` | `A7DDRPHY` |
 | Nexys4DDR | DDR2, 16-bit | `MT47H64M16` | `A7DDRPHY` |
 | Acorn CLE-215+ | DDR3, 16-bit | `MT41K512M16` | `A7DDRPHY` |
@@ -84,6 +85,7 @@ board.
 | YPCB-00338-1P1 | DDR3, 72-bit | `MT41K256M8` | `K7DDRPHY` |
 | KCU105 | DDR4, 64-bit | `EDY4016A` | `USDDRPHY` |
 | XCU1525 | DDR4 DIMMs, 64-bit | `MT40A512M8` | `USPDDRPHY` |
+| Cyclone V GT Development Kit | DDR3B, 64-bit | 4 × `MT41K128M16` | `CycloneVDDRPHY` |
 | ECPIX-5 | DDR3, 16-bit | `MT41K256M16` | `ECP5DDRPHY` |
 | Cam Link 4K | DDR3, 16-bit | `MT41K64M16` | `ECP5DDRPHY` |
 | ULX3S | SDR, 16-bit | `MT48LC16M16` | `GENSDRPHY` |
@@ -96,6 +98,10 @@ Several targets select their PHY options on the command line. The ECPIX-5 and Ca
 targets take `--sdram-rate 1:4` for the ECP5 PHY at 1:4, and the Tang Mega 138K Pro target takes
 `--ddr3-rate`. The ULX3S target selects another SDR chip with `--sdram-module`, and the XCU1525
 target one of its four DIMM channels with `--ddram-channel`.
+
+The Cyclone V GT Development Kit's native DDR3B PHY passed BIOS memtest and LiteDRAM BIST at
+600 MT/s.
+[Altera Cyclone V](#phys-cyclone-v) describes the PHY datapath.
 
 The YPCB-00338-1P1 target drives its 72-bit DDR3 from the HR banks of a Kintex-7, with the CK
 phase write leveling of the 7-Series PHY. [DDR PHYs](#phys) explains this mode.

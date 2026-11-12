@@ -34,6 +34,7 @@ PHY:
   - Xilinx Artix7/Kintex7/Virtex7 LPDDR4 PHY and LPDDR5 PHY (each with a Verilator simulation PHY and DRAM model)
   - Xilinx Artix7 RPC DRAM (Etron Reduced Pin Count) PHY (with a Verilator simulation PHY)
   - Xilinx Kintex/Virtex Ultrascale (Plus) DDR3/DDR4 PHY (1:4 frequency ratio, optional read VREF scan on Ultrascale+ DDR4)
+  - Altera Cyclone V native DDR3 PHY (1:4 frequency ratio). See [Cyclone V DDR3 support](doc/cyclone-v.md).
   - Lattice ECP5 DDR3 PHY (1:2 frequency ratio, or 1:4 with `ecp5ddrphy_with_ratio`)
   - Lattice Nexus DDR3 PHY (1:2 frequency ratio)
   - Gowin GW2A DDR3 PHY (1:2 frequency ratio)
@@ -65,7 +66,7 @@ LiteDRAM is already used in commercial and open-source designs:
 [> Possible improvements
 ------------------------
 - add Avalon-ST interface.
-- add support for Altera devices.
+- add support for more Altera devices.
 - ... See below Support and consulting :)
 
 If you want to support these features, please contact us at florent [AT]
