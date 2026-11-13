@@ -524,8 +524,8 @@ the DFI injector. The memory test through the controller does ([Debugging](#debu
 - **Xilinx DQS preamble.** On 7-Series and UltraScale, the preamble and postamble inputs of the
   DQS pattern are not connected (marked FIXME). DQS toggles through the cycle before and the
   cycle after each write instead of the JEDEC preamble and postamble shapes.
-- **7-Series at 1:2.** The PHY builds its DFI with 4 phases while its settings declare 2; the
-  controller drives the first two, and the other two are unused.
+- **7-Series at 1:2.** The serializers keep the 8-bit mapping of 1:4 on 4-bit primitives: the PHY
+  pads its 2-phase DFI to 4 phases internally, and the 2 extra phases stay idle.
 - **UltraScale+ read VREF.** The PHY generates the read VREF defines, but the LiteX BIOS does not
   scan the VREF: the code stays at `hpio_vref_tune` unless software writes `rd_vref`.
 - **ECP5 rate crossing.** The BIOS does not search the `rate` register of `rate_crossing`, so that
