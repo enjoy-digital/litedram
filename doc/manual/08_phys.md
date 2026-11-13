@@ -29,6 +29,7 @@ The LPDDR4, LPDDR5 and RPC DRAM PHYs follow another design and have their own ch
 | `V7DDRPHY` | Virtex-7 | DDR2, DDR3 | 1:2, 1:4 | 4, 8 | Validated |
 | `USDDRPHY` | Kintex/Virtex UltraScale | DDR3, DDR4 | 1:4 | 8 | Validated (DDR4) |
 | `USPDDRPHY` | Kintex/Virtex UltraScale+ | DDR3, DDR4 | 1:4 | 8 | Validated (DDR4) |
+| `CycloneVDDRPHY` | Altera Cyclone V | DDR3 | 1:4 | 8 | Validated on Cyclone V GT DDR3B |
 | `ECP5DDRPHY` | Lattice ECP5 | DDR3 | 1:2, 1:4 | 8 | Validated |
 | `NexusDDRPHY` | Lattice CrossLink-NX, Certus-NX | DDR3 | 1:2 | 8 | Validated |
 | `GW2DDRPHY` | Gowin GW2A | DDR3 | 1:2 | 8 | Validated |
@@ -47,8 +48,8 @@ UltraScale+, the validated memory is DDR4; the classes also accept DDR3. *Not re
 the repository holds no hardware result, which is the case of the two Spartan-6 PHYs.
 
 Spartan-7 devices have the same HR banks as Artix-7, without output delays, and use `A7DDRPHY`;
-the PHY code itself does not name Spartan-7. Efinix and Intel FPGAs have no LiteDRAM DDR PHY and
-use the generic SDR PHY ([Efinix](#phys-efinix)).
+the PHY code itself does not name Spartan-7. Efinix SDR designs use the generic SDR PHY
+([Efinix](#phys-efinix)).
 
 The 7-Series class also accepts DDR4 and then adds the DDR4 command multiplexer. Its file header
 and the README list DDR2 and DDR3 only, and no DDR4 result on 7-Series is recorded. DDR5 is not
@@ -359,6 +360,22 @@ The CRG provides `sys`, `sys4x` and the reference clock. The PHY resets from the
 the LiteX `IDELAYCTRL` wrapper. The generator CRG divides `sys` from `sys4x` with `BUFGCE_DIV`, so
 that both stay aligned.
 
+## Altera Cyclone V {#phys-cyclone-v}
+
+The Cyclone V DDR3 PHY handles one rank and presents a 1:4 DFI interface to the controller.
+Each AFI beat transfers four data words per DQ pin. The PHY combines two beats for one BL8 read
+and delivers the burst at the fixed DFI read latency.
+
+The LiteDRAM PHY implements DFI-to-AFI command and data staging, burst assembly,
+FIFO scheduling, and the scan sequencer that programs I/O delays. It uses
+Quartus-generated wrappers to access the Cyclone V byte-lane I/O, hard FIFOs,
+clocking, and termination blocks. The LiteX BIOS runs the DDR3 initialization
+sequence and trains read and write delays through the standard LiteDRAM CSRs.
+
+The native backend was validated at 600 MT/s on the 64-bit DDR3B bank of the Cyclone V GT
+Development Kit. The DRAM, AFI, and DFI clocks run at 300 MHz, 150 MHz, and 75 MHz, respectively.
+See [Representative boards](#boards-representative) for the board entry.
+
 ## Lattice ECP5 {#phys-ecp5}
 
 The ECP5 PHY drives DDR3 at 1:2 with the DDR gearing primitives of the family: `ODDRX2F`,
@@ -490,8 +507,7 @@ The clocking follows the figure of the ECP5 section. The PLL drives a `DHCEN` (G
 ## Efinix {#phys-efinix}
 
 LiteDRAM has no PHY for Efinix devices. SDR SDRAM on Efinix uses the generic SDR PHY, through the
-Efinix IO primitives that LiteX substitutes for its generic IO registers. The same mechanism
-serves the Intel FPGAs.
+Efinix IO primitives that LiteX substitutes for its generic IO registers.
 
 DDR memory on Efinix goes through the hard DDR controller of the device, which LiteX wraps itself
 for Trion, Titanium and Topaz (`litex/soc/cores/ram/efinix_ddr.py`). It exposes AXI ports and uses
@@ -537,11 +553,13 @@ the DFI injector. The memory test through the controller does ([Debugging](#debu
 ## In the code {#phys-code}
 
 | File | Content |
-|-------------------|------------------------------------------------------------------|
+|------------------------|-------------------------------------------------------------|
 | `gensdrphy.py` | `GENSDRPHY`, `HalfRateGENSDRPHY` |
 | `s6ddrphy.py` | `S6HalfRateDDRPHY`, `S6QuarterRateDDRPHY` |
 | `s7ddrphy.py` | `S7DDRPHY`, its A7, K7 and V7 classes, CK phase shift, ratio wrapper |
 | `usddrphy.py` | `USDDRPHY`, `USPDDRPHY` |
+| `c5ddrphy.py` | `CycloneVDDRPHY`, AFI adapter and fixed-latency DFI return |
+| `c5ddrphy_native.py` | `CycloneVDDR3Lane`, native byte lanes and I/O delay controls |
 | `ecp5ddrphy.py` | `ECP5DDRPHY`, init sequence, rate crossing, ratio wrapper |
 | `nxddrphy.py` | `NexusDDRPHY` and its init sequence |
 | `gw2ddrphy.py` | `GW2DDRPHY` |

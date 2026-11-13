@@ -62,7 +62,7 @@ pin-level models of LPDDR4 and LPDDR5 chips.
 | Area | Features |
 |--------------------|------------------------------------------------------------------------|
 | Memories | SDR, DDR, LPDDR, DDR2, DDR3, DDR4; LPDDR4, LPDDR5 and RPC DRAM in development |
-| PHYs | Generic SDR on any FPGA; Xilinx Spartan-6, 7-Series, UltraScale and UltraScale+; Lattice ECP5 and Nexus; Gowin GW2A and GW5A; LPDDR4, LPDDR5 and RPC DRAM on 7-Series |
+| PHYs | Generic SDR on any FPGA; Xilinx Spartan-6, 7-Series, UltraScale and UltraScale+; Altera Cyclone V; Lattice ECP5 and Nexus; Gowin GW2A and GW5A; LPDDR4, LPDDR5 and RPC DRAM on 7-Series |
 | Ratios | 1:1 and 1:2 for SDR, 1:2 and 1:4 for DDR PHYs, higher ratios through a DFI rate converter |
 | Controller | One bank machine per bank or shared ones, command lookahead and auto-precharge, read and write windows, refresh with up to 8 postponed refreshes, periodic ZQ short calibration, dynamic ODT on DDR3 |
 | Ports | Crossbar with any number of native ports, clock domain crossing and width conversion per port |
@@ -86,6 +86,7 @@ and RPC DRAM PHYs](#lpddr-phys) the details of each family.
 | Artix-7, Spartan-7 | DDR2, DDR3 | `A7DDRPHY` | 1:2, 1:4 | Validated |
 | Kintex-7, Virtex-7 | DDR2, DDR3 | `K7DDRPHY` | 1:2, 1:4 | Validated |
 | UltraScale, UltraScale+ | DDR3, DDR4 | `USDDRPHY` | 1:4 | Validated (DDR4) |
+| Altera Cyclone V | DDR3 | `CycloneVDDRPHY` | 1:4 | Validated on Cyclone V GT DDR3B |
 | Lattice ECP5 | DDR3 | `ECP5DDRPHY` | 1:2, 1:4 | Validated |
 | Lattice Nexus | DDR3 | `NexusDDRPHY` | 1:2 | Validated |
 | Gowin GW2A | DDR3 | `GW2DDRPHY` | 1:2 | Validated |
@@ -126,9 +127,8 @@ memory standards that FPGA designs rarely need, and some memory types are out of
 - DDR5 is not supported: the repository has no DDR5 code.
 - HBM is not a LiteDRAM PHY. HBM2 on Xilinx devices goes through the vendor's hard controller,
   wrapped by LiteX.
-- Intel and Efinix FPGAs have no LiteDRAM DDR PHY. Both use the generic SDR PHY for SDR memory.
-  On Efinix Trion and Titanium devices, DDR goes through the hard controller of the device, which
-  LiteX wraps without LiteDRAM ([Efinix](#phys-efinix)).
+- On Efinix Trion and Titanium devices, DDR uses the device hard controller through LiteX
+  ([Efinix](#phys-efinix)). Cyclone V DDR3 support is described in [Altera Cyclone V](#phys-cyclone-v).
 - The controller does not use the power-saving modes of the DRAM: no self refresh, no power down.
   CKE stays high once the DRAM is initialized.
 - The only address mapping is row, bank, column (`ROW_BANK_COL`).

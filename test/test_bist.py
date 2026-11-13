@@ -321,6 +321,48 @@ class TestBIST(MemoryTestDataMixin, unittest.TestCase):
             with self.subTest(data_width=data_width):
                 self.assertEqual(accesses["generator"], accesses["checker"])
 
+    def test_bist_checker_read_fifo_depth(self):
+        for depth, options in ((16, {}), (64, {"fifo_depth": 64})):
+            with self.subTest(depth=depth):
+                port = LiteDRAMNativeReadPort(address_width=8, data_width=32)
+                checker = LiteDRAMBISTChecker(port, **options)
+                count = 80
+
+                def generator():
+                    yield from GenCheckCSRDriver(checker).configure(
+                        base=0, length=4*count, end=4*128)
+                    yield port.cmd.ready.eq(1)
+                    yield from checker.start.write(1)
+
+                    # Withhold read data until the outstanding request window fills.
+                    addresses = []
+                    for _ in range(depth + 12):
+                        if (yield port.cmd.valid):
+                            addresses.append((yield port.cmd.addr))
+                        yield
+                    self.assertEqual(addresses, list(range(depth)))
+
+                    # Deliver sequential data and check that freed slots admit more requests.
+                    received = 0
+                    for _ in range(3*count):
+                        if (yield port.cmd.valid):
+                            addresses.append((yield port.cmd.addr))
+                        if (yield port.rdata.valid) and (yield port.rdata.ready):
+                            received += 1
+                        yield port.rdata.valid.eq(received < len(addresses))
+                        yield port.rdata.data.eq(received | ((received & 1) << 31))
+                        yield
+                        if received == count:
+                            break
+                    for _ in range(8):
+                        yield
+                    self.assertEqual(addresses, list(range(count)))
+                    self.assertEqual(received, count)
+                    self.assertEqual((yield from checker.done.read()), 1)
+                    self.assertEqual((yield from checker.errors.read()), 0)
+
+                run_simulation(checker, generator())
+
     def test_bist_checker_8bit(self):
         # Verify BISTChecker with a 8-bit datapath.
         data = self.bist_test_data["8bit"]

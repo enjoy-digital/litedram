@@ -432,7 +432,7 @@ class LiteDRAMBISTGenerator(Module, AutoCSR):
 
 @ResetInserter()
 class _LiteDRAMBISTChecker(Module, AutoCSR):
-    def __init__(self, dram_port):
+    def __init__(self, dram_port, fifo_depth=16):
         ashift, awidth = get_ashift_awidth(dram_port)
         self.start       = Signal()
         self.done        = Signal()
@@ -462,7 +462,7 @@ class _LiteDRAMBISTChecker(Module, AutoCSR):
         self.comb += addr_mask.eq(((self.end - self.base) >> ashift) - 1)
 
         # DMA --------------------------------------------------------------------------------------
-        dma = LiteDRAMDMAReader(dram_port)
+        dma = LiteDRAMDMAReader(dram_port, fifo_depth=fifo_depth)
         self.submodules += dma
 
         # Address FSM ------------------------------------------------------------------------------
@@ -688,8 +688,11 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
     errors : out
         Number of DRAM words which don't match.
+
+    fifo_depth : int
+        Maximum number of outstanding reads, in DRAM port words.
     """
-    def __init__(self, dram_port):
+    def __init__(self, dram_port, fifo_depth=16):
         ashift, awidth = get_ashift_awidth(dram_port)
         self.reset       = CSR()
         self.start       = CSR()
@@ -708,7 +711,7 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
         clock_domain = dram_port.clock_domain
 
-        core = _LiteDRAMBISTChecker(dram_port)
+        core = _LiteDRAMBISTChecker(dram_port, fifo_depth=fifo_depth)
         core = ClockDomainsRenamer(clock_domain)(core)
         self.submodules.core = core
 
