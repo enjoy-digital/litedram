@@ -76,7 +76,7 @@ for the KC705, `lambdaconcept_ecpix5` for the ECPIX-5. The widths are those of t
 board.
 
 | Board | Memory | Module | PHY |
-|------------------|---------------|-------------------------------|-------------------|
+|------------------|---------------|----------------------------|----------------------|
 | Arty A7 | DDR3, 16-bit | `MT41K128M16` | `A7DDRPHY` |
 | Nexys4DDR | DDR2, 16-bit | `MT47H64M16` | `A7DDRPHY` |
 | Acorn CLE-215+ | DDR3, 16-bit | `MT41K512M16` | `A7DDRPHY` |
@@ -85,6 +85,7 @@ board.
 | YPCB-00338-1P1 | DDR3, 72-bit | `MT41K256M8` | `K7DDRPHY` |
 | KCU105 | DDR4, 64-bit | `EDY4016A` | `USDDRPHY` |
 | XCU1525 | DDR4 DIMMs, 64-bit | `MT40A512M8` | `USPDDRPHY` |
+| Cyclone V GT Kit | DDR3, 64-bit | `MT41K128M16` | `CycloneVDDRPHY` |
 | ECPIX-5 | DDR3, 16-bit | `MT41K256M16` | `ECP5DDRPHY` |
 | Cam Link 4K | DDR3, 16-bit | `MT41K64M16` | `ECP5DDRPHY` |
 | ULX3S | SDR, 16-bit | `MT48LC16M16` | `GENSDRPHY` |
@@ -98,8 +99,8 @@ targets take `--sdram-rate 1:4` for the ECP5 PHY at 1:4, and the Tang Mega 138K 
 `--ddr3-rate`. The ULX3S target selects another SDR chip with `--sdram-module`, and the XCU1525
 target one of its four DIMM channels with `--ddram-channel`.
 
-The Cyclone V PHY is the one validated PHY without a board in this table. The target of the
-Cyclone V GT Development Kit it was validated on enables it with an option, `--with-ddr3b`
+The target of the Cyclone V GT Development Kit leaves the DRAM out by default. It enables the
+Cyclone V PHY on the 64-bit bank of the board, four 2 Gb devices, with `--with-ddr3b`
 ([Altera Cyclone V](#phys-cyclone-v)).
 
 The YPCB-00338-1P1 target drives its 72-bit DDR3 from the HR banks of a Kintex-7, with the CK

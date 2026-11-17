@@ -484,8 +484,11 @@ reset value of a register, which software writes for debug only (`_settings`).
 
 The PHY was validated at 600 MT/s on the 64-bit DDR3B bank of the Cyclone V GT Development Kit,
 with the BIOS calibration, its memory test and the BIST, with the PLL wrapper inside the PHY. The
-clock domains in the CRG were not run on hardware. The LiteX-Boards target of this board enables
-the PHY with `--with-ddr3b`, creates the clock domains and passes the arguments.
+clock domains in the CRG were not run on hardware. The validation addressed half of the bank,
+512 MiB of 1 GiB, with 13 of its 14 row address bits.
+
+The LiteX-Boards target of this board enables the PHY with `--with-ddr3b`, creates the clock
+domains and passes the arguments.
 
 ## Lattice ECP5 {#phys-ecp5}
 
