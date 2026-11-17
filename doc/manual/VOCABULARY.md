@@ -33,6 +33,6 @@ Project-specific writing rules, completing the generic `STYLE.md` of the manual 
 ## Hardware names
 
 - FPGA families: Spartan-6, Artix-7, Kintex-7, Virtex-7, Kintex UltraScale, Kintex/Virtex
-  UltraScale+, Lattice ECP5, Lattice CrossLink-NX/Certus-NX (Nexus), Gowin GW1N/GW2A/GW5A, Efinix
-  Titanium/Trion.
+  UltraScale+, Altera Cyclone V, Lattice ECP5, Lattice CrossLink-NX/Certus-NX (Nexus), Gowin
+  GW1N/GW2A/GW5A, Efinix Titanium/Trion.
 - Boards as LiteX-Boards names them (Arty A7, KC705, Genesys2, ECPIX-5, Tang Primer 20K, XCU1525).

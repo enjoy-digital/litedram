@@ -29,7 +29,7 @@ The LPDDR4, LPDDR5 and RPC DRAM PHYs follow another design and have their own ch
 | `V7DDRPHY` | Virtex-7 | DDR2, DDR3 | 1:2, 1:4 | 4, 8 | Validated |
 | `USDDRPHY` | Kintex/Virtex UltraScale | DDR3, DDR4 | 1:4 | 8 | Validated (DDR4) |
 | `USPDDRPHY` | Kintex/Virtex UltraScale+ | DDR3, DDR4 | 1:4 | 8 | Validated (DDR4) |
-| `CycloneVDDRPHY` | Altera Cyclone V | DDR3 | 1:4 | 8 | Validated on Cyclone V GT DDR3B |
+| `CycloneVDDRPHY` | Altera Cyclone V | DDR3 | 1:4 | 8 | Validated |
 | `ECP5DDRPHY` | Lattice ECP5 | DDR3 | 1:2, 1:4 | 8 | Validated |
 | `NexusDDRPHY` | Lattice CrossLink-NX, Certus-NX | DDR3 | 1:2 | 8 | Validated |
 | `GW2DDRPHY` | Gowin GW2A | DDR3 | 1:2 | 8 | Validated |
@@ -48,8 +48,8 @@ UltraScale+, the validated memory is DDR4; the classes also accept DDR3. *Not re
 the repository holds no hardware result, which is the case of the two Spartan-6 PHYs.
 
 Spartan-7 devices have the same HR banks as Artix-7, without output delays, and use `A7DDRPHY`;
-the PHY code itself does not name Spartan-7. Efinix SDR designs use the generic SDR PHY
-([Efinix](#phys-efinix)).
+the PHY code itself does not name Spartan-7. Efinix FPGAs and the Intel (Altera) FPGAs other than
+Cyclone V have no LiteDRAM DDR PHY and use the generic SDR PHY ([Efinix](#phys-efinix)).
 
 The 7-Series class also accepts DDR4 and then adds the DDR4 command multiplexer. Its file header
 and the README list DDR2 and DDR3 only, and no DDR4 result on 7-Series is recorded. DDR5 is not
@@ -362,19 +362,65 @@ that both stay aligned.
 
 ## Altera Cyclone V {#phys-cyclone-v}
 
-The Cyclone V DDR3 PHY handles one rank and presents a 1:4 DFI interface to the controller.
-Each AFI beat transfers four data words per DQ pin. The PHY combines two beats for one BL8 read
-and delivers the burst at the fixed DFI read latency.
+The Cyclone V PHY drives one rank of DDR3 at 1:4 through the hard I/O blocks of the device: the
+byte-lane I/O with its hard read FIFOs, the DLL and the calibrated termination. It is a soft PHY
+under the LiteDRAM controller and does not use the hard memory controller of the device.
 
-The LiteDRAM PHY implements DFI-to-AFI command and data staging, burst assembly,
-FIFO scheduling, and the scan sequencer that programs I/O delays. It uses
-Quartus-generated wrappers to access the Cyclone V byte-lane I/O, hard FIFOs,
-clocking, and termination blocks. The LiteX BIOS runs the DDR3 initialization
-sequence and trains read and write delays through the standard LiteDRAM CSRs.
+| Parameter | Value |
+|------------------------|---------------------------------------------------------------|
+| Memory | DDR3, one rank, one DM and one differential DQS per byte, 1 to 8 bytes |
+| DFI | 4 phases, read and write commands on phase 3 |
+| Clocks | DRAM 300 MHz, AFI 150 MHz, `sys` 75 MHz |
+| Read latency | 37 controller cycles, fixed |
+| Leveling | Write and read, 32 delay taps, 1 bitslip position |
+| Termination | Dedicated `rzq` pad |
 
-The native backend was validated at 600 MT/s on the 64-bit DDR3B bank of the Cyclone V GT
-Development Kit. The DRAM, AFI, and DFI clocks run at 300 MHz, 150 MHz, and 75 MHz, respectively.
-See [Representative boards](#boards-representative) for the board entry.
+The clocks come from the PLL of the PHY, not from a CRG. The PHY creates the `sys` domain itself,
+at half the frequency of the half-rate domain of the I/O blocks (`afi`). The wrapper parameters fix
+the DRAM clock at 300 MHz, so the PHY runs at 600 MT/s only.
+
+### Datapath {#phys-cyclone-v-datapath}
+
+The I/O blocks take half-rate words: one word of the half-rate interface (AFI) carries two DRAM
+clock cycles, four data words per DQ pin. The PHY splits each DFI cycle in two AFI words, and
+delays the write data by the write latency that the byte lanes report.
+
+On a read, the PHY pairs two AFI words into one burst of 8 and passes it to `sys` through an
+asynchronous FIFO. It returns the burst at the fixed read latency. A read whose data is not in the
+FIFO at that cycle sets an error register (`_read_error`).
+
+With `on_the_fly`, the PHY sets A12 on the column commands, which selects a burst of 8 when the
+mode register leaves the burst length to the command.
+
+### Quartus wrappers {#phys-cyclone-v-wrappers}
+
+The PHY instantiates I/O wrappers that Quartus generates with its DDR3 memory IP, for the PLL, the
+DLL, the termination, the command and address pads and the byte lanes (`ALTDQ_DQS2`). The
+repository does not hold them: the target generates them and adds them to the build, with their
+timing constraints.
+
+The PLL and pad wrappers carry the name prefix of the generated IP, `q_sys_smc_0_mem_if_ddr3_emif_0`.
+The PHY also connects two write leveling inputs of the byte-lane wrapper, `level_enable` and
+`level_strobe`, that the target adds to the generated file.
+
+### Calibration {#phys-cyclone-v-calibration}
+
+The BIOS runs the DDR3 initialization, the write leveling and the read leveling through the
+registers that the other PHYs use. The CK and command phase is fixed by the PLL, and the two
+command delay registers have no effect.
+
+During write leveling, the PHY drives DQS and reads the answer of the DRAM through the hard input
+FIFO. It disables the dynamic termination while it drives the strobes. One write delay step moves
+the pad delay by two taps, and the PHY reports no answer above 15 steps.
+
+Read leveling sweeps the 32 taps of the DQ input delay of each byte, one tap per step. The hard
+FIFOs align a burst at a fixed position, which the PHY presents as a single bitslip position. The
+settings of the hard FIFOs and of the DQS gate are constants of the PHY, in a register for debug
+(`_settings`).
+
+The PHY was validated at 600 MT/s on the 64-bit DDR3B bank of the Cyclone V GT Development Kit,
+with the BIOS calibration, its memory test and the BIST. LiteX-Boards has no target for this
+board.
 
 ## Lattice ECP5 {#phys-ecp5}
 
@@ -507,7 +553,8 @@ The clocking follows the figure of the ECP5 section. The PLL drives a `DHCEN` (G
 ## Efinix {#phys-efinix}
 
 LiteDRAM has no PHY for Efinix devices. SDR SDRAM on Efinix uses the generic SDR PHY, through the
-Efinix IO primitives that LiteX substitutes for its generic IO registers.
+Efinix IO primitives that LiteX substitutes for its generic IO registers. The same mechanism
+serves the Intel FPGAs.
 
 DDR memory on Efinix goes through the hard DDR controller of the device, which LiteX wraps itself
 for Trion, Titanium and Topaz (`litex/soc/cores/ram/efinix_ddr.py`). It exposes AXI ports and uses
@@ -558,8 +605,8 @@ the DFI injector. The memory test through the controller does ([Debugging](#debu
 | `s6ddrphy.py` | `S6HalfRateDDRPHY`, `S6QuarterRateDDRPHY` |
 | `s7ddrphy.py` | `S7DDRPHY`, its A7, K7 and V7 classes, CK phase shift, ratio wrapper |
 | `usddrphy.py` | `USDDRPHY`, `USPDDRPHY` |
-| `c5ddrphy.py` | `CycloneVDDRPHY`, AFI adapter and fixed-latency DFI return |
-| `c5ddrphy_native.py` | `CycloneVDDR3Lane`, native byte lanes and I/O delay controls |
+| `c5ddrphy.py` | `CycloneVDDRPHY`, DFI to AFI, read return at fixed latency |
+| `c5ddrphy_native.py` | `CycloneVDDR3Lane`, wrappers, byte lanes, I/O delay scan |
 | `ecp5ddrphy.py` | `ECP5DDRPHY`, init sequence, rate crossing, ratio wrapper |
 | `nxddrphy.py` | `NexusDDRPHY` and its init sequence |
 | `gw2ddrphy.py` | `GW2DDRPHY` |
