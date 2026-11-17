@@ -52,40 +52,6 @@ class CycloneVDDRPHY(LiteXModule):
         self.cd_afi = ClockDomain()
         self.cd_sys = ClockDomain()
 
-        # DFI Interface ----------------------------------------------------------------------------
-        self.dfi = Interface(addressbits, bankbits, nranks=1, databits=2*databits, nphases=4)
-
-        # PHY settings -----------------------------------------------------------------------------
-        # Allow the maximum six-bit AFI read latency, burst assembly and FIFO synchronization
-        # before the LiteDRAM crossbar samples the return word. The native backend stages the
-        # incoming frame for one sys cycle.
-        read_latency = 37
-        self.settings = PhySettings(
-            phytype        = "CycloneVDDRPHY",
-            memtype        = "DDR3",
-            databits       = databits,
-            dfi_databits   = 2*databits,
-            nphases        = 4,
-            rdphase        = 3,
-            wrphase        = 3,
-            cl             = cl,
-            cwl            = cwl,
-            read_latency   = read_latency,
-            write_latency  = 0,
-            write_leveling = True,
-            read_leveling  = True,
-            delays         = 32,
-            bitslips       = 1,
-            cmd_delay      = 0,
-        )
-
-        cal_success = Signal()
-        cal_failed  = Signal()
-        reset_n     = Signal()
-        wlat_raw    = Signal(6)
-        read_data   = Signal(4*databits)
-        read_valid  = Signal(2)
-
         # Registers --------------------------------------------------------------------------------
         self._calibration = CSRStatus(description="PHY startup status.", fields=[
             CSRField("success", offset=0,
@@ -124,7 +90,42 @@ class CycloneVDDRPHY(LiteXModule):
         self._read_error          = CSRStatus(
             description="A read missed its fixed DFI return slot.")
 
+        # PHY settings -----------------------------------------------------------------------------
+        # Allow the maximum six-bit AFI read latency, burst assembly and FIFO synchronization
+        # before the LiteDRAM crossbar samples the return word. The native backend stages the
+        # incoming frame for one sys cycle.
+        read_latency = 37
+        self.settings = PhySettings(
+            phytype        = "CycloneVDDRPHY",
+            memtype        = "DDR3",
+            databits       = databits,
+            dfi_databits   = 2*databits,
+            nphases        = 4,
+            rdphase        = 3,
+            wrphase        = 3,
+            cl             = cl,
+            cwl            = cwl,
+            read_latency   = read_latency,
+            write_latency  = 0,
+            write_leveling = True,
+            read_leveling  = True,
+            delays         = 32,
+            bitslips       = 1,
+            cmd_delay      = 0,
+        )
+
+        # DFI Interface ----------------------------------------------------------------------------
+        self.dfi = Interface(addressbits, bankbits, nranks=1, databits=2*databits, nphases=4)
+
         # # #
+
+        # Signals ----------------------------------------------------------------------------------
+        cal_success = Signal()
+        cal_failed  = Signal()
+        reset_n     = Signal()
+        wlat_raw    = Signal(6)
+        read_data   = Signal(4*databits)
+        read_valid  = Signal(2)
 
         # Clocking ---------------------------------------------------------------------------------
         # Both clock domains are derived from the native PHY PLL.

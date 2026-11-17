@@ -36,18 +36,37 @@ class CycloneVDDR3Lane(LiteXModule):
         # Registers --------------------------------------------------------------------------------
         # DDR3B's fixed write, DQS gate, LFIFO and AFI capture timing.
         default_settings = 0x080d6731
-        self._settings = CSRStorage(32, reset=default_settings,
-            description="Write latency [2:0], bypass write slot shift [3], DQS gate delay [6:4], "
-                        "LFIFO latency [12:8], LFIFO/VFIFO reset [14:13], bit 15 reserved, "
-                        "AFI read capture delay [20:16], trace index [24:21], write trigger [25], "
-                        "Shared read gate extension [26], request-derived read valid [27], "
-                        "bypass pad masking [28], invert DQS slot shift [29], "
-                        "disable dynamic OCT [30], trace ACT [31].")
+        self._settings = CSRStorage(description="Lane timing and debug settings.", fields=[
+            CSRField("wlat",          offset=0,  size=3, reset=1,  description="AFI write latency."),
+            CSRField("wr_bypass",     offset=3,  size=1, reset=0,  description="Bypass the write slot shift."),
+            CSRField("gate_delay",    offset=4,  size=3, reset=3,  description="DQS gate delay (AFI cycles)."),
+            CSRField("lfifo_latency", offset=8,  size=5, reset=7,  description="LFIFO read latency."),
+            CSRField("lfifo_rst_n",   offset=13, size=1, reset=1,  description="LFIFO reset (active low)."),
+            CSRField("vfifo_rst_n",   offset=14, size=1, reset=1,  description="VFIFO reset (active low)."),
+            CSRField("capture_delay", offset=16, size=5, reset=13, description="AFI read capture delay (AFI cycles)."),
+            CSRField("trace_index",   offset=21, size=4, reset=0,  description="Trace entry read back."),
+            CSRField("trace_wr",      offset=25, size=1, reset=0,  description="Trigger the trace on a write command."),
+            CSRField("gate_extend",   offset=26, size=1, reset=0,  description="Extend the shared read gate by one AFI cycle."),
+            CSRField("req_valid",     offset=27, size=1, reset=1,  description="Derive the read valid from the request only."),
+            CSRField("mask_bypass",   offset=28, size=1, reset=0,  description="Bypass the masking of the padding slots."),
+            CSRField("dqs_invert",    offset=29, size=1, reset=0,  description="Invert the DQS slot shift."),
+            CSRField("oct_disable",   offset=30, size=1, reset=0,  description="Disable the dynamic OCT."),
+            CSRField("trace_act",     offset=31, size=1, reset=0,  description="Trigger the trace on an ACT command."),
+        ])
+        assert self._settings.storage.reset.value == default_settings
         self._vfifo_increment = CSR()
-        self._dqs_scan = CSRStorage(31,
-            description="Scan payload [24:0], target [28:27] (0 DQS logic, 1 all DQ and DM, "
-                        "2 all DQS pads, 3 one lane's DQ and DM), lane index [29,26:25] for "
-                        "target 3, command toggle [30].")
+        self._dqs_scan = CSRStorage(description="I/O scan chain command.", fields=[
+            CSRField("data",     offset=0,  size=25, description="Scan payload."),
+            CSRField("lane",     offset=25, size=2,  description="Lane index [1:0] (target 3)."),
+            CSRField("target",   offset=27, size=2,  description="Scan target.", values=[
+                ("``0b00``", "DQS logic."),
+                ("``0b01``", "All DQ and DM."),
+                ("``0b10``", "All DQS pads."),
+                ("``0b11``", "DQ and DM of one lane."),
+            ]),
+            CSRField("lane_msb", offset=29, size=1,  description="Lane index [2] (target 3)."),
+            CSRField("toggle",   offset=30, size=1,  description="Command toggle."),
+        ])
         self._read_status = CSRStatus(32, description="Last captured four-byte AFI read word.")
         self._read_count  = CSRStatus(16, description="Number of captured AFI read words.")
         if with_trace:
@@ -211,32 +230,28 @@ class CycloneVDDR3Lane(LiteXModule):
             i_enable_mem_clk        = 1,
 
             # AFI Commands.
-            **{f"i_phy_ddio_{name}": ports[f"i_afi_{afi_name}"] for name, afi_name in (
-                ("address", "addr"),
-                ("bank",    "ba"),
-                ("cs_n",    "cs_n"),
-                ("cke",     "cke"),
-                ("odt",     "odt"),
-                ("we_n",    "we_n"),
-                ("ras_n",   "ras_n"),
-                ("cas_n",   "cas_n"),
-                ("reset_n", "rst_n"),
-            )},
+            i_phy_ddio_address      = ports["i_afi_addr"],
+            i_phy_ddio_bank         = ports["i_afi_ba"],
+            i_phy_ddio_cs_n         = ports["i_afi_cs_n"],
+            i_phy_ddio_cke          = ports["i_afi_cke"],
+            i_phy_ddio_odt          = ports["i_afi_odt"],
+            i_phy_ddio_we_n         = ports["i_afi_we_n"],
+            i_phy_ddio_ras_n        = ports["i_afi_ras_n"],
+            i_phy_ddio_cas_n        = ports["i_afi_cas_n"],
+            i_phy_ddio_reset_n      = ports["i_afi_rst_n"],
 
             # Pads.
-            **{f"o_phy_mem_{name}": ports[f"o_mem_{mem_name}"] for name, mem_name in (
-                ("address", "a"),
-                ("bank",    "ba"),
-                ("cs_n",    "cs_n"),
-                ("cke",     "cke"),
-                ("odt",     "odt"),
-                ("we_n",    "we_n"),
-                ("ras_n",   "ras_n"),
-                ("cas_n",   "cas_n"),
-                ("reset_n", "reset_n"),
-                ("ck",      "ck"),
-                ("ck_n",    "ck_n"),
-            )},
+            o_phy_mem_address       = ports["o_mem_a"],
+            o_phy_mem_bank          = ports["o_mem_ba"],
+            o_phy_mem_cs_n          = ports["o_mem_cs_n"],
+            o_phy_mem_cke           = ports["o_mem_cke"],
+            o_phy_mem_odt           = ports["o_mem_odt"],
+            o_phy_mem_we_n          = ports["o_mem_we_n"],
+            o_phy_mem_ras_n         = ports["o_mem_ras_n"],
+            o_phy_mem_cas_n         = ports["o_mem_cas_n"],
+            o_phy_mem_reset_n       = ports["o_mem_reset_n"],
+            o_phy_mem_ck            = ports["o_mem_ck"],
+            o_phy_mem_ck_n          = ports["o_mem_ck_n"],
         )
 
         # I/O Scan Chains --------------------------------------------------------------------------

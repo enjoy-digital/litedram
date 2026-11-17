@@ -661,6 +661,14 @@ class _LiteDRAMPatternChecker(Module, AutoCSR):
 class LiteDRAMBISTChecker(Module, AutoCSR):
     """DRAM memory pattern checker.
 
+    Parameters
+    ----------
+    dram_port : port
+        Port on the DRAM memory controller to read from (Native or AXI).
+
+    fifo_depth : int
+        How many read requests can be outstanding at once (depth of the DMA reader FIFOs).
+
     Attributes
     ----------
     reset : in
@@ -688,9 +696,6 @@ class LiteDRAMBISTChecker(Module, AutoCSR):
 
     errors : out
         Number of DRAM words which don't match.
-
-    fifo_depth : int
-        Maximum number of outstanding reads, in DRAM port words.
     """
     def __init__(self, dram_port, fifo_depth=16):
         ashift, awidth = get_ashift_awidth(dram_port)

@@ -14,31 +14,49 @@ from litex.soc.interconnect.csr_bus import CSRBank
 from litedram.phy.c5ddrphy import CycloneVDDRPHY
 
 
+CLOCKS = {"sys": 20, "afi": 10}
+
+def get_pads(lanes=1):
+    return Record([
+        ("a",       15),
+        ("ba",       3),
+        ("cs_n",     1),
+        ("ras_n",    1),
+        ("cas_n",    1),
+        ("we_n",     1),
+        ("cke",      1),
+        ("odt",      1),
+        ("reset_n",  1),
+        ("clk_p",    1),
+        ("clk_n",    1),
+        ("dq",       8*lanes),
+        ("dm",       lanes),
+        ("dqs_p",    lanes),
+        ("dqs_n",    lanes),
+        ("rzq",      1),
+    ])
+
+def get_phy(**kwargs):
+    """PHY with its I/O backend replaced by its ports (name without direction: signal)."""
+    pads  = get_pads()
+    ports = {}
+
+    def io_backend(**signals):
+        ports.update({name[2:]: signal for name, signal in signals.items()})
+        return Module()
+
+    phy = CycloneVDDRPHY(pads, Signal(), Signal(), cl=6, cwl=5, io_backend=io_backend, **kwargs)
+    phy.submodules += CSRBank([phy._calibration, phy._read_error])
+    fragment = phy.get_fragment()
+    # The simulation drives the clocks and models the native lane outputs.
+    fragment.specials = {s for s in fragment.specials
+                         if not isinstance(s, AsyncResetSynchronizer)}
+    return phy, fragment, ports, pads
+
+
 class TestCycloneVDDRPHY(unittest.TestCase):
-    @staticmethod
-    def make_phy():
-        pads = Record([
-            ("a", 15), ("ba", 3), ("cs_n", 1), ("ras_n", 1), ("cas_n", 1),
-            ("we_n", 1), ("cke", 1), ("odt", 1), ("reset_n", 1),
-            ("clk_p", 1), ("clk_n", 1), ("dq", 8), ("dm", 1),
-            ("dqs_p", 1), ("dqs_n", 1), ("rzq", 1),
-        ])
-        ports = {}
-
-        def native_backend(**signals):
-            ports.update({name[2:]: signal for name, signal in signals.items()})
-            return Module()
-
-        phy      = CycloneVDDRPHY(pads, Signal(), Signal(), cl=6, cwl=5, io_backend=native_backend)
-        phy.submodules += CSRBank([phy._calibration, phy._read_error])
-        fragment = phy.get_fragment()
-        # The simulation drives the clocks and models the native lane outputs.
-        fragment.specials = {s for s in fragment.specials
-                             if not isinstance(s, AsyncResetSynchronizer)}
-        return phy, fragment, ports, pads
-
     def test_calibration_status(self):
-        phy, fragment, ports, _ = self.make_phy()
+        phy, fragment, ports, _ = get_phy()
         self.assertEqual(phy._calibration.size, 2)
 
         def generator():
@@ -58,10 +76,10 @@ class TestCycloneVDDRPHY(unittest.TestCase):
                 self.assertEqual((yield phy._calibration.status), expected)
                 self.assertEqual((yield phy.calibrated), expected & 1)
 
-        run_simulation(fragment, generator(), clocks={"sys": 20, "afi": 10})
+        run_simulation(fragment, generator(), clocks=CLOCKS)
 
-    def test_write_leveling_feedback_uses_dfi_read_data(self):
-        phy, fragment, ports, _ = self.make_phy()
+    def test_write_leveling_feedback(self):
+        phy, fragment, ports, _ = get_phy()
         self.assertTrue(phy.settings.write_leveling)
 
         def generator():
@@ -78,10 +96,10 @@ class TestCycloneVDDRPHY(unittest.TestCase):
             yield
             self.assertEqual((yield phy.dfi.phases[0].rddata_valid), 0)
 
-        run_simulation(fragment, generator(), clocks={"sys": 20, "afi": 10})
+        run_simulation(fragment, generator(), clocks=CLOCKS)
 
     def test_read_burst_and_missing_return(self):
-        phy, fragment, ports, _ = self.make_phy()
+        phy, fragment, ports, _ = get_phy()
         phases  = phy.dfi.phases
         payload = [0x2713, 0x8945, 0xcdab, 0x01ef]
         self.assertEqual(phy.settings.read_latency, 37)
@@ -124,11 +142,10 @@ class TestCycloneVDDRPHY(unittest.TestCase):
                 yield
             self.assertEqual((yield phy._read_error.status), 1)
 
-        run_simulation(fragment, {"sys": system(), "afi": afi_model()},
-            clocks={"sys": 20, "afi": 10})
+        run_simulation(fragment, {"sys": system(), "afi": afi_model()}, clocks=CLOCKS)
 
-    def test_native_frame_pipeline_delays_write_command_and_data_together(self):
-        phy, fragment, ports, _ = self.make_phy()
+    def test_write_command_data_alignment(self):
+        phy, fragment, ports, _ = get_phy()
         phases   = phy.dfi.phases
         payload  = [0x2713, 0x8945, 0xcdab, 0x01ef]
         commands = []
@@ -158,7 +175,7 @@ class TestCycloneVDDRPHY(unittest.TestCase):
             yield phases[3].cs_n.eq(1)
             yield phases[3].wrdata_en.eq(0)
 
-        run_simulation(fragment, {"sys": system(), "afi": afi()}, clocks={"sys": 20, "afi": 10})
+        run_simulation(fragment, {"sys": system(), "afi": afi()}, clocks=CLOCKS)
 
         self.assertEqual(len(commands), 1)
         command_cycle, address = commands[0]
@@ -167,7 +184,7 @@ class TestCycloneVDDRPHY(unittest.TestCase):
                                  (command_cycle + 3, 0x01efcdab)])
 
     def test_termination_ports(self):
-        _, _, ports, pads = self.make_phy()
+        _, _, ports, pads = get_phy()
         self.assertIs(ports["oct_rzqin"], pads.rzq)
         self.assertNotIn("seriesterminationcontrol", ports)
         self.assertNotIn("parallelterminationcontrol", ports)
