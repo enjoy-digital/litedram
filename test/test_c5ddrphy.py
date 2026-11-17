@@ -69,7 +69,7 @@ def get_phy(**kwargs):
         return Module()
 
     phy = CycloneVDDRPHY(pads, cl=6, cwl=5, sys_clk_freq=75e6, io_backend=io_backend, **kwargs)
-    phy.submodules += CSRBank([phy._calibration, phy._read_error])
+    phy.bank = CSRBank([phy._calibration, phy._read_error])
     # The simulation drives the clocks and models the native lane outputs.
     return phy, phy.get_fragment(), ports, pads
 
@@ -89,6 +89,7 @@ class TestCycloneVDDRPHY(unittest.TestCase):
     def test_calibration_status(self):
         phy, fragment, ports, _ = get_phy()
         self.assertEqual(phy._calibration.size, 2)
+        self.assertIn("never with the native byte lanes", phy._calibration.fields.failed.description)
 
         def generator():
             cases = [
@@ -173,7 +174,63 @@ class TestCycloneVDDRPHY(unittest.TestCase):
                 yield
             self.assertEqual((yield phy._read_error.status), 1)
 
+            # The error is sticky: only a write of 1 to the register clears it.
+            def csr_write(value):
+                yield phy.bank.bus.adr.eq(1)
+                yield phy.bank.bus.dat_w.eq(value)
+                yield phy.bank.bus.we.eq(1)
+                yield
+                yield phy.bank.bus.we.eq(0)
+                yield
+                yield
+            for _ in range(8):
+                yield
+            self.assertEqual((yield phy._read_error.status), 1)
+            yield from csr_write(0)
+            self.assertEqual((yield phy._read_error.status), 1)
+            yield from csr_write(1)
+            self.assertEqual((yield phy._read_error.status), 0)
+
         run_simulation(fragment, {"sys": system(), "afi": afi_model()}, clocks=CLOCKS)
+        self.assertIn("write 1 to clear", phy._read_error.description)
+
+    def test_delay_selection(self):
+        # dly_sel selects the byte lanes of the read and of the write delay controls, as on the
+        # other PHYs (the BIOS selects a lane, then moves any of its delays).
+        phy, fragment, clocks = get_native_phy(lanes=2)
+        self.assertIn("read and write", phy._dly_sel.description)
+        taps = phy.io_backend.training_taps_cdc.i
+
+        def lane_taps():
+            value = (yield taps)
+            return [[(value >> (15*lane + 5*i)) & 0x1f for i in range(3)] for lane in range(2)]
+
+        def generator():
+            # Read tap (reset: 4), write DQ tap, write DQS tap of each lane.
+            self.assertEqual((yield from lane_taps()), [[4, 0, 0], [4, 0, 0]])
+            steps = [(phy._rdly_dq_inc, 1), (phy._wdly_dq_inc, 2), (phy._wdly_dqs_inc, 3)]
+            for select, expected in [
+                (0b00, [[4, 0, 0], [4, 0, 0]]),
+                (0b01, [[5, 2, 3], [4, 0, 0]]),
+                (0b10, [[5, 2, 3], [5, 2, 3]]),
+            ]:
+                yield phy._dly_sel.storage.eq(select)
+                for csr, count in steps:
+                    for _ in range(count):
+                        yield csr.wr_stb.eq(1)
+                        yield
+                        yield csr.wr_stb.eq(0)
+                        yield
+                self.assertEqual((yield from lane_taps()), expected)
+            yield phy._dly_sel.storage.eq(0b01)
+            for csr in (phy._rdly_dq_rst, phy._wdly_dq_rst, phy._wdly_dqs_rst):
+                yield csr.wr_stb.eq(1)
+                yield
+                yield csr.wr_stb.eq(0)
+                yield
+            self.assertEqual((yield from lane_taps()), [[0, 0, 0], [5, 2, 3]])
+
+        run_simulation(fragment, generator(), clocks=clocks)
 
     def test_write_command_data_alignment(self):
         phy, fragment, ports, _ = get_phy()
@@ -271,6 +328,17 @@ class TestCycloneVDDRPHY(unittest.TestCase):
                 yield
             self.assertEqual((yield phy._calibration.fields.success), 1)
             self.assertEqual((yield phy._calibration.fields.failed),  0)
+            # The byte lanes report no failure and their write latency setting has 3 bits: with
+            # the default max_write_latency, failed stays low for every setting.
+            settings = phy.io_backend._settings
+            self.assertEqual(len(settings.fields.wlat), 3)
+            for wlat in (7, 0):
+                yield settings.storage.eq((LANE_ARGS["default_settings"] & ~0x7) | wlat)
+                for _ in range(64):
+                    yield
+                self.assertEqual((yield phy.io_backend.settings_cdc.o[:3]), wlat)
+                self.assertEqual((yield phy._calibration.fields.success), 1)
+                self.assertEqual((yield phy._calibration.fields.failed),  0)
             # Loss of lock.
             yield phy.pll_locked.eq(0)
             yield

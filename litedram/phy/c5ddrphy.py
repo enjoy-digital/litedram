@@ -89,11 +89,13 @@ class CycloneVDDRPHY(LiteXModule):
             CSRField("success", offset=0,
                 description="The PHY is ready and reports a supported write latency."),
             CSRField("failed",  offset=1,
-                description="The PHY reported a startup failure or an unsupported write latency."),
+                description="The I/O backend reported a startup failure or a write latency above "
+                    "``max_write_latency`` (never with the native byte lanes and the default "
+                    "``max_write_latency``)."),
         ])
 
         self._dly_sel             = CSRStorage(lanes,
-            description="Select byte lanes for read-delay training.")
+            description="Select the byte lanes of the read and write (DQ, DQS) delay controls.")
 
         self._rdly_dq_rst         = CSR()
         self._rdly_dq_inc         = CSR()
@@ -119,8 +121,8 @@ class CycloneVDDRPHY(LiteXModule):
         self._wdly_dq_bitslip_rst = CSR()
         self._wdly_dq_bitslip     = CSR()
 
-        self._read_error          = CSRStatus(
-            description="A read missed its fixed DFI return slot.")
+        self._read_error          = CSRStatus(read_only=False,
+            description="A read missed its fixed DFI return slot (sticky, write 1 to clear).")
 
         # PHY settings -----------------------------------------------------------------------------
         # Allow the maximum six-bit AFI read latency, burst assembly and FIFO synchronization
@@ -305,7 +307,10 @@ class CycloneVDDRPHY(LiteXModule):
         ]
         self.read_delay = TappedDelayLine(rd_en & cal_status[0], ntaps=read_latency)
         expected = self.read_delay.output
-        self.sync += If(expected & ~fifo.readable, self._read_error.status.eq(1))
+        self.sync += [
+            If(self._read_error.re & self._read_error.r, self._read_error.status.eq(0)),
+            If(expected & ~fifo.readable, self._read_error.status.eq(1)),
+        ]
         write_level_feedback = Signal(lanes)
         feedback_bytes       = Cat(*(Cat(write_level_feedback[lane], 0, 0, 0, 0, 0, 0, 0)
                                      for lane in range(lanes)))
@@ -324,6 +329,9 @@ class CycloneVDDRPHY(LiteXModule):
             i_write_level_strobe        = self._wlevel_strobe.wr_stb,
             o_write_level_feedback      = write_level_feedback,
 
+            # Delay Selection (Read and Write).
+            i_delay_select              = self._dly_sel.storage,
+
             # Write Delays.
             i_write_dq_delay_reset      = self._wdly_dq_rst.wr_stb,
             i_write_dq_delay_increment  = self._wdly_dq_inc.wr_stb,
@@ -331,7 +339,6 @@ class CycloneVDDRPHY(LiteXModule):
             i_write_dqs_delay_increment = self._wdly_dqs_inc.wr_stb,
 
             # Read Delays.
-            i_read_delay_select         = self._dly_sel.storage,
             i_read_delay_reset          = self._rdly_dq_rst.wr_stb,
             i_read_delay_increment      = self._rdly_dq_inc.wr_stb,
 

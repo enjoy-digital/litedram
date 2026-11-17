@@ -428,7 +428,8 @@ delays the write data by the write latency that the byte lanes report.
 
 On a read, the PHY pairs two AFI words into one burst of 8 and passes it to `sys` through an
 asynchronous FIFO. It returns the burst at the fixed read latency. A read whose data is not in the
-FIFO at that cycle sets an error register (`_read_error`).
+FIFO at that cycle sets an error register, which stays set until software writes 1 to it
+(`_read_error`).
 
 With `on_the_fly`, the PHY sets A12 on the column commands, which selects a burst of 8 when the
 mode register leaves the burst length to the command.
@@ -463,8 +464,14 @@ constraint of the target, the lane name followed by `_captured_valid`.
 ### Calibration {#phys-cyclone-v-calibration}
 
 The BIOS runs the DDR3 initialization, the write leveling and the read leveling through the
-registers that the other PHYs use. The CK and command phase is fixed by the PLL, and the two
-command delay registers have no effect.
+registers that the other PHYs use. The lane selection register applies to the read delay and to
+the two write delays, as on the other PHYs (`_dly_sel`). The CK and command phase is fixed by the
+PLL, and the two command delay registers have no effect.
+
+The system clock domain leaves reset when the startup of the byte lanes is done, so software
+reads the startup status register as successful (`_calibration`). Its failure bit reports a write
+latency above `max_write_latency`, which the 3-bit latency setting of the byte lanes cannot
+exceed with the default value of 7, or a failure of another I/O backend.
 
 During write leveling, the PHY drives DQS and reads the answer of the DRAM through the hard input
 FIFO. It disables the dynamic termination while it drives the strobes. One write delay step moves

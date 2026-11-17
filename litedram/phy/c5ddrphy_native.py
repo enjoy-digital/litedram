@@ -309,7 +309,7 @@ class CycloneVDDR3Lane(LiteXModule):
         self.comb += self.training_taps_cdc.i.eq(Cat(*(
             Cat(rd, dq, dqs) for rd, dq, dqs in zip(read_taps, dq_taps, dqs_taps)), 1))
         for lane in range(lanes):
-            self.sync += If(ports["i_read_delay_select"][lane],
+            self.sync += If(ports["i_delay_select"][lane],
                 If(ports["i_read_delay_reset"],
                     read_taps[lane].eq(0)
                 ).Elif(ports["i_read_delay_increment"],
