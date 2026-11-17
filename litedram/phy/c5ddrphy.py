@@ -8,7 +8,6 @@
 
 from migen import *
 from migen.genlib.fifo import AsyncFIFO
-from migen.genlib.resetsync import AsyncResetSynchronizer
 
 from litex.gen import *
 
@@ -23,11 +22,29 @@ from litedram.phy.c5ddrphy_native import CycloneVDDR3Lane
 class CycloneVDDRPHY(LiteXModule):
     """Single-rank DDR3 BL8 PHY using the native Cyclone V byte lanes.
 
-    ``ip_name``, ``lane_name``, ``mem_clk_freq`` and ``default_settings`` describe the Quartus
-    wrappers and the timing of the board. They have no default value and are passed to the byte
-    lanes (see ``CycloneVDDR3Lane``).
+    The clock domains come from the CRG, which holds the PLL wrapper of the Quartus DDR3 memory IP
+    (``<ip_name>_pll0``, output in parentheses):
+    - ``sys``               : System clock, ``afi`` divided by two by a register clocked by ``afi``
+                              (the PHY also uses this clock as data to select the AFI word).
+    - ``afi``               : Half-rate clock of the I/O blocks (``afi_clk``), 2 x ``sys``.
+    - ``afi_phy``           : Half-rate clock of the hard I/O (``afi_phy_clk``).
+    - ``pll_mem``           : DRAM clock (``pll_mem_clk``), 4 x ``sys``.
+    - ``pll_mem_phy``       : DRAM clock of the hard I/O (``pll_mem_phy_clk``).
+    - ``pll_write``         : Write clock (``pll_write_clk``).
+    - ``pll_write_pre_phy`` : DLL reference clock (``pll_write_clk_pre_phy_clk``).
+    - ``pll_addr_cmd``      : Command/address clock (``pll_addr_cmd_clk``).
+    - ``pll_config``        : I/O scan chain clock (``pll_config_clk``).
+    The CRG drives ``pll_locked`` with the lock of this PLL and resets ``afi`` and ``sys`` while
+    ``ready`` is low (startup of the DLL and of the hard I/O); the other clock domains have no
+    reset.
+
+    ``ip_name``, ``lane_name`` and ``default_settings`` describe the Quartus wrappers and the
+    timing of the board. They have no default value and are passed to the byte lanes with the DRAM
+    clock frequency (``mem_clk_freq``, 4 x ``sys_clk_freq`` when it is not passed; see
+    ``CycloneVDDR3Lane``).
     """
-    def __init__(self, pads, ref_clk, rst, cl, cwl, *,
+    def __init__(self, pads, cl, cwl, *,
+        sys_clk_freq      = None,
         on_the_fly        = False,
         max_write_latency = 7,
         oct               = None,
@@ -56,10 +73,16 @@ class CycloneVDDRPHY(LiteXModule):
             raise ValueError("On-the-fly burst selection requires DDR3 address bit A12")
         if not 0 <= max_write_latency < 64:
             raise ValueError("Invalid maximum AFI write latency")
+        if sys_clk_freq is None:
+            raise ValueError("Cyclone V DDR3 PHY requires sys_clk_freq")
+        if mem_clk_freq is None:
+            mem_clk_freq = 4*sys_clk_freq
+        if mem_clk_freq != 4*sys_clk_freq:
+            raise ValueError("Cyclone V DDR3 PHY requires mem_clk_freq = 4 x sys_clk_freq")
 
-        # Clock Domains ----------------------------------------------------------------------------
-        self.cd_afi = ClockDomain()
-        self.cd_sys = ClockDomain()
+        # Clocking / Reset -------------------------------------------------------------------------
+        self.pll_locked = Signal() # i: Lock of the PLL of the CRG.
+        self.ready      = Signal() # o: Startup done (the CRG holds afi and sys in reset while low).
 
         # Registers --------------------------------------------------------------------------------
         self._calibration = CSRStatus(description="PHY startup status.", fields=[
@@ -131,17 +154,14 @@ class CycloneVDDRPHY(LiteXModule):
         # Signals ----------------------------------------------------------------------------------
         cal_success = Signal()
         cal_failed  = Signal()
-        reset_n     = Signal()
         wlat_raw    = Signal(6)
         read_data   = Signal(4*databits)
         read_valid  = Signal(2)
 
-        # Clocking ---------------------------------------------------------------------------------
-        # Both clock domains are derived from the native PHY PLL.
-        self.specials += AsyncResetSynchronizer(self.cd_afi, ~reset_n)
-        self.sync.afi += self.cd_sys.clk.eq(~self.cd_sys.clk)
-        first = self.cd_sys.clk
-        self.specials += AsyncResetSynchronizer(self.cd_sys, ~reset_n)
+        # AFI Word Selection -----------------------------------------------------------------------
+        # sys is afi divided by two by a register of the afi clock domain: its level selects the
+        # AFI word of a sys cycle.
+        first = ClockSignal("sys")
 
         # Calibration Status -----------------------------------------------------------------------
         # Sample PHY readiness and write latency in the AFI domain.
@@ -315,12 +335,10 @@ class CycloneVDDRPHY(LiteXModule):
             i_read_delay_reset          = self._rdly_dq_rst.wr_stb,
             i_read_delay_increment      = self._rdly_dq_inc.wr_stb,
 
-            # Clocking / Reset / Termination.
-            i_pll_ref_clk               = ref_clk,
-            i_global_reset_n            = ~rst,
+            # Reset / Termination.
+            i_pll_locked                = self.pll_locked,
             i_oct_rzqin                 = pads.rzq,
-            o_afi_clk                   = self.cd_afi.clk,
-            o_afi_reset_n               = reset_n,
+            o_afi_reset_n               = self.ready,
 
             # Calibration Status.
             o_cal_success               = cal_success,

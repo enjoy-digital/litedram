@@ -370,15 +370,55 @@ under the LiteDRAM controller and does not use the hard memory controller of the
 |------------------------|---------------------------------------------------------------|
 | Memory | DDR3, one rank, one DM and one differential DQS per byte, 1 to 8 bytes |
 | DFI | 4 phases, read and write commands on phase 3 |
-| Clocks | DRAM 300 MHz, AFI 150 MHz, `sys` 75 MHz on the validated board |
+| Clocks | From the CRG: DRAM 300 MHz, AFI 150 MHz, `sys` 75 MHz on the validated board |
 | Read latency | 37 controller cycles, fixed |
 | Leveling | Write and read, 32 delay taps, 1 bitslip position |
 | Termination | Dedicated `rzq` pad |
 
-The clocks come from the PLL of the PHY, not from a CRG. The PHY creates the `sys` domain itself,
-at half the frequency of the half-rate domain of the I/O blocks (`afi`). The generated PLL wrapper
-fixes the DRAM clock, and the PHY takes its frequency as an argument for the parameters of the
-other wrappers. Only 300 MHz, 600 MT/s, was run.
+Only 300 MHz, 600 MT/s, was run.
+
+### Clocking {#phys-cyclone-v-clocking}
+
+The clock domains come from the CRG of the target, as for the other PHYs. The CRG instantiates
+the PLL wrapper of the generated IP and creates one clock domain per output. The PHY takes the
+system clock frequency (`sys_clk_freq`) and uses the domains by name.
+
+| Clock domain | PLL output | Role |
+|-----------------------------|-------------------------------------------|------------------------|
+| `sys` | none | System clock, `afi` divided by two |
+| `afi` | `afi_clk` | Half-rate clock of the I/O blocks |
+| `afi_phy` | `afi_phy_clk` | Half-rate clock of the hard I/O |
+| `pll_mem` | `pll_mem_clk` | DRAM clock, four times `sys` |
+| `pll_mem_phy` | `pll_mem_phy_clk` | DRAM clock of the hard I/O |
+| `pll_write` | `pll_write_clk` | Write clock |
+| `pll_write_pre_phy` | `pll_write_clk_pre_phy_clk` | Reference clock of the DLL |
+| `pll_addr_cmd` | `pll_addr_cmd_clk` | Command and address clock |
+| `pll_config` | `pll_config_clk` | Clock of the I/O delay scan |
+
+The CRG divides `afi` by two with a register clocked by `afi` to make `sys`. The PHY reads the
+level of `sys` as data to select the AFI word of a system cycle, so `sys` cannot come from
+another PLL output.
+
+Two signals link the PHY and the CRG. The CRG drives the lock of the PLL to the PHY
+(`pll_locked`). The PHY then starts the DLL and the hard I/O, and reports the end of this startup
+(`ready`). The CRG holds `afi` and `sys` in reset until then, and the other domains have no
+reset.
+
+```python
+# CRG (pll_clks: PLL wrapper outputs to the clock domains of the table).
+self.specials += Instance(ip_name + "_pll0", o_afi_clk=self.cd_afi.clk, **pll_clks)
+self.sync.afi += self.cd_sys.clk.eq(~self.cd_sys.clk)
+self.specials += [
+    AsyncResetSynchronizer(self.cd_afi, ~self.ddr_ready),
+    AsyncResetSynchronizer(self.cd_sys, ~self.ddr_ready),
+]
+
+# Target.
+self.comb += [
+    self.ddrphy.pll_locked.eq(self.crg.ddr_locked),
+    self.crg.ddr_ready.eq(self.ddrphy.ready),
+]
+```
 
 ### Datapath {#phys-cyclone-v-datapath}
 
@@ -395,10 +435,10 @@ mode register leaves the burst length to the command.
 
 ### Quartus wrappers {#phys-cyclone-v-wrappers}
 
-The PHY instantiates I/O wrappers that Quartus generates with its DDR3 memory IP, for the PLL, the
-DLL, the termination, the command and address pads and the byte lanes (`ALTDQ_DQS2`). The
-repository does not hold them: the target generates them and adds them to the build, with their
-timing constraints.
+The PHY instantiates I/O wrappers that Quartus generates with its DDR3 memory IP, for the DLL,
+the termination, the command and address pads and the byte lanes (`ALTDQ_DQS2`). The CRG
+instantiates the PLL wrapper of the same IP. The repository does not hold them: the target
+generates them and adds them to the build, with their timing constraints.
 
 The PHY also connects two write leveling inputs of the byte-lane wrapper, `level_enable` and
 `level_strobe`, that the target adds to the generated file.
@@ -408,12 +448,17 @@ arguments. They have no default value: the PHY raises an error when one is missi
 
 | Argument | Role |
 |--------------------------|-----------------------------------------------------------|
+| `sys_clk_freq` | System clock frequency, a quarter of the DRAM clock of the generated IP |
 | `ip_name` | Output name of the generated IP, prefix of the PLL and pad wrappers |
 | `lane_name` | Instance name of the byte lanes, followed by their index |
-| `mem_clk_freq` | DRAM clock frequency of the generated IP |
 | `default_settings` | Reset value of the timing register of the byte lanes |
 
-The timing constraints of the target select the byte lanes by their instance name.
+The PHY derives the DRAM clock frequency of the wrapper parameters from `sys_clk_freq`. It still
+accepts `mem_clk_freq` and raises an error when the two do not match.
+
+The timing constraints of the target select the byte lanes by their instance name. The register
+that captures the valid bits of the hard read FIFOs has a fixed name for the placement
+constraint of the target, the lane name followed by `_captured_valid`.
 
 ### Calibration {#phys-cyclone-v-calibration}
 
@@ -431,8 +476,9 @@ settings of the hard FIFOs and of the DQS gate are fixed for a board. The PHY ta
 reset value of a register, which software writes for debug only (`_settings`).
 
 The PHY was validated at 600 MT/s on the 64-bit DDR3B bank of the Cyclone V GT Development Kit,
-with the BIOS calibration, its memory test and the BIST. The LiteX-Boards target of this board
-enables the PHY with `--with-ddr3b` and passes the four arguments.
+with the BIOS calibration, its memory test and the BIST, with the PLL wrapper inside the PHY. The
+clock domains in the CRG were not run on hardware. The LiteX-Boards target of this board enables
+the PHY with `--with-ddr3b`, creates the clock domains and passes the arguments.
 
 ## Lattice ECP5 {#phys-ecp5}
 
