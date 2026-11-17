@@ -154,6 +154,7 @@ class S7DDRPHY(Module, AutoCSR):
         # PHY of a SoC).
         assert memtype in ["DDR2", "DDR3", "DDR4"]
         assert not (memtype == "DDR3" and nphases == 2)
+        assert not (memtype == "DDR4" and nphases == 2)
         if with_ck_phase_shift:
             assert memtype == "DDR3" and nphases == 4 and not with_odelay
             assert ddr_clk is None and not is_rdimm
@@ -296,10 +297,17 @@ class S7DDRPHY(Module, AutoCSR):
             )
 
         # DFI Interface ----------------------------------------------------------------------------
-        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, max(4, nphases))
+        self.dfi = dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
         if memtype == "DDR4":
             dfi = Interface(addressbits, bankbits, nranks, 2*databits, nphases)
             self.submodules += DDR4DFIMux(self.dfi, dfi)
+        if nphases < 4:
+            # The serializers below index the DFI with a fixed 8-bit mapping (4 phases) while the
+            # OSERDESE2 only serialize the first 2*nphases bits: pad the DFI internally, the extra
+            # phases stay at their reset values (NOPs) and their read data is not used.
+            dfi_ser = Interface(addressbits, bankbits, nranks, 2*databits, 4)
+            self.comb += [p_i.connect(p_o) for p_i, p_o in zip(dfi.phases, dfi_ser.phases)]
+            dfi = dfi_ser
 
         # # #
 

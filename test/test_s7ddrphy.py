@@ -8,6 +8,7 @@ import unittest
 from types import SimpleNamespace
 
 from migen import *
+from migen.fhdl.structure import _Assign, _Slice
 
 from litedram.common import get_default_cl
 from litedram.init import get_ddr3_phy_init_sequence
@@ -104,6 +105,85 @@ class TestS7DDRPHYSettings(unittest.TestCase):
                     rdphase + cl,
                     read_sys_latency*phy.settings.nphases,
                 )
+
+
+class TestS7DDRPHYDFI(unittest.TestCase):
+    """The DFI of the PHY has the number of phases of its settings (1:2 and 1:4)."""
+    configs = [
+        # Class,   memtype, nphases, sys_clk_freq.
+        (A7DDRPHY, "DDR2", 2,  75e6),
+        (K7DDRPHY, "DDR2", 2, 100e6),
+        (A7DDRPHY, "DDR2", 4, 100e6),
+        (A7DDRPHY, "DDR3", 4, 100e6),
+        (K7DDRPHY, "DDR3", 4, 125e6),
+        (K7DDRPHY, "DDR4", 4, 125e6),
+    ]
+
+    @staticmethod
+    def get_pads(memtype):
+        pads = [
+            ("a", 14), ("ba", 2), ("ras_n", 1), ("cas_n", 1), ("we_n", 1), ("cs_n", 1), ("cke", 1),
+            ("odt", 1), ("clk_p", 1), ("clk_n", 1), ("dq", 16), ("dm", 2), ("dqs_p", 2), ("dqs_n", 2),
+        ]
+        if memtype == "DDR4":
+            pads += [("bg", 1), ("act_n", 1), ("reset_n", 1)]
+        return Record(pads)
+
+    def get_phy(self, cls, memtype, nphases, sys_clk_freq):
+        return cls(self.get_pads(memtype), memtype=memtype, nphases=nphases, sys_clk_freq=sys_clk_freq)
+
+    def test_dfi_nphases(self):
+        for cls, memtype, nphases, sys_clk_freq in self.configs:
+            with self.subTest(cls=cls.__name__, memtype=memtype, nphases=nphases):
+                phy = self.get_phy(cls, memtype, nphases, sys_clk_freq)
+                self.assertEqual(phy.settings.nphases, nphases)
+                self.assertEqual(len(phy.dfi.phases), phy.settings.nphases)
+                # Exported DFI ports: phases 0 to nphases - 1 only.
+                names = [name for name, _ in phy.dfi.get_standard_names()]
+                self.assertEqual(sum(name.startswith("dfi_cs_n_p") for name in names), nphases)
+                self.assertNotIn(f"dfi_cs_n_p{nphases}", names)
+
+    def test_half_rate_serializers(self):
+        # 1:2: 4-bit OSERDESE2/ISERDESE2. D1-D4 of a command serializer follow phases 0 and 1 of
+        # the DFI, D5-D8 (not used by the primitive) are constant NOPs.
+        def signal(expr):
+            return expr.value if isinstance(expr, _Slice) else expr
+        for cls, memtype, nphases, sys_clk_freq in self.configs[:2]:
+            with self.subTest(cls=cls.__name__):
+                phy      = self.get_phy(cls, memtype, nphases, sys_clk_freq)
+                fragment = phy.get_fragment()
+                insts    = [s for s in fragment.specials if isinstance(s, Instance)]
+                serdes   = [i for i in insts if i.of in ("OSERDESE2", "ISERDESE2")]
+                # OSERDESE2: CK, 22 command pins, 2 DQS, 2 DM, 16 DQ; ISERDESE2: 16 DQ.
+                self.assertEqual(len(serdes), (1 + 22 + 2 + 2 + 16) + 16)
+                for inst in serdes:
+                    params = {it.name: it.value for it in inst.items
+                        if isinstance(it, Instance.Parameter)}
+                    self.assertEqual(params["DATA_WIDTH"], 2*nphases)
+                # Comb assignments of the fragment: target -> source.
+                sources = {}
+                for statement in fragment.comb:
+                    if isinstance(statement, _Assign) and isinstance(statement.l, Signal):
+                        sources[statement.l] = statement.r
+                ras_n = []
+                for inst in insts:
+                    if inst.of != "OSERDESE2":
+                        continue
+                    ports = {it.name: signal(it.expr) for it in inst.items
+                        if isinstance(it, Instance.Input)}
+                    if sources.get(ports["D1"], None) is phy.dfi.p0.ras_n:
+                        ras_n.append(ports)
+                self.assertEqual(len(ras_n), 1)
+                ports = ras_n[0]
+                for n in range(4):
+                    self.assertIs(sources[ports[f"D{n+1}"]], phy.dfi.phases[n//2].ras_n)
+                for n in range(4, 8):
+                    self.assertNotIn(ports[f"D{n+1}"], sources)
+                    self.assertEqual(ports[f"D{n+1}"].reset.value, 1)
+
+    def test_ddr4_half_rate_is_rejected(self):
+        with self.assertRaises(AssertionError):
+            self.get_phy(K7DDRPHY, "DDR4", 2, 100e6)
 
 
 class TestS7DDRPHYCKPhaseShift(unittest.TestCase):
