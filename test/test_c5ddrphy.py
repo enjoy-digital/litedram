@@ -29,11 +29,12 @@ class TestCycloneVDDRPHY(unittest.TestCase):
             ports.update({name[2:]: signal for name, signal in signals.items()})
             return Module()
 
-        phy = CycloneVDDRPHY(pads, Signal(), Signal(), cl=6, cwl=5, io_backend=native_backend)
+        phy      = CycloneVDDRPHY(pads, Signal(), Signal(), cl=6, cwl=5, io_backend=native_backend)
         phy.submodules += CSRBank([phy._calibration, phy._read_error])
         fragment = phy.get_fragment()
         # The simulation drives the clocks and models the native lane outputs.
-        fragment.specials = {s for s in fragment.specials if not isinstance(s, AsyncResetSynchronizer)}
+        fragment.specials = {s for s in fragment.specials
+                             if not isinstance(s, AsyncResetSynchronizer)}
         return phy, fragment, ports, pads
 
     def test_calibration_status(self):
@@ -81,7 +82,7 @@ class TestCycloneVDDRPHY(unittest.TestCase):
 
     def test_read_burst_and_missing_return(self):
         phy, fragment, ports, _ = self.make_phy()
-        phases = phy.dfi.phases
+        phases  = phy.dfi.phases
         payload = [0x2713, 0x8945, 0xcdab, 0x01ef]
         self.assertEqual(phy.settings.read_latency, 37)
 
@@ -123,14 +124,15 @@ class TestCycloneVDDRPHY(unittest.TestCase):
                 yield
             self.assertEqual((yield phy._read_error.status), 1)
 
-        run_simulation(fragment, {"sys": system(), "afi": afi_model()}, clocks={"sys": 20, "afi": 10})
+        run_simulation(fragment, {"sys": system(), "afi": afi_model()},
+            clocks={"sys": 20, "afi": 10})
 
     def test_native_frame_pipeline_delays_write_command_and_data_together(self):
         phy, fragment, ports, _ = self.make_phy()
-        phases = phy.dfi.phases
-        payload = [0x2713, 0x8945, 0xcdab, 0x01ef]
+        phases   = phy.dfi.phases
+        payload  = [0x2713, 0x8945, 0xcdab, 0x01ef]
         commands = []
-        words = []
+        words    = []
 
         def afi():
             yield ports["cal_success"].eq(1)
