@@ -162,7 +162,7 @@ class SimSoC(SoCCore):
         # RPC DRAM ---------------------------------------------------------------------------------
         sdram_module = EM6GA16L(sys_clk_freq, "1:4")
         pads = platform.request("rpcdram")
-        self.submodules.ddrphy = SimulationPHY(pads, sys_clk_freq=sys_clk_freq, generate_read_data=True)
+        self.submodules.ddrphy = SimulationPHY(pads, sys_clk_freq=sys_clk_freq, with_dram_model=True)
         self.csr.add("ddrphy")
 
         controller_settings = ControllerSettings()
@@ -327,7 +327,6 @@ def main():
         auto_precharge = args.auto_precharge,
         with_refresh   = not args.no_refresh,
         sdram_init     = [] if args.sdram_init is None else get_mem_data(args.sdram_init, endianness=cpu.endianness),
-        l2_size        = args.l2_size,
         **soc_kwargs)
 
     # Build/Run ------------------------------------------------------------------------------------

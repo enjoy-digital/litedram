@@ -10,18 +10,27 @@ from migen.fhdl.specials import Tristate
 from litex.soc.interconnect.csr import CSR
 
 from litedram.phy.rpc.basephy import BasePHY
+from litedram.phy.rpc.sim import RPCDRAMModel
 
 
 class SimulationPHY(BasePHY):
-    def __init__(self, *args, generate_read_data=True, **kwargs):
+    des_latency = 8 # Deserializer latency with the DRAM model (UIs).
+
+    def __init__(self, *args, generate_read_data=True, with_dram_model=False, dram_model_rowbits=12, **kwargs):
         kwargs.update(dict(
             write_ser_latency = 1,
-            read_des_latency  = 0,
+            # With the DRAM model, the deserializer has a latency of exactly 1 sys_clk, so that the
+            # read burst stays aligned on the sys_clk cycles (as the PHY expects).
+            read_des_latency  = 1 if with_dram_model else 0,
             phytype           = "RPC" + self.__class__.__name__,
         ))
         super().__init__(*args, **kwargs)
 
-        self.generate_read_data = generate_read_data
+        # Read data: from a DRAM model (stores the writes), a dummy generator (fixed pattern) or
+        # from the pads.
+        self.with_dram_model    = with_dram_model
+        self.dram_model_rowbits = dram_model_rowbits
+        self.generate_read_data = generate_read_data or with_dram_model
 
         # fake delays (make no nsense in simulation, but sdram.c expects them)
         self.settings.read_leveling = True
@@ -74,7 +83,14 @@ class SimulationPHY(BasePHY):
             ]
 
     def do_db_serialization(self, db_1ck_out, db_1ck_in, db_oe, db):
-        if self.generate_read_data:
+        if self.with_dram_model:
+            # DRAM model.
+            dq_in_dummy = Signal(self.databits)
+            self.dram = RPCDRAMModel(dq_in=db, dq_out=dq_in_dummy, stb_in=self.pads.stb,
+                cl      = self.settings.cl,
+                rowbits = self.dram_model_rowbits)
+            self.submodules += ClockDomainsRenamer({"sys": "sys4x_180_ddr"})(self.dram)
+        elif self.generate_read_data:
             # Dummy read data generator for simulation purpose
             dq_in_dummy = Signal(self.databits)
             gen = DummyReadGenerator(dq_in=db, dq_out=dq_in_dummy, stb_in=self.pads.stb,
@@ -98,7 +114,8 @@ class SimulationPHY(BasePHY):
 
             # Use sd_ddr_90 in simulation, in general leveling would be needed.
             if self.generate_read_data:
-                des = Deserializer(self.sd_ddr_90, dq_in_dummy[i], db_1ck_in[i])
+                des = Deserializer(self.sd_ddr_90, dq_in_dummy[i], db_1ck_in[i],
+                    latency = self.des_latency if self.with_dram_model else 1)
             else:
                 des = Deserializer(self.sd_ddr_90, dq_in, db_1ck_in[i])
             self.submodules += des
@@ -249,7 +266,8 @@ class Serializer(Module):
 
 class Deserializer(Module):
     """Deserialize an input signal into outputs in the `sd` clock domain"""
-    def __init__(self, sd, input, outputs, reset=0, name=None):
+    def __init__(self, sd, input, outputs, reset=0, name=None, latency=1):
+        # `latency` in UIs (1: the input is only registered in its output).
         assert(len(outputs) > 0)
         assert(len(s) == len(outputs[0]) for s in outputs)
         assert(len(outputs[0]) == len(input))
@@ -262,4 +280,8 @@ class Deserializer(Module):
 
         data_cntr = Signal(log2_int(data_width), name=name)
         sd += If(reset, data_cntr.eq(0)).Else(data_cntr.eq(data_cntr+1))
+        for _ in range(latency - 1):
+            input_d = Signal.like(input)
+            sd += input_d.eq(input)
+            input = input_d
         sd += outputs[data_cntr].eq(input)
