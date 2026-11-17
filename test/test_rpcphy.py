@@ -196,7 +196,7 @@ class TestRPCPHY(unittest.TestCase):
         phy = self.get_nx_phy()
         self.assertEqual([csr.name for csr in phy.get_csrs()], [
             "stb_shift", "dqs_shift", "db_shift", "rd_en_sel", "rd_en_phase",
-            "rdly_dq_rst", "rdly_dq_inc", "burstdet_clr", "burstdet_seen", "datavalid_cnt",
+            "rdly_dq_rst", "rdly_dq_inc", "wlvl_rst", "wlvl_inc", "wdly_dir", "wdly_rst", "wdly_move", "rdqs_dir", "rdqs_rst", "rdqs_move", "burstdet_clr", "burstdet_seen", "datavalid_cnt",
             "rst", "dly_sel", "rdly_dq_bitslip_rst", "rdly_dq_bitslip",
             "reset_done", "init_done", "reset_fsm", "burst_stop",
         ])

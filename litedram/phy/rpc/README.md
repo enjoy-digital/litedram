@@ -40,19 +40,31 @@ reaching high frequency operation.
 A backend for Lattice CertusPro-NX (`nxphy.py`, `NXRPCPHY`) targets the Lattice CertusPro-NX Voice
 and Vision Machine Learning board (LFCPNX-VVML-EVN: 2 x EM6GA16LBXA-12H on a 1.5V bank), with the
 `lattice_certuspro_nx_vvml` target of LiteX-Boards (`--with-rpcdram`). It builds with Radiant
-(timing met at sys_clk 50MHz, CLK 200MHz) and passes the BIOS memory test on the first DRAM of the
-board (32MiB, 16-bit, 400MT/s):
+(timing met) and passes the BIOS memory test on the first DRAM of the board (32MiB, 16-bit) at
+sys_clk 50MHz and 100MHz (CLK 400MHz, 800MT/s); sys_clk 75MHz does not work yet (the DRAM does
+not answer, cause not understood):
 
 ```
+SDRAM:		32.0MiB 16-bit @ 800MT/s (CL-9 CWL-9)
 Read leveling:
-  m0, b00: |0111111110000000| delays: 04+-03
-  m1, b00: |0111111110000000| delays: 05+-04
+  m0, b03: |0000000001111111| delays: 12+-03
+  m0, b04: |0111111110000000| delays: 04+-03
+  best: m0, b04 delays: 04+-03
+  m1, b03: |0000000000111111| delays: 12+-02
+  m1, b04: |0011111111000000| delays: 05+-03
+  best: m1, b04 delays: 05+-03
 Memtest at 0x40000000 (2.0MiB)...
 Memtest OK
 Memspeed at 0x40000000 (Sequential, 2.0MiB)...
-  Write speed: 17.9MiB/s
-   Read speed: 26.9MiB/s
+  Write speed: 34.6MiB/s
+   Read speed: 53.8MiB/s
 ```
+
+| sys_clk | CLK    | Rate    | READ position | Write     | Read      |
+|---------|--------|---------|---------------|-----------|-----------|
+| 50MHz   | 200MHz | 400MT/s | 3             | 17.9MiB/s | 26.9MiB/s |
+| 75MHz   | 300MHz | 600MT/s | -             | fails     | fails     |
+| 100MHz  | 400MHz | 800MT/s | 4             | 34.6MiB/s | 53.8MiB/s |
 
 `mem_test` over the 32MiB also passes. The write shifts and the read enable position were first
 settled in a simulation of the PHY with Lattice's primitive models (QuestaSim) and a timing-aware
@@ -91,7 +103,14 @@ Important implementation notes:
   has to open during the DQS preamble and to last as long as the burst (8 tCK); its position is
   set by CSRs (sys_clk cycles, tCK) and by the DQSBUF read clock selection, which the read leveling
   scans as the delay. The DQSBUF returns the burst aligned on sys_clk over the two cycles flagged
-  by `DATAVALID`. Only the first DRAM (rank) is used: STB/CS# of the others are held high.
+  by `DATAVALID`. The round trip delay counted in tCK depends on the frequency, so the read
+  leveling also moves the `READ` position (through the bitslip CSRs, 8 positions of 1 tCK) and
+  keeps the one with the widest window. The DQS path of the DQSBUF is already about a UI long at
+  CLK 400MHz: after the initialization the read delay code (90 degrees from the DDRDLL) is
+  decreased (`rdqs_dec` steps), otherwise the next UI is captured at this frequency. CSRs give
+  access to the read delay, the write delay (DB against DQS) and the write leveling delay (DQS
+  and DB against CLK) of the DQSBUFs. Only the first DRAM (rank) is used: STB/CS# of the others
+  are held high.
 
 The current code structure is the predecessor of the concepts used in LPDDR4/LPDDR5 PHYs.
 RPC-related code is contained in the `litedram/phy/rpc` directory (with some modifications in other
