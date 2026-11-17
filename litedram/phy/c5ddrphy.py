@@ -21,12 +21,21 @@ from litedram.phy.c5ddrphy_native import CycloneVDDR3Lane
 # Altera Cyclone V DDR3 PHY ------------------------------------------------------------------------
 
 class CycloneVDDRPHY(LiteXModule):
-    """Single-rank DDR3 BL8 PHY using the native Cyclone V byte lanes."""
+    """Single-rank DDR3 BL8 PHY using the native Cyclone V byte lanes.
+
+    ``ip_name``, ``lane_name``, ``mem_clk_freq`` and ``default_settings`` describe the Quartus
+    wrappers and the timing of the board. They have no default value and are passed to the byte
+    lanes (see ``CycloneVDDR3Lane``).
+    """
     def __init__(self, pads, ref_clk, rst, cl, cwl, *,
         on_the_fly        = False,
         max_write_latency = 7,
         oct               = None,
-        io_backend        = CycloneVDDR3Lane):
+        io_backend        = CycloneVDDR3Lane,
+        ip_name           = None,
+        lane_name         = None,
+        mem_clk_freq      = None,
+        default_settings  = None):
         if io_backend is None:
             raise ValueError("Cyclone V DDR3 requires the native byte-lane PHY")
         if oct is not None:
@@ -358,4 +367,10 @@ class CycloneVDDRPHY(LiteXModule):
             io_mem_dqs_n                = pads.dqs_n,
             o_mem_odt                   = pads.odt,
         )
-        self.io_backend = io_backend(**io_ports)
+        self.io_backend = io_backend(
+            ip_name          = ip_name,
+            lane_name        = lane_name,
+            mem_clk_freq     = mem_clk_freq,
+            default_settings = default_settings,
+            **io_ports,
+        )

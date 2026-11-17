@@ -23,8 +23,29 @@ class CycloneVDDR3Lane(LiteXModule):
 
     The surrounding PHY supplies AFI-shaped commands and the fixed-latency DFI
     return path. LiteDRAM firmware issues the DDR3 initialization sequence.
+
+    The wrappers and the timing belong to the board: ``ip_name`` is the output name of the Quartus
+    DDR3 memory IP that generates the PLL and pad wrappers, ``lane_name`` the instance name of the
+    byte lanes (followed by their index, for the constraints of the target), ``mem_clk_freq`` the
+    DRAM clock frequency of this IP and ``default_settings`` the reset value of the ``_settings``
+    register (write, DQS gate, LFIFO and AFI capture timing of the memory bank).
     """
-    def __init__(self, *, with_trace=False, **ports):
+    def __init__(self, *,
+        ip_name          = None,
+        lane_name        = None,
+        mem_clk_freq     = None,
+        default_settings = None,
+        with_trace       = False,
+        **ports):
+        for name, value in [
+            ("ip_name",          ip_name),
+            ("lane_name",        lane_name),
+            ("mem_clk_freq",     mem_clk_freq),
+            ("default_settings", default_settings),
+        ]:
+            if value is None:
+                raise ValueError(f"Cyclone V DDR3 byte lanes require {name} (board specific)")
+        mem_clk_period = f"{int(1e12/mem_clk_freq)} ps"
         lanes   = len(ports["io_mem_dq"]) // 8
         afi_clk = ports["o_afi_clk"]
         locked  = Signal()
@@ -34,26 +55,33 @@ class CycloneVDDR3Lane(LiteXModule):
         series, parallel = Signal(16), Signal(16)
 
         # Registers --------------------------------------------------------------------------------
-        # DDR3B's fixed write, DQS gate, LFIFO and AFI capture timing.
-        default_settings = 0x080d6731
+        # Fixed write, DQS gate, LFIFO and AFI capture timing of the memory bank.
         self._settings = CSRStorage(description="Lane timing and debug settings.", fields=[
-            CSRField("wlat",          offset=0,  size=3, reset=1,  description="AFI write latency."),
-            CSRField("wr_bypass",     offset=3,  size=1, reset=0,  description="Bypass the write slot shift."),
-            CSRField("gate_delay",    offset=4,  size=3, reset=3,  description="DQS gate delay (AFI cycles)."),
-            CSRField("lfifo_latency", offset=8,  size=5, reset=7,  description="LFIFO read latency."),
-            CSRField("lfifo_rst_n",   offset=13, size=1, reset=1,  description="LFIFO reset (active low)."),
-            CSRField("vfifo_rst_n",   offset=14, size=1, reset=1,  description="VFIFO reset (active low)."),
-            CSRField("capture_delay", offset=16, size=5, reset=13, description="AFI read capture delay (AFI cycles)."),
-            CSRField("trace_index",   offset=21, size=4, reset=0,  description="Trace entry read back."),
-            CSRField("trace_wr",      offset=25, size=1, reset=0,  description="Trigger the trace on a write command."),
-            CSRField("gate_extend",   offset=26, size=1, reset=0,  description="Extend the shared read gate by one AFI cycle."),
-            CSRField("req_valid",     offset=27, size=1, reset=1,  description="Derive the read valid from the request only."),
-            CSRField("mask_bypass",   offset=28, size=1, reset=0,  description="Bypass the masking of the padding slots."),
-            CSRField("dqs_invert",    offset=29, size=1, reset=0,  description="Invert the DQS slot shift."),
-            CSRField("oct_disable",   offset=30, size=1, reset=0,  description="Disable the dynamic OCT."),
-            CSRField("trace_act",     offset=31, size=1, reset=0,  description="Trigger the trace on an ACT command."),
+            CSRField(name,
+                offset      = offset,
+                size        = size,
+                reset       = (default_settings >> offset) & (2**size - 1),
+                description = description,
+            ) for name, offset, size, description in [
+                ("wlat",          0,  3, "AFI write latency."),
+                ("wr_bypass",     3,  1, "Bypass the write slot shift."),
+                ("gate_delay",    4,  3, "DQS gate delay (AFI cycles)."),
+                ("lfifo_latency", 8,  5, "LFIFO read latency."),
+                ("lfifo_rst_n",   13, 1, "LFIFO reset (active low)."),
+                ("vfifo_rst_n",   14, 1, "VFIFO reset (active low)."),
+                ("capture_delay", 16, 5, "AFI read capture delay (AFI cycles)."),
+                ("trace_index",   21, 4, "Trace entry read back."),
+                ("trace_wr",      25, 1, "Trigger the trace on a write command."),
+                ("gate_extend",   26, 1, "Extend the shared read gate by one AFI cycle."),
+                ("req_valid",     27, 1, "Derive the read valid from the request only."),
+                ("mask_bypass",   28, 1, "Bypass the masking of the padding slots."),
+                ("dqs_invert",    29, 1, "Invert the DQS slot shift."),
+                ("oct_disable",   30, 1, "Disable the dynamic OCT."),
+                ("trace_act",     31, 1, "Trigger the trace on an ACT command."),
+            ]
         ])
-        assert self._settings.storage.reset.value == default_settings
+        if self._settings.storage.reset.value != default_settings:
+            raise ValueError("Cyclone V DDR3 default_settings has bits outside of its fields")
         self._vfifo_increment = CSR()
         self._dqs_scan = CSRStorage(description="I/O scan chain command.", fields=[
             CSRField("data",     offset=0,  size=25, description="Scan payload."),
@@ -88,7 +116,7 @@ class CycloneVDDR3Lane(LiteXModule):
 
         # PLL / DLL / OCT --------------------------------------------------------------------------
         self.specials += [
-            Instance("q_sys_smc_0_mem_if_ddr3_emif_0_pll0",
+            Instance(f"{ip_name}_pll0",
                 i_global_reset_n              = ports["i_global_reset_n"],
                 i_pll_ref_clk                 = ports["i_pll_ref_clk"],
                 o_afi_clk                     = afi_clk,
@@ -106,7 +134,7 @@ class CycloneVDDR3Lane(LiteXModule):
                 p_DLL_OFFSET_CTRL_WIDTH       = 6,
                 p_DELAY_BUFFER_MODE           = "HIGH",
                 p_DELAY_CHAIN_LENGTH          = Instance.PreformattedParam("8"),
-                p_DLL_INPUT_FREQUENCY_PS_STR  = "3333 ps",
+                p_DLL_INPUT_FREQUENCY_PS_STR  = mem_clk_period,
                 i_clk                         = dll_clk,
                 i_dll_pll_locked              = locked,
                 o_dll_delayctrl               = delay,
@@ -197,7 +225,7 @@ class CycloneVDDR3Lane(LiteXModule):
             fifo_resets.append((lfifo_reset.rst, vfifo_reset.rst))
 
         # Command / Address Pads -------------------------------------------------------------------
-        self.specials += Instance("q_sys_smc_0_mem_if_ddr3_emif_0_p0_addr_cmd_pads",
+        self.specials += Instance(f"{ip_name}_p0_addr_cmd_pads",
             # Parameters.
             p_DEVICE_FAMILY         = "Cyclone V",
             p_MEM_ADDRESS_WIDTH     = len(ports["o_mem_a"]),
@@ -526,7 +554,7 @@ class CycloneVDDR3Lane(LiteXModule):
                 # drives DQS for write leveling.
                 oct_enable.eq(Mux(level_enable | settings[30], 0, ~extend(write_dqs, prev_dqs))),
             ]
-            self.specials += Instance("altdq_dqs2_acv_cyclonev", name=f"ddr3b_lane{lane}",
+            self.specials += Instance("altdq_dqs2_acv_cyclonev", name=f"{lane_name}{lane}",
                 # Parameters.
                 p_PIN_WIDTH                     = 8,
                 p_PIN_TYPE                      = "bidir",
@@ -539,8 +567,8 @@ class CycloneVDDR3Lane(LiteXModule):
                 p_USE_DQS_ENABLE                = "true",
                 p_USE_DYNAMIC_CONFIG            = "true",
                 p_USE_HARD_FIFOS                = "true",
-                p_INPUT_FREQ                    = Instance.PreformattedParam("300.0"),
-                p_INPUT_FREQ_PS                 = "3333 ps",
+                p_INPUT_FREQ                    = Instance.PreformattedParam(f"{mem_clk_freq/1e6}"),
+                p_INPUT_FREQ_PS                 = mem_clk_period,
                 p_DQS_PHASE_SHIFT               = Instance.PreformattedParam("0"),
                 p_DQS_ENABLE_PHASE_SETTING      = 3,
                 p_USE_TERMINATION_CONTROL       = "true",

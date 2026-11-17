@@ -16,6 +16,14 @@ from litedram.phy.c5ddrphy import CycloneVDDRPHY
 
 CLOCKS = {"sys": 20, "afi": 10}
 
+# Board arguments of the native byte lanes (arbitrary names, timing of the validated board).
+LANE_ARGS = dict(
+    ip_name          = "ddr3_ip",
+    lane_name        = "ddr3_lane",
+    mem_clk_freq     = 300e6,
+    default_settings = 0x080d6731,
+)
+
 def get_pads(lanes=1):
     return Record([
         ("a",       15),
@@ -41,7 +49,7 @@ def get_phy(**kwargs):
     pads  = get_pads()
     ports = {}
 
-    def io_backend(**signals):
+    def io_backend(ip_name, lane_name, mem_clk_freq, default_settings, **signals):
         ports.update({name[2:]: signal for name, signal in signals.items()})
         return Module()
 
@@ -188,3 +196,33 @@ class TestCycloneVDDRPHY(unittest.TestCase):
         self.assertIs(ports["oct_rzqin"], pads.rzq)
         self.assertNotIn("seriesterminationcontrol", ports)
         self.assertNotIn("parallelterminationcontrol", ports)
+
+    def test_board_arguments(self):
+        phy       = CycloneVDDRPHY(get_pads(lanes=2), Signal(), Signal(), cl=6, cwl=5, **LANE_ARGS)
+        lane      = phy.io_backend
+        instances = [s for s in lane._fragment.specials if isinstance(s, Instance)]
+        modules   = {instance.of for instance in instances}
+        self.assertIn("ddr3_ip_pll0", modules)
+        self.assertIn("ddr3_ip_p0_addr_cmd_pads", modules)
+        lanes = {i.name_override: i for i in instances if i.of == "altdq_dqs2_acv_cyclonev"}
+        self.assertEqual(sorted(lanes), ["ddr3_lane0", "ddr3_lane1"])
+        def parameters(instance):
+            return {item.name: getattr(item.value, "value", item.value)
+                    for item in instance.items if isinstance(item, Instance.Parameter)}
+        self.assertEqual(parameters(lanes["ddr3_lane0"])["INPUT_FREQ"],    "300.0")
+        self.assertEqual(parameters(lanes["ddr3_lane0"])["INPUT_FREQ_PS"], "3333 ps")
+        dll = next(i for i in instances if i.of == "altera_mem_if_dll_cyclonev")
+        self.assertEqual(parameters(dll)["DLL_INPUT_FREQUENCY_PS_STR"], "3333 ps")
+        self.assertEqual(lane._settings.storage.reset.value, 0x080d6731)
+        self.assertEqual(lane._settings.fields.capture_delay.reset.value, 13)
+
+    def test_board_arguments_required(self):
+        for name in LANE_ARGS:
+            with self.subTest(name=name):
+                args = {**LANE_ARGS, name: None}
+                with self.assertRaisesRegex(ValueError, name):
+                    CycloneVDDRPHY(get_pads(), Signal(), Signal(), cl=6, cwl=5, **args)
+        # Bit 15 belongs to no field of the settings register.
+        with self.assertRaisesRegex(ValueError, "default_settings"):
+            CycloneVDDRPHY(get_pads(), Signal(), Signal(), cl=6, cwl=5,
+                **{**LANE_ARGS, "default_settings": 0x080d6731 | (1 << 15)})
