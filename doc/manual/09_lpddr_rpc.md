@@ -149,10 +149,14 @@ only the commands that are legal in the current mode.
 
 **DFI use.** Not every RPC command maps to a DFI command. The PHY reuses the DFI `reset_n` signal
 to modify the encoding, since RPC DRAM has no reset pin. The module lengthens tWR by one
-controller cycle at 200 MHz, because the write data is serialized over two controller cycles.
+controller cycle, because the write data is serialized over two controller cycles.
 
 **Clocks.** The 7-Series backend needs two copies of the fast clock, shifted by 90 and 180 degrees
-(`sys4x_90`, `sys4x_180`).
+(`sys4x_90`, `sys4x_180`). The Nexus backend (`NXRPCPHY`, CertusPro-NX) uses a single edge clock
+(`sys4x`) with X4 gearing: DB is sent 90 degrees ahead of CLK and DQS with the DQSBUF write clocks,
+STB and CS# with a static output delay, and reads are captured with the DQS of the DRAM (DQSBUF
+read gate and `DATAVALID`). It passes the BIOS memory test on the CertusPro-NX VVML board at
+sys_clk 50MHz (CLK 200MHz, 400MT/s), on the first of the two DRAMs.
 
 **Hardware test.** No board with RPC DRAM existed when the PHY was written. It was tested on an
 Arty A7 whose DDR3 chip was replaced by a pin-compatible RPC DRAM (EM6GA16L). That chip needs
@@ -162,6 +166,13 @@ The target reprograms the power management IC of the board over I2C at start-up,
 pins wired to the J11 pads of the board (`litedram/phy/rpc/arty.py`). The README reports
 hardware issues, possibly the termination of CS and STB, that kept the PHY from reaching a high
 frequency.
+
+The Nexus backend runs on the Lattice CertusPro-NX Voice and Vision Machine Learning board, which
+has two EM6GA16L (`lattice_certuspro_nx_vvml --with-rpcdram` in LiteX-Boards). Two properties of
+the DRAM shape the controller there: it takes one Request Packet at a time (the Multiplexer sends
+a single command stream for RPC, at least 8 tCK apart and not during a burst), and a refresh
+command burst refreshes whole banks during which no command is accepted (`tRFC`/`tREFI` of the
+module are the duration and the period of this burst).
 
 ## How to try them {#lp-try}
 
@@ -190,7 +201,9 @@ python3 litedram/phy/lpddr4/simsoc.py --finish-after-memtest \
 | `--disable-delay` | Skip the CPU delays of the init sequence |
 
 The LPDDR5 SoC takes the same options at `litedram/phy/lpddr5/simsoc.py`. The RPC directory has a
-simulation SoC too (`litedram/phy/rpc/simsoc.py`), which the tests do not run.
+simulation SoC too (`litedram/phy/rpc/simsoc.py`), with a behavioural DRAM model
+(`litedram/phy/rpc/sim.py`): it runs until the BIOS memory test ends. The tests do not run it, but
+`test_rpcphy` writes and reads back the model through the simulation PHY.
 
 The simulator log reports each state change, mode register write and command, and a warning for
 each timing violation. In the simulation PHYs the delays are faked: read leveling only moves the

@@ -316,6 +316,12 @@ class BasePHY(Module, AutoCSR):
             ),
             If(self._reset_fsm.wr_stb,
                 NextState("IDLE")
+            ),
+            # A new initialization (ex sdram_init from the BIOS): do the reset sequence again.
+            If(dfi_adapters[2*nphases+0].is_cmd("RESET"),
+                NextValue(serial_reset_count, 0),
+                NextValue(self._reset_done.status, 0),
+                NextState("RESET_RECEIVED")
             )
         )
         fsm.act("UTR_MODE",

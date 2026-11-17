@@ -301,7 +301,11 @@ class Multiplexer(Module, AutoCSR):
         requests = [bm.cmd for bm in bank_machines]
         self.submodules.choose_cmd = choose_cmd = _CommandChooser(requests)
         self.submodules.choose_req = choose_req = _CommandChooser(requests)
-        if settings.phy.nphases == 1:
+        # RPC DRAM takes one Request Packet at a time (commands and data share DB): a single
+        # command stream is used, as with 1 phase, and the commands are spaced (see tPPD below).
+        rpc        = (settings.phy.memtype == "RPC")
+        single_cmd = (settings.phy.nphases == 1) or rpc
+        if single_cmd:
             # When only 1 phase, use choose_req for all requests
             choose_cmd = choose_req
             self.comb += choose_req.want_cmds.eq(1)
@@ -334,8 +338,20 @@ class Multiplexer(Module, AutoCSR):
         self.submodules.tccdcon = tccdcon = tXXDController(settings.timing.tCCD)
         self.comb += tccdcon.valid.eq(choose_req.accept() & (choose_req.write() | choose_req.read()))
 
+        # tPPD timing (Request Packet to Request Packet delay, RPC) -------------------------------
+        # A Request Packet is followed by a Serial Packet of 8 tCK: the next Request Packet has to
+        # come after it, whatever the phases of the two commands. After a read/write, tCCD (which
+        # covers the latency, the burst and tBESL for RPC) applies to all the commands.
+        if rpc:
+            tppd = math.ceil((8 + nphases - 1)/nphases)
+            self.submodules.tppdcon = tppdcon = tXXDController(tppd)
+            self.comb += tppdcon.valid.eq(choose_req.accept())
+
         # CAS control ------------------------------------------------------------------------------
-        self.comb += cas_allowed.eq(tccdcon.ready)
+        if rpc:
+            self.comb += cas_allowed.eq(tccdcon.ready & tppdcon.ready)
+        else:
+            self.comb += cas_allowed.eq(tccdcon.ready)
 
         # tWTR timing (Write to Read delay) --------------------------------------------------------
         write_latency = math.ceil(settings.phy.cwl / settings.phy.nphases)
@@ -381,6 +397,11 @@ class Multiplexer(Module, AutoCSR):
         go_to_refresh = Signal()
         bm_refresh_gnts = [bm.refresh_gnt for bm in bank_machines]
         self.comb += go_to_refresh.eq(reduce(and_, bm_refresh_gnts))
+        if rpc:
+            # The refresh sequence is a Request Packet too: wait for the last command/burst.
+            go_to_refresh_d = go_to_refresh
+            go_to_refresh   = Signal()
+            self.comb += go_to_refresh.eq(go_to_refresh_d & cas_allowed)
 
         # Datapath ---------------------------------------------------------------------------------
         all_rddata = [p.rddata for p in dfi.phases]
@@ -397,12 +418,17 @@ class Multiplexer(Module, AutoCSR):
             r = []
             for i in range(nphases):
                 r.append(steerer.sel[i].eq(STEER_NOP))
+                # With a single command stream on several phases, all the commands go on the
+                # read/write phase.
+                with_cmd_phase = (not single_cmd) or (nphases == 1)
                 if access == "read":
                     r.append(If(i == rdphase,    steerer.sel[i].eq(STEER_REQ)))
-                    r.append(If(i == rdcmdphase, steerer.sel[i].eq(STEER_CMD)))
+                    if with_cmd_phase:
+                        r.append(If(i == rdcmdphase, steerer.sel[i].eq(STEER_CMD)))
                 if access == "write":
                     r.append(If(i == wrphase,    steerer.sel[i].eq(STEER_REQ)))
-                    r.append(If(i == wrcmdphase, steerer.sel[i].eq(STEER_CMD)))
+                    if with_cmd_phase:
+                        r.append(If(i == wrcmdphase, steerer.sel[i].eq(STEER_CMD)))
             return r
 
         # Control FSM ------------------------------------------------------------------------------
@@ -410,7 +436,7 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("READ",
             read_time_en.eq(1),
             choose_req.want_reads.eq(1),
-            If(settings.phy.nphases == 1,
+            If(single_cmd,
                 choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
             ).Else(
                 choose_cmd.want_cmds.eq(1),
@@ -432,7 +458,7 @@ class Multiplexer(Module, AutoCSR):
         fsm.act("WRITE",
             write_time_en.eq(1),
             choose_req.want_writes.eq(1),
-            If(settings.phy.nphases == 1,
+            If(single_cmd,
                 choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
             ).Else(
                 choose_cmd.want_cmds.eq(1),

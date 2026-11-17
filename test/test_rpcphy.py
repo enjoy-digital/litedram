@@ -12,23 +12,24 @@ from migen.fhdl.specials import Instance
 
 from litedram.phy.rpc.basephy import RPCPads
 from litedram.phy.rpc.s7phy import A7RPCPHY
+from litedram.phy.rpc.nxphy import NXRPCPHY, _NXRPCPHYShift
 from litedram.phy.rpc.simphy import SimulationPHY
 
 
 class TestRPCPHY(unittest.TestCase):
-    """Etron RPC DRAM PHYs: the 7-series one (Xilinx primitives: Verilog conversion only) and the
-    simulation one (pure Migen: a short simulation)."""
+    """Etron RPC DRAM PHYs: the 7-series and Nexus ones (vendor primitives: Verilog conversion only)
+    and the simulation one (pure Migen: short simulations, with the DRAM model)."""
     sys_clk_freq = 100e6
 
     @staticmethod
-    def get_pads(ndqs=1):
+    def get_pads(ndqs=1, nranks=1):
         return Record([
             ("clk_p",  1),
             ("clk_n",  1),
-            ("cs_n",   1),
+            ("cs_n",   nranks),
             ("dqs_p",  ndqs),
             ("dqs_n",  ndqs),
-            ("stb",    1),
+            ("stb",    nranks),
             ("db",    16),
         ])
 
@@ -38,6 +39,12 @@ class TestRPCPHY(unittest.TestCase):
         kwargs.setdefault("sys_clk_freq",     self.sys_clk_freq)
         kwargs.setdefault("iodelay_clk_freq", 200e6)
         return A7RPCPHY(pads=pads, **kwargs)
+
+    def get_nx_phy(self, pads=None, **kwargs):
+        if pads is None:
+            pads = self.get_pads(ndqs=2, nranks=2)
+        kwargs.setdefault("sys_clk_freq", self.sys_clk_freq)
+        return NXRPCPHY(pads=pads, **kwargs)
 
     def get_sim_phy(self, pads=None, **kwargs):
         if pads is None:
@@ -172,6 +179,90 @@ class TestRPCPHY(unittest.TestCase):
         for clk in ["sys_clk", "sys4x_90_clk", "sys4x_180_clk"]:
             self.assertIn(clk, v)
 
+    def test_nx_settings(self):
+        phy = self.get_nx_phy()
+        # ODDRX4 (1) + db/STB/CS (2) + CL (3) = DB; IDDRX4DQ/DQSBUF/DATAVALID (6); mux/bitslip/+1 (3).
+        self.check_settings(phy, "NXRPCPHY", read_latency=(2 + 1 + 3) + 6 + 3)
+        self.assertEqual(phy.settings.delays, 16)
+        # STB/CS# delay: tCK/4 in 12.5ps taps, limited to the delay line.
+        for sys_clk_freq, taps in [(100e6, 50), (50e6, 100), (25e6, 127)]:
+            with self.subTest(sys_clk_freq=sys_clk_freq):
+                self.assertEqual(self.get_nx_phy(sys_clk_freq=sys_clk_freq).stb_delay, taps)
+        self.assertEqual(self.get_nx_phy(stb_delay=10).stb_delay, 10)
+        with self.assertRaises(AssertionError):
+            self.get_nx_phy(stb_delay=128)
+
+    def test_nx_csrs(self):
+        phy = self.get_nx_phy()
+        self.assertEqual([csr.name for csr in phy.get_csrs()], [
+            "stb_shift", "dqs_shift", "db_shift", "rd_en_sel", "rd_en_phase",
+            "rdly_dq_rst", "rdly_dq_inc", "burstdet_clr", "burstdet_seen", "datavalid_cnt",
+            "rst", "dly_sel", "rdly_dq_bitslip_rst", "rdly_dq_bitslip",
+            "reset_done", "init_done", "reset_fsm", "burst_stop",
+        ])
+
+    def test_nx_primitives(self):
+        for ndqs, nranks in [(1, 1), (2, 2)]:
+            with self.subTest(ndqs=ndqs, nranks=nranks):
+                phy   = self.get_nx_phy(pads=self.get_pads(ndqs=ndqs, nranks=nranks))
+                insts = self.instances(phy)
+                count = {}
+                for i in insts:
+                    count[i.of] = count.get(i.of, 0) + 1
+                # A pin is only bidirectional at X4 with the memory (DQ/DQS) primitives.
+                self.assertEqual(count, {
+                    "DDRDLL"    : 1,
+                    "DQSBUF"    : ndqs,
+                    "ODDRX4"    : 1 + 2*nranks, # CLK, STB and CS# (one per rank).
+                    "DELAYB"    : 2*nranks,
+                    "ODDRX4DQS" : ndqs,
+                    "TSHX4DQS"  : ndqs,
+                    "ODDRX4DQ"  : 16,
+                    "TSHX4DQ"   : 16,
+                    "IDDRX4DQ"  : 16,
+                })
+                for i in [self.items(i) for i in insts]:
+                    if "ECLK" in i:
+                        self.assertEqual(self.domain(i["ECLK"]), "sys4x")
+                        self.assertEqual(self.domain(i["SCLK"]), "sys")
+                for d in [self.items(i) for i in insts if i.of == "DQSBUF"]:
+                    self.assertEqual(d["MODX"], "MDDRX4")
+                    self.assertEqual(self.domain(d["ECLKIN"]), "sys4x")
+                for d in [self.items(i) for i in insts if i.of == "DELAYB"]:
+                    self.assertEqual(d["DEL_VALUE"], "50")
+
+    def test_nx_verilog(self):
+        pads = self.get_pads(ndqs=2, nranks=2)
+        phy  = self.get_nx_phy(pads=pads)
+        v    = str(verilog.convert(phy, ios=set(pads.flatten())))
+        for primitive in ["ODDRX4", "ODDRX4DQ", "ODDRX4DQS", "TSHX4DQ", "TSHX4DQS", "IDDRX4DQ",
+            "DELAYB", "DQSBUF", "DDRDLL"]:
+            self.assertIn(f"{primitive} ", v)
+        for primitive in ["IDDRX4", "DELAYA"]:
+            self.assertNotIn(f"{primitive} ", v)
+        for clk in ["sys_clk", "sys4x_clk", "init_clk"]:
+            self.assertIn(clk, v)
+
+    def test_nx_write_shift(self):
+        # A word delayed by n UIs: bit k of the stream moves to bit k + n.
+        for shift in [0, 1, 7, 8, 13, 15]:
+            with self.subTest(shift=shift):
+                i   = Signal(8)
+                s   = Signal(4, reset=shift)
+                dut = _NXRPCPHYShift(i, s)
+                words = [0xa5, 0x3c, 0x01, 0x80, 0xff, 0x00, 0x5a, 0x00, 0x00, 0x00]
+                out = []
+                def gen():
+                    for w in words:
+                        yield i.eq(w)
+                        yield
+                        out.append((yield dut.o))
+                run_simulation(dut, gen())
+                stream_i = [(w >> b) & 1 for w in words for b in range(8)]
+                # Outputs are sampled one cycle after their input word is applied.
+                stream_o = [(w >> b) & 1 for w in out   for b in range(8)]
+                self.assertEqual(stream_o[shift:], stream_i[:len(stream_i) - shift])
+
     def test_simulation_phy_settings(self):
         for generate_read_data in [False, True]:
             with self.subTest(generate_read_data=generate_read_data):
@@ -254,6 +345,110 @@ class TestRPCPHY(unittest.TestCase):
         self.assertEqual(cs_n[-1], 0)
         self.assertEqual(cs_n, [1]*cs_n.index(0) + [0]*(len(cs_n) - cs_n.index(0)))
         self.assertLess(cs_n.index(0)//16 + 2, 3 + 3)
+
+    def test_simulation_dram_model(self):
+        # Pure Migen: PU RESET/ZQ INIT through the PHY FSM, ACT, a full write then a masked one on
+        # the same WORD (32 bytes) of the DRAM model, and a read back. Checks the Request Packets,
+        # the write data/mask and read data paths of the PHY against the model.
+        pads = self.get_pads()
+        phy  = self.get_sim_phy(pads=pads, sys_clk_freq=1e6, with_dram_model=True, dram_model_rowbits=2)
+        dfi  = phy.dfi
+        s    = phy.settings
+        self.assertEqual(s.read_latency, (2 + 1 + 3) + 1 + 3)
+        res  = {}
+
+        def cmd(phase, cas=1, ras=1, we=1, reset_n=1, address=0, bank=0):
+            p = dfi.phases[phase]
+            yield p.cas_n.eq(cas)
+            yield p.ras_n.eq(ras)
+            yield p.we_n.eq(we)
+            yield p.cs_n.eq(0)
+            yield p.reset_n.eq(reset_n)
+            yield p.address.eq(address)
+            yield p.bank.eq(bank)
+
+        def nop(cycles=0):
+            for p in dfi.phases:
+                yield p.cas_n.eq(1)
+                yield p.ras_n.eq(1)
+                yield p.we_n.eq(1)
+                yield p.cs_n.eq(1)
+                yield p.reset_n.eq(1)
+                yield p.wrdata_en.eq(0)
+                yield p.rddata_en.eq(0)
+            for _ in range(cycles):
+                yield
+
+        def write(bank, col, data, mask=0):
+            yield from cmd(s.wrphase, cas=0, we=0, address=col, bank=bank)
+            yield dfi.phases[s.wrphase].wrdata_en.eq(1)
+            yield
+            yield from nop(s.write_latency - 1)
+            for p in range(4):
+                yield dfi.phases[p].wrdata.eq((data >> (64*p)) & (2**64 - 1))
+                yield dfi.phases[p].wrdata_mask.eq((mask >> (8*p)) & 0xff)
+            yield
+            yield from nop(8)
+
+        def read(bank, col):
+            yield from cmd(s.rdphase, cas=0, address=col, bank=bank)
+            yield dfi.phases[s.rdphase].rddata_en.eq(1)
+            yield
+            yield from nop()
+            for cycle in range(1, s.read_latency + 4):
+                yield
+                if (yield dfi.phases[0].rddata_valid):
+                    data = 0
+                    for p in range(4):
+                        data |= (yield dfi.phases[p].rddata) << (64*p)
+                    return cycle, data
+            return None, None
+
+        d0   = int.from_bytes(bytes(range(0x01, 0x21)), "little")
+        d1   = int.from_bytes(bytes(range(0x81, 0xa1)), "little")
+        mask = 0x0f0f00ff # 1: byte not written.
+        def gen():
+            yield from nop(4)
+            # CS# lock (cs_n=0 on phase 0 only), PU RESET (ACT with reset_n=0), ZQ INIT.
+            yield dfi.p0.cs_n.eq(0)
+            yield
+            yield from nop(2)
+            yield from cmd(0, ras=0, reset_n=0)
+            yield
+            yield from nop(16)
+            yield from cmd(0, we=0, reset_n=0, address=1 << 10)
+            yield
+            yield from nop(8)
+            res["init_done"] = (yield phy._init_done.status)
+            # ACT bank 1, row 2.
+            yield from cmd(0, ras=0, address=2, bank=1)
+            yield
+            yield from nop(4)
+            yield from write(1, 0x10, d0)
+            yield from write(1, 0x10, d1, mask=mask)
+            res["read"] = yield from read(1, 0x10)
+            yield from nop(4)
+            # Model memory: bank 1, row 2, WORD 1 (column 0x10).
+            base = (1 << (2 + 6 + 4)) | (2 << (6 + 4)) | (1 << 4)
+            res["mem"] = []
+            for n in range(16):
+                res["mem"].append((yield phy.dram.mem[base + n]))
+
+        run_simulation(phy, {"sys": [gen()]}, clocks={
+            "sys":           (16, 8),
+            "sys4x_90":      (4,  1),
+            "sys4x_180":     (4,  0),
+            "sys4x_90_ddr":  (2,  0),
+            "sys4x_180_ddr": (2,  1),
+        })
+
+        expected = 0
+        for n in range(32):
+            byte = ((d0 if (mask >> n) & 1 else d1) >> (8*n)) & 0xff
+            expected |= byte << (8*n)
+        self.assertEqual(res["init_done"], 1)
+        self.assertEqual(res["mem"], [(expected >> (16*n)) & 0xffff for n in range(16)])
+        self.assertEqual(res["read"], (s.read_latency, expected))
 
 
 if __name__ == "__main__":

@@ -37,6 +37,37 @@ i2c_write(0x58, 0xb4, &vbuck2_15, sizeof(vbuck2_15));  // Vbuck2B
 There were however hardware-related issues (possibly wrong CS/STB termination) that prevented
 reaching high frequency operation.
 
+A backend for Lattice CertusPro-NX (`nxphy.py`, `NXRPCPHY`) targets the Lattice CertusPro-NX Voice
+and Vision Machine Learning board (LFCPNX-VVML-EVN: 2 x EM6GA16LBXA-12H on a 1.5V bank), with the
+`lattice_certuspro_nx_vvml` target of LiteX-Boards (`--with-rpcdram`). It builds with Radiant
+(timing met at sys_clk 50MHz, CLK 200MHz) and passes the BIOS memory test on the first DRAM of the
+board (32MiB, 16-bit, 400MT/s):
+
+```
+Read leveling:
+  m0, b00: |0111111110000000| delays: 04+-03
+  m1, b00: |0111111110000000| delays: 05+-04
+Memtest at 0x40000000 (2.0MiB)...
+Memtest OK
+Memspeed at 0x40000000 (Sequential, 2.0MiB)...
+  Write speed: 17.9MiB/s
+   Read speed: 26.9MiB/s
+```
+
+`mem_test` over the 32MiB also passes. The write shifts and the read enable position were first
+settled in a simulation of the PHY with Lattice's primitive models (QuestaSim) and a timing-aware
+RPC DRAM model (see `bench/vvml_rpc/sim` in LiteX-Boards), then on the board: STB/CS# need one
+more UI there than in simulation.
+
+What the DRAM needs from the controller, found on this board:
+
+* One Request Packet at a time: the commands are sent as a single stream, at least 8 tCK apart
+  (Serial Packet after each Request Packet) and not during a burst (`tCCD` covers the latency, the
+  burst and tBESL). This is done in the Multiplexer for the RPC memtype.
+* A refresh command burst refreshes all the rows of the selected banks (100ns per row in Fast
+  Refresh) and no command is accepted until it is done: `tRFC` is the duration of this burst
+  (1.64ms for the 4 banks) and `tREFI` its period (32ms).
+
 ## Implementation
 
 Important implementation notes:
@@ -50,13 +81,30 @@ Important implementation notes:
 * A Finite State Machine is used to ensure only correct commands are being sent (during
   initialization or in UTR mode).
 * Series 7 backend reqires two phase-shifted clocks: sys4x_90 and sys4x_180.
+* Nexus backend uses a single edge clock (sys4x, with sys from ECLKDIV) and X4 gearing: CLK
+  (`ODDRX4`) and DQS (`ODDRX4DQS`) are aligned to it, DB (`ODDRX4DQ`) is sent 90 degrees ahead with
+  the DQSBUF write clocks and STB/CS# (`ODDRX4`) get a static output delay. On Nexus a pin is only
+  bidirectional at X4 with the memory primitives, so reads are captured with the DQS of the DRAM
+  (`IDDRX4DQ` and the DQSBUF read clock), not on the edge clock as on Series 7. The latencies of
+  the output primitives differ (DB comes out 3 UIs after DQS for the same input), so STB/CS#, DQS
+  and DB each have a write shift CSR (in UIs). For reads, the DQSBUF `READ` input gates the DQS: it
+  has to open during the DQS preamble and to last as long as the burst (8 tCK); its position is
+  set by CSRs (sys_clk cycles, tCK) and by the DQSBUF read clock selection, which the read leveling
+  scans as the delay. The DQSBUF returns the burst aligned on sys_clk over the two cycles flagged
+  by `DATAVALID`. Only the first DRAM (rank) is used: STB/CS# of the others are held high.
 
 The current code structure is the predecessor of the concepts used in LPDDR4/LPDDR5 PHYs.
 RPC-related code is contained in the `litedram/phy/rpc` directory (with some modifications in other
 files e.g. `litedram/init.py`). The PHY is split into core part (`basephy.py`) and
 platform-dependant backend (`s7phy.py`). The DFI commands from the controller are translated based
 on the encoding defined in `commands.py`. There is also a backend for simulation purpose
-(`simphy.py`) along with a simulation SoC (`simsoc.py`).
+(`simphy.py`) along with a simulation SoC (`simsoc.py`) and a behavioural DRAM model (`sim.py`:
+parallel commands, single WORD reads/writes with data masks). The simulation SoC runs the BIOS
+initialization and memory test against the model in Verilator:
+
+```sh
+python3 litedram/phy/rpc/simsoc.py
+```
 
 Currently this PHY is functional however it has some limitations that need to be addressed. The code
 structure could also be refreshed basing on the LPDDR4 code. Potential improvements include the

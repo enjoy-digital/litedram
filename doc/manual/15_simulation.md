@@ -199,8 +199,8 @@ initialization then resets the DRAM again.
 
 The Verilator tests of `test_lpddr4` and `test_lpddr5` run these simulations, wait for "Memtest OK"
 and fail on any other warning or error of the log. The RPC DRAM has a simulation SoC too
-(`litedram/phy/rpc/simsoc.py`), whose simulation PHY generates the read data itself, without a DRAM
-simulator.
+(`litedram/phy/rpc/simsoc.py`), with a behavioural DRAM model (`litedram/phy/rpc/sim.py`), which
+the tests do not run.
 
 ## Benchmarks in simulation {#sim-benchmarks}
 
