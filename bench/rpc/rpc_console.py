@@ -1,0 +1,228 @@
+#!/usr/bin/env python3
+# RPC DRAM bring-up through the BIOS console (mem_write/mem_read on the CSRs): no bridge needed.
+#
+# ./rpc_console.py --csr-csv csr.csv utr               Utility Register reads (4 patterns).
+# ./rpc_console.py --csr-csv csr.csv ops               Activate/write/read/precharge/refresh.
+# ./rpc_console.py --csr-csv csr.csv wrscan            STB/DQS/DB write shifts scan (UTR reads).
+# ./rpc_console.py --csr-csv csr.csv rdscan            DQSBUF READ position scan (UTR reads).
+#
+# The SDRAM is left under software control during the tests and given back to the controller at
+# the end: run sdram_init from the BIOS afterwards.
+
+import re
+import sys
+import time
+import argparse
+
+import serial
+
+CS, WE, CAS, RAS, WRDATA, RDDATA = 0x01, 0x02, 0x04, 0x08, 0x10, 0x20
+SEL, CKE, ODT, RESET_N           = 0x01, 0x02, 0x04, 0x08
+
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+DUMP = re.compile(r"0x[0-9a-f]{8}  ((?:[0-9a-f]{2} )+)")
+
+UTR_PATTERNS = {
+    0: "0000 ffff 0000 ffff",
+    1: "ffff ffff 0000 0000",
+    2: "0000 0000 ffff ffff",
+    3: "ffff 0000 ffff 0000",
+}
+
+class Console:
+    def __init__(self, port, baudrate, csr_csv):
+        self.serial = serial.Serial(port, baudrate, timeout=0.01)
+        self.csrs   = {}
+        for line in open(csr_csv):
+            fields = line.strip().split(",")
+            if fields[0] == "csr_register":
+                self.csrs[fields[1]] = (int(fields[2], 16), int(fields[3]))
+        self.run("", timeout=2)
+
+    def run(self, command, timeout=5):
+        self.serial.write((command + "\n").encode())
+        out   = ""
+        start = time.time()
+        while time.time() - start < timeout:
+            data = self.serial.read(256)
+            if not data:
+                continue
+            out += data.decode(errors="replace")
+            if ANSI.sub("", out).endswith("litex> "):
+                break
+        return ANSI.sub("", out).replace("\r", "")
+
+    def dump(self, address, length):
+        data = []
+        for line in self.run(f"mem_read 0x{address:08x} {length}").split("\n"):
+            m = DUMP.match(line)
+            if m:
+                data += [int(x, 16) for x in m.group(1).split()]
+        return data
+
+    def write(self, name, value):
+        self.run(f"mem_write 0x{self.csrs[name][0]:08x} 0x{value:x}")
+
+    def read(self, name):
+        address, n = self.csrs[name]
+        data  = self.dump(address, 4*n)
+        value = 0
+        for k in range(n): # CSR big ordering: the first word is the most significant.
+            value = (value << 32) | int.from_bytes(bytes(data[4*k:4*k + 4]), "little")
+        return value
+
+class RPC:
+    def __init__(self, console):
+        self.con = console
+
+    def cmd(self, phase, cmd, address=0, bank=0):
+        self.con.write(f"sdram_dfii_pi{phase}_address",       address)
+        self.con.write(f"sdram_dfii_pi{phase}_baddress",      bank)
+        self.con.write(f"sdram_dfii_pi{phase}_command",       cmd)
+        self.con.write(f"sdram_dfii_pi{phase}_command_issue", 1)
+
+    def control(self, value):
+        self.con.write("sdram_dfii_control", value)
+
+    def init(self):
+        self.con.write("ddrphy_reset_fsm", 1)
+        self.control(ODT|RESET_N)
+        self.cmd(0, CS)                               # Hold CS# low.
+        self.control(ODT)                             # Special commands: ON.
+        self.cmd(0, RAS|CS); time.sleep(0.01)         # Power-up reset.
+        self.control(ODT|RESET_N)
+        self.cmd(0, RAS|WE|CS, 0x400)                 # Precharge all.
+        self.cmd(0, RAS|CAS|WE|CS, 0x240, 1)          # MRS: CL=8.
+        self.control(ODT)
+        self.cmd(0, WE|CS, 0x400); time.sleep(0.01)   # ZQ init.
+        self.control(ODT|RESET_N)
+
+    def utr(self, enable, op=0):
+        self.control(ODT)
+        self.cmd(0, RAS|CAS|WE|CS, (enable & 1) | ((op & 3) << 1))
+        self.control(ODT|RESET_N)
+
+    def wrdata(self, words):
+        for p in range(4):
+            value = 0
+            for k in range(4):
+                value |= words[4*p + k] << (16*k)
+            address = self.con.csrs[f"sdram_dfii_pi{p}_wrdata"][0]
+            self.con.run(f"mem_write 0x{address:08x} 0x{value >> 32:08x}")
+            self.con.run(f"mem_write 0x{address + 4:08x} 0x{value & 0xffffffff:08x}")
+
+    def read(self, address=0, bank=0):
+        self.con.write("ddrphy_burstdet_clr", 1) # Also clears the captured burst.
+        self.cmd(3, CAS|CS|RDDATA, address, bank)
+        base = self.con.csrs["sdram_dfii_pi0_rddata"][0]
+        last = self.con.csrs["sdram_dfii_pi3_rddata"][0]
+        data = self.con.dump(base, last + 8 - base)
+        ws   = []
+        for p in range(4):
+            offset = self.con.csrs[f"sdram_dfii_pi{p}_rddata"][0] - base
+            value  = (int.from_bytes(bytes(data[offset:offset + 4]), "little") << 32) | \
+                      int.from_bytes(bytes(data[offset + 4:offset + 8]), "little")
+            ws += [(value >> (16*k)) & 0xffff for k in range(4)]
+        return " ".join(f"{w:04x}" for w in ws)
+
+    def rdly(self, n):
+        self.con.write("ddrphy_dly_sel", 0b11)
+        self.con.write("ddrphy_rdly_dq_rst", 1)
+        for _ in range(n):
+            self.con.write("ddrphy_rdly_dq_inc", 1)
+        self.con.write("ddrphy_dly_sel", 0)
+
+    def rdpos(self, tck, rdly):
+        # READ position: tCK (sys_clk cycles, then tCK) and read clock selection.
+        self.con.write("ddrphy_rd_en_sel",   tck//4)
+        self.con.write("ddrphy_rd_en_phase", tck % 4)
+        self.rdly(rdly)
+
+def main():
+    parser = argparse.ArgumentParser(description="RPC DRAM bring-up through the BIOS console.")
+    parser.add_argument("test", choices=["utr", "ops", "wrscan", "rdscan"])
+    parser.add_argument("--csr-csv",  default="csr.csv")
+    parser.add_argument("--port",     default="/dev/ttyUSB1")
+    parser.add_argument("--baudrate", default=115200, type=int)
+    parser.add_argument("--rdly",     default=5, type=int, help="DQSBUF read clock selection.")
+    args = parser.parse_args()
+
+    con = Console(args.port, args.baudrate, args.csr_csv)
+    rpc = RPC(con)
+    settings = {name: con.read(name) for name in [
+        "ddrphy_stb_shift", "ddrphy_dqs_shift", "ddrphy_db_shift", "ddrphy_rd_en_sel", "ddrphy_rd_en_phase"]}
+    rpc.control(ODT|RESET_N) # Software control.
+
+    if args.test == "utr":
+        rpc.rdly(args.rdly)
+        for op in range(4):
+            # On the board, only the first UTR enable after an initialization returns data (not
+            # investigated): initialize before each pattern.
+            rpc.init()
+            rpc.utr(1, op)
+            data = rpc.read()
+            rpc.utr(0, op)
+            ok = data == " ".join([UTR_PATTERNS[op]]*4)
+            print(f"op {op}: {data} {'OK' if ok else 'KO'}")
+
+    if args.test == "ops":
+        def check(tag, expected, address, bank):
+            data = rpc.read(address, bank)
+            ok   = data == " ".join(f"{expected + k:04x}" for k in range(16))
+            print(f"{tag:28s}: {data} {'OK' if ok else 'KO'}", flush=True)
+        rpc.init(); rpc.rdly(args.rdly)
+        rpc.cmd(0, RAS|CS, 0x123, 1)                                  # Activate bank 1.
+        rpc.wrdata([0x1000 + k for k in range(16)]); rpc.cmd(3, CAS|WE|CS|WRDATA, 0x20, 1)
+        check("write/read", 0x1000, 0x20, 1)
+        rpc.wrdata([0x2000 + k for k in range(16)]); rpc.cmd(3, CAS|WE|CS|WRDATA, 0x40, 1)
+        check("other column", 0x2000, 0x40, 1)
+        check("first column", 0x1000, 0x20, 1)
+        rpc.cmd(2, RAS|CS, 0x055, 2)                                  # Activate bank 2 (phase 2).
+        rpc.wrdata([0x3000 + k for k in range(16)]); rpc.cmd(3, CAS|WE|CS|WRDATA, 0x00, 2)
+        check("other bank", 0x3000, 0x00, 2)
+        rpc.cmd(0, RAS|WE|CS, 0x400); rpc.cmd(0, RAS|CS, 0x123, 1)    # Precharge all, activate.
+        check("after precharge", 0x1000, 0x20, 1)
+        rpc.cmd(0, RAS|WE|CS, 0x400); rpc.cmd(0, RAS|CAS|CS, 0x400)   # Precharge all, refresh.
+        time.sleep(0.01)
+        rpc.cmd(0, RAS|CS, 0x123, 1); check("after refresh", 0x1000, 0x20, 1)
+        rpc.cmd(0, RAS|CS, 0x055, 2); check("after refresh, other bank", 0x3000, 0x00, 2)
+
+    if args.test == "wrscan":
+        # The READ position follows the command (STB). The DRAM answers when a pattern is read.
+        expected = UTR_PATTERNS[1]
+        for stb in range(16):
+            for dqs in [stb + d for d in (0, -1, 1, -2, 2)]:
+                for db in [dqs + d for d in (-3, -2, -4)]:
+                    if not (0 <= dqs < 16 and 0 <= db < 16):
+                        continue
+                    con.write("ddrphy_stb_shift", stb)
+                    con.write("ddrphy_dqs_shift", dqs)
+                    con.write("ddrphy_db_shift",  db)
+                    rpc.init(); rpc.utr(1, 1)
+                    hits = []
+                    for dt in (-1, 0, 1):
+                        rpc.rdpos(17 + (stb - 5)//2 + dt, args.rdly)
+                        data = rpc.read()
+                        if expected in data:
+                            hits.append((dt, data))
+                    rpc.utr(0, 1)
+                    if hits:
+                        print(f"stb {stb:2d} dqs {dqs:2d} db {db:2d}: {hits}", flush=True)
+
+    if args.test == "rdscan":
+        for tck in range(13, 20):
+            for rdly in range(0, 16, 2):
+                rpc.rdpos(tck, rdly)
+                res = []
+                for op in (1, 0):
+                    rpc.init(); rpc.utr(1, op); res.append(rpc.read()); rpc.utr(0, op)
+                ok = (res[0] == " ".join([UTR_PATTERNS[1]]*4)) and (res[1] == " ".join([UTR_PATTERNS[0]]*4))
+                print(f"sel {tck//4} phase {tck % 4} rdly {rdly:2d}: {'OK' if ok else 'KO'} {res[0]}", flush=True)
+
+    # Restore the PHY settings and give the SDRAM back to the controller.
+    for name, value in settings.items():
+        con.write(name, value)
+    rpc.control(SEL)
+
+if __name__ == "__main__":
+    main()

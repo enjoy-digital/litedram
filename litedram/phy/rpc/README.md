@@ -56,7 +56,7 @@ Memspeed at 0x40000000 (Sequential, 2.0MiB)...
 
 `mem_test` over the 32MiB also passes. The write shifts and the read enable position were first
 settled in a simulation of the PHY with Lattice's primitive models (QuestaSim) and a timing-aware
-RPC DRAM model (see `bench/vvml_rpc/sim` in LiteX-Boards), then on the board: STB/CS# need one
+RPC DRAM model (`bench/rpc/sim`), then on the board: STB/CS# need one
 more UI there than in simulation.
 
 What the DRAM needs from the controller, found on this board:
