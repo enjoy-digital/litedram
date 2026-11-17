@@ -29,6 +29,7 @@ ratios; [DDR PHYs](#phys) describes each PHY.
 | Virtex-7 | `V7DDRPHY` | DDR2, DDR3 | 1:2, 1:4 | Validated |
 | Kintex UltraScale | `USDDRPHY` | DDR3, DDR4 | 1:4 | Validated (DDR4) |
 | Kintex/Virtex UltraScale+ | `USPDDRPHY` | DDR3, DDR4 | 1:4 | Validated (DDR4) |
+| Altera Cyclone V | `CycloneVDDRPHY` | DDR3 | 1:4 | Validated |
 | Lattice ECP5 | `ECP5DDRPHY` | DDR3 | 1:2, 1:4 | Validated |
 | Lattice Nexus (CrossLink-NX, Certus-NX) | `NexusDDRPHY` | DDR3 | 1:2 | Validated |
 | Gowin GW2A | `GW2DDRPHY` | DDR3 | 1:2 | Validated |
@@ -96,6 +97,10 @@ Several targets select their PHY options on the command line. The ECPIX-5 and Ca
 targets take `--sdram-rate 1:4` for the ECP5 PHY at 1:4, and the Tang Mega 138K Pro target takes
 `--ddr3-rate`. The ULX3S target selects another SDR chip with `--sdram-module`, and the XCU1525
 target one of its four DIMM channels with `--ddram-channel`.
+
+The Cyclone V PHY is the one validated PHY without a board in this table: LiteX-Boards has no
+target for the Cyclone V GT Development Kit it was validated on
+([Altera Cyclone V](#phys-cyclone-v)).
 
 The YPCB-00338-1P1 target drives its 72-bit DDR3 from the HR banks of a Kintex-7, with the CK
 phase write leveling of the 7-Series PHY. [DDR PHYs](#phys) explains this mode.
