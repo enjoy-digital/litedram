@@ -87,7 +87,7 @@ class NXRPCPHY(BasePHY):
         # Read: DQS read enable position (in sys_clk cycles after rddata_en, then in tCK), delay
         # (DQSBUF read clock selection) and burst detection.
         self._rd_en_sel     = CSRStorage(4, reset=4, description="DQS read enable position (sys_clk cycles).")
-        self._rd_en_phase   = CSRStorage(2, reset=0, description="DQS read enable position (tCK).")
+        self._rd_en_phase   = CSRStorage(2, reset=1, description="DQS read enable position (tCK).")
         self._rdly_dq_rst   = CSR()
         self._rdly_dq_inc   = CSR()
         self._burstdet_clr  = CSR()

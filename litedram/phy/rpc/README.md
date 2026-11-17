@@ -45,8 +45,8 @@ board (32MiB, 16-bit, 400MT/s):
 
 ```
 Read leveling:
-  m0, b00: |0000000001111111| delays: 12+-03
-  m1, b00: |0000000001111111| delays: 12+-03
+  m0, b00: |0111111110000000| delays: 04+-03
+  m1, b00: |0111111110000000| delays: 05+-04
 Memtest at 0x40000000 (2.0MiB)...
 Memtest OK
 Memspeed at 0x40000000 (Sequential, 2.0MiB)...
