@@ -7,6 +7,7 @@ import unittest
 
 from migen import *
 from migen.genlib.resetsync import AsyncResetSynchronizer
+from migen.fhdl.tools import list_targets
 from migen.sim import run_simulation
 
 from litex.soc.interconnect.csr_bus import CSRBank
@@ -15,6 +16,20 @@ from litedram.phy.c5ddrphy import CycloneVDDRPHY
 
 
 CLOCKS = {"sys": 20, "afi": 10}
+
+# Clock domains of the CRG used by the PHY and its byte lanes, with their period for the simulation
+# (the clocks of the hard I/O only reach the wrappers, which are not simulated: slow).
+CRG_CLOCKS = {
+    "sys"               : 20,
+    "afi"               : 10,
+    "afi_phy"           : 1000,
+    "pll_mem"           : 1000,
+    "pll_mem_phy"       : 1000,
+    "pll_write"         : 1000,
+    "pll_write_pre_phy" : 1000,
+    "pll_addr_cmd"      : 1000,
+    "pll_config"        : 1000,
+}
 
 # Board arguments of the native byte lanes (arbitrary names, timing of the validated board).
 LANE_ARGS = dict(
@@ -53,19 +68,28 @@ def get_phy(**kwargs):
         ports.update({name[2:]: signal for name, signal in signals.items()})
         return Module()
 
-    phy = CycloneVDDRPHY(pads, Signal(), Signal(), cl=6, cwl=5, io_backend=io_backend, **kwargs)
-    phy.submodules += CSRBank([phy._calibration, phy._read_error])
-    fragment = phy.get_fragment()
+    phy = CycloneVDDRPHY(pads, cl=6, cwl=5, sys_clk_freq=75e6, io_backend=io_backend, **kwargs)
+    phy.bank = CSRBank([phy._calibration, phy._read_error])
     # The simulation drives the clocks and models the native lane outputs.
+    return phy, phy.get_fragment(), ports, pads
+
+def get_native_phy(lanes=1, **kwargs):
+    """PHY with its native byte lanes, without their wrappers (simulation of the fabric logic)."""
+    phy = CycloneVDDRPHY(get_pads(lanes), cl=6, cwl=5, sys_clk_freq=75e6, **{**LANE_ARGS, **kwargs})
+    fragment = phy.get_fragment()
     fragment.specials = {s for s in fragment.specials
-                         if not isinstance(s, AsyncResetSynchronizer)}
-    return phy, fragment, ports, pads
+                         if not isinstance(s, (Instance, AsyncResetSynchronizer))}
+    # The internal clock domains of the byte lanes are clocked by the simulation (startup on afi,
+    # I/O scan chains on the configuration clock, FIFO resets without logic).
+    clocks = {cd.name: {"dll_init": 10, "scc": 20}.get(cd.name, 1000) for cd in fragment.clock_domains}
+    return phy, fragment, {**clocks, **CRG_CLOCKS}
 
 
 class TestCycloneVDDRPHY(unittest.TestCase):
     def test_calibration_status(self):
         phy, fragment, ports, _ = get_phy()
         self.assertEqual(phy._calibration.size, 2)
+        self.assertIn("never with the native byte lanes", phy._calibration.fields.failed.description)
 
         def generator():
             cases = [
@@ -150,7 +174,63 @@ class TestCycloneVDDRPHY(unittest.TestCase):
                 yield
             self.assertEqual((yield phy._read_error.status), 1)
 
+            # The error is sticky: only a write of 1 to the register clears it.
+            def csr_write(value):
+                yield phy.bank.bus.adr.eq(1)
+                yield phy.bank.bus.dat_w.eq(value)
+                yield phy.bank.bus.we.eq(1)
+                yield
+                yield phy.bank.bus.we.eq(0)
+                yield
+                yield
+            for _ in range(8):
+                yield
+            self.assertEqual((yield phy._read_error.status), 1)
+            yield from csr_write(0)
+            self.assertEqual((yield phy._read_error.status), 1)
+            yield from csr_write(1)
+            self.assertEqual((yield phy._read_error.status), 0)
+
         run_simulation(fragment, {"sys": system(), "afi": afi_model()}, clocks=CLOCKS)
+        self.assertIn("write 1 to clear", phy._read_error.description)
+
+    def test_delay_selection(self):
+        # dly_sel selects the byte lanes of the read and of the write delay controls, as on the
+        # other PHYs (the BIOS selects a lane, then moves any of its delays).
+        phy, fragment, clocks = get_native_phy(lanes=2)
+        self.assertIn("read and write", phy._dly_sel.description)
+        taps = phy.io_backend.training_taps_cdc.i
+
+        def lane_taps():
+            value = (yield taps)
+            return [[(value >> (15*lane + 5*i)) & 0x1f for i in range(3)] for lane in range(2)]
+
+        def generator():
+            # Read tap (reset: 4), write DQ tap, write DQS tap of each lane.
+            self.assertEqual((yield from lane_taps()), [[4, 0, 0], [4, 0, 0]])
+            steps = [(phy._rdly_dq_inc, 1), (phy._wdly_dq_inc, 2), (phy._wdly_dqs_inc, 3)]
+            for select, expected in [
+                (0b00, [[4, 0, 0], [4, 0, 0]]),
+                (0b01, [[5, 2, 3], [4, 0, 0]]),
+                (0b10, [[5, 2, 3], [5, 2, 3]]),
+            ]:
+                yield phy._dly_sel.storage.eq(select)
+                for csr, count in steps:
+                    for _ in range(count):
+                        yield csr.wr_stb.eq(1)
+                        yield
+                        yield csr.wr_stb.eq(0)
+                        yield
+                self.assertEqual((yield from lane_taps()), expected)
+            yield phy._dly_sel.storage.eq(0b01)
+            for csr in (phy._rdly_dq_rst, phy._wdly_dq_rst, phy._wdly_dqs_rst):
+                yield csr.wr_stb.eq(1)
+                yield
+                yield csr.wr_stb.eq(0)
+                yield
+            self.assertEqual((yield from lane_taps()), [[0, 0, 0], [5, 2, 3]])
+
+        run_simulation(fragment, generator(), clocks=clocks)
 
     def test_write_command_data_alignment(self):
         phy, fragment, ports, _ = get_phy()
@@ -197,12 +277,80 @@ class TestCycloneVDDRPHY(unittest.TestCase):
         self.assertNotIn("seriesterminationcontrol", ports)
         self.assertNotIn("parallelterminationcontrol", ports)
 
+    def test_clock_domains(self):
+        # The clock domains come from the CRG: the PHY creates none of them and holds no PLL.
+        phy       = CycloneVDDRPHY(get_pads(lanes=2), cl=6, cwl=5, sys_clk_freq=75e6, **LANE_ARGS)
+        fragment  = phy.get_fragment()
+        created   = {cd.name for cd in fragment.clock_domains}
+        self.assertEqual(created & set(CRG_CLOCKS), set())
+        instances = [s for s in fragment.specials if isinstance(s, Instance)]
+        self.assertNotIn("ddr3_ip_pll0", {instance.of for instance in instances})
+        def clocks(instance):
+            return {item.name: item.expr.cd for item in instance.items
+                    if isinstance(item, Instance.Input) and isinstance(item.expr, ClockSignal)}
+        lane = next(i for i in instances if i.name_override == "ddr3_lane0")
+        self.assertEqual(clocks(lane), {
+            "write_strobe_clock_in"   : "pll_mem_phy",
+            "core_clock_in"           : "afi",
+            "fr_clock_in"             : "pll_write",
+            "hr_clock_in"             : "afi_phy",
+            "strobe_ena_hr_clock_in"  : "afi",
+            "config_clock_in"         : "pll_config",
+        })
+        pads = next(i for i in instances if i.of == "ddr3_ip_p0_addr_cmd_pads")
+        self.assertEqual(clocks(pads), {
+            "pll_afi_clk"             : "afi",
+            "pll_mem_clk"             : "pll_mem",
+            "pll_mem_phy_clk"         : "pll_mem_phy",
+            "pll_afi_phy_clk"         : "afi_phy",
+            "pll_write_clk"           : "pll_write",
+            "phy_ddio_addr_cmd_clk"   : "pll_addr_cmd",
+        })
+        dll = next(i for i in instances if i.of == "altera_mem_if_dll_cyclonev")
+        self.assertEqual(clocks(dll), {"clk": "pll_write_pre_phy"})
+
+    def test_native_startup(self):
+        # The byte lanes start with the lock of the PLL of the CRG and report the end of their
+        # startup (DLL, I/O scan chains, VFIFO) on ready, for the reset of afi and sys.
+        phy, fragment, clocks = get_native_phy()
+
+        def generator():
+            self.assertEqual((yield phy.ready), 0)
+            yield phy.pll_locked.eq(1)
+            cycles = 0
+            while not (yield phy.ready) and cycles < 4096:
+                cycles += 1
+                yield
+            self.assertEqual((yield phy.ready), 1)
+            # DLL (2048 AFI cycles) then VFIFO (1024 AFI cycles) startup.
+            self.assertGreater(cycles, 2048 + 1024)
+            for _ in range(64):
+                yield
+            self.assertEqual((yield phy._calibration.fields.success), 1)
+            self.assertEqual((yield phy._calibration.fields.failed),  0)
+            # The byte lanes report no failure and their write latency setting has 3 bits: with
+            # the default max_write_latency, failed stays low for every setting.
+            settings = phy.io_backend._settings
+            self.assertEqual(len(settings.fields.wlat), 3)
+            for wlat in (7, 0):
+                yield settings.storage.eq((LANE_ARGS["default_settings"] & ~0x7) | wlat)
+                for _ in range(64):
+                    yield
+                self.assertEqual((yield phy.io_backend.settings_cdc.o[:3]), wlat)
+                self.assertEqual((yield phy._calibration.fields.success), 1)
+                self.assertEqual((yield phy._calibration.fields.failed),  0)
+            # Loss of lock.
+            yield phy.pll_locked.eq(0)
+            yield
+            self.assertEqual((yield phy.ready), 0)
+
+        run_simulation(fragment, {"afi": generator()}, clocks=clocks)
+
     def test_board_arguments(self):
-        phy       = CycloneVDDRPHY(get_pads(lanes=2), Signal(), Signal(), cl=6, cwl=5, **LANE_ARGS)
+        phy       = CycloneVDDRPHY(get_pads(lanes=2), cl=6, cwl=5, sys_clk_freq=75e6, **LANE_ARGS)
         lane      = phy.io_backend
         instances = [s for s in lane._fragment.specials if isinstance(s, Instance)]
         modules   = {instance.of for instance in instances}
-        self.assertIn("ddr3_ip_pll0", modules)
         self.assertIn("ddr3_ip_p0_addr_cmd_pads", modules)
         lanes = {i.name_override: i for i in instances if i.of == "altdq_dqs2_acv_cyclonev"}
         self.assertEqual(sorted(lanes), ["ddr3_lane0", "ddr3_lane1"])
@@ -215,14 +363,30 @@ class TestCycloneVDDRPHY(unittest.TestCase):
         self.assertEqual(parameters(dll)["DLL_INPUT_FREQUENCY_PS_STR"], "3333 ps")
         self.assertEqual(lane._settings.storage.reset.value, 0x080d6731)
         self.assertEqual(lane._settings.fields.capture_delay.reset.value, 13)
+        # Fixed name of the capture register placed by the target.
+        names = {s.name_override for s in list_targets(phy.get_fragment())}
+        self.assertIn("ddr3_lane_captured_valid", names)
 
     def test_board_arguments_required(self):
-        for name in LANE_ARGS:
+        for name in ("sys_clk_freq", "ip_name", "lane_name", "default_settings"):
             with self.subTest(name=name):
-                args = {**LANE_ARGS, name: None}
+                args = {"sys_clk_freq": 75e6, **LANE_ARGS, name: None}
                 with self.assertRaisesRegex(ValueError, name):
-                    CycloneVDDRPHY(get_pads(), Signal(), Signal(), cl=6, cwl=5, **args)
+                    CycloneVDDRPHY(get_pads(), cl=6, cwl=5, **args)
         # Bit 15 belongs to no field of the settings register.
         with self.assertRaisesRegex(ValueError, "default_settings"):
-            CycloneVDDRPHY(get_pads(), Signal(), Signal(), cl=6, cwl=5,
+            CycloneVDDRPHY(get_pads(), cl=6, cwl=5, sys_clk_freq=75e6,
                 **{**LANE_ARGS, "default_settings": 0x080d6731 | (1 << 15)})
+
+    def test_mem_clk_freq(self):
+        # The DRAM clock is 4 x sys: derived from sys_clk_freq, checked when it is passed.
+        phy = CycloneVDDRPHY(get_pads(), cl=6, cwl=5, sys_clk_freq=75e6,
+            **{**LANE_ARGS, "mem_clk_freq": None})
+        dll = next(s for s in phy.io_backend._fragment.specials
+                   if isinstance(s, Instance) and s.of == "altera_mem_if_dll_cyclonev")
+        self.assertEqual(dll.get_io("clk").cd, "pll_write_pre_phy")
+        period = next(item.value for item in dll.items
+                      if isinstance(item, Instance.Parameter) and item.name == "DLL_INPUT_FREQUENCY_PS_STR")
+        self.assertEqual(period, "3333 ps")
+        with self.assertRaisesRegex(ValueError, "mem_clk_freq"):
+            CycloneVDDRPHY(get_pads(), cl=6, cwl=5, sys_clk_freq=50e6, **LANE_ARGS)

@@ -24,9 +24,13 @@ class CycloneVDDR3Lane(LiteXModule):
     The surrounding PHY supplies AFI-shaped commands and the fixed-latency DFI
     return path. LiteDRAM firmware issues the DDR3 initialization sequence.
 
+    The clocks are the clock domains of the CRG (see ``CycloneVDDRPHY``), with the lock of its PLL
+    on ``i_pll_locked``.
+
     The wrappers and the timing belong to the board: ``ip_name`` is the output name of the Quartus
     DDR3 memory IP that generates the PLL and pad wrappers, ``lane_name`` the instance name of the
-    byte lanes (followed by their index, for the constraints of the target), ``mem_clk_freq`` the
+    byte lanes (followed by their index, for the constraints of the target; the capture register
+    of their valid bits is ``<lane_name>_captured_valid``), ``mem_clk_freq`` the
     DRAM clock frequency of this IP and ``default_settings`` the reset value of the ``_settings``
     register (write, DQS gate, LFIFO and AFI capture timing of the memory bank).
     """
@@ -47,12 +51,19 @@ class CycloneVDDR3Lane(LiteXModule):
                 raise ValueError(f"Cyclone V DDR3 byte lanes require {name} (board specific)")
         mem_clk_period = f"{int(1e12/mem_clk_freq)} ps"
         lanes   = len(ports["io_mem_dq"]) // 8
-        afi_clk = ports["o_afi_clk"]
-        locked  = Signal()
-        mem_clk, mem_phy_clk, dq_clk, dll_clk, cmd_clk, afi_phy_clk = [Signal() for _ in range(6)]
-        config_clk = Signal()
-        delay      = Signal(7)
+        locked  = ports["i_pll_locked"]
+        delay   = Signal(7)
         series, parallel = Signal(16), Signal(16)
+
+        # Clocks -----------------------------------------------------------------------------------
+        afi_clk     = ClockSignal("afi")
+        afi_phy_clk = ClockSignal("afi_phy")
+        mem_clk     = ClockSignal("pll_mem")
+        mem_phy_clk = ClockSignal("pll_mem_phy")
+        dq_clk      = ClockSignal("pll_write")
+        dll_clk     = ClockSignal("pll_write_pre_phy")
+        cmd_clk     = ClockSignal("pll_addr_cmd")
+        config_clk  = ClockSignal("pll_config")
 
         # Registers --------------------------------------------------------------------------------
         # Fixed write, DQS gate, LFIFO and AFI capture timing of the memory bank.
@@ -114,21 +125,8 @@ class CycloneVDDR3Lane(LiteXModule):
 
         # # #
 
-        # PLL / DLL / OCT --------------------------------------------------------------------------
+        # DLL / OCT --------------------------------------------------------------------------------
         self.specials += [
-            Instance(f"{ip_name}_pll0",
-                i_global_reset_n              = ports["i_global_reset_n"],
-                i_pll_ref_clk                 = ports["i_pll_ref_clk"],
-                o_afi_clk                     = afi_clk,
-                o_pll_locked                  = locked,
-                o_pll_mem_clk                 = mem_clk,
-                o_pll_mem_phy_clk             = mem_phy_clk,
-                o_pll_write_clk               = dq_clk,
-                o_pll_write_clk_pre_phy_clk   = dll_clk,
-                o_pll_addr_cmd_clk            = cmd_clk,
-                o_afi_phy_clk                 = afi_phy_clk,
-                o_pll_config_clk              = config_clk,
-            ),
             Instance("altera_mem_if_dll_cyclonev",
                 p_DLL_DELAY_CTRL_WIDTH        = 7,
                 p_DLL_OFFSET_CTRL_WIDTH       = 6,
@@ -311,7 +309,7 @@ class CycloneVDDR3Lane(LiteXModule):
         self.comb += self.training_taps_cdc.i.eq(Cat(*(
             Cat(rd, dq, dqs) for rd, dq, dqs in zip(read_taps, dq_taps, dqs_taps)), 1))
         for lane in range(lanes):
-            self.sync += If(ports["i_read_delay_select"][lane],
+            self.sync += If(ports["i_delay_select"][lane],
                 If(ports["i_read_delay_reset"],
                     read_taps[lane].eq(0)
                 ).Elif(ports["i_read_delay_increment"],
@@ -638,8 +636,13 @@ class CycloneVDDR3Lane(LiteXModule):
         # The controller-facing valid is derived from the request, while the hard LFIFO schedules
         # the pad FIFO reads independently. Cross the full-rate to half-rate boundary before
         # reducing the per-lane valid bits. Keep the data and its qualifier in lockstep.
+        # The target places the capture of the lane valid bits: its name must not depend on the
+        # automatic naming (which changes with the surrounding signals and the Python version).
         captured_lane0        = Signal.like(read_words[0])
-        captured_valid        = Signal(lanes, attr={"no_retiming"})
+        captured_valid        = Signal(lanes,
+            name_override = f"{lane_name}_captured_valid",
+            attr          = {"no_retiming"},
+        )
         captured_request      = Signal()
         captured_request_mode = Signal()
         last_read             = Signal(32)
