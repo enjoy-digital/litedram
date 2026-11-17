@@ -370,14 +370,15 @@ under the LiteDRAM controller and does not use the hard memory controller of the
 |------------------------|---------------------------------------------------------------|
 | Memory | DDR3, one rank, one DM and one differential DQS per byte, 1 to 8 bytes |
 | DFI | 4 phases, read and write commands on phase 3 |
-| Clocks | DRAM 300 MHz, AFI 150 MHz, `sys` 75 MHz |
+| Clocks | DRAM 300 MHz, AFI 150 MHz, `sys` 75 MHz on the validated board |
 | Read latency | 37 controller cycles, fixed |
 | Leveling | Write and read, 32 delay taps, 1 bitslip position |
 | Termination | Dedicated `rzq` pad |
 
 The clocks come from the PLL of the PHY, not from a CRG. The PHY creates the `sys` domain itself,
-at half the frequency of the half-rate domain of the I/O blocks (`afi`). The wrapper parameters fix
-the DRAM clock at 300 MHz, so the PHY runs at 600 MT/s only.
+at half the frequency of the half-rate domain of the I/O blocks (`afi`). The generated PLL wrapper
+fixes the DRAM clock, and the PHY takes its frequency as an argument for the parameters of the
+other wrappers. Only 300 MHz, 600 MT/s, was run.
 
 ### Datapath {#phys-cyclone-v-datapath}
 
@@ -399,9 +400,20 @@ DLL, the termination, the command and address pads and the byte lanes (`ALTDQ_DQ
 repository does not hold them: the target generates them and adds them to the build, with their
 timing constraints.
 
-The PLL and pad wrappers carry the name prefix of the generated IP, `q_sys_smc_0_mem_if_ddr3_emif_0`.
 The PHY also connects two write leveling inputs of the byte-lane wrapper, `level_enable` and
 `level_strobe`, that the target adds to the generated file.
+
+The wrappers and their timing belong to one generated IP and one board, so the PHY takes them as
+arguments. They have no default value: the PHY raises an error when one is missing.
+
+| Argument | Role |
+|--------------------------|-----------------------------------------------------------|
+| `ip_name` | Output name of the generated IP, prefix of the PLL and pad wrappers |
+| `lane_name` | Instance name of the byte lanes, followed by their index |
+| `mem_clk_freq` | DRAM clock frequency of the generated IP |
+| `default_settings` | Reset value of the timing register of the byte lanes |
+
+The timing constraints of the target select the byte lanes by their instance name.
 
 ### Calibration {#phys-cyclone-v-calibration}
 
@@ -415,12 +427,12 @@ the pad delay by two taps, and the PHY reports no answer above 15 steps.
 
 Read leveling sweeps the 32 taps of the DQ input delay of each byte, one tap per step. The hard
 FIFOs align a burst at a fixed position, which the PHY presents as a single bitslip position. The
-settings of the hard FIFOs and of the DQS gate are constants of the PHY, in a register for debug
-(`_settings`).
+settings of the hard FIFOs and of the DQS gate are fixed for a board. The PHY takes them as the
+reset value of a register, which software writes for debug only (`_settings`).
 
 The PHY was validated at 600 MT/s on the 64-bit DDR3B bank of the Cyclone V GT Development Kit,
-with the BIOS calibration, its memory test and the BIST. LiteX-Boards has no target for this
-board.
+with the BIOS calibration, its memory test and the BIST. The LiteX-Boards target of this board
+enables the PHY with `--with-ddr3b` and passes the four arguments.
 
 ## Lattice ECP5 {#phys-ecp5}
 

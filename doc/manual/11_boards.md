@@ -98,8 +98,8 @@ targets take `--sdram-rate 1:4` for the ECP5 PHY at 1:4, and the Tang Mega 138K 
 `--ddr3-rate`. The ULX3S target selects another SDR chip with `--sdram-module`, and the XCU1525
 target one of its four DIMM channels with `--ddram-channel`.
 
-The Cyclone V PHY is the one validated PHY without a board in this table: LiteX-Boards has no
-target for the Cyclone V GT Development Kit it was validated on
+The Cyclone V PHY is the one validated PHY without a board in this table. The target of the
+Cyclone V GT Development Kit it was validated on enables it with an option, `--with-ddr3b`
 ([Altera Cyclone V](#phys-cyclone-v)).
 
 The YPCB-00338-1P1 target drives its 72-bit DDR3 from the HR banks of a Kintex-7, with the CK
