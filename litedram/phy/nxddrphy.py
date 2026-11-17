@@ -41,7 +41,7 @@ class _NexusDDRPHYWriteBitSlip(ConstBitSlip):
 # Lattice Nexus DDR PHY Initialization --------------------------------------------------------------
 
 class NexusDDRPHYInit(Module):
-    def __init__(self):
+    def __init__(self, eclk="sys2x"):
         self.pause = Signal()
         self.stop  = Signal()
         self.delay = Signal(9)
@@ -65,7 +65,7 @@ class NexusDDRPHYInit(Module):
         delay = Signal(9)
         self.specials += Instance("DDRDLL",
             i_RST       = ResetSignal("init"),
-            i_CLKIN     = ClockSignal("sys2x"),
+            i_CLKIN     = ClockSignal(eclk),
             i_UDDCNTL_N = ~update,
             i_FREEZE    = freeze,
             o_CODE      = delay,

@@ -94,6 +94,7 @@ and RPC DRAM PHYs](#lpddr-phys) the details of each family.
 | Xilinx 7-Series | LPDDR4 | `A7LPDDR4PHY` | 8 phases | In development |
 | Xilinx 7-Series | LPDDR5 | `A7LPDDR5PHY` | 1 phase | In development |
 | Artix-7 | RPC DRAM | `A7RPCPHY` | 1:4 | In development |
+| CertusPro-NX | RPC DRAM | `NXRPCPHY` | 1:4 | In development |
 
 *Validated* means validated on hardware: the PHY has passed its calibration and memory test on real
 boards. *Not recorded* means that the repository records no hardware result. Lattice Nexus covers

@@ -12,11 +12,12 @@ from migen.fhdl.specials import Instance
 
 from litedram.phy.rpc.basephy import RPCPads
 from litedram.phy.rpc.s7phy import A7RPCPHY
+from litedram.phy.rpc.nxphy import NXRPCPHY, _NXRPCPHYShift
 from litedram.phy.rpc.simphy import SimulationPHY
 
 
 class TestRPCPHY(unittest.TestCase):
-    """Etron RPC DRAM PHYs: the 7-series one (Xilinx primitives: Verilog conversion only)
+    """Etron RPC DRAM PHYs: the 7-series and Nexus ones (vendor primitives: Verilog conversion only)
     and the simulation one (pure Migen: short simulations, with the DRAM model)."""
     sys_clk_freq = 100e6
 
@@ -38,6 +39,12 @@ class TestRPCPHY(unittest.TestCase):
         kwargs.setdefault("sys_clk_freq",     self.sys_clk_freq)
         kwargs.setdefault("iodelay_clk_freq", 200e6)
         return A7RPCPHY(pads=pads, **kwargs)
+
+    def get_nx_phy(self, pads=None, **kwargs):
+        if pads is None:
+            pads = self.get_pads(ndqs=2, nranks=2)
+        kwargs.setdefault("sys_clk_freq", self.sys_clk_freq)
+        return NXRPCPHY(pads=pads, **kwargs)
 
     def get_sim_phy(self, pads=None, **kwargs):
         if pads is None:
@@ -171,6 +178,90 @@ class TestRPCPHY(unittest.TestCase):
             self.assertIn(f"{primitive} ", v)
         for clk in ["sys_clk", "sys4x_90_clk", "sys4x_180_clk"]:
             self.assertIn(clk, v)
+
+    def test_nx_settings(self):
+        phy = self.get_nx_phy()
+        # ODDRX4 (1) + db/STB/CS (2) + CL (3) = DB; IDDRX4DQ/DQSBUF/DATAVALID (6); mux/bitslip/+1 (3).
+        self.check_settings(phy, "NXRPCPHY", read_latency=(2 + 1 + 3) + 6 + 3)
+        self.assertEqual(phy.settings.delays, 16)
+        # STB/CS# delay: tCK/4 in 12.5ps taps, limited to the delay line.
+        for sys_clk_freq, taps in [(100e6, 50), (50e6, 100), (25e6, 127)]:
+            with self.subTest(sys_clk_freq=sys_clk_freq):
+                self.assertEqual(self.get_nx_phy(sys_clk_freq=sys_clk_freq).stb_delay, taps)
+        self.assertEqual(self.get_nx_phy(stb_delay=10).stb_delay, 10)
+        with self.assertRaises(AssertionError):
+            self.get_nx_phy(stb_delay=128)
+
+    def test_nx_csrs(self):
+        phy = self.get_nx_phy()
+        self.assertEqual([csr.name for csr in phy.get_csrs()], [
+            "stb_shift", "dqs_shift", "db_shift", "rd_en_sel", "rd_en_phase",
+            "rdly_dq_rst", "rdly_dq_inc", "burstdet_clr", "burstdet_seen", "datavalid_cnt",
+            "rst", "dly_sel", "rdly_dq_bitslip_rst", "rdly_dq_bitslip",
+            "reset_done", "init_done", "reset_fsm", "burst_stop",
+        ])
+
+    def test_nx_primitives(self):
+        for ndqs, nranks in [(1, 1), (2, 2)]:
+            with self.subTest(ndqs=ndqs, nranks=nranks):
+                phy   = self.get_nx_phy(pads=self.get_pads(ndqs=ndqs, nranks=nranks))
+                insts = self.instances(phy)
+                count = {}
+                for i in insts:
+                    count[i.of] = count.get(i.of, 0) + 1
+                # A pin is only bidirectional at X4 with the memory (DQ/DQS) primitives.
+                self.assertEqual(count, {
+                    "DDRDLL"    : 1,
+                    "DQSBUF"    : ndqs,
+                    "ODDRX4"    : 1 + 2*nranks, # CLK, STB and CS# (one per rank).
+                    "DELAYB"    : 2*nranks,
+                    "ODDRX4DQS" : ndqs,
+                    "TSHX4DQS"  : ndqs,
+                    "ODDRX4DQ"  : 16,
+                    "TSHX4DQ"   : 16,
+                    "IDDRX4DQ"  : 16,
+                })
+                for i in [self.items(i) for i in insts]:
+                    if "ECLK" in i:
+                        self.assertEqual(self.domain(i["ECLK"]), "sys4x")
+                        self.assertEqual(self.domain(i["SCLK"]), "sys")
+                for d in [self.items(i) for i in insts if i.of == "DQSBUF"]:
+                    self.assertEqual(d["MODX"], "MDDRX4")
+                    self.assertEqual(self.domain(d["ECLKIN"]), "sys4x")
+                for d in [self.items(i) for i in insts if i.of == "DELAYB"]:
+                    self.assertEqual(d["DEL_VALUE"], "50")
+
+    def test_nx_verilog(self):
+        pads = self.get_pads(ndqs=2, nranks=2)
+        phy  = self.get_nx_phy(pads=pads)
+        v    = str(verilog.convert(phy, ios=set(pads.flatten())))
+        for primitive in ["ODDRX4", "ODDRX4DQ", "ODDRX4DQS", "TSHX4DQ", "TSHX4DQS", "IDDRX4DQ",
+            "DELAYB", "DQSBUF", "DDRDLL"]:
+            self.assertIn(f"{primitive} ", v)
+        for primitive in ["IDDRX4", "DELAYA"]:
+            self.assertNotIn(f"{primitive} ", v)
+        for clk in ["sys_clk", "sys4x_clk", "init_clk"]:
+            self.assertIn(clk, v)
+
+    def test_nx_write_shift(self):
+        # A word delayed by n UIs: bit k of the stream moves to bit k + n.
+        for shift in [0, 1, 7, 8, 13, 15]:
+            with self.subTest(shift=shift):
+                i   = Signal(8)
+                s   = Signal(4, reset=shift)
+                dut = _NXRPCPHYShift(i, s)
+                words = [0xa5, 0x3c, 0x01, 0x80, 0xff, 0x00, 0x5a, 0x00, 0x00, 0x00]
+                out = []
+                def gen():
+                    for w in words:
+                        yield i.eq(w)
+                        yield
+                        out.append((yield dut.o))
+                run_simulation(dut, gen())
+                stream_i = [(w >> b) & 1 for w in words for b in range(8)]
+                # Outputs are sampled one cycle after their input word is applied.
+                stream_o = [(w >> b) & 1 for w in out   for b in range(8)]
+                self.assertEqual(stream_o[shift:], stream_i[:len(stream_i) - shift])
 
     def test_simulation_phy_settings(self):
         for generate_read_data in [False, True]:
