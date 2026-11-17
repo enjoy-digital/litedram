@@ -1137,12 +1137,17 @@ class EM6GA16L(RPCModule):
         tZQCS=(None, 90),
     )
     speedgrade_timings = {
-        # FIXME: we're increasing tWR by 1 sysclk to compensate for long write (assuming max sysclk 200 MHz)
         # Should we use tRFQSd for tRFC?
-        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15 + 1e9/200e6, tRFC=(3*100, None), tFAW=None, tRAS=35),
-        "1866": _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=15 + 1e9/200e6, tRFC=(3*100, None), tFAW=None, tRAS=34),
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(3*100, None), tFAW=None, tRAS=35),
+        "1866": _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=15, tRFC=(3*100, None), tFAW=None, tRAS=34),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
+
+    def __init__(self, *args, **kwargs):
+        RPCModule.__init__(self, *args, **kwargs)
+        # The RPC PHY serializes a write burst (BL=16) over 2 sys_clk cycles: tWR is increased by
+        # 1 sys_clk to compensate.
+        self.timing_settings.tWR += 1
 
 # DDR4 (Chips) -------------------------------------------------------------------------------------
 
