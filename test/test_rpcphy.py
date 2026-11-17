@@ -67,7 +67,7 @@ class TestRPCPHY(unittest.TestCase):
     def domain(expr):
         return expr.cd if isinstance(expr, ClockSignal) else None
 
-    def check_settings(self, phy, phytype, read_latency):
+    def check_settings(self, phy, phytype, read_latency, bitslips=16):
         s = phy.settings
         self.assertEqual(s.phytype,       phytype)
         self.assertEqual(s.memtype,       "RPC")
@@ -81,7 +81,7 @@ class TestRPCPHY(unittest.TestCase):
         self.assertEqual(s.wrphase,       3)
         self.assertEqual(s.read_latency,  read_latency)
         self.assertEqual(s.write_latency, 3 + 1)   # cwl_sys_latency + 1 for CS#.
-        self.assertEqual(s.bitslips,      16)
+        self.assertEqual(s.bitslips,      bitslips)
         self.assertTrue(s.read_leveling)
         self.assertEqual(len(phy.dfi.phases), 4)
         self.assertEqual(len(phy.dfi.p0.address), 12)
@@ -182,7 +182,7 @@ class TestRPCPHY(unittest.TestCase):
     def test_nx_settings(self):
         phy = self.get_nx_phy()
         # ODDRX4 (1) + db/STB/CS (2) + CL (3) = DB; IDDRX4DQ/DQSBUF/DATAVALID (6); mux/bitslip/+1 (3).
-        self.check_settings(phy, "NXRPCPHY", read_latency=(2 + 1 + 3) + 6 + 3)
+        self.check_settings(phy, "NXRPCPHY", read_latency=(2 + 1 + 3) + 6 + 3, bitslips=8)
         self.assertEqual(phy.settings.delays, 16)
         # STB/CS# delay: tCK/4 in 12.5ps taps, limited to the delay line.
         for sys_clk_freq, taps in [(100e6, 50), (50e6, 100), (25e6, 127)]:

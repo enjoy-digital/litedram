@@ -54,21 +54,21 @@ class NXRPCPads(RPCPads):
 # Nexus RPC PHY Write Shift ------------------------------------------------------------------------
 
 class _NXRPCPHYShift(Module):
-    """Delay a serialized word (one bit per UI, LSB first) by `shift` UIs (0 to 2*len(i) - 1)."""
-    def __init__(self, i, shift):
+    """Delay a serialized word (one bit per UI, LSB first) by `shift` UIs (0 to words*len(i))."""
+    def __init__(self, i, shift, words=2):
         dw     = len(i)
         self.o = Signal(dw)
 
         # # #
 
         # History: oldest word first, current word last.
-        r = Signal(2*dw, reset_less=True)
+        r = Signal(words*dw, reset_less=True)
         self.sync += r.eq(Cat(r[dw:], i))
-        hist  = Signal(3*dw)
+        hist  = Signal((words + 1)*dw)
         self.comb += hist.eq(Cat(r, i))
         cases = {}
-        for n in range(2*dw):
-            cases[n] = self.o.eq(hist[2*dw - n:3*dw - n])
+        for n in range(min(words*dw + 1, 2**len(shift))):
+            cases[n] = self.o.eq(hist[words*dw - n:(words + 1)*dw - n])
         self.comb += Case(shift, cases)
 
 # Lattice Nexus RPC PHY ----------------------------------------------------------------------------
@@ -86,8 +86,8 @@ class NXRPCPHY(BasePHY):
 
         # Read: DQS read enable position (in sys_clk cycles after rddata_en, then in tCK), delay
         # (DQSBUF read clock selection) and burst detection.
-        self._rd_en_sel     = CSRStorage(4, reset=4, description="DQS read enable position (sys_clk cycles).")
-        self._rd_en_phase   = CSRStorage(2, reset=1, description="DQS read enable position (tCK).")
+        self._rd_en_sel     = CSRStorage(4, reset=3, description="DQS read enable position (sys_clk cycles).")
+        self._rd_en_phase   = CSRStorage(2, reset=2, description="DQS read enable position (tCK).")
         self._rdly_dq_rst   = CSR()
         self._rdly_dq_inc   = CSR()
         self._burstdet_clr  = CSR()
@@ -98,6 +98,7 @@ class NXRPCPHY(BasePHY):
             write_ser_latency = 1, # ODDRX4.
             read_des_latency  = 6, # IDDRX4DQ, DQSBUF FIFO and DATAVALID capture (with margin).
             phytype           = self.__class__.__name__,
+            with_bitslip      = False, # The DQSBUF returns the burst aligned.
         ))
 
         if not isinstance(kwargs["pads"], RPCPads):
@@ -107,7 +108,11 @@ class NXRPCPHY(BasePHY):
 
         self.eclk = eclk
 
-        self.settings.delays        = 16 # DQSBUF read clock selections.
+        # Read leveling: the "delay" is the DQSBUF read clock selection and the "bitslip" moves the
+        # DQS read enable (READ gate), in tCK: the round trip delay (in tCK) depends on the
+        # frequency, so the leveling looks for the READ position that gives the widest window.
+        self.settings.delays        = 16
+        self.settings.bitslips      = 8
         self.settings.read_leveling = True
 
         # STB/CS# static delay: 90 degrees (a quarter of tCK), limited to the delay line.
@@ -120,7 +125,8 @@ class NXRPCPHY(BasePHY):
         self.submodules.init = NexusDDRPHYInit(eclk=eclk)
 
         # DQSBUFs (one per DQS, shared with the DB bits it strobes).
-        self.dqs_re  = dqs_re = Signal(4) # One bit per tCK.
+        self.dqs_re  = dqs_re = [Signal(4) for _ in range(len(self.pads.dqs_p))] # One bit per tCK.
+        self.rd_slip = []
         self.dqsw    = []
         self.dqsw270 = []
         self.dqsr90  = []
@@ -137,10 +143,14 @@ class NXRPCPHY(BasePHY):
             wrpntr   = Signal(3)
             rdly     = Signal(4)
             burstdet = Signal()
+            rd_slip  = Signal(3)
             self.sync += [
                 If(self.get_rst(i, self._rdly_dq_rst.wr_stb), rdly.eq(0)),
                 If(self.get_inc(i, self._rdly_dq_inc.wr_stb), rdly.eq(rdly + 1)),
+                If(self.get_rst(i, self._rdly_dq_bitslip_rst.wr_stb), rd_slip.eq(0)),
+                If(self.get_inc(i, self._rdly_dq_bitslip.wr_stb),     rd_slip.eq(rd_slip + 1)),
             ]
+            self.rd_slip.append(rd_slip)
             self.specials += Instance("DQSBUF",
                 p_SIGN_READ            = "POSITIVE",
                 p_S_READ               = "0",
@@ -179,7 +189,7 @@ class NXRPCPHY(BasePHY):
                 i_WRLVDIR    = 0,
 
                 # Reads (generate the shifted DQS clock for reads).
-                i_READ        = dqs_re,
+                i_READ        = dqs_re[i],
                 i_RDCLKSEL    = rdly,
                 i_DQSI        = dqs_i,
                 o_DQSR90      = dqsr90,
@@ -207,8 +217,8 @@ class NXRPCPHY(BasePHY):
 
     # Helpers --------------------------------------------------------------------------------------
 
-    def write_shift(self, i, shift):
-        shifter = _NXRPCPHYShift(i, shift)
+    def write_shift(self, i, shift, words=2):
+        shifter = _NXRPCPHYShift(i, shift, words)
         self.submodules += shifter
         return shifter.o
 
@@ -292,11 +302,14 @@ class NXRPCPHY(BasePHY):
 
     def do_db_serialization(self, db_1ck_out, db_1ck_in, db_oe, db):
         # DQS read enable: as long as the burst (8 tCK, 2 sys_clk cycles), from the selected position
-        # (in sys_clk cycles then in tCK).
+        # (in sys_clk cycles then in tCK, plus the position of the read leveling for each DQSBUF).
         taps   = [self.rddata_en[n] if n < len(self.rddata_en.sr) else 0 for n in range(16 + 1)]
         dqs_re = Signal()
         self.sync += dqs_re.eq(Array([taps[n] | taps[n + 1] for n in range(16)])[self._rd_en_sel.storage])
-        self.comb += self.dqs_re.eq(self.write_shift(Replicate(dqs_re, 4), self._rd_en_phase.storage))
+        for i in range(len(self.dqs_re)):
+            position = Signal(4)
+            self.comb += position.eq(self._rd_en_phase.storage + self.rd_slip[i])
+            self.comb += self.dqs_re[i].eq(self.write_shift(Replicate(dqs_re, 4), position, words=3))
 
         datavalid_d = Signal(len(self.datavalid))
         self.sync += datavalid_d.eq(self.datavalid)
