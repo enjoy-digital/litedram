@@ -1126,8 +1126,12 @@ class EM6GA16L(RPCModule):
     ncols = 1024
     nrows = 4096  # 64M / 1024 / 16 = 4k
     # timings
+    # Refresh: a refresh command (One Shot Mode, Fast Refresh) burst refreshes all the rows of
+    # the selected banks (100ns per row) and no command is accepted until it is done. The
+    # controller refreshes the 4 banks at once: tRFC is the duration of this burst and tREFI the
+    # period of the bursts (64ms retention, refreshed twice as often).
     technology_timings = _TechnologyTimings(
-        tREFI=64e6/8192,
+        tREFI=64e6/2,
         # It seems that we need to calculate tCCD from tBESL by assuming BC=1, then it is:
         # RL=WL + burst_time + tBESL
         tCCD=(13+1 + 8 + 7, None),
@@ -1137,9 +1141,9 @@ class EM6GA16L(RPCModule):
         tZQCS=(None, 90),
     )
     speedgrade_timings = {
-        # Should we use tRFQSd for tRFC?
-        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(3*100, None), tFAW=None, tRAS=35),
-        "1866": _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=15, tRFC=(3*100, None), tFAW=None, tRAS=34),
+        # tRFC: tRFQSd (3 x 100ns) + 4 banks x 4096 rows x 100ns + exit (tRFQSL, tPXCSL), with margin.
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 4*4096*100 + 2000), tFAW=None, tRAS=35),
+        "1866": _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=15, tRFC=(None, 4*4096*100 + 2000), tFAW=None, tRAS=34),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
