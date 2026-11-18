@@ -152,7 +152,7 @@ def main():
     parser.add_argument("--port",     default="/dev/ttyUSB1")
     parser.add_argument("--baudrate", default=115200, type=int)
     parser.add_argument("--rdly",     default=5,  type=int, help="DQSBUF read clock selection.")
-    parser.add_argument("--tck",      default=17, type=int, help="DQSBUF READ position (tCK).")
+    parser.add_argument("--tck",      default=19, type=int, help="DQSBUF READ position (tCK).")
     parser.add_argument("--wlvl-max", default=320, type=int, help="Last delay of wlvlmap/wdlymap.")
     parser.add_argument("--wlvl-step", default=8, type=int, help="Delay step of wlvlmap/wdlymap.")
     args = parser.parse_args()
@@ -212,7 +212,7 @@ def main():
                     rpc.init(); rpc.utr(1, 1)
                     hits = []
                     for dt in (-1, 0, 1):
-                        rpc.rdpos(17 + (stb - 5)//2 + dt, args.rdly)
+                        rpc.rdpos(args.tck + (stb - settings["ddrphy_stb_shift"])//2 + dt, args.rdly)
                         data = rpc.read()
                         if expected in data:
                             hits.append((dt, data))
@@ -251,7 +251,7 @@ def main():
         for stb in range(settings["ddrphy_stb_shift"] - 2, settings["ddrphy_stb_shift"] + 3):
             for dqs in range(settings["ddrphy_dqs_shift"] - 2, settings["ddrphy_dqs_shift"] + 3):
                 line = ""
-                for db in range(0, 8):
+                for db in range(max(0, dqs - 7), dqs + 1):
                     con.write("ddrphy_stb_shift", stb)
                     con.write("ddrphy_dqs_shift", dqs)
                     con.write("ddrphy_db_shift",  db)
@@ -268,7 +268,7 @@ def main():
                         line += "-"
                     else:
                         line += str(min(9, sum(a != b for a, b in zip(data, words))))
-                print(f"stb {stb:2d} dqs {dqs:2d} db 0..7: {line}", flush=True)
+                print(f"stb {stb:2d} dqs {dqs:2d} db {max(0, dqs - 7)}..{dqs}: {line}", flush=True)
 
     if args.test == "wlvlmap":
         # Write a WORD and read it back for each write leveling delay (DQS/DB against CLK), with
@@ -339,7 +339,7 @@ def main():
         wdly("ddrphy_wdly_rst")
 
     if args.test == "rdscan":
-        for tck in range(13, 20):
+        for tck in range(args.tck - 3, args.tck + 4):
             for rdly in range(0, 16, 2):
                 rpc.rdpos(tck, rdly)
                 res = []
