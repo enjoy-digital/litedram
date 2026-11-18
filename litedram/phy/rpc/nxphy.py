@@ -80,15 +80,16 @@ class NXRPCPHY(BasePHY):
 
     def __init__(self, stb_delay=None, eclk="sys4x", rdqs_dec=64, **kwargs):
         # Write shifts (in UIs), to align STB/CS#, DQS and DB between them (the latencies of the
-        # generic, DQS and DQ output primitives differ).
-        self._stb_shift = CSRStorage(4, reset=5, description="STB/CS# write shift (UIs).")
-        self._dqs_shift = CSRStorage(4, reset=4, description="DQS write shift (UIs).")
-        self._db_shift  = CSRStorage(4, reset=1, description="DB write shift (UIs).")
+        # generic, DQS and DQ output primitives differ). On the board STB/CS# need one more UI than
+        # in simulation (2).
+        self._stb_shift = CSRStorage(4, reset=3, description="STB/CS# write shift (UIs).")
+        self._dqs_shift = CSRStorage(4, reset=8, description="DQS write shift (UIs).")
+        self._db_shift  = CSRStorage(4, reset=5, description="DB write shift (UIs).")
 
         # Read: DQS read enable position (in sys_clk cycles after rddata_en, then in tCK), delay
         # (DQSBUF read clock selection) and burst detection.
-        self._rd_en_sel     = CSRStorage(4, reset=3, description="DQS read enable position (sys_clk cycles).")
-        self._rd_en_phase   = CSRStorage(2, reset=2, description="DQS read enable position (tCK).")
+        self._rd_en_sel     = CSRStorage(4, reset=4, description="DQS read enable position (sys_clk cycles).")
+        self._rd_en_phase   = CSRStorage(2, reset=0, description="DQS read enable position (tCK).")
         self._rdly_dq_rst   = CSR()
         self._rdly_dq_inc   = CSR()
         # Write leveling delay of the DQSBUFs (DQS and DB together, against CLK): reset/increment
@@ -138,6 +139,14 @@ class NXRPCPHY(BasePHY):
 
         # Init (DDRDLL/DQSBUF/ECLK sequencing).
         self.submodules.init = NexusDDRPHYInit(eclk=eclk)
+
+        # Reset of the IO primitives (gearboxes, DQSBUFs): the one of the initialization sequence,
+        # asserted and released while the edge clock is stopped, as the ECLKDIV: all the gearboxes
+        # then start on the same edge clock cycle. With the reset of sys (released a few cycles
+        # after the edge clock restarts, and routed as a sys_clk signal), each primitive could start
+        # on a different edge clock cycle, depending on the frequency and on the routing.
+        self.io_rst = io_rst = Signal()
+        self.comb += io_rst.eq(self.init.reset)
 
         # Read delay: the DQSBUF delays the DQS of a read by 90 degrees (DDRDLL code) on top of
         # its own path, which is already about a UI at CLK 400MHz on CertusPro-NX: the data of
@@ -238,8 +247,8 @@ class NXRPCPHY(BasePHY):
                 p_WRITE_ENABLE         = "ENABLED",
 
                 # Clocks / Reset.
-                i_RST        = ResetSignal("sys"),
-                i_RSTSMCNT   = ResetSignal("sys"),
+                i_RST        = self.io_rst,
+                i_RSTSMCNT   = self.io_rst,
                 i_SCLK       = ClockSignal("sys"),
                 i_ECLKIN     = ClockSignal(eclk),
                 i_SELCLK     = 0,
@@ -303,7 +312,7 @@ class NXRPCPHY(BasePHY):
 
     def oddrx4(self, din, dout):
         self.specials += Instance("ODDRX4",
-            i_RST  = ResetSignal("sys"),
+            i_RST  = self.io_rst,
             i_SCLK = ClockSignal("sys"),
             i_ECLK = ClockSignal(self.eclk),
             **{f"i_D{n}": din[n] for n in range(8)},
@@ -348,7 +357,7 @@ class NXRPCPHY(BasePHY):
             dqs_oe_n = Signal()
             self.specials += [
                 Instance("ODDRX4DQS",
-                    i_RST  = ResetSignal("sys"),
+                    i_RST  = self.io_rst,
                     i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal(self.eclk),
                     i_DQSW = self.dqsw[i],
@@ -356,7 +365,7 @@ class NXRPCPHY(BasePHY):
                     o_Q    = dqs_o,
                 ),
                 Instance("TSHX4DQS",
-                    i_RST  = ResetSignal("sys"),
+                    i_RST  = self.io_rst,
                     i_SCLK = ClockSignal("sys"),
                     i_ECLK = ClockSignal(self.eclk),
                     i_DQSW = self.dqsw[i],
@@ -402,7 +411,7 @@ class NXRPCPHY(BasePHY):
             self.specials += [
                 # Write path.
                 Instance("ODDRX4DQ",
-                    i_RST     = ResetSignal("sys"),
+                    i_RST     = self.io_rst,
                     i_SCLK    = ClockSignal("sys"),
                     i_ECLK    = ClockSignal(self.eclk),
                     i_DQSW270 = self.dqsw270[byte],
@@ -410,7 +419,7 @@ class NXRPCPHY(BasePHY):
                     o_Q       = db_o,
                 ),
                 Instance("TSHX4DQ",
-                    i_RST     = ResetSignal("sys"),
+                    i_RST     = self.io_rst,
                     i_SCLK    = ClockSignal("sys"),
                     i_ECLK    = ClockSignal(self.eclk),
                     i_DQSW270 = self.dqsw270[byte],
@@ -421,7 +430,7 @@ class NXRPCPHY(BasePHY):
 
                 # Read path.
                 Instance("IDDRX4DQ",
-                    i_RST     = ResetSignal("sys"),
+                    i_RST     = self.io_rst,
                     i_SCLK    = ClockSignal("sys"),
                     i_ECLK    = ClockSignal(self.eclk),
                     i_DQSR90  = self.dqsr90[byte],

@@ -40,9 +40,8 @@ reaching high frequency operation.
 A backend for Lattice CertusPro-NX (`nxphy.py`, `NXRPCPHY`) targets the Lattice CertusPro-NX Voice
 and Vision Machine Learning board (LFCPNX-VVML-EVN: 2 x EM6GA16LBXA-12H on a 1.5V bank), with the
 `lattice_certuspro_nx_vvml` target of LiteX-Boards (`--with-rpcdram`). It builds with Radiant
-(timing met) and passes the BIOS memory test on the first DRAM of the board (32MiB, 16-bit) at
-sys_clk 50MHz and 100MHz (CLK 400MHz, 800MT/s); sys_clk 75MHz does not work yet (the DRAM does
-not answer, cause not understood):
+(timing met) and passes the BIOS memory test on the first DRAM of the board (32MiB, 16-bit) from
+sys_clk 50MHz to 100MHz (CLK 400MHz, 800MT/s), with the same settings:
 
 ```
 SDRAM:		32.0MiB 16-bit @ 800MT/s (CL-9 CWL-9)
@@ -63,7 +62,7 @@ Memspeed at 0x40000000 (Sequential, 2.0MiB)...
 | sys_clk | CLK    | Rate    | READ position | Write     | Read      |
 |---------|--------|---------|---------------|-----------|-----------|
 | 50MHz   | 200MHz | 400MT/s | 3             | 17.9MiB/s | 26.9MiB/s |
-| 75MHz   | 300MHz | 600MT/s | -             | fails     | fails     |
+| 75MHz   | 300MHz | 600MT/s | 3             | 27.3MiB/s | 39.5MiB/s |
 | 100MHz  | 400MHz | 800MT/s | 4             | 34.6MiB/s | 53.8MiB/s |
 
 `mem_test` over the 32MiB also passes. The write shifts and the read enable position were first
@@ -98,8 +97,12 @@ Important implementation notes:
   the DQSBUF write clocks and STB/CS# (`ODDRX4`) get a static output delay. On Nexus a pin is only
   bidirectional at X4 with the memory primitives, so reads are captured with the DQS of the DRAM
   (`IDDRX4DQ` and the DQSBUF read clock), not on the edge clock as on Series 7. The latencies of
-  the output primitives differ (DB comes out 3 UIs after DQS for the same input), so STB/CS#, DQS
-  and DB each have a write shift CSR (in UIs). For reads, the DQSBUF `READ` input gates the DQS: it
+  the output primitives differ (DB comes out 3 UIs after DQS for the same input, STB/CS# 5 to 6 UIs
+  after DQS), so STB/CS#, DQS and DB each have a write shift CSR (in UIs). The IO primitives
+  (gearboxes, DQSBUFs) are reset by the initialization sequence while the edge clock is stopped,
+  as the ECLKDIV: with the reset of sys (released after the edge clock restarts), the gearboxes
+  did not all start on the same edge clock cycle and the alignment between STB, DQS and DB
+  depended on the frequency (sys_clk 75MHz did not work). For reads, the DQSBUF `READ` input gates the DQS: it
   has to open during the DQS preamble and to last as long as the burst (8 tCK); its position is
   set by CSRs (sys_clk cycles, tCK) and by the DQSBUF read clock selection, which the read leveling
   scans as the delay. The DQSBUF returns the burst aligned on sys_clk over the two cycles flagged
