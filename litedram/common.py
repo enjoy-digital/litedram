@@ -250,7 +250,10 @@ class PhySettings(Settings):
     # rtt_wr: Writes on-die termination impedance
     # ron: Output driver impedance
     # tdqs: Termination Data Strobe enable.
-    def add_electrical_settings(self, rtt_nom=None, rtt_wr=None, ron=None, tdqs=None):
+    # vref_dq: DDR4 DRAM-side VrefDQ, % of VDDQ (None: keep DRAM reset default of 60% VDDQ).
+    # vref_dq_range: DDR4 JEDEC VrefDQ Range (1 or 2).
+    def add_electrical_settings(self, rtt_nom=None, rtt_wr=None, ron=None, tdqs=None,
+                                vref_dq=None, vref_dq_range=None):
         assert self.memtype in ["DDR3", "DDR4"]
         if rtt_nom is not None:
             self.rtt_nom = rtt_nom
@@ -260,6 +263,12 @@ class PhySettings(Settings):
             self.ron = ron
         if tdqs is not None:
             self.tdqs = tdqs
+        if vref_dq is not None:
+            assert self.memtype == "DDR4"
+            self.vref_dq = vref_dq
+        if vref_dq_range is not None:
+            assert self.memtype == "DDR4"
+            self.vref_dq_range = vref_dq_range
 
     # Optional RDIMM configuration
     def set_rdimm(self, tck, rcd_pll_bypass, rcd_ca_cs_drive, rcd_odt_cke_drive, rcd_clk_drive):
