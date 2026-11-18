@@ -60,7 +60,7 @@ class RPCPads:
 
 
 class BasePHY(Module, AutoCSR):
-    def __init__(self, pads, sys_clk_freq, write_ser_latency, read_des_latency, phytype):
+    def __init__(self, pads, sys_clk_freq, write_ser_latency, read_des_latency, phytype, with_bitslip=True):
         # TODO: pads groups for multiple chips
         #  pads = PHYPadsCombiner(pads)
         if not isinstance(pads, RPCPads):
@@ -420,9 +420,11 @@ class BasePHY(Module, AutoCSR):
                 1: rbits_2ck[n_1ck:].eq(rbits_1ck),
             })
 
+            # Without bitslip (backends that get the burst already aligned), the bitslip CSRs are
+            # free for another use by the backend.
             bs = BitSlip(len(rbits_2ck), cycles=bitslip_cycles,
-                rst = self.get_rst(i//8, self._rdly_dq_bitslip_rst.wr_stb),
-                slp = self.get_inc(i//8, self._rdly_dq_bitslip.wr_stb),
+                rst = self.get_rst(i//8, self._rdly_dq_bitslip_rst.wr_stb) if with_bitslip else 0,
+                slp = self.get_inc(i//8, self._rdly_dq_bitslip.wr_stb)     if with_bitslip else 0,
             )
             self.submodules += bs
             self.comb += bs.i.eq(rbits_2ck)

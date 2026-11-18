@@ -13,7 +13,7 @@ from litex.soc.interconnect.csr import CSR, CSRStorage, CSRStatus
 from litedram.phy.rpc.nxphy import NXRPCPHY
 
 class Top(LiteXModule):
-    def __init__(self, sys_clk_freq=50e6):
+    def __init__(self, sys_clk_freq=50e6, **phy_kwargs):
         self.clk4x    = Signal()
         self.clk_init = Signal()
         self.rst      = Signal()
@@ -27,7 +27,7 @@ class Top(LiteXModule):
         pads = Record([("clk_p", 1), ("cs_n", 2), ("stb", 2), ("dqs_p", 2), ("db", 16)], name="rpc")
         self.ios |= set(pads.flatten())
 
-        self.phy = phy = NXRPCPHY(pads=pads, sys_clk_freq=sys_clk_freq)
+        self.phy = phy = NXRPCPHY(pads=pads, sys_clk_freq=sys_clk_freq, **phy_kwargs)
 
         self.comb += [
             self.cd_sys4x_i.clk.eq(self.clk4x),
@@ -71,7 +71,7 @@ class Top(LiteXModule):
 
         # Debug.
         dbg = {
-            "dbg_dqs_re"    : phy.dqs_re,
+            "dbg_dqs_re"    : phy.dqs_re[0],
             "dbg_datavalid" : phy.datavalid,
             "dbg_pause"     : phy.init.pause,
             "dbg_stop"      : phy.init.stop,
@@ -85,5 +85,7 @@ class Top(LiteXModule):
             self.ios.add(port)
 
 if __name__ == "__main__":
-    top = Top()
+    # Optional PHY parameters: ./gen.py top.v rdqs_dec=0
+    phy_kwargs = {k: int(v) for k, v in (arg.split("=") for arg in sys.argv[2:])}
+    top = Top(**phy_kwargs)
     convert(top, ios=top.ios, name="top").write(sys.argv[1] if len(sys.argv) > 1 else "top.v")

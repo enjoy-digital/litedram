@@ -1,7 +1,7 @@
 // NXRPCPHY (Lattice primitive models) + RPC DRAM model: init, UTR reads, write/read.
 //
 // Plusargs: +STB/+DQS/+DB (write shifts, UIs), +RD_EN/+RD_PH (READ position: sys_clk cycles, tCK),
-// +RDLY (DQSBUF read clock selection), +RE_START/+RE_LEN (override READ: start/length in tCK after
+// +RDLY (DQSBUF read clock selection), +SLIP (READ position of the read leveling, tCK), +RE_START/+RE_LEN (override READ: start/length in tCK after
 // the read command), +TCK4X (edge clock period, ps), +PADS=0/1 (pad activity), +MON=0/1/2 (read
 // path monitor).
 `timescale 1ps/1ps
@@ -14,7 +14,7 @@ module arst_sync(input clk, input arst, output rst);
 endmodule
 
 module tb;
-    integer STB = 5, DQS = 4, DB = 1, RD_EN = 4, RDLY = 5, RD_PH = 0, MON = 0, RE_START = 0, RE_LEN = 0, TCK4X = 5000, PADS = 1;
+    integer STB = 5, DQS = 4, DB = 1, RD_EN = 3, RDLY = 5, RD_PH = 2, SLIP = 2, MON = 0, RE_START = 0, RE_LEN = 0, TCK4X = 5000, PADS = 1;
 
     reg clk4x = 0, clk_init = 0, rst = 1;
     always #(TCK4X/2) clk4x = ~clk4x;
@@ -30,7 +30,7 @@ module tb;
     wire        rddata_valid[4];
     reg         reset_n = 1, odt = 1, cke = 1;
 
-    reg  [3:0] csr_stb_shift = 0, csr_dqs_shift = 0, csr_db_shift = 0, csr_rd_en_sel = 4;
+    reg  [3:0] csr_stb_shift = 0, csr_dqs_shift = 0, csr_db_shift = 0, csr_rd_en_sel = 3;
     reg  [1:0] csr_rd_en_phase = 0;
     reg  [1:0] csr_dly_sel = 0;
     reg        csr_rdly_dq_inc = 0, csr_rdly_dq_rst = 0, csr_burstdet_clr = 0, csr_reset_fsm = 0;
@@ -51,6 +51,8 @@ module tb;
         .csr_rdly_dq_inc(csr_rdly_dq_inc), .csr_rdly_dq_rst(csr_rdly_dq_rst),
         .csr_reset_done(csr_reset_done), .csr_reset_fsm(csr_reset_fsm), .csr_rst(1'b0),
         .csr_stb_shift(csr_stb_shift),
+        .csr_rdqs_dir(1'b0), .csr_rdqs_move(1'b0), .csr_rdqs_rst(1'b0), .csr_wdly_dir(1'b0), .csr_wdly_move(1'b0),
+        .csr_wdly_rst(1'b0), .csr_wlvl_inc(1'b0), .csr_wlvl_rst(1'b0),
 `define DFI(p) \
         .dfi_p``p``_act_n(1'b1), .dfi_p``p``_address(a[p]), .dfi_p``p``_bank(ba[p]), .dfi_p``p``_cas_n(cas_n[p]), \
         .dfi_p``p``_cke(cke), .dfi_p``p``_cs_n(cs_n[p]), .dfi_p``p``_odt(odt), .dfi_p``p``_ras_n(ras_n[p]), \
@@ -80,7 +82,7 @@ module tb;
     reg mon_en = 0;
     always @(negedge sys_clk) if (mon_en && MON)
         $display("[mon] %0t: READ %04b datavalid %b burstdet %b rdpntr %0d wrpntr %0d q0 %08b en %b valid %b", $realtime,
-            dut.__main___dqs_re, dut.__main___datavalid[0], dut.__main___burstdet0, dut.__main___rdpntr0, dut.__main___wrpntr0, dut.convert_db_1ck_in0, rddata_en[3], rddata_valid[0]);
+            dut.__main___dqs_re0, dut.__main___datavalid[0], dut.__main___burstdet0, dut.__main___rdpntr0, dut.__main___wrpntr0, dut.convert_db_1ck_in0, rddata_en[3], rddata_valid[0]);
     always @(dram.dqs_oe) if (MON) $display("[mon] %0t: DRAM dqs_oe %b (+%0d ps after CLK rise)", $realtime, dram.dqs_oe, $rtoi($realtime - t_clk));
     always @(dram.db_oe)  if (MON) $display("[mon] %0t: DRAM db_oe  %b (+%0d ps after CLK rise)", $realtime, dram.db_oe,  $rtoi($realtime - t_clk));
     always @(dut.__main___dqsr900) if (mon_en && MON > 1) $display("[mon] %0t: DQSR90 %b", $realtime, dut.__main___dqsr900);
@@ -94,7 +96,7 @@ module tb;
         if (rddata_en[3]) begin re_t = 0; n_dqsr90 = 0; t_cmd = $realtime; end
         else if (re_t >= 0 && re_t < 400) re_t = re_t + 4;
         for (int b = 0; b < 4; b++) re_word[b] = (re_t >= 0) && (re_t + b >= RE_START) && (re_t + b < RE_START + RE_LEN);
-        if (RE_LEN > 0) force dut.__main___dqs_re = re_word;
+        if (RE_LEN > 0) force dut.__main___dqs_re0 = re_word;
     end
     always @(posedge dut.__main___dqsr900) begin
         if (n_dqsr90 == 0) t_first = $realtime;
@@ -128,6 +130,8 @@ module tb;
         end
         dv_s = {dv_s, " |"};
     end
+
+    always @(dut.__main___rdqs_auto) if (MON) $display("[mon] %0t: read delay decrease %b", $realtime, dut.__main___rdqs_auto);
 
     localparam CS = 1, WE = 2, CAS = 4, RAS = 8, WRDATA = 16, RDDATA = 32;
 
@@ -178,13 +182,13 @@ module tb;
     initial begin
         void'($value$plusargs("STB=%d", STB));     void'($value$plusargs("DQS=%d", DQS));
         void'($value$plusargs("DB=%d", DB));       void'($value$plusargs("RD_EN=%d", RD_EN));
-        void'($value$plusargs("RDLY=%d", RDLY));
+        void'($value$plusargs("RDLY=%d", RDLY)); void'($value$plusargs("SLIP=%d", SLIP));
         void'($value$plusargs("RD_PH=%d", RD_PH)); void'($value$plusargs("MON=%d", MON));
         csr_rd_en_phase = RD_PH;
         void'($value$plusargs("RE_START=%d", RE_START)); void'($value$plusargs("RE_LEN=%d", RE_LEN));
         void'($value$plusargs("TCK4X=%d", TCK4X)); void'($value$plusargs("PADS=%d", PADS));
         csr_stb_shift = STB; csr_dqs_shift = DQS; csr_db_shift = DB; csr_rd_en_sel = RD_EN;
-        $display("[tb] STB %0d DQS %0d DB %0d RD_EN %0d RD_PH %0d RDLY %0d TCK4X %0d", STB, DQS, DB, RD_EN, RD_PH, RDLY, TCK4X);
+        $display("[tb] STB %0d DQS %0d DB %0d RD_EN %0d RD_PH %0d SLIP %0d RDLY %0d TCK4X %0d", STB, DQS, DB, RD_EN, RD_PH, SLIP, RDLY, TCK4X);
         idle();
         for (int p = 0; p < 4; p++) begin wrdata[p] = 0; wrdata_mask[p] = 0; end
         #200000 rst = 0;
@@ -199,6 +203,8 @@ module tb;
         csr_dly_sel = 2'b11;
         pulse(csr_rdly_dq_rst);
         repeat (RDLY) pulse(csr_rdly_dq_inc);
+        pulse(csr_bitslip_rst);
+        repeat (SLIP) pulse(csr_bitslip);
         csr_dly_sel = 2'b00;
         wait_sys(16);
 
