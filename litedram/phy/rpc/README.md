@@ -68,7 +68,13 @@ Memspeed at 0x40000000 (Sequential, 2.0MiB)...
 sys_clk 112.5MHz (CLK 450MHz, 900MT/s) meets timing but does not pass: rare bit errors on reads
 with the lower byte, no read window on the upper byte. 125MHz does not meet timing in the SoC.
 
-`mem_test` over the 32MiB also passes. The write shifts and the read enable position were first
+`mem_test` over the 32MiB also passes. These speeds are limited by the CPU: with the BIST of
+LiteDRAM (`--with-bist` on the target, `sdram_bist 1024 0`/`sdram_bist 1024 1` from the BIOS) the
+DRAM gives 358MiB/s in write and 355MiB/s in read at sys_clk 100MHz (sequential and random
+addresses, 26.4GiB tested each without error). The DB bus could carry 1600MB/s at this rate: the
+controller sends one WORD (32 bytes) per command, a command every 8 to 9 sys_clk cycles.
+
+The write shifts and the read enable position were first
 settled in a simulation of the PHY with Lattice's primitive models (QuestaSim) and a timing-aware
 RPC DRAM model (`bench/rpc/sim`), then on the board: STB/CS# need one
 more UI there than in simulation, and arrive about 450ps later than expected. With a delay of
@@ -85,6 +91,10 @@ tCK/4 they were at the edge of their window at CLK 400MHz, so the delay is tCK/4
 (negative: with one UI less of shift.)
 
 What the DRAM needs from the controller, found on this board:
+
+* CS# has to go high then low before a reset: when the DRAM was initialized again (`sdram_init`
+  from the BIOS) with CS# kept low, about half of the 2MiB memory tests then had 1 or 2 wrong
+  words (hundreds sometimes). The PHY releases CS# before a new reset sequence.
 
 * One Request Packet at a time: the commands are sent as a single stream, at least 8 tCK apart
   (Serial Packet after each Request Packet) and not during a burst (`tCCD` covers the latency, the
@@ -127,7 +137,8 @@ Important implementation notes:
   CLK 400MHz: after the initialization the read delay code (90 degrees from the DDRDLL) is
   decreased (`rdqs_dec` steps), otherwise the next UI is captured at this frequency. CSRs give
   access to the read delay, the write delay (DB against DQS) and the write leveling delay (DQS
-  and DB against CLK) of the DQSBUFs. Only the first DRAM (rank) is used: STB/CS# of the others
+  and DB against CLK) of the DQSBUFs: use them under software control only (a DQSBUF paused
+  while the controller sends commands corrupts them, and the DRAM then needs a new initialization). Only the first DRAM (rank) is used: STB/CS# of the others
   are held high.
 
 The current code structure is the predecessor of the concepts used in LPDDR4/LPDDR5 PHYs.

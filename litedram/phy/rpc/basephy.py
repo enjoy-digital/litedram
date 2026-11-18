@@ -317,10 +317,26 @@ class BasePHY(Module, AutoCSR):
             If(self._reset_fsm.wr_stb,
                 NextState("IDLE")
             ),
-            # A new initialization (ex sdram_init from the BIOS): do the reset sequence again.
+            # A new initialization (ex sdram_init from the BIOS): do the reset sequence again,
+            # with CS# released first as after reset_fsm (on hardware, a reset with CS# kept low
+            # left the DRAM with rare read/write errors).
             If(dfi_adapters[2*nphases+0].is_cmd("RESET"),
                 NextValue(serial_reset_count, 0),
                 NextValue(self._reset_done.status, 0),
+                NextState("CS_RELEASE")
+            )
+        )
+        cs_release = Signal()
+        fsm.act("CS_RELEASE",
+            cs_release.eq(1),
+            self.reset_timer.wait.eq(1),
+            If(self.reset_timer.done,
+                NextState("CS_HOLD")
+            )
+        )
+        fsm.act("CS_HOLD",
+            self.zqcinit_timer.wait.eq(1),
+            If(self.zqcinit_timer.done,
                 NextState("RESET_RECEIVED")
             )
         )
@@ -396,7 +412,7 @@ class BasePHY(Module, AutoCSR):
             # self.cs_hold.i.eq(cmd_valid & (_any_cmd_valid | cs_burst_hold)),
             # cs.eq(reduce(or_, self.cs_hold.sr)),
             # cs_n_1ck_out.eq(Replicate(~cs, len(cs_n_1ck_out))),
-            cs_n_1ck_out.eq(Replicate(~cs_lock, len(cs_n_1ck_out))),
+            cs_n_1ck_out.eq(Replicate(~(cs_lock & ~cs_release), len(cs_n_1ck_out))),
         ]
 
         # Data IN ----------------------------------------------------------------------------------
