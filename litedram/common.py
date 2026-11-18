@@ -250,7 +250,7 @@ class PhySettings(Settings):
     # rtt_wr: Writes on-die termination impedance
     # ron: Output driver impedance
     # tdqs: Termination Data Strobe enable.
-    # vref_dq: DDR4 DRAM-side VrefDQ, % of VDDQ (None: keep DRAM reset default of 60% VDDQ).
+    # vref_dq: DDR4 DRAM-side VrefDQ, % of VDDQ (None: keep DRAM default of 60.00% VDDQ (Table 14 code 0)).
     # vref_dq_range: DDR4 JEDEC VrefDQ Range (1 or 2).
     def add_electrical_settings(self, rtt_nom=None, rtt_wr=None, ron=None, tdqs=None,
                                 vref_dq=None, vref_dq_range=None):

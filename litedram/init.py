@@ -437,9 +437,10 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     # VrefDQ programming (JEDEC JESD79-4C, "VrefDQ Training Mode", Figure 27 and Tables 14/15):
     # MR6 A7 = VrefDQ Training Enable, A6 = VrefDQ Training Range, A5:A0 = VrefDQ Training Value.
     # Both ranges use 0.65% of VDDQ steps: Range 1 (A6=0) spans 60.00-92.50%, Range 2 (A6=1) spans
-    # 45.00-77.50%; codes 0-50 are valid, 51+ are RFU. After reset the DRAM defaults to Range 1,
+    # 45.00-77.50%; codes 0-50 are valid, 51+ are RFU. The DRAM's default is Range 1,
     # code 0 (60.00% of VDDQ), which is what boards have been relying on so far.
-    # Programming sequence: MR6{Training=1, Range, Value} -> wait tVREFDQE -> MR6{Training=0, same
+    # Programming sequence: MR6{Training=1, Range, Value} -> wait tVREFDQE -> MR6{Training=1, Range,
+    # Value} (the value-set write, the normative flow per section 4.13) -> MR6{Training=0, same
     # Range/Value, application settings} -> wait tVREFDQX, with tVREFDQE/tVREFDQX = 150ns minimum.
     vref_dq_ranges = { # range -> (base % of VDDQ, max code)
         1: (60.00, 50),
@@ -494,7 +495,7 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
     mr5 = (dm << 10)
     mr6 = format_mr6(get_ddr4_tccd_l(phy_settings, timing_settings))
 
-    # Optional DRAM-side VrefDQ programming (default: None, keep the DRAM reset default of 60% VDDQ,
+    # Optional DRAM-side VrefDQ programming (default: None, keep the DRAM default of 60.00% VDDQ (Table 14 code 0),
     # Range 1, code 0 -- unchanged legacy behavior).
     vref_dq       = getattr(phy_settings, "vref_dq", None)       # % of VDDQ
     vref_dq_range = getattr(phy_settings, "vref_dq_range", 1)    # JEDEC Range 1 or 2
@@ -506,8 +507,13 @@ def get_ddr4_phy_init_sequence(phy_settings, timing_settings):
         mr6_vref_training = mr6_vref | (1 << 7)                           # enter VrefDQ training mode
         # cdelay() iterations: >> tVREFDQE/tVREFDQX (150ns) on any supported BIOS CPU.
         vref_dq_delay = 200
+        # 3 MR6 writes (JESD79-4C section 4.13): enter (A7=1) -> set value (A7=1, same
+        # range, A5:A0=value) -> exit (A7=0). The entry write's A5:A0 capture is vendor
+        # specific, so the value is also programmed by a subsequent A7=1 write (the
+        # normative flow), independent of the entry-capture behavior.
         vref_dq_init = [
-            (f"VrefDQ Training: Range={vref_dq_range}, Value={vref_dq:.2f}% VDDQ", mr6_vref_training, 6, cmds["MODE_REGISTER"], vref_dq_delay),
+            (f"VrefDQ Training: enter (Range={vref_dq_range})", mr6_vref_training, 6, cmds["MODE_REGISTER"], vref_dq_delay),
+            (f"VrefDQ Training: set value {vref_dq:.2f}% VDDQ", mr6_vref_training, 6, cmds["MODE_REGISTER"], vref_dq_delay),
             ("VrefDQ Training: exit (VrefDQ value applied)", mr6_vref, 6, cmds["MODE_REGISTER"], vref_dq_delay),
         ]
 

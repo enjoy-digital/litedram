@@ -72,7 +72,7 @@ class TestInit(unittest.TestCase):
 
     def test_ddr4_vref_dq_disabled_by_default(self):
         # Without vref_dq, the init sequence is unchanged: no VrefDQ training entries, MR6 only
-        # carries tCCD_L (legacy behavior, DRAM reset default of 60.00% VDDQ, Range 1, code 0).
+        # carries tCCD_L (legacy behavior, DRAM default of 60.00% VDDQ (Table 14 code 0), Range 1, code 0).
         from litedram.init import get_ddr4_phy_init_sequence
         phy, timing = self._make_ddr4_settings()
         sequence, _ = get_ddr4_phy_init_sequence(phy, timing)
@@ -84,34 +84,32 @@ class TestInit(unittest.TestCase):
 
     def test_ddr4_vref_dq_programming_sequence(self):
         # vref_dq=80.15% of VDDQ in Range 1 -> JEDEC code 31 (JESD79-4C Table 15).
+        # 3 MR6 writes: enter (A7=1) -> set value (A7=1) -> exit (A7=0).
         from litedram.init import get_ddr4_phy_init_sequence
         phy, timing = self._make_ddr4_settings(vref_dq=80.15, vref_dq_range=1)
         sequence, _ = get_ddr4_phy_init_sequence(phy, timing)
-        vref_entries = [(comment, address, delay) for comment, address, ba, cmd, delay in sequence
-            if comment.startswith("VrefDQ")]
-        self.assertEqual(len(vref_entries), 2)
-        enter_c, enter_a, enter_d = vref_entries[0]
-        exit_c,  exit_a,  exit_d  = vref_entries[1]
-        self.assertEqual(enter_a & (1 << 7), 1 << 7)  # A7=1: VrefDQ training mode entered.
-        self.assertEqual(enter_a & (1 << 6), 0)       # A6=0: Range 1.
-        self.assertEqual(enter_a & 0x3f, 31)          # A5:A0: VrefDQ value code 31 (80.15% VDDQ).
-        self.assertEqual(exit_a & (1 << 7), 0)        # A7=0: training mode exited.
-        self.assertEqual(exit_a & 0x7f, 31)           # Same value on exit (JESD79-4C Figure 27, Note 1).
-        self.assertEqual(exit_a >> 10, enter_a >> 10) # tCCD_L application settings preserved.
-        for _, _, delay in vref_entries:
-            self.assertGreaterEqual(delay, 200)       # >> tVREFDQE/tVREFDQX (150ns min).
-        # The exit entry is the application MR6 with the VrefDQ value added.
-        mr6 = next(address for comment, address, ba, cmd, delay in sequence
-            if comment == "Load Mode Register 6")
+        vref_entries = [(c, a, d) for c, a, ba, cmd, d in sequence if c.startswith("VrefDQ")]
+        self.assertEqual(len(vref_entries), 3)
+        enter_a, set_a, exit_a = [a for _, a, _ in vref_entries]
+        self.assertEqual(enter_a & (1 << 7), 1 << 7)   # A7=1: training mode entered.
+        self.assertEqual(enter_a & (1 << 6), 0)        # A6=0: Range 1.
+        self.assertEqual(enter_a & 0x3f, 31)           # A5:A0: code 31 (80.15% VDDQ).
+        self.assertEqual(set_a & (1 << 7), 1 << 7)     # Value-set write stays in training mode.
+        self.assertEqual(set_a, enter_a)               # Same range/value as entry.
+        self.assertEqual(exit_a & (1 << 7), 0)         # A7=0: training mode exited.
+        self.assertEqual(exit_a & 0x7f, 31)            # Same value on exit (Figure 27, Note 1).
+        self.assertEqual(exit_a >> 10, enter_a >> 10)  # tCCD_L preserved.
+        for _, _, d in vref_entries:
+            self.assertGreaterEqual(d, 200)            # >> tMRD / tVREFDQE / tVREFDQX.
+        mr6 = next(a for c, a, ba, cmd, d in sequence if c == "Load Mode Register 6")
         self.assertEqual(exit_a, mr6 | 31)
-
     def test_ddr4_vref_dq_range2(self):
         # vref_dq=50.20% of VDDQ in Range 2 -> JEDEC code 8, A6=1.
         from litedram.init import get_ddr4_phy_init_sequence
         phy, timing = self._make_ddr4_settings(vref_dq=50.20, vref_dq_range=2)
         sequence, _ = get_ddr4_phy_init_sequence(phy, timing)
         enter_a = next(address for comment, address, ba, cmd, delay in sequence
-            if comment.startswith("VrefDQ Training: Range=2"))
+            if comment.startswith("VrefDQ Training: enter (Range=2"))
         self.assertEqual(enter_a & (1 << 7), 1 << 7)  # Training mode.
         self.assertEqual(enter_a & (1 << 6), 1 << 6)  # A6=1: Range 2.
         self.assertEqual(enter_a & 0x3f, 8)           # 45.00% + 8*0.65% = 50.20% VDDQ.
@@ -145,7 +143,7 @@ class TestInit(unittest.TestCase):
         timing = SimpleNamespace(tWR=2, tCCD=2, fine_refresh_mode="1x")
         sequence, _ = get_ddr4_phy_init_sequence(phy, timing)
         enter_a = next(address for comment, address, ba, cmd, delay in sequence
-            if comment.startswith("VrefDQ Training: Range=1"))
+            if comment.startswith("VrefDQ Training: enter (Range=1"))
         self.assertEqual(enter_a & 0x3f, 1) # 60.00% + 1*0.65% = 60.65% VDDQ.
 
 
@@ -157,7 +155,7 @@ class TestInit(unittest.TestCase):
         timing.tCCD = 4 # Forces tCCD_L to be non-zero (0x1000)
         sequence, _ = get_ddr4_phy_init_sequence(phy, timing)
         mr6 = next(a for c, a, ba, cmd, d in sequence if c == "Load Mode Register 6")
-        enter_a = next(a for c, a, ba, cmd, d in sequence if c.startswith("VrefDQ Training: Range=1"))
+        enter_a = next(a for c, a, ba, cmd, d in sequence if c.startswith("VrefDQ Training: enter (Range=1"))
         exit_a = next(a for c, a, ba, cmd, d in sequence if c.startswith("VrefDQ Training: exit"))
         self.assertNotEqual(mr6 & (0b111 << 10), 0) # Guard against vacuous check
         self.assertEqual(enter_a & (0b111 << 10), mr6 & (0b111 << 10))
@@ -172,6 +170,37 @@ class TestInit(unittest.TestCase):
         seq_b, reg_b = get_ddr4_phy_init_sequence(phy_b, timing)
         self.assertEqual(seq_a, seq_b)
         self.assertEqual(reg_a, reg_b)
+
+
+    def test_ddr4_vref_dq_value_set_write(self):
+        # The value is programmed by an A7=1 MR6 write issued AFTER entry, for both ranges and
+        # at the range boundaries (codes 0 and 50), not only at a mid-range code.
+        from litedram.init import get_ddr4_phy_init_sequence
+        for rng, percent, code in [(1, 60.00, 0), (1, 80.15, 31), (1, 92.50, 50),
+                                   (2, 45.00, 0), (2, 50.20, 8), (2, 77.50, 50)]:
+            with self.subTest(range=rng, percent=percent):
+                phy, timing = self._make_ddr4_settings(vref_dq=percent, vref_dq_range=rng)
+                sequence, _ = get_ddr4_phy_init_sequence(phy, timing)
+                vref = [(c, a, ba) for c, a, ba, cmd, d in sequence if c.startswith("VrefDQ")]
+                self.assertEqual(len(vref), 3)
+                self.assertTrue(vref[0][0].startswith("VrefDQ Training: enter"))
+                self.assertTrue(vref[1][0].startswith("VrefDQ Training: set value"))
+                self.assertTrue(vref[2][0].startswith("VrefDQ Training: exit"))
+                for _, a, ba in vref:
+                    self.assertEqual(ba, 6)
+                self.assertEqual(vref[1][1] & (1 << 7), 1 << 7)
+                self.assertEqual(vref[1][1] & 0x3f, code)
+                self.assertEqual(vref[1][1] & (1 << 6), (rng - 1) << 6)
+                self.assertEqual(vref[2][1] & 0x3f, code)
+
+    def test_vref_dq_rejected_on_ddr3(self):
+        from litedram.common import PhySettings
+        phy = PhySettings(phytype="test", memtype="DDR3", databits=16, dfi_databits=32,
+            nphases=2, rdphase=1, wrphase=0, cl=6, read_latency=0, write_latency=0)
+        with self.assertRaises(AssertionError):
+            phy.add_electrical_settings(vref_dq=80.15)
+        with self.assertRaises(AssertionError):
+            phy.add_electrical_settings(vref_dq_range=2)
 
     def test_sdr(self):
         from litex_boards.targets.scarabhardware_minispartan6 import BaseSoC
