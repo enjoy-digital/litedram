@@ -155,8 +155,8 @@ controller cycle, because the write data is serialized over two controller cycle
 (`sys4x_90`, `sys4x_180`). The Nexus backend (`NXRPCPHY`, CertusPro-NX) uses a single edge clock
 (`sys4x`) with X4 gearing: DB is sent 90 degrees ahead of CLK and DQS with the DQSBUF write clocks,
 STB and CS# with a static output delay, and reads are captured with the DQS of the DRAM (DQSBUF
-read gate and `DATAVALID`). It passes the BIOS memory test on the CertusPro-NX VVML board at
-sys_clk 50MHz and 100MHz (CLK 400MHz, 800MT/s), on the first of the two DRAMs.
+read gate and `DATAVALID`). It passes the BIOS memory test on the CertusPro-NX VVML board from
+sys_clk 50MHz to 100MHz (CLK 400MHz, 800MT/s), on the first of the two DRAMs.
 
 **Hardware test.** No board with RPC DRAM existed when the PHY was written. It was tested on an
 Arty A7 whose DDR3 chip was replaced by a pin-compatible RPC DRAM (EM6GA16L). That chip needs
