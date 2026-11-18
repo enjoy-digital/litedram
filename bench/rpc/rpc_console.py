@@ -8,6 +8,7 @@
 # ./rpc_console.py --csr-csv csr.csv wrmap             STB/DQS/DB write shifts map (WORD write/read).
 # ./rpc_console.py --csr-csv csr.csv wlvlmap           Write leveling delay map (WORD write/read).
 # ./rpc_console.py --csr-csv csr.csv wdlymap           Write delay (DB against DQS) map (WORD write/read).
+# ./rpc_console.py --csr-csv csr.csv stbmap            STB/CS# shift and output delay map (WORD write/read).
 # ./rpc_console.py --csr-csv csr.csv rdmap             DQSBUF READ position/read clock selection map (WORD read).
 #
 # The SDRAM is left under software control during the tests and given back to the controller at
@@ -147,12 +148,13 @@ class RPC:
 
 def main():
     parser = argparse.ArgumentParser(description="RPC DRAM bring-up through the BIOS console.")
-    parser.add_argument("test", choices=["utr", "ops", "wrscan", "rdscan", "rdmap", "wrmap", "wlvlmap", "wdlymap"])
+    parser.add_argument("test", choices=["utr", "ops", "wrscan", "rdscan", "rdmap", "wrmap", "wlvlmap", "wdlymap", "stbmap"])
     parser.add_argument("--csr-csv",  default="csr.csv")
     parser.add_argument("--port",     default="/dev/ttyUSB1")
     parser.add_argument("--baudrate", default=115200, type=int)
     parser.add_argument("--rdly",     default=5,  type=int, help="DQSBUF read clock selection.")
     parser.add_argument("--tck",      default=19, type=int, help="DQSBUF READ position (tCK).")
+    parser.add_argument("--stb-delay", default=14, type=int, help="Static STB/CS# delay of the build (stbmap).")
     parser.add_argument("--wlvl-max", default=320, type=int, help="Last delay of wlvlmap/wdlymap.")
     parser.add_argument("--wlvl-step", default=8, type=int, help="Delay step of wlvlmap/wdlymap.")
     args = parser.parse_args()
@@ -347,6 +349,33 @@ def main():
                     rpc.init(); rpc.utr(1, op); res.append(rpc.read()); rpc.utr(0, op)
                 ok = (res[0] == " ".join([UTR_PATTERNS[1]]*4)) and (res[1] == " ".join([UTR_PATTERNS[0]]*4))
                 print(f"sel {tck//4} phase {tck % 4} rdly {rdly:2d}: {'OK' if ok else 'KO'} {res[0]}", flush=True)
+
+    if args.test == "stbmap":
+        # Write a WORD and read it back for each STB/CS# shift (as set, one UI earlier/later) and
+        # output delay (0 to 127 from --stb-delay, the static delay of the build: steps of about
+        # 12.5ps). O: correct, x: wrong data, .: no data.
+        words = [0x1000 + 0x0111*k for k in range(16)]
+        step  = 8
+        def move(n, direction):
+            con.write("ddrphy_stb_dly_dir", direction)
+            for _ in range(n):
+                con.write("ddrphy_stb_dly_move", 1)
+        print("delay  " + " ".join(f"{d:3d}" for d in range(0, 128, step)))
+        for stb in range(settings["ddrphy_stb_shift"] - 1, settings["ddrphy_stb_shift"] + 2):
+            con.write("ddrphy_stb_shift", stb)
+            con.write("ddrphy_stb_dly_rst", 1)
+            move(args.stb_delay, 1)
+            line = ""
+            for d in range(0, 128, step):
+                rpc.init(); rpc.rdpos(args.tck, args.rdly)
+                rpc.cmd(0, RAS|CS, 0x123, 1)
+                rpc.wrdata([0]*16);  rpc.cmd(3, CAS|WE|CS|WRDATA, 0x20, 1)
+                rpc.wrdata(words);   rpc.cmd(3, CAS|WE|CS|WRDATA, 0x20, 1)
+                data  = [int(w, 16) for w in rpc.read(0x20, 1).split()]
+                line += "  " + ("O" if data == words else ("x" if any(data) else ".")) + " "
+                move(step, 0)
+            print(f"stb {stb}: {line}", flush=True)
+        con.write("ddrphy_stb_dly_rst", 1)
 
     # Restore the PHY settings and give the SDRAM back to the controller.
     for name, value in settings.items():

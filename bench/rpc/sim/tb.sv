@@ -44,7 +44,7 @@ module tb;
 
     top dut (
         .clk4x(clk4x), .clk_init(clk_init), .rst(rst),
-        .csr_burst_stop(1'b1), .csr_burstdet_clr(csr_burstdet_clr), .csr_burstdet_seen(csr_burstdet_seen),
+        .csr_burst_stop(1'b1), .csr_stb_dly_dir(1'b0), .csr_stb_dly_rst(1'b0), .csr_stb_dly_move(1'b0), .csr_burstdet_clr(csr_burstdet_clr), .csr_burstdet_seen(csr_burstdet_seen),
         .csr_db_shift(csr_db_shift), .csr_dly_sel(csr_dly_sel), .csr_dqs_shift(csr_dqs_shift),
         .csr_init_done(csr_init_done), .csr_rd_en_sel(csr_rd_en_sel), .csr_rd_en_phase(csr_rd_en_phase),
         .csr_rdly_dq_bitslip(csr_bitslip), .csr_rdly_dq_bitslip_rst(csr_bitslip_rst),
