@@ -55,20 +55,34 @@ Read leveling:
 Memtest at 0x40000000 (2.0MiB)...
 Memtest OK
 Memspeed at 0x40000000 (Sequential, 2.0MiB)...
-  Write speed: 34.6MiB/s
-   Read speed: 53.8MiB/s
+  Write speed: 33.9MiB/s
+   Read speed: 50.7MiB/s
 ```
 
 | sys_clk | CLK    | Rate    | READ position | Write     | Read      |
 |---------|--------|---------|---------------|-----------|-----------|
-| 50MHz   | 200MHz | 400MT/s | 3             | 17.9MiB/s | 26.9MiB/s |
-| 75MHz   | 300MHz | 600MT/s | 3             | 27.3MiB/s | 39.5MiB/s |
-| 100MHz  | 400MHz | 800MT/s | 4             | 34.6MiB/s | 53.8MiB/s |
+| 50MHz   | 200MHz | 400MT/s | 3             | 17.5MiB/s | 26.4MiB/s |
+| 75MHz   | 300MHz | 600MT/s | 3             | 26.6MiB/s | 38.8MiB/s |
+| 100MHz  | 400MHz | 800MT/s | 4             | 33.9MiB/s | 50.7MiB/s |
+
+sys_clk 112.5MHz (CLK 450MHz, 900MT/s) meets timing but does not pass: rare bit errors on reads
+with the lower byte, no read window on the upper byte. 125MHz does not meet timing in the SoC.
 
 `mem_test` over the 32MiB also passes. The write shifts and the read enable position were first
 settled in a simulation of the PHY with Lattice's primitive models (QuestaSim) and a timing-aware
 RPC DRAM model (`bench/rpc/sim`), then on the board: STB/CS# need one
-more UI there than in simulation.
+more UI there than in simulation, and arrive about 450ps later than expected. With a delay of
+tCK/4 they were at the edge of their window at CLK 400MHz, so the delay is tCK/4 less this skew
+(`rpc_console.py stbmap`, a `O` for a correct WORD write/read, steps of 8 taps of about 12.5ps):
+
+| CLK    | Working STB/CS# delays (taps, shift 3) | tCK/4 | Delay used |
+|--------|----------------------------------------|-------|------------|
+| 200MHz | 0 to 127 (the whole delay line)        | 100   | 64         |
+| 300MHz | -13 to 88                              | 67    | 31         |
+| 400MHz | -20 to 48                              | 50    | 14         |
+| 450MHz | -25 to 40                              | 44    | 8          |
+
+(negative: with one UI less of shift.)
 
 What the DRAM needs from the controller, found on this board:
 
@@ -94,7 +108,8 @@ Important implementation notes:
 * Series 7 backend reqires two phase-shifted clocks: sys4x_90 and sys4x_180.
 * Nexus backend uses a single edge clock (sys4x, with sys from ECLKDIV) and X4 gearing: CLK
   (`ODDRX4`) and DQS (`ODDRX4DQS`) are aligned to it, DB (`ODDRX4DQ`) is sent 90 degrees ahead with
-  the DQSBUF write clocks and STB/CS# (`ODDRX4`) get a static output delay. On Nexus a pin is only
+  the DQSBUF write clocks and STB/CS# (`ODDRX4`) get an output delay (`DELAYA`: static value, moved by CSRs for the scans). The
+  write shifts are registered, so that the gearboxes are fed by registers (timing at CLK 450MHz). On Nexus a pin is only
   bidirectional at X4 with the memory primitives, so reads are captured with the DQS of the DRAM
   (`IDDRX4DQ` and the DQSBUF read clock), not on the edge clock as on Series 7. The latencies of
   the output primitives differ (DB comes out 3 UIs after DQS for the same input, STB/CS# 5 to 6 UIs

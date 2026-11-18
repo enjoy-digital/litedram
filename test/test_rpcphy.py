@@ -181,11 +181,11 @@ class TestRPCPHY(unittest.TestCase):
 
     def test_nx_settings(self):
         phy = self.get_nx_phy()
-        # ODDRX4 (1) + db/STB/CS (2) + CL (3) = DB; IDDRX4DQ/DQSBUF/DATAVALID (6); mux/bitslip/+1 (3).
-        self.check_settings(phy, "NXRPCPHY", read_latency=(2 + 1 + 3) + 6 + 3, bitslips=8)
+        # ODDRX4 (1) + db/STB/CS (2) + CL (3) = DB; write shift register, IDDRX4DQ/DQSBUF/DATAVALID (7); mux/bitslip/+1 (3).
+        self.check_settings(phy, "NXRPCPHY", read_latency=(2 + 1 + 3) + 7 + 3, bitslips=8)
         self.assertEqual(phy.settings.delays, 16)
-        # STB/CS# delay: tCK/4 in 12.5ps taps, limited to the delay line.
-        for sys_clk_freq, taps in [(100e6, 50), (50e6, 100), (25e6, 127)]:
+        # STB/CS# delay: tCK/4 less the STB skew (450ps) in 12.5ps taps, limited to the delay line.
+        for sys_clk_freq, taps in [(100e6, 14), (50e6, 64), (25e6, 127), (200e6, 0)]:
             with self.subTest(sys_clk_freq=sys_clk_freq):
                 self.assertEqual(self.get_nx_phy(sys_clk_freq=sys_clk_freq).stb_delay, taps)
         self.assertEqual(self.get_nx_phy(stb_delay=10).stb_delay, 10)
@@ -196,7 +196,7 @@ class TestRPCPHY(unittest.TestCase):
         phy = self.get_nx_phy()
         self.assertEqual([csr.name for csr in phy.get_csrs()], [
             "stb_shift", "dqs_shift", "db_shift", "rd_en_sel", "rd_en_phase",
-            "rdly_dq_rst", "rdly_dq_inc", "wlvl_rst", "wlvl_inc", "wdly_dir", "wdly_rst", "wdly_move", "rdqs_dir", "rdqs_rst", "rdqs_move", "burstdet_clr", "burstdet_seen", "datavalid_cnt",
+            "rdly_dq_rst", "rdly_dq_inc", "wlvl_rst", "wlvl_inc", "wdly_dir", "wdly_rst", "wdly_move", "rdqs_dir", "rdqs_rst", "rdqs_move", "stb_dly_dir", "stb_dly_rst", "stb_dly_move", "burstdet_clr", "burstdet_seen", "datavalid_cnt",
             "rst", "dly_sel", "rdly_dq_bitslip_rst", "rdly_dq_bitslip",
             "reset_done", "init_done", "reset_fsm", "burst_stop",
         ])
@@ -214,7 +214,7 @@ class TestRPCPHY(unittest.TestCase):
                     "DDRDLL"    : 1,
                     "DQSBUF"    : ndqs,
                     "ODDRX4"    : 1 + 2*nranks, # CLK, STB and CS# (one per rank).
-                    "DELAYB"    : 2*nranks,
+                    "DELAYA"    : 2*nranks,
                     "ODDRX4DQS" : ndqs,
                     "TSHX4DQS"  : ndqs,
                     "ODDRX4DQ"  : 16,
@@ -228,17 +228,17 @@ class TestRPCPHY(unittest.TestCase):
                 for d in [self.items(i) for i in insts if i.of == "DQSBUF"]:
                     self.assertEqual(d["MODX"], "MDDRX4")
                     self.assertEqual(self.domain(d["ECLKIN"]), "sys4x")
-                for d in [self.items(i) for i in insts if i.of == "DELAYB"]:
-                    self.assertEqual(d["DEL_VALUE"], "50")
+                for d in [self.items(i) for i in insts if i.of == "DELAYA"]:
+                    self.assertEqual(d["DEL_VALUE"], "14") # tCK/4 less the STB skew, in taps.
 
     def test_nx_verilog(self):
         pads = self.get_pads(ndqs=2, nranks=2)
         phy  = self.get_nx_phy(pads=pads)
         v    = str(verilog.convert(phy, ios=set(pads.flatten())))
         for primitive in ["ODDRX4", "ODDRX4DQ", "ODDRX4DQS", "TSHX4DQ", "TSHX4DQS", "IDDRX4DQ",
-            "DELAYB", "DQSBUF", "DDRDLL"]:
+            "DELAYA", "DQSBUF", "DDRDLL"]:
             self.assertIn(f"{primitive} ", v)
-        for primitive in ["IDDRX4", "DELAYA"]:
+        for primitive in ["IDDRX4", "DELAYB"]:
             self.assertNotIn(f"{primitive} ", v)
         for clk in ["sys_clk", "sys4x_clk", "init_clk"]:
             self.assertIn(clk, v)
@@ -259,9 +259,9 @@ class TestRPCPHY(unittest.TestCase):
                         out.append((yield dut.o))
                 run_simulation(dut, gen())
                 stream_i = [(w >> b) & 1 for w in words for b in range(8)]
-                # Outputs are sampled one cycle after their input word is applied.
+                # Outputs are registered: one more word (8 UIs).
                 stream_o = [(w >> b) & 1 for w in out   for b in range(8)]
-                self.assertEqual(stream_o[shift:], stream_i[:len(stream_i) - shift])
+                self.assertEqual(stream_o[shift + 8:], stream_i[:len(stream_i) - shift - 8])
 
     def test_simulation_phy_settings(self):
         for generate_read_data in [False, True]:

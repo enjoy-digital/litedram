@@ -55,7 +55,10 @@ class NXRPCPads(RPCPads):
 # Nexus RPC PHY Write Shift ------------------------------------------------------------------------
 
 class _NXRPCPHYShift(Module):
-    """Delay a serialized word (one bit per UI, LSB first) by `shift` UIs (0 to words*len(i))."""
+    """Delay a serialized word (one bit per UI, LSB first) by `shift` UIs (0 to words*len(i)).
+
+    The output is registered (one more sys_clk cycle for all the shifted signals), so that the
+    gearboxes are fed by registers."""
     def __init__(self, i, shift, words=2):
         dw     = len(i)
         self.o = Signal(dw)
@@ -70,13 +73,14 @@ class _NXRPCPHYShift(Module):
         cases = {}
         for n in range(min(words*dw + 1, 2**len(shift))):
             cases[n] = self.o.eq(hist[words*dw - n:(words + 1)*dw - n])
-        self.comb += Case(shift, cases)
+        self.sync += Case(shift, cases)
 
 # Lattice Nexus RPC PHY ----------------------------------------------------------------------------
 
 class NXRPCPHY(BasePHY):
-    delay_taps = 128      # DELAYB taps.
-    delay_tap  = 12.5e-12 # DELAYB tap delay (typical).
+    delay_taps = 128      # DELAYA taps.
+    delay_tap  = 12.5e-12 # DELAYA tap delay (typical).
+    stb_skew   = 450e-12  # STB/CS# arrive this much later than CLK/DQS/DB with the same delay.
 
     def __init__(self, stb_delay=None, eclk="sys4x", rdqs_dec=64, **kwargs):
         # Write shifts (in UIs), to align STB/CS#, DQS and DB between them (the latencies of the
@@ -106,13 +110,18 @@ class NXRPCPHY(BasePHY):
         self._rdqs_dir      = CSRStorage()
         self._rdqs_rst      = CSR()
         self._rdqs_move     = CSR()
+        # STB/CS# output delay: reset (to the static value)/move (direction: 0 to increase, 1 to
+        # decrease), steps of about 12.5ps.
+        self._stb_dly_dir   = CSRStorage()
+        self._stb_dly_rst   = CSR()
+        self._stb_dly_move  = CSR()
         self._burstdet_clr  = CSR()
         self._burstdet_seen = CSRStatus(2)
         self._datavalid_cnt = CSRStatus(8, description="DATAVALID cycles (first DQSBUF) since burstdet_clr.")
 
         kwargs.update(dict(
             write_ser_latency = 1, # ODDRX4.
-            read_des_latency  = 6, # IDDRX4DQ, DQSBUF FIFO and DATAVALID capture (with margin).
+            read_des_latency  = 7, # Write shift register, IDDRX4DQ, DQSBUF FIFO and DATAVALID capture (with margin).
             phytype           = self.__class__.__name__,
             with_bitslip      = False, # The DQSBUF returns the burst aligned.
         ))
@@ -131,9 +140,12 @@ class NXRPCPHY(BasePHY):
         self.settings.bitslips      = 8
         self.settings.read_leveling = True
 
-        # STB/CS# static delay: 90 degrees (a quarter of tCK), limited to the delay line.
+        # STB/CS# output delay: 90 degrees (a quarter of tCK) less the skew measured on the
+        # CertusPro-NX VVML board (centre of the working window from CLK 200MHz to 450MHz),
+        # limited to the delay line. The stb_dly CSRs move it.
         if stb_delay is None:
-            stb_delay = min(round(self.tck/4/self.delay_tap), self.delay_taps - 1)
+            stb_delay = round((self.tck/4 - self.stb_skew)/self.delay_tap)
+            stb_delay = max(0, min(stb_delay, self.delay_taps - 1))
         assert 0 <= stb_delay < self.delay_taps
         self.stb_delay = stb_delay
 
@@ -319,11 +331,30 @@ class NXRPCPHY(BasePHY):
             o_Q    = dout,
         )
 
-    def delayb(self, din, dout, delay):
-        self.specials += Instance("DELAYB",
+    def delaya(self, din, dout, delay):
+        # Output delay, static value by default, moved with the stb_dly CSRs (pulses of 2 sys_clk
+        # cycles).
+        if not hasattr(self, "stb_dly_rst"):
+            self.stb_dly_rst  = Signal(2)
+            self.stb_dly_move = Signal(2)
+            self.sync += [
+                self.stb_dly_rst.eq(Cat(self._stb_dly_rst.wr_stb,   self.stb_dly_rst)),
+                self.stb_dly_move.eq(Cat(self._stb_dly_move.wr_stb, self.stb_dly_move)),
+            ]
+        self.specials += Instance("DELAYA",
+            p_DEL_MODE     = "USER_DEFINED",
             p_DEL_VALUE    = str(delay),
             p_COARSE_DELAY = "0NS",
             i_A            = din,
+            i_LOAD_N       = self.stb_dly_rst == 0,
+            i_MOVE         = self.stb_dly_move != 0,
+            i_DIRECTION    = self._stb_dly_dir.storage,
+            i_COARSE0      = 0,
+            i_COARSE1      = 0,
+            i_RANKSELECT   = 0,
+            i_RANKENABLE   = 0,
+            i_RANK0UPDATE  = 0,
+            i_RANK1UPDATE  = 0,
             o_Z            = dout,
         )
 
@@ -339,7 +370,7 @@ class NXRPCPHY(BasePHY):
         for i in range(len(stb)):
             stb_o = Signal()
             self.oddrx4(din=~stb_1ck if i == 0 else Replicate(1, 8), dout=stb_o)
-            self.delayb(din=stb_o, dout=stb[i], delay=self.stb_delay)
+            self.delaya(din=stb_o, dout=stb[i], delay=self.stb_delay)
 
     def do_cs_serialization(self, cs_n_1ck_out, cs_n):
         # CS# idles high (also on the CS# pins of the unused ranks).
@@ -347,7 +378,7 @@ class NXRPCPHY(BasePHY):
         for i in range(len(cs_n)):
             cs_n_o = Signal()
             self.oddrx4(din=~cs_n_1ck if i == 0 else Replicate(1, 8), dout=cs_n_o)
-            self.delayb(din=cs_n_o, dout=cs_n[i], delay=self.stb_delay)
+            self.delaya(din=cs_n_o, dout=cs_n[i], delay=self.stb_delay)
 
     def do_dqs_serialization(self, dqs_1ck_out, dqs_1ck_in, dqs_oe, dqs_p, dqs_n):
         dqs_1ck = self.write_shift(dqs_1ck_out, self._dqs_shift.storage)
