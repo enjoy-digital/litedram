@@ -268,6 +268,7 @@ class PhySettings(Settings):
             self.vref_dq = vref_dq
         if vref_dq_range is not None:
             assert self.memtype == "DDR4"
+            assert vref_dq_range in [1, 2], f"Invalid vref_dq_range {vref_dq_range} (valid: 1, 2)"
             self.vref_dq_range = vref_dq_range
 
     # Optional RDIMM configuration

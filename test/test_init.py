@@ -149,6 +149,30 @@ class TestInit(unittest.TestCase):
         self.assertEqual(enter_a & 0x3f, 1) # 60.00% + 1*0.65% = 60.65% VDDQ.
 
 
+
+    def test_ddr4_vref_dq_preserves_tccd_l_non_zero(self):
+        # Explicitly verify tCCD_L is preserved when it is non-zero (e.g., tCCD=4 -> 8 clocks).
+        from litedram.init import get_ddr4_phy_init_sequence
+        phy, timing = self._make_ddr4_settings(vref_dq=80.15, vref_dq_range=1)
+        timing.tCCD = 4 # Forces tCCD_L to be non-zero (0x1000)
+        sequence, _ = get_ddr4_phy_init_sequence(phy, timing)
+        mr6 = next(a for c, a, ba, cmd, d in sequence if c == "Load Mode Register 6")
+        enter_a = next(a for c, a, ba, cmd, d in sequence if c.startswith("VrefDQ Training: Range=1"))
+        exit_a = next(a for c, a, ba, cmd, d in sequence if c.startswith("VrefDQ Training: exit"))
+        self.assertNotEqual(mr6 & (0b111 << 10), 0) # Guard against vacuous check
+        self.assertEqual(enter_a & (0b111 << 10), mr6 & (0b111 << 10))
+        self.assertEqual(exit_a & (0b111 << 10), mr6 & (0b111 << 10))
+
+    def test_ddr4_vref_dq_none_is_identical(self):
+        # Explicitly verify that vref_dq=None produces the exact same sequence as omitting it.
+        from litedram.init import get_ddr4_phy_init_sequence
+        phy_a, timing = self._make_ddr4_settings()
+        phy_b, _ = self._make_ddr4_settings(vref_dq=None, vref_dq_range=1)
+        seq_a, reg_a = get_ddr4_phy_init_sequence(phy_a, timing)
+        seq_b, reg_b = get_ddr4_phy_init_sequence(phy_b, timing)
+        self.assertEqual(seq_a, seq_b)
+        self.assertEqual(reg_a, reg_b)
+
     def test_sdr(self):
         from litex_boards.targets.scarabhardware_minispartan6 import BaseSoC
         soc       = BaseSoC()
