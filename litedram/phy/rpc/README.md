@@ -77,7 +77,7 @@ this rate.
 
 With Address Streaming (see below) the next read/write is sent as a Serial Packet on STB and the
 WORDs follow each other on DB. Same bitstream at sys_clk 100MHz, streaming switched with the
-`rpc_stream` CSR of the controller, `sdram_bist 4096 0` (same speeds with `sdram_bist 4096 1`):
+`streaming` CSR of the controller, `sdram_bist 4096 0` (same speeds with `sdram_bist 4096 1`):
 
 | Read streaming | Write streaming | Write     | Read      |
 |----------------|-----------------|-----------|-----------|
@@ -120,8 +120,8 @@ What the DRAM needs from the controller, found on this board:
   type exactly 2 cycles after the previous one, the PHY sends it as a Serial Packet and sends a
   Burst Stop when none follows. The DRAM only takes the write masks of the first and last WORD of
   a stream, so write streaming is only valid when full WORDs are written (BIST, or a CPU through
-  the L2 cache of LiteX): it is off by default (`rpc_stream_writes` of the `ControllerSettings`),
-  read streaming is on (`rpc_stream_reads`), and both can be changed with the `rpc_stream` CSR.
+  the L2 cache of LiteX): it is off by default (`write_streaming` of the `ControllerSettings`),
+  read streaming is on (`read_streaming`), and both can be changed with the `streaming` CSR.
   Other commands (activate, precharge, refresh) still end the stream: serial activate/precharge
   and Toggle RW are not used.
 * A refresh command burst refreshes all the rows of the selected banks (100ns per row in Fast

@@ -170,8 +170,8 @@ class SimSoC(SoCCore):
         controller_settings = ControllerSettings()
         controller_settings.auto_precharge = auto_precharge
         controller_settings.with_refresh = with_refresh
-        controller_settings.rpc_stream_reads  = stream_reads
-        controller_settings.rpc_stream_writes = stream_writes
+        controller_settings.read_streaming  = stream_reads
+        controller_settings.write_streaming = stream_writes
 
         self.add_sdram("sdram",
             phy                     = self.ddrphy,

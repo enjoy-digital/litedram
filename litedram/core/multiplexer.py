@@ -309,12 +309,12 @@ class Multiplexer(Module, AutoCSR):
         # the same type is sent by the PHY as a Serial Packet and its data directly follow the
         # previous ones (see litedram.phy.rpc.basephy). The slot is the only way to do better than
         # tCCD (latency + burst + tBESL): a command that misses it waits for tCCD.
-        rpc_stream_slot = Signal() # A read/write can be issued in this cycle whatever tCCD/tPPD.
-        rpc_stream_hold = Signal() # No other command: they would end the stream.
+        stream_slot = Signal() # A read/write can be issued in this cycle whatever tCCD/tPPD.
+        stream_hold = Signal() # No other command: they would end the stream.
         if single_cmd:
             # When only 1 phase, use choose_req for all requests
             choose_cmd = choose_req
-            self.comb += choose_req.want_cmds.eq(~rpc_stream_hold)
+            self.comb += choose_req.want_cmds.eq(~stream_hold)
             self.comb += choose_req.want_activates.eq(ras_allowed)
 
         # Command steering -------------------------------------------------------------------------
@@ -381,14 +381,14 @@ class Multiplexer(Module, AutoCSR):
         if rpc:
             # Defaults from the settings, changeable by software (ex: writes streamed only while
             # the software knows that full WORDs are written).
-            self._rpc_stream = CSRStorage(fields=[
-                CSRField("reads",  size=1, reset=int(getattr(settings, "rpc_stream_reads",  True)),
+            self._streaming = CSRStorage(fields=[
+                CSRField("reads",  size=1, reset=int(getattr(settings, "read_streaming",  True)),
                     description="Stream the reads."),
-                CSRField("writes", size=1, reset=int(getattr(settings, "rpc_stream_writes", False)),
+                CSRField("writes", size=1, reset=int(getattr(settings, "write_streaming", False)),
                     description="Stream the writes (full WORDs only)."),
-            ], description="RPC Address Streaming.")
-            stream_reads  = self._rpc_stream.fields.reads
-            stream_writes = self._rpc_stream.fields.writes
+            ], description="Streaming of consecutive reads/writes (RPC Address Streaming).")
+            stream_reads  = self._streaming.fields.reads
+            stream_writes = self._streaming.fields.writes
             # Read/write accepted in this cycle, without the chooser's valid (which depends on
             # want_cmds): request selected by the arbiter and of the type that is wanted.
             rw_requests = Array(
@@ -397,7 +397,7 @@ class Multiplexer(Module, AutoCSR):
             rw_accept   = Signal()
             rw_accept_d = Signal(2)
             last_write  = Signal()
-            self.comb += rw_accept.eq(rw_requests[choose_req.arbiter.grant] & (cas_allowed | rpc_stream_slot))
+            self.comb += rw_accept.eq(rw_requests[choose_req.arbiter.grant] & (cas_allowed | stream_slot))
             self.sync += [
                 rw_accept_d.eq(Cat(rw_accept, rw_accept_d[0])),
                 If(rw_accept, last_write.eq(choose_req.want_writes)),
@@ -409,10 +409,10 @@ class Multiplexer(Module, AutoCSR):
                 ).Else(
                     stream_en.eq(stream_reads & choose_req.want_reads),
                 ),
-                rpc_stream_slot.eq(rw_accept_d[1] & stream_en),
+                stream_slot.eq(rw_accept_d[1] & stream_en),
                 # Between the read/write and its slot: only a read/write of the same type (from
                 # registers only: the command paths of the bank machines are long enough).
-                rpc_stream_hold.eq((rw_accept_d[0] | rw_accept_d[1]) & stream_en),
+                stream_hold.eq((rw_accept_d[0] | rw_accept_d[1]) & stream_en),
             ]
 
         # Anti Starvation --------------------------------------------------------------------------
@@ -481,7 +481,7 @@ class Multiplexer(Module, AutoCSR):
             read_time_en.eq(1),
             choose_req.want_reads.eq(1),
             If(single_cmd,
-                choose_req.cmd.ready.eq((cas_allowed | rpc_stream_slot) & (~choose_req.activate() | ras_allowed))
+                choose_req.cmd.ready.eq((cas_allowed | stream_slot) & (~choose_req.activate() | ras_allowed))
             ).Else(
                 choose_cmd.want_cmds.eq(1),
                 choose_cmd.want_activates.eq(ras_allowed),
@@ -503,7 +503,7 @@ class Multiplexer(Module, AutoCSR):
             write_time_en.eq(1),
             choose_req.want_writes.eq(1),
             If(single_cmd,
-                choose_req.cmd.ready.eq((cas_allowed | rpc_stream_slot) & (~choose_req.activate() | ras_allowed))
+                choose_req.cmd.ready.eq((cas_allowed | stream_slot) & (~choose_req.activate() | ras_allowed))
             ).Else(
                 choose_cmd.want_cmds.eq(1),
                 choose_cmd.want_activates.eq(ras_allowed),

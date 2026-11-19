@@ -373,7 +373,7 @@ class TestMultiplexer(unittest.TestCase):
         ]
         run_simulation(dut, generators)
 
-    def test_rpc_stream(self):
+    def test_streaming(self):
         # RPC Address Streaming: consecutive reads (and writes when enabled) are issued every 2
         # cycles instead of tCCD, and a command of another type waits for tCCD after the stream.
         def run(access, controller_settings, check):
@@ -417,9 +417,9 @@ class TestMultiplexer(unittest.TestCase):
                 self.assertGreaterEqual(b - a, 3 if a in accepts[3] else 8)
 
         run("read",  dict(),                                               check_stream)
-        run("read",  dict(rpc_stream_reads=False),                         check_no_stream)
+        run("read",  dict(read_streaming=False),                         check_no_stream)
         run("write", dict(),                                               check_no_stream)
-        run("write", dict(rpc_stream_writes=True),                         check_stream)
+        run("write", dict(write_streaming=True),                         check_stream)
 
     def test_fsm_anti_starvation(self):
         # Check that anti-starvation works according to controller settings.
