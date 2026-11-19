@@ -373,6 +373,54 @@ class TestMultiplexer(unittest.TestCase):
         ]
         run_simulation(dut, generators)
 
+    def test_rpc_stream(self):
+        # RPC Address Streaming: consecutive reads (and writes when enabled) are issued every 2
+        # cycles instead of tCCD, and a command of another type waits for tCCD after the stream.
+        def run(access, controller_settings, check):
+            dut = MultiplexerDUT(
+                controller_settings = controller_settings,
+                phy_settings        = dict(memtype="RPC", nphases=4, rdphase=3, wrphase=3,
+                    read_latency=10, cl=9, cwl=9, databits=16, dfi_databits=4*16),
+                timing_settings     = dict(tCCD=8, tWTR=4))
+            accepts = {2: [], 3: []}
+            def main_generator(dut):
+                yield from getattr(dut.bm_drivers[2], access)()
+                for cycle in range(40):
+                    # A precharge is pending on another bank from cycle 20.
+                    if cycle == 20:
+                        yield from dut.bm_drivers[3].precharge()
+                    for n in accepts:
+                        if (yield dut.bank_machines[n].cmd.ready):
+                            accepts[n].append(cycle)
+                    yield
+                    # Stop the stream.
+                    if len(accepts[2]) == 8:
+                        yield from dut.bm_drivers[2].nop()
+                    if len(accepts[3]) == 1:
+                        yield from dut.bm_drivers[3].nop()
+            run_simulation(dut, [main_generator(dut), timeout_generator(100)])
+            check(accepts)
+
+        def check_stream(accepts):
+            times = accepts[2]
+            self.assertEqual(len(times), 8)
+            self.assertEqual([b - a for a, b in zip(times, times[1:])], [2]*7)
+            # The precharge is not issued during the stream, and tCCD after its last read/write.
+            self.assertEqual(len(accepts[3]), 1)
+            self.assertGreaterEqual(accepts[3][0], times[-1] + 8)
+        def check_no_stream(accepts):
+            # tCCD after a read/write, tPPD (3 cycles) after the precharge.
+            times = sorted(accepts[2] + accepts[3])
+            self.assertGreater(len(accepts[2]), 2)
+            self.assertEqual(len(accepts[3]), 1)
+            for a, b in zip(times, times[1:]):
+                self.assertGreaterEqual(b - a, 3 if a in accepts[3] else 8)
+
+        run("read",  dict(),                                               check_stream)
+        run("read",  dict(rpc_stream_reads=False),                         check_no_stream)
+        run("write", dict(),                                               check_no_stream)
+        run("write", dict(rpc_stream_writes=True),                         check_stream)
+
     def test_fsm_anti_starvation(self):
         # Check that anti-starvation works according to controller settings.
         def main_generator(dut):

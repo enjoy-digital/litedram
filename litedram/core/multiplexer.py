@@ -17,7 +17,7 @@ from migen.genlib.roundrobin import *
 from migen.genlib.coding import Decoder
 
 from litex.soc.interconnect import stream
-from litex.soc.interconnect.csr import AutoCSR
+from litex.soc.interconnect.csr import AutoCSR, CSRStorage, CSRField
 
 from litedram.common import *
 from litedram.core.bandwidth import Bandwidth
@@ -73,7 +73,7 @@ class _CommandChooser(Module):
             self.comb += valids[i].eq(request.valid & (command | read | write))
 
 
-        arbiter = RoundRobin(n, SP_CE)
+        self.arbiter = arbiter = RoundRobin(n, SP_CE)
         self.submodules += arbiter
         choices = Array(valids[i] for i in range(n))
         self.comb += [
@@ -305,10 +305,16 @@ class Multiplexer(Module, AutoCSR):
         # command stream is used, as with 1 phase, and the commands are spaced (see tPPD below).
         rpc        = (settings.phy.memtype == "RPC")
         single_cmd = (settings.phy.nphases == 1) or rpc
+        # RPC Address Streaming: a read/write issued exactly 2 sys_clk (8 tCK) after a read/write of
+        # the same type is sent by the PHY as a Serial Packet and its data directly follow the
+        # previous ones (see litedram.phy.rpc.basephy). The slot is the only way to do better than
+        # tCCD (latency + burst + tBESL): a command that misses it waits for tCCD.
+        rpc_stream_slot = Signal() # A read/write can be issued in this cycle whatever tCCD/tPPD.
+        rpc_stream_hold = Signal() # No other command: they would end the stream.
         if single_cmd:
             # When only 1 phase, use choose_req for all requests
             choose_cmd = choose_req
-            self.comb += choose_req.want_cmds.eq(1)
+            self.comb += choose_req.want_cmds.eq(~rpc_stream_hold)
             self.comb += choose_req.want_activates.eq(ras_allowed)
 
         # Command steering -------------------------------------------------------------------------
@@ -370,6 +376,44 @@ class Multiplexer(Module, AutoCSR):
             read_available.eq(reduce(or_, reads)),
             write_available.eq(reduce(or_, writes))
         ]
+
+        # RPC Address Streaming --------------------------------------------------------------------
+        if rpc:
+            # Defaults from the settings, changeable by software (ex: writes streamed only while
+            # the software knows that full WORDs are written).
+            self._rpc_stream = CSRStorage(fields=[
+                CSRField("reads",  size=1, reset=int(getattr(settings, "rpc_stream_reads",  True)),
+                    description="Stream the reads."),
+                CSRField("writes", size=1, reset=int(getattr(settings, "rpc_stream_writes", False)),
+                    description="Stream the writes (full WORDs only)."),
+            ], description="RPC Address Streaming.")
+            stream_reads  = self._rpc_stream.fields.reads
+            stream_writes = self._rpc_stream.fields.writes
+            # Read/write accepted in this cycle, without the chooser's valid (which depends on
+            # want_cmds): request selected by the arbiter and of the type that is wanted.
+            rw_requests = Array(
+                req.valid & ((req.is_read & choose_req.want_reads) | (req.is_write & choose_req.want_writes))
+                for req in requests)
+            rw_accept   = Signal()
+            rw_accept_d = Signal(2)
+            last_write  = Signal()
+            self.comb += rw_accept.eq(rw_requests[choose_req.arbiter.grant] & (cas_allowed | rpc_stream_slot))
+            self.sync += [
+                rw_accept_d.eq(Cat(rw_accept, rw_accept_d[0])),
+                If(rw_accept, last_write.eq(choose_req.want_writes)),
+            ]
+            stream_en = Signal()
+            self.comb += [
+                If(last_write,
+                    stream_en.eq(stream_writes & choose_req.want_writes),
+                ).Else(
+                    stream_en.eq(stream_reads & choose_req.want_reads),
+                ),
+                rpc_stream_slot.eq(rw_accept_d[1] & stream_en),
+                # Between the read/write and its slot: only a read/write of the same type (from
+                # registers only: the command paths of the bank machines are long enough).
+                rpc_stream_hold.eq((rw_accept_d[0] | rw_accept_d[1]) & stream_en),
+            ]
 
         # Anti Starvation --------------------------------------------------------------------------
 
@@ -437,7 +481,7 @@ class Multiplexer(Module, AutoCSR):
             read_time_en.eq(1),
             choose_req.want_reads.eq(1),
             If(single_cmd,
-                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+                choose_req.cmd.ready.eq((cas_allowed | rpc_stream_slot) & (~choose_req.activate() | ras_allowed))
             ).Else(
                 choose_cmd.want_cmds.eq(1),
                 choose_cmd.want_activates.eq(ras_allowed),
@@ -459,7 +503,7 @@ class Multiplexer(Module, AutoCSR):
             write_time_en.eq(1),
             choose_req.want_writes.eq(1),
             If(single_cmd,
-                choose_req.cmd.ready.eq(cas_allowed & (~choose_req.activate() | ras_allowed))
+                choose_req.cmd.ready.eq((cas_allowed | rpc_stream_slot) & (~choose_req.activate() | ras_allowed))
             ).Else(
                 choose_cmd.want_cmds.eq(1),
                 choose_cmd.want_activates.eq(ras_allowed),
