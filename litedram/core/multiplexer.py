@@ -305,10 +305,11 @@ class Multiplexer(Module, AutoCSR):
         # command stream is used, as with 1 phase, and the commands are spaced (see tPPD below).
         rpc        = (settings.phy.memtype == "RPC")
         single_cmd = (settings.phy.nphases == 1) or rpc
-        # RPC Address Streaming: a read/write issued exactly 2 sys_clk (8 tCK) after a read/write of
-        # the same type is sent by the PHY as a Serial Packet and its data directly follow the
-        # previous ones (see litedram.phy.rpc.basephy). The slot is the only way to do better than
-        # tCCD (latency + burst + tBESL): a command that misses it waits for tCCD.
+        # Streaming (settings.read_streaming/write_streaming): consecutive reads/writes of the same
+        # type are issued back to back in the slot the memory gives for it, instead of waiting tCCD.
+        # RPC (Address Streaming): the slot is exactly 2 sys_clk (8 tCK) after the previous
+        # read/write; the PHY sends the command as a Serial Packet and the data directly follow the
+        # previous ones (see litedram.phy.rpc.basephy). A command that misses the slot waits for tCCD.
         stream_slot = Signal() # A read/write can be issued in this cycle whatever tCCD/tPPD.
         stream_hold = Signal() # No other command: they would end the stream.
         if single_cmd:
@@ -377,7 +378,7 @@ class Multiplexer(Module, AutoCSR):
             write_available.eq(reduce(or_, writes))
         ]
 
-        # RPC Address Streaming --------------------------------------------------------------------
+        # Streaming (RPC: Address Streaming) -------------------------------------------------------
         if rpc:
             # Defaults from the settings, changeable by software (ex: writes streamed only while
             # the software knows that full WORDs are written).
@@ -385,7 +386,7 @@ class Multiplexer(Module, AutoCSR):
                 CSRField("reads",  size=1, reset=int(getattr(settings, "read_streaming",  True)),
                     description="Stream the reads."),
                 CSRField("writes", size=1, reset=int(getattr(settings, "write_streaming", False)),
-                    description="Stream the writes (full WORDs only)."),
+                    description="Stream the writes (RPC: full WORDs only)."),
             ], description="Streaming of consecutive reads/writes (RPC Address Streaming).")
             stream_reads  = self._streaming.fields.reads
             stream_writes = self._streaming.fields.writes
