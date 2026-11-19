@@ -450,6 +450,113 @@ class TestRPCPHY(unittest.TestCase):
         self.assertEqual(res["mem"], [(expected >> (16*n)) & 0xffff for n in range(16)])
         self.assertEqual(res["read"], (s.read_latency, expected))
 
+    def test_simulation_dram_model_stream(self):
+        # Pure Migen: Address Streaming. Reads/writes issued every 2 sys_clk are sent as Serial
+        # Packets on STB (other bank/column of an open row included) and their data follow each
+        # other; the burst ends with a Burst Stop. Checked against the DRAM model: memory content,
+        # read data, read latency of each WORD and Serial Packets all legal.
+        pads = self.get_pads()
+        phy  = self.get_sim_phy(pads=pads, sys_clk_freq=1e6, with_dram_model=True, dram_model_rowbits=2)
+        dfi  = phy.dfi
+        s    = phy.settings
+        rows = {1: 2, 2: 1} # bank: open row.
+
+        def word(n):
+            return int.from_bytes(bytes((17*n + 3*i + 1) & 0xff for i in range(32)), "little")
+
+        # (bank, column): the columns are in 16-bit words, 16 per WORD.
+        stream = [(1, 0x010), (1, 0x020), (1, 0x3f0), (2, 0x050), (2, 0x060)]
+        single = (1, 0x030)
+        mask   = 0x0f0f00ff # 1: byte not written.
+
+        events = {} # cycle: [(signal, value)].
+        def at(cycle, *assigns):
+            events.setdefault(cycle, []).extend(assigns)
+        def cmd(cycle, phase, cas=1, ras=1, we=1, reset_n=1, address=0, bank=0):
+            p = dfi.phases[phase]
+            at(cycle, (p.cas_n, cas), (p.ras_n, ras), (p.we_n, we), (p.cs_n, 0), (p.reset_n, reset_n),
+                (p.address, address), (p.bank, bank))
+        def write(cycle, bank, col, data, mask=0):
+            cmd(cycle, s.wrphase, cas=0, we=0, address=col, bank=bank)
+            at(cycle, (dfi.phases[s.wrphase].wrdata_en, 1))
+            for p in range(4):
+                at(cycle + s.write_latency,
+                    (dfi.phases[p].wrdata,      (data >> (64*p)) & (2**64 - 1)),
+                    (dfi.phases[p].wrdata_mask, (mask >> (8*p)) & 0xff))
+        def read(cycle, bank, col):
+            cmd(cycle, s.rdphase, cas=0, address=col, bank=bank)
+            at(cycle, (dfi.phases[s.rdphase].rddata_en, 1))
+
+        # CS# lock (cs_n=0 on phase 0 only), PU RESET (ACT with reset_n=0), ZQ INIT, ACTs.
+        at(4, (dfi.p0.cs_n, 0))
+        cmd(7,  0, ras=0, reset_n=0)
+        cmd(24, 0, we=0, reset_n=0, address=1 << 10)
+        for n, (bank, row) in enumerate(rows.items()):
+            cmd(34 + 4*n, 0, ras=0, address=row, bank=bank)
+        # Write stream, single masked write (over the pattern of another WORD), read stream (in
+        # another order) and single read.
+        t_write = 44
+        for n, (bank, col) in enumerate(stream):
+            write(t_write + 2*n, bank, col, word(n))
+        t_single = t_write + 2*len(stream) + 12
+        write(t_single,      *single, word(10))
+        write(t_single + 12, *single, word(11), mask=mask)
+        t_read = t_single + 24
+        order  = [3, 0, 4, 1, 2]
+        for n, i in enumerate(order):
+            read(t_read + 2*n, *stream[i])
+        t_read_single = t_read + 2*len(order) + 12
+        read(t_read_single, *single)
+        ncycles = t_read_single + s.read_latency + 4
+
+        res = {"read": {}}
+        def gen():
+            signals = set()
+            for cycle in range(ncycles):
+                for p in dfi.phases:
+                    for name, value in [("cas_n", 1), ("ras_n", 1), ("we_n", 1), ("cs_n", 1),
+                        ("reset_n", 1), ("wrdata_en", 0), ("rddata_en", 0)]:
+                        yield getattr(p, name).eq(value)
+                for signal, value in events.get(cycle, []):
+                    yield signal.eq(value)
+                yield
+                if (yield dfi.phases[0].rddata_valid):
+                    data = 0
+                    for p in range(4):
+                        data |= (yield dfi.phases[p].rddata) << (64*p)
+                    res["read"][cycle] = data
+            res["error"]  = (yield phy.dram.error)
+            res["nwords"] = (yield phy.dram.nwords)
+            res["mem"]    = {}
+            for bank, col in stream + [single]:
+                base = (bank << (2 + 6 + 4)) | (rows[bank] << (6 + 4)) | col
+                data = 0
+                for n in range(16):
+                    data |= (yield phy.dram.mem[base + n]) << (16*n)
+                res["mem"][(bank, col)] = data
+
+        run_simulation(phy, {"sys": [gen()]}, clocks={
+            "sys":           (16, 8),
+            "sys4x_90":      (4,  1),
+            "sys4x_180":     (4,  0),
+            "sys4x_90_ddr":  (2,  0),
+            "sys4x_180_ddr": (2,  1),
+        })
+
+        masked = 0
+        for n in range(32):
+            byte = ((word(10) if (mask >> n) & 1 else word(11)) >> (8*n)) & 0xff
+            masked |= byte << (8*n)
+        expected = {addr: word(n) for n, addr in enumerate(stream)}
+        expected[single] = masked
+        self.assertEqual(res["error"], 0)
+        self.assertEqual(res["nwords"], 2*len(stream) + 3)
+        self.assertEqual(res["mem"], expected)
+        # The data of the WORD n of a stream come 2*n sys_clk after the ones of the first WORD.
+        reads = {t_read + 2*n + s.read_latency: expected[stream[i]] for n, i in enumerate(order)}
+        reads[t_read_single + s.read_latency] = masked
+        self.assertEqual(res["read"], reads)
+
 
 if __name__ == "__main__":
     unittest.main()

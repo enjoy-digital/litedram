@@ -420,8 +420,30 @@ class NXRPCPHY(BasePHY):
             self.comb += position.eq(self._rd_en_phase.storage + self.rd_slip[i])
             self.comb += self.dqs_re[i].eq(self.write_shift(Replicate(dqs_re, 4), position, words=3))
 
-        datavalid_d = Signal(len(self.datavalid))
-        self.sync += datavalid_d.eq(self.datavalid)
+        # The read data come over the sys_clk cycles flagged by DATAVALID (2 per WORD, any number
+        # of WORDs in a row with Address Streaming) and the deserializer of the BasePHY takes them
+        # later, at a fixed latency (dq_read_stb): an elastic buffer per DQSBUF, with its pointers
+        # reset when no read is in progress.
+        rd_depth = 8
+        rd_idle  = Signal()
+        rd_wrptr = [Signal(max=rd_depth, name=f"rd_wrptr{n}") for n in range(len(self.datavalid))]
+        rd_rdptr = Signal(max=rd_depth)
+        self.comb += rd_idle.eq((self.rddata_en.sr == 0) & ~self.dq_read_stb)
+        self.sync += [
+            If(rd_idle,
+                rd_rdptr.eq(0),
+            ).Elif(self.dq_read_stb,
+                rd_rdptr.eq(rd_rdptr + 1),
+            )
+        ]
+        for n in range(len(self.datavalid)):
+            self.sync += [
+                If(rd_idle,
+                    rd_wrptr[n].eq(0),
+                ).Elif(self.datavalid[n],
+                    rd_wrptr[n].eq(rd_wrptr[n] + 1),
+                )
+            ]
         self.sync += [
             If(self._burstdet_clr.wr_stb,
                 self._datavalid_cnt.status.eq(0),
@@ -471,20 +493,11 @@ class NXRPCPHY(BasePHY):
                     **{f"o_Q{n}": db_i_1ck[n] for n in range(8)},
                 ),
             ]
-            # The burst comes over the two sys_clk cycles flagged by DATAVALID: hold it and present
-            # it to the deserializer of the BasePHY (which runs later, at a fixed latency).
-            db_i_2ck = Signal(16)
+            # Elastic buffer (see above).
+            db_i_buf = Array(Signal(8, name=f"db_i_buf{i}_{n}") for n in range(rd_depth))
             self.sync += If(self._burstdet_clr.wr_stb,
-                db_i_2ck.eq(0), # Debug: no stale data after a clear.
+                [db_i_buf[n].eq(0) for n in range(rd_depth)], # Debug: no stale data after a clear.
             ).Elif(self.datavalid[byte],
-                If(datavalid_d[byte],
-                    db_i_2ck[8:].eq(db_i_1ck),
-                ).Else(
-                    db_i_2ck[:8].eq(db_i_1ck),
-                )
+                db_i_buf[rd_wrptr[byte]].eq(db_i_1ck),
             )
-            self.comb += If(self.dq_in_cnt,
-                db_1ck_in[i].eq(db_i_2ck[8:]),
-            ).Else(
-                db_1ck_in[i].eq(db_i_2ck[:8]),
-            )
+            self.comb += db_1ck_in[i].eq(db_i_buf[rd_rdptr])

@@ -7,9 +7,12 @@
 # Behavioural RPC DRAM model for simulation.
 #
 # Models what the RPC PHY uses: parallel commands (Request Packets on DB after the STB preamble),
-# single WORD (32 bytes, BC=0) reads/writes with data masks, one open row per bank. Serial commands
-# (Burst Stop...), resets, mode register, refresh and ZQ calibration are accepted and ignored: the
-# latencies are fixed by `cl`.
+# WORD (32 bytes) reads/writes with data masks, one open row per bank, and the Serial Packets on
+# STB that follow a read/write Request Packet (one per 8 tCK): read/write of another WORD (Address
+# Streaming, the data follow each other without gap), NOP, Activate and Burst Stop. Resets, mode
+# register, refresh and ZQ calibration are accepted and ignored: the latencies are fixed by `cl`.
+# `error` is set (and stays set) on a Serial Packet that the model does not support or that is
+# not legal (direction change without Toggle RW...).
 
 from migen import *
 
@@ -39,18 +42,24 @@ class RPCDRAMModel(Module):
         # # #
 
         # STB preamble: STB low for 2 tCK (4 UIs) marks the start of a Request Packet.
+        # (STB has to be seen high first: the PHY outputs are low until its serializers start)
         stb_zeros = Signal(max=8)
+        stb_high  = Signal()
         self.sync += [
             If(stb_in == 0,
-                If(stb_zeros != 7, stb_zeros.eq(stb_zeros + 1))
+                If((stb_zeros != 7) & stb_high, stb_zeros.eq(stb_zeros + 1))
             ).Else(
+                stb_high.eq(1),
                 stb_zeros.eq(0)
             )
         ]
 
-        # DB is center-aligned with CLK: register it so that it is stable over a model cycle.
-        dq = Signal(16)
+        # DB/STB are center-aligned with CLK: register them so that they are stable over a model
+        # cycle.
+        dq  = Signal(16)
+        stb = Signal(reset=1)
         self.sync += dq.eq(dq_in)
+        self.sync += stb.eq(stb_in)
 
         # Memory: 16-bit words, 16 words per WORD, 64 WORDs per row.
         self.mem = mem = Memory(16, 2**(2 + rowbits + 6 + 4))
@@ -63,11 +72,13 @@ class RPCDRAMModel(Module):
         rows  = Array(Signal(rowbits) for _ in range(4))
         bank  = Signal(2)
         col   = Signal(6)
-        mask  = Signal(32)
+        mask  = Signal(64) # First WORD mask (WL-2), last WORD mask (WL-1).
         write = Signal()
-        mask_bits = Array(mask[n] for n in range(32))
+        first = Signal()   # First WORD of the burst.
+        mask_bits = Array(mask[n] for n in range(64))
 
-        # UIs since the first word of the Request Packet.
+        # UIs since the first word of the Request Packet (stays in the data window once there:
+        # 2*cl ... 2*cl + 15, so ui[0:4] is always the position in the current Serial Packet).
         ui   = Signal(max=2*cl + 16 + 1)
         word = Signal(4)
         addr = Signal(2 + rowbits + 6 + 4)
@@ -79,9 +90,58 @@ class RPCDRAMModel(Module):
             wr.dat_w.eq(dq),
         ]
 
+        # Serial Packets: 16 bits on STB (both CLK edges), the first one starts with the Request
+        # Packet. The packet received in slot n tells what follows the WORD n of the burst: slot n
+        # ends before WORD n starts and slot n + 2 after WORD n ends, so 2 entries are enough.
+        self.error  = error  = Signal()
+        self.nwords = nwords = Signal(32) # WORDs transferred (for the tests).
+        sp      = Signal(16)
+        sp_bits = Array(sp[n] for n in range(16))
+        packet  = Signal(16)
+        serial  = Signal() # Address Streaming: the burst lasts until a Burst Stop.
+        slot    = Signal()
+        chunk   = Signal()
+        NEXT_STOP, NEXT_INC, NEXT_LOAD = range(3)
+        nxt_kind = Array(Signal(2) for _ in range(2))
+        nxt_bank = Array(Signal(2) for _ in range(2))
+        nxt_col  = Array(Signal(6) for _ in range(2))
+        self.comb += packet.eq(Cat(sp[:15], stb))
+        receive_serial = [
+            NextValue(sp_bits[ui[0:4]], stb),
+            If(ui[0:4] == 15,
+                NextValue(slot, ~slot),
+                NextValue(nxt_kind[slot], Mux(serial, NEXT_INC, NEXT_STOP)),
+                Case(packet[0:2], {
+                    # NOP.
+                    0b11 : [],
+                    # Read/Write.
+                    0b10 : [
+                        NextValue(serial, 1),
+                        NextValue(nxt_kind[slot], NEXT_LOAD),
+                        NextValue(nxt_bank[slot], packet[2:4]),
+                        NextValue(nxt_col[slot],  packet[5:11]),
+                        If(packet[4] == write, NextValue(error, 1)),
+                    ],
+                    # Activate.
+                    0b01 : [
+                        NextValue(rows[packet[2:4]], packet[4:4 + rowbits]),
+                    ],
+                    # Utility: Burst Stop only.
+                    0b00 : [
+                        NextValue(nxt_kind[slot], NEXT_STOP),
+                        If(packet[2:6] != 0b0010, NextValue(error, 1)),
+                    ],
+                })
+            )
+        ]
+
         self.fsm = fsm = FSM(reset_state="IDLE")
         self.submodules += fsm
         fsm.act("IDLE",
+            NextValue(serial, 0),
+            NextValue(slot,   0),
+            NextValue(chunk,  0),
+            NextValue(first,  1),
             If(stb_zeros == 4,
                 NextState("CMD-P")
             )
@@ -89,10 +149,12 @@ class RPCDRAMModel(Module):
         fsm.act("CMD-P",
             NextValue(cmd_p, dq),
             NextValue(ui, 1),
+            NextValue(sp_bits[0], stb),
             NextState("CMD-N")
         )
         fsm.act("CMD-N",
             NextValue(ui, ui + 1),
+            NextValue(sp_bits[1], stb),
             NextValue(bank, cmd_p[3:5]),
             NextValue(col,  Cat(cmd_p[13:16], dq[13:16])),
             NextState("IDLE"),
@@ -115,15 +177,27 @@ class RPCDRAMModel(Module):
                 "default" : [],
             })
         )
+        last = Signal()
+        self.comb += last.eq(nxt_kind[chunk] == NEXT_STOP)
         fsm.act("BURST",
             NextValue(ui, ui + 1),
+            *receive_serial,
             If(write,
-                # Data masks, 2 tCK before the data (2 x 32 bits: only the first WORD is used).
+                # Data masks, 2 tCK before the data: 32 bits for the first WORD of the burst, then
+                # 32 bits for the last one (when it is not the first one too).
                 If(ui == 2*(cl - 2) + 0, NextValue(mask[ 0:16], dq)),
                 If(ui == 2*(cl - 2) + 1, NextValue(mask[16:32], dq)),
+                If(ui == 2*(cl - 1) + 0, NextValue(mask[32:48], dq)),
+                If(ui == 2*(cl - 1) + 1, NextValue(mask[48:64], dq)),
                 # Data: 16 words, a mask bit set means the byte is not written.
                 If(ui >= 2*cl,
-                    wr.we.eq(~Cat(mask_bits[Cat(0, word)], mask_bits[Cat(1, word)])),
+                    If(first,
+                        wr.we.eq(~Cat(mask_bits[Cat(0, word, 0)], mask_bits[Cat(1, word, 0)])),
+                    ).Elif(last,
+                        wr.we.eq(~Cat(mask_bits[Cat(0, word, 1)], mask_bits[Cat(1, word, 1)])),
+                    ).Else(
+                        wr.we.eq(0b11),
+                    )
                 ),
             ).Else(
                 # DQS preamble (1 tCK), then data.
@@ -135,7 +209,19 @@ class RPCDRAMModel(Module):
                     dq_out.eq(rd.dat_r),
                 ),
             ),
+            # End of a WORD: stop, or go on with the next WORD or with the WORD of a Serial Packet.
             If(ui == 2*cl + 16 - 1,
-                NextState("IDLE")
+                NextValue(ui,     2*cl),
+                NextValue(chunk,  ~chunk),
+                NextValue(first,  0),
+                NextValue(nwords, nwords + 1),
+                Case(nxt_kind[chunk], {
+                    NEXT_STOP : NextState("IDLE"),
+                    NEXT_INC  : NextValue(col, col + 1),
+                    NEXT_LOAD : [
+                        NextValue(bank, nxt_bank[chunk]),
+                        NextValue(col,  nxt_col[chunk]),
+                    ],
+                })
             )
         )

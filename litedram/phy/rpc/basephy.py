@@ -244,6 +244,35 @@ class BasePHY(Module, AutoCSR):
                 adapter.ref_op.eq(adapter.REF_OP["FST"]),
             ]
 
+        # Address Streaming -------------------------------------------------------------------------
+        # A read/write Request Packet is followed by Serial Packets on STB (one per 8 tCK = 2
+        # sys_clk, the first one starts with the Request Packet). A Serial Packet can hold the next
+        # read/write (any bank/column of an open row): its data then directly follow the data of
+        # the previous WORD, without the Request Packet, latency and tBESL of a new burst. The PHY
+        # uses this for a read/write that comes exactly 2 sys_clk after a read/write of the same
+        # type (the controller only does this with RPC, see the Multiplexer), and stops the burst
+        # (Burst Stop Serial Packet) when no such command follows.
+        # The 2 sys_clk of command history give the look-ahead: when a command is serialized
+        # (dfi_hist[2]), the next one of the stream is already there (dfi_hist[0]).
+        assert rdphase == wrphase
+        rwphase  = rdphase
+        rw_types = ["RD", "WR"]
+        rw_new   = {t: dfi_adapters[2*nphases + rwphase].is_cmd(t) for t in rw_types}
+        rw_d     = {t: [Signal(name=f"rw_{t.lower()}_d{n}") for n in range(2)] for t in rw_types}
+        for t in rw_types:
+            self.sync += [rw_d[t][0].eq(rw_new[t]), rw_d[t][1].eq(rw_d[t][0])]
+        # stream[n]: the read/write of dfi_hist[n] continues a burst (no Request Packet).
+        self.stream = stream = [Signal(name=f"stream{n}") for n in range(3)]
+        self.comb += stream[0].eq(reduce(or_, [rw_new[t] & rw_d[t][1] for t in rw_types]))
+        self.sync += [stream[1].eq(stream[0]), stream[2].eq(stream[1])]
+        # Request Packets: all the commands but the ones of a stream.
+        pcmd_valid = []
+        for n, adapter in enumerate(dfi_adapters):
+            if n%nphases == rwphase:
+                pcmd_valid.append(adapter.cmd_valid & ~stream[2 - n//nphases])
+            else:
+                pcmd_valid.append(adapter.cmd_valid)
+
         # Serialize commands to DB pins
         for i in range(databits):
             # A list of differential DB values using previous DFI coomand:
@@ -252,7 +281,7 @@ class BasePHY(Module, AutoCSR):
             self.comb += db_1ck_cmd[i].eq(Cat(*bits))
 
         # Commands go on the 2nd cycle, so use previous DFI
-        self.comb += dq_cmd_en.eq(reduce(or_, [a.cmd_valid for a in dfi_adapters[:nphases]]))
+        self.comb += dq_cmd_en.eq(reduce(or_, pcmd_valid[:nphases]))
 
         # Power Up Reset ---------------------------------------------------------------------------
         # During Power Up, after stabilizing clocks, Power Up Reset must be done. It consists of a
@@ -354,34 +383,70 @@ class BasePHY(Module, AutoCSR):
         # rate cycles before writing a parallel command to activate the DRAM.
         stb_bits = []
 
-        assert self.settings.rdphase == 3
-        read_sent = [Signal(), Signal()]
-        self.comb += read_sent[0].eq(dfi_adapters[3].cmd_valid & (dfi_adapters[3].is_cmd("RD") | dfi_adapters[3].is_cmd("WR")))
-        self.sync += read_sent[1].eq(read_sent[0])
+        # Serial Packet (16 bits, 2 per tCK) that follows each read/write: it starts with the
+        # command (on rwphase, the last phase) and ends 2 sys_clk later.
+        #   Read/Write : 0 1 BA0 BA1 RD CA4 CA5 CA6 CA7 CA8 CA9 x x x x x  (next command of the stream)
+        #   Burst Stop : 0 0 0   1   0  0   x ...                          (no next command)
+        assert rwphase == nphases - 1
+        cur   = dfi_adapters[0*nphases + rwphase] # Command being serialized.
+        nxt   = dfi_adapters[1*nphases + rwphase] # Next command of the stream, 1 sys_clk before it is serialized.
+        rw_s  = Signal() # Read/write being serialized.
+        rw_s1 = Signal() # 1 sys_clk later.
+        rw_s2 = Signal() # 2 sys_clk later.
+        self.comb += rw_s.eq(cur.cmd_valid & cur.is_cmd(rw_types) & cmd_valid)
+        self.sync += [rw_s1.eq(rw_s), rw_s2.eq(rw_s1)]
+        nxt_dfi = dfi_hist[1].phases[rwphase]
+        cur_dfi = dfi_hist[2].phases[rwphase]
+        serial  = Signal(2*nphases, reset=2**(2*nphases) - 1)
+        self.comb += [
+            serial.eq(2**(2*nphases) - 1),
+            # Bits 0-1, with the command.
+            If(rw_s,
+                serial[2*rwphase + 0].eq(0),
+                serial[2*rwphase + 1].eq(stream[0]),
+            ),
+            # Bits 2-9.
+            If(rw_s1,
+                If(stream[1],
+                    serial[0].eq(nxt_dfi.bank[0]),
+                    serial[1].eq(nxt_dfi.bank[1]),
+                    serial[2].eq(nxt.is_cmd("RD")),
+                    serial[3].eq(nxt_dfi.address[4]),
+                    serial[4].eq(nxt_dfi.address[5]),
+                    serial[5].eq(nxt_dfi.address[6]),
+                    serial[6].eq(nxt_dfi.address[7]),
+                    serial[7].eq(nxt_dfi.address[8]),
+                ).Elif(self._burst_stop.storage,
+                    serial[0].eq(0),
+                    serial[1].eq(1),
+                    serial[2].eq(0),
+                    serial[3].eq(0),
+                ).Else(
+                    # Without Burst Stop: NOP (the burst ends with its burst count).
+                    serial[0].eq(1),
+                    serial[1].eq(1),
+                )
+            ),
+            # Bit 10.
+            If(rw_s2 & stream[2],
+                serial[0].eq(cur_dfi.address[9]),
+            ),
+        ]
+        # Without Burst Stop, the first bits of the packet are those of a NOP too.
+        nop_bits = Signal()
+        self.comb += nop_bits.eq(rw_s & ~stream[0] & ~self._burst_stop.storage)
 
         for p in range(nphases):
             # Use cmd from current and prev cycle, depending on which phase the command appears on
-            preamble = (dfi_adapters[p+2].cmd_valid | dfi_adapters[p+1].cmd_valid) & cmd_valid
+            preamble = (pcmd_valid[p+2] | pcmd_valid[p+1]) & cmd_valid
 
-            # force 000100xxxxxxxxxx after preamble to generate Burst Stop
-            assert self.settings.rdphase == 3
-            burst_stop = {
-                0: [0, 0],
-                1: [0, 1],
-                2: [0, 0],
-                3: [1, 1],
-            }[(p+1)%4]
-            read = read_sent[0] if p == 3 else read_sent[1]
-            burst_stop_zero = [cmd_valid & read & (bs == 0) & self._burst_stop.storage
-                               for bs in burst_stop]
-
-            # We only want to use STB to start parallel commands, serial reset or to send NOPs. NOP
-            # is indicated by the first two bits being high (0b11, and other as "don't care"), so
-            # we can simply hold STB high all the time and reset is zeros for 8 cycles (1 sysclk).
-            # stb_bits += 2 * [~(preamble | stb_reset_seq)]
+            # We use STB to start parallel commands, for the serial reset, for the Serial Packets
+            # of the reads/writes and to send NOPs. NOP is indicated by the first two bits being
+            # high (0b11, and other as "don't care"), so we can simply hold STB high all the time
+            # and reset is zeros for 8 cycles (1 sysclk).
             stb_bits += [
-                ~(preamble | stb_reset_seq | burst_stop_zero[0]),
-                ~(preamble | stb_reset_seq | burst_stop_zero[1]),
+                ~(preamble | stb_reset_seq) & (serial[2*p + 0] | nop_bits),
+                ~(preamble | stb_reset_seq) & (serial[2*p + 1] | nop_bits),
             ]
 
         self.comb += stb_1ck_out.eq(Cat(*stb_bits))
@@ -458,8 +523,11 @@ class BasePHY(Module, AutoCSR):
 
         # Before sending the actual data we have to send 2 32-bit data masks (4 DDR cycles). In the
         # mask each 0 bit means "write byte" and 1 means "mask byte". The 1st 32-bits mask the first
-        # data WORD (32 bytes), and the 2nd 32-bits mask the last data WORD. Because we always send
-        # 1 WORD of data (BC=0), we don't care about the 2nd mask (can send 1).
+        # data WORD (32 bytes), and the 2nd 32-bits mask the last data WORD of the burst. The masks
+        # are only sent before the first WORD: the mask of the first WORD is sent twice (it is
+        # also the last WORD without stream), so the next WORDs of a stream are either fully
+        # written or get the mask of the first one (last WORD). The controller must then only
+        # stream writes of full WORDs.
         #
         # Write data
         # DFI valid:  xxxxxxxxxxxxxxxxxx
@@ -497,8 +565,8 @@ class BasePHY(Module, AutoCSR):
                 Constant(0),                                    # phase 1
                 dfi_hist[0].phases[i//8 + 0].wrdata_mask[i%8],  # WL-2
                 dfi_hist[0].phases[i//8 + 2].wrdata_mask[i%8],  # WL-2
-                Constant(1),                                    # WL-1
-                Constant(1),                                    # WL-1
+                dfi_hist[0].phases[i//8 + 0].wrdata_mask[i%8],  # WL-1
+                dfi_hist[0].phases[i//8 + 2].wrdata_mask[i%8],  # WL-1
             ]
             self.comb += db_1ck_mask[i].eq(Cat(*mask))
 
@@ -534,7 +602,7 @@ class BasePHY(Module, AutoCSR):
             )
         any_phase_valid = 0
         for p in range(nphases):
-            phase_valid = dfi_adapters[p].cmd_valid | dfi_adapters[nphases+p].cmd_valid
+            phase_valid = pcmd_valid[p] | pcmd_valid[nphases+p]
             pattern_cases = \
                 If(phase_valid,
                     pattern_2ck[0].eq(phase_patterns[p][0]),
@@ -561,7 +629,10 @@ class BasePHY(Module, AutoCSR):
         self.submodules.wrdata_en = wrdata_en = ShiftRegister(self.settings.write_latency + 2 + 1)
         self.comb += wrdata_en.i.eq(dfi.phases[self.settings.wrphase].wrdata_en & cmd_valid)
         # DQS Preamble and data mask are transmitted 1 cycle before data, then 2 cycles of data
-        self.comb += dq_mask_en.eq(wrdata_en[write_latency])
+        # (not for the next WORDs of a stream: their data directly follow the previous ones)
+        self.submodules.wrdata_stream = wrdata_stream = ShiftRegister(self.settings.write_latency + 1)
+        self.comb += wrdata_stream.i.eq(stream[0])
+        self.comb += dq_mask_en.eq(wrdata_en[write_latency] & ~wrdata_stream[write_latency])
         self.comb += dq_data_en.eq(wrdata_en[write_latency + 1] | wrdata_en[write_latency + 2])
         # Hold CS# low until end of write burst (use a latch as there can only be 1 write at a time)
 

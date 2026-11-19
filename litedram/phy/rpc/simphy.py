@@ -31,6 +31,7 @@ class SimulationPHY(BasePHY):
         self.with_dram_model    = with_dram_model
         self.dram_model_rowbits = dram_model_rowbits
         self.generate_read_data = generate_read_data or with_dram_model
+        self.dram_error         = Signal() # A Serial Packet was not legal (with the DRAM model).
 
         # fake delays (make no nsense in simulation, but sdram.c expects them)
         self.settings.read_leveling = True
@@ -90,6 +91,7 @@ class SimulationPHY(BasePHY):
                 cl      = self.settings.cl,
                 rowbits = self.dram_model_rowbits)
             self.submodules += ClockDomainsRenamer({"sys": "sys4x_180_ddr"})(self.dram)
+            self.sync += self.dram_error.eq(self.dram.error)
         elif self.generate_read_data:
             # Dummy read data generator for simulation purpose
             dq_in_dummy = Signal(self.databits)
