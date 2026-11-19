@@ -23,6 +23,7 @@ from litedram.gen import LiteDRAMCoreControl
 from litedram.modules import EM6GA16L
 from litedram.core.controller import ControllerSettings
 from litedram.phy.rpc.simphy import SimulationPHY
+from litedram.frontend.bist import _LiteDRAMBISTGenerator, _LiteDRAMBISTChecker
 
 # Platform -----------------------------------------------------------------------------------------
 
@@ -143,7 +144,8 @@ class _CRG(Module):
 # Simulation SoC -----------------------------------------------------------------------------------
 
 class SimSoC(SoCCore):
-    def __init__(self, clocks, trace_reset=1, auto_precharge=False, with_refresh=True, **kwargs):
+    def __init__(self, clocks, trace_reset=1, auto_precharge=False, with_refresh=True,
+        stream_reads=True, stream_writes=False, bist_length=0, bist_random=False, **kwargs):
         platform     = Platform()
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
@@ -168,6 +170,8 @@ class SimSoC(SoCCore):
         controller_settings = ControllerSettings()
         controller_settings.auto_precharge = auto_precharge
         controller_settings.with_refresh = with_refresh
+        controller_settings.rpc_stream_reads  = stream_reads
+        controller_settings.rpc_stream_writes = stream_writes
 
         self.add_sdram("sdram",
             phy                     = self.ddrphy,
@@ -188,7 +192,49 @@ class SimSoC(SoCCore):
 
         self.submodules.ddrctrl = LiteDRAMCoreControl()
         self.csr.add("ddrctrl")
-        self.sync += If(self.ddrctrl.init_done.storage, Finish())
+        if bist_length == 0:
+            self.sync += If(self.ddrctrl.init_done.storage, Finish())
+        else:
+            # BIST after the BIOS initialization/memtest: write then read/check bist_length bytes
+            # (PRBS data, sequential or random addresses) and print the sys_clk cycles they took
+            # (the DRAM bus carries 16 bytes per sys_clk cycle).
+            generator = _LiteDRAMBISTGenerator(self.sdram.crossbar.get_port())
+            checker   = _LiteDRAMBISTChecker(self.sdram.crossbar.get_port())
+            self.submodules += generator, checker
+            for bist in [generator, checker]:
+                self.comb += [
+                    bist.base.eq(0),
+                    bist.end.eq(bist_length),
+                    bist.length.eq(bist_length),
+                    bist.random_data.eq(1),
+                    bist.random_addr.eq(int(bist_random)),
+                ]
+            self.bist_fsm = bist_fsm = FSM(reset_state="INIT")
+            self.submodules += bist_fsm
+            bist_fsm.act("INIT",
+                If(self.ddrctrl.init_done.storage,
+                    generator.start.eq(1),
+                    NextState("WRITE")
+                )
+            )
+            bist_fsm.act("WRITE",
+                If(generator.done,
+                    checker.start.eq(1),
+                    NextState("READ")
+                )
+            )
+            bist_fsm.act("READ",
+                If(checker.done,
+                    NextState("DONE")
+                )
+            )
+            done = Signal()
+            self.sync += done.eq(bist_fsm.ongoing("DONE"))
+            self.sync += If(bist_fsm.ongoing("DONE") & ~done,
+                Display(f"BIST: {bist_length} bytes, write %d cycles, read %d cycles, %d errors, DRAM model error %d",
+                    generator.ticks, checker.ticks, checker.errors, self.ddrphy.dram_error),
+            )
+            self.sync += If(done, Finish())
 
         # Print info
         def dump(obj):
@@ -287,6 +333,10 @@ def main():
     parser.add_argument("--auto-precharge",  action="store_true", help="Use DRAM auto precharge")
     parser.add_argument("--no-refresh",      action="store_true", help="Disable DRAM refresher")
     parser.add_argument("--gtkw-savefile",   action="store_true", help="Generate GTKWSave savefile")
+    parser.add_argument("--no-stream-reads", action="store_true", help="Disable the Address Streaming of the reads")
+    parser.add_argument("--stream-writes",   action="store_true", help="Enable the Address Streaming of the writes (full WORDs only)")
+    parser.add_argument("--bist-length",     default=0,           help="Run a BIST of this size (bytes) after the BIOS initialization")
+    parser.add_argument("--bist-random",     action="store_true", help="BIST with random addresses")
     args = parser.parse_args()
 
     soc_kwargs     = soc_core_argdict(args)
@@ -326,6 +376,10 @@ def main():
         trace_reset    = args.trace_reset,
         auto_precharge = args.auto_precharge,
         with_refresh   = not args.no_refresh,
+        stream_reads   = not args.no_stream_reads,
+        stream_writes  = args.stream_writes,
+        bist_length    = int(args.bist_length, 0) if isinstance(args.bist_length, str) else args.bist_length,
+        bist_random    = args.bist_random,
         sdram_init     = [] if args.sdram_init is None else get_mem_data(args.sdram_init, endianness=cpu.endianness),
         **soc_kwargs)
 
