@@ -53,6 +53,14 @@ class ControllerSettings(Settings):
                                               # of statically: the DRAM termination (RTT_NOM/RTT_WR)
                                               # is then off during READs, as the JEDEC requires.
 
+        # Streaming: issue consecutive reads/writes back to back when the memory allows it, without
+        # the usual command to command delay (only RPC for now: Address Streaming, a read/write
+        # every 8 tCK sent by the PHY as Serial Packets, the data of the WORDs follow each other).
+        read_streaming      = True,           # Stream the reads.
+        write_streaming     = False,          # Stream the writes. RPC: only for writes of full WORDs
+                                              # (wdata_we all set), since the DRAM only takes the
+                                              # masks of the first and last WORDs of a stream.
+
         # Auto-Precharge.
         with_auto_precharge = True,           # Enable auto-precharge after read/write operations.
 

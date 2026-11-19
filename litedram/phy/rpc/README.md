@@ -71,8 +71,23 @@ with the lower byte, no read window on the upper byte. 125MHz does not meet timi
 `mem_test` over the 32MiB also passes. These speeds are limited by the CPU: with the BIST of
 LiteDRAM (`--with-bist` on the target, `sdram_bist 1024 0`/`sdram_bist 1024 1` from the BIOS) the
 DRAM gives 358MiB/s in write and 355MiB/s in read at sys_clk 100MHz (sequential and random
-addresses, 26.4GiB tested each without error). The DB bus could carry 1600MB/s at this rate: the
-controller sends one WORD (32 bytes) per command, a command every 8 to 9 sys_clk cycles.
+addresses, 26.4GiB tested each without error) when the controller sends one WORD (32 bytes) per
+Request Packet, a command every 8 to 9 sys_clk cycles. The DB bus can carry 1600MB/s (1526MiB/s) at
+this rate.
+
+With Address Streaming (see below) the next read/write is sent as a Serial Packet on STB and the
+WORDs follow each other on DB. Same bitstream at sys_clk 100MHz, streaming switched with the
+`streaming` CSR of the controller, `sdram_bist 4096 0` (same speeds with `sdram_bist 4096 1`):
+
+| Read streaming | Write streaming | Write     | Read      |
+|----------------|-----------------|-----------|-----------|
+| off            | off             | 356MiB/s  | 356MiB/s  |
+| on             | off             | 356MiB/s  | 1310MiB/s |
+| off            | on              | 1318MiB/s | 355MiB/s  |
+| on             | on              | 1315MiB/s | 1313MiB/s |
+
+That is 86% of the bus, 97.6GiB tested without error with both on; the BIOS memory test and
+`mem_test` over the 32MiB also pass with both on.
 
 The write shifts and the read enable position were first
 settled in a simulation of the PHY with Lattice's primitive models (QuestaSim) and a timing-aware
@@ -99,6 +114,16 @@ What the DRAM needs from the controller, found on this board:
 * One Request Packet at a time: the commands are sent as a single stream, at least 8 tCK apart
   (Serial Packet after each Request Packet) and not during a burst (`tCCD` covers the latency, the
   burst and tBESL). This is done in the Multiplexer for the RPC memtype.
+* Address Streaming: after a read/write Request Packet, a Serial Packet on STB every 8 tCK (2
+  sys_clk cycles) gives the next address (any bank with an open row, any column) and the data of
+  the WORDs follow each other without gap. The Multiplexer accepts the next read/write of the same
+  type exactly 2 cycles after the previous one, the PHY sends it as a Serial Packet and sends a
+  Burst Stop when none follows. The DRAM only takes the write masks of the first and last WORD of
+  a stream, so write streaming is only valid when full WORDs are written (BIST, or a CPU through
+  the L2 cache of LiteX): it is off by default (`write_streaming` of the `ControllerSettings`),
+  read streaming is on (`read_streaming`), and both can be changed with the `streaming` CSR.
+  Other commands (activate, precharge, refresh) still end the stream: serial activate/precharge
+  and Toggle RW are not used.
 * A refresh command burst refreshes all the rows of the selected banks (100ns per row in Fast
   Refresh) and no command is accepted until it is done: `tRFC` is the duration of this burst
   (1.64ms for the 4 banks) and `tREFI` its period (32ms).
@@ -131,7 +156,8 @@ Important implementation notes:
   has to open during the DQS preamble and to last as long as the burst (8 tCK); its position is
   set by CSRs (sys_clk cycles, tCK) and by the DQSBUF read clock selection, which the read leveling
   scans as the delay. The DQSBUF returns the burst aligned on sys_clk over the two cycles flagged
-  by `DATAVALID`. The round trip delay counted in tCK depends on the frequency, so the read
+  by `DATAVALID` (stored in a small buffer written by `DATAVALID`, since it stays high during a
+  stream). The round trip delay counted in tCK depends on the frequency, so the read
   leveling also moves the `READ` position (through the bitslip CSRs, 8 positions of 1 tCK) and
   keeps the one with the widest window. The DQS path of the DQSBUF is already about a UI long at
   CLK 400MHz: after the initialization the read delay code (90 degrees from the DDRDLL) is
@@ -147,11 +173,14 @@ files e.g. `litedram/init.py`). The PHY is split into core part (`basephy.py`) a
 platform-dependant backend (`s7phy.py`). The DFI commands from the controller are translated based
 on the encoding defined in `commands.py`. There is also a backend for simulation purpose
 (`simphy.py`) along with a simulation SoC (`simsoc.py`) and a behavioural DRAM model (`sim.py`:
-parallel commands, single WORD reads/writes with data masks). The simulation SoC runs the BIOS
-initialization and memory test against the model in Verilator:
+parallel commands, WORD reads/writes with data masks, serial read/write/NOP/Burst Stop packets;
+it flags the packets it does not support). The simulation SoC runs the BIOS initialization and
+memory test against the model in Verilator, and optionally a BIST that reports the number of
+cycles (16KiB: 4056 write/4157 read cycles without streaming, 1086/1133 with):
 
 ```sh
 python3 litedram/phy/rpc/simsoc.py
+python3 litedram/phy/rpc/simsoc.py --bist-length 16384 --stream-writes
 ```
 
 Currently this PHY is functional however it has some limitations that need to be addressed. The code
@@ -160,8 +189,8 @@ following:
 
 * Main flaw is the usage of 4 DFI phases. Switching to 8 phases (due to BL=16, DDR) would allow to
   transmit a single data burst in a single controller clock cycle, greatly simplify the core logic.
-* Serial commands are not being used, which prevents pipelining. Implementing proper usage of serial
-  commands would allow to improve performance.
+* Serial commands are only used for reads/writes (Address Streaming). Serial activate/precharge
+  and Toggle RW would avoid ending the stream on a row change or a direction change.
 * Some parts of the implementation could be replaced with common utilities from `phy/utils.py`.
 * `RPCPads` (which was also used to map DDR3 pads to RPC ones) should be replaced with similar
   output structure like the one in LPDDR4 PHY.
