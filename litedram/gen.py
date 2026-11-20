@@ -728,7 +728,7 @@ class LiteDRAMCore(SoCCore):
 
         # Collect Electrical Settings.
         electrical_settings_kwargs = {}
-        for name in ["rtt_nom", "rtt_wr", "ron"]:
+        for name in ["rtt_nom", "rtt_wr", "ron", "vref_dq", "vref_dq_range"]:
             if core_config.get(name, None) is not None:
                 electrical_settings_kwargs[name] = core_config[name]
 
