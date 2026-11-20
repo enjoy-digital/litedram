@@ -1141,9 +1141,13 @@ class EM6GA16L(RPCModule):
         tZQCS=(None, 90),
     )
     speedgrade_timings = {
-        # tRFC: tRFQSd (3 x 100ns) + 4 banks x 4096 rows x 100ns + exit (tRFQSL, tPXCSL), with margin.
-        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 4*4096*100 + 2000), tFAW=None, tRAS=35),
-        "1866": _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=15, tRFC=(None, 4*4096*100 + 2000), tFAW=None, tRAS=34),
+        # tRFC: tRFQSd (3 x 100ns) + 4 banks x 4096 rows x 100ns + exit (tRFQSL, tPXCSL), with 50%
+        # of margin: the 100ns per row are from a timer of the DRAM (no tolerance in the
+        # datasheet) and the DRAM drives DQS/DQS# high while it refreshes. With the nominal
+        # duration, on the CertusPro-NX VVML board with its 2 DRAMs, the first reads after a
+        # refresh had bit errors on the first chip (second chip still busy on the shared DQS).
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 6*4096*100 + 2000), tFAW=None, tRAS=35),
+        "1866": _SpeedgradeTimings(tRP=13.91, tRCD=13.91, tWR=15, tRFC=(None, 6*4096*100 + 2000), tFAW=None, tRAS=34),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
