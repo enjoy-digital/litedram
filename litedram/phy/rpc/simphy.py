@@ -4,6 +4,9 @@
 # Copyright (c) 2020-2021 Antmicro <www.antmicro.com>
 # SPDX-License-Identifier: BSD-2-Clause
 
+from functools import reduce
+from operator import or_
+
 from migen import *
 from migen.fhdl.specials import Tristate
 
@@ -86,12 +89,27 @@ class SimulationPHY(BasePHY):
     def do_db_serialization(self, db_1ck_out, db_1ck_in, db_oe, db):
         if self.with_dram_model:
             # DRAM model.
+            # One per rank (each with its memory), on the same DB: only one can drive it.
             dq_in_dummy = Signal(self.databits)
-            self.dram = RPCDRAMModel(dq_in=db, dq_out=dq_in_dummy, stb_in=self.pads.stb,
-                cl      = self.settings.cl,
-                rowbits = self.dram_model_rowbits)
-            self.submodules += ClockDomainsRenamer({"sys": "sys4x_180_ddr"})(self.dram)
-            self.sync += self.dram_error.eq(self.dram.error)
+            self.drams  = []
+            dq_outs     = []
+            for r in range(self.nranks):
+                dq_out = Signal(self.databits)
+                dq_outs.append(dq_out)
+                dram = RPCDRAMModel(dq_in=db, dq_out=dq_out, stb_in=self.pads.stb[r],
+                    cl       = self.settings.cl,
+                    rowbits  = self.dram_model_rowbits,
+                    cs_n_in  = self.pads.cs_n[r],
+                    # tCSS (10ns) in model cycles (half tCK), less the cycle of the registers.
+                    tcss     = max(1, int(10e-9/(self.tck/2)) - 1))
+                self.submodules += ClockDomainsRenamer({"sys": "sys4x_180_ddr"})(dram)
+                self.drams.append(dram)
+            self.dram = self.drams[0]
+            self.comb += dq_in_dummy.eq(reduce(or_, [Mux(d.dq_oe, o, 0) for d, o in zip(self.drams, dq_outs)]))
+            self.sync += If(
+                reduce(or_, [d.error | d.cs_error for d in self.drams]) |
+                (sum(d.dq_oe for d in self.drams) > 1), # Bus contention.
+                self.dram_error.eq(1))
         elif self.generate_read_data:
             # Dummy read data generator for simulation purpose
             dq_in_dummy = Signal(self.databits)

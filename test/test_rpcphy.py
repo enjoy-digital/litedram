@@ -557,6 +557,123 @@ class TestRPCPHY(unittest.TestCase):
         reads[t_read_single + s.read_latency] = masked
         self.assertEqual(res["read"], reads)
 
+    def test_simulation_dram_model_ranks(self):
+        # Pure Migen: 2 ranks (2 DRAM models on the same DB, each with its STB and CS#). A command
+        # goes to the ranks of its cs_n; a read sent to both ranks only goes to the one of the
+        # rdrank CSR. Checked: memory of each model, read data, STB only on the addressed rank, no
+        # bus contention, CS# to STB delay, CS# low on the addressed ranks only.
+        pads = self.get_pads(nranks=2)
+        phy  = self.get_sim_phy(pads=pads, sys_clk_freq=1e6, with_dram_model=True, dram_model_rowbits=2, nranks=2)
+        dfi  = phy.dfi
+        s    = phy.settings
+        self.assertEqual(s.nranks, 2)
+        rows = [2, 1] # Open row of bank 1, per rank.
+        bank = 1
+
+        def word(n):
+            return int.from_bytes(bytes((17*n + 3*i + 1) & 0xff for i in range(32)), "little")
+
+        events = {} # cycle: [(signal, value)].
+        def at(cycle, *assigns):
+            events.setdefault(cycle, []).extend(assigns)
+        def cmd(cycle, phase, ranks, cas=1, ras=1, we=1, reset_n=1, address=0, bank=0):
+            p = dfi.phases[phase]
+            at(cycle, (p.cas_n, cas), (p.ras_n, ras), (p.we_n, we), (p.cs_n, ~ranks & 0b11),
+                (p.reset_n, reset_n), (p.address, address), (p.bank, bank))
+        def write(cycle, ranks, col, data):
+            cmd(cycle, s.wrphase, ranks, cas=0, we=0, address=col, bank=bank)
+            at(cycle, (dfi.phases[s.wrphase].wrdata_en, 1))
+            for p in range(4):
+                at(cycle + s.write_latency, (dfi.phases[p].wrdata, (data >> (64*p)) & (2**64 - 1)))
+        def read(cycle, ranks, col):
+            cmd(cycle, s.rdphase, ranks, cas=0, address=col, bank=bank)
+            at(cycle, (dfi.phases[s.rdphase].rddata_en, 1))
+
+        # CS# lock (cs_n=0 on phase 0 only), PU RESET and ZQ INIT on both ranks, an ACT per rank.
+        at(4, (dfi.p0.cs_n, 0))
+        cmd(7,  0, 0b11, ras=0, reset_n=0)
+        cmd(24, 0, 0b11, we=0, reset_n=0, address=1 << 10)
+        for r in range(2):
+            cmd(34 + 4*r, 0, 1 << r, ras=0, address=rows[r], bank=bank)
+        # Writes: a stream on rank 0, a stream on rank 1 (same columns, other data), then a WORD
+        # on both ranks at once.
+        t = 44
+        writes = [] # (cycle, ranks, col, word number)
+        for r in range(2):
+            for n in range(3):
+                writes.append((t + 2*n, 1 << r, 0x010*(n + 1), 10*r + n))
+            t += 2*3 + 12
+        writes.append((t, 0b11, 0x100, 30))
+        t += 12
+        for cycle, ranks, col, n in writes:
+            write(cycle, ranks, col, word(n))
+        # Reads: a stream on rank 1, a stream on rank 0, then reads sent to both ranks (rdrank 0
+        # then 1) of a WORD that differs.
+        reads = {} # cycle of the data: expected.
+        for r in [1, 0]:
+            for n in range(3):
+                read(t + 2*n, 1 << r, 0x010*(n + 1))
+                reads[t + 2*n + s.read_latency] = word(10*r + n)
+            t += 2*3 + 12
+        for r in range(2):
+            at(t - 2, (phy._rdrank.storage, r))
+            read(t, 0b11, 0x020)
+            reads[t + s.read_latency] = word(10*r + 1)
+            t += 12
+        ncycles = t + s.read_latency + 4
+
+        res = {"read": {}, "cs_n": {}, "stb_low": [0, 0]}
+        def gen():
+            for cycle in range(ncycles):
+                for p in dfi.phases:
+                    for name, value in [("cas_n", 1), ("ras_n", 1), ("we_n", 1), ("cs_n", 0b11),
+                        ("reset_n", 1), ("wrdata_en", 0), ("rddata_en", 0)]:
+                        yield getattr(p, name).eq(value)
+                for signal, value in events.get(cycle, []):
+                    yield signal.eq(value)
+                yield
+                if (yield dfi.phases[0].rddata_valid):
+                    data = 0
+                    for p in range(4):
+                        data |= (yield dfi.phases[p].rddata) << (64*p)
+                    res["read"][cycle] = data
+                res["cs_n"][cycle] = (yield pads.cs_n)
+            res["error"] = (yield phy.dram_error)
+            res["mem"]   = []
+            for r in range(2):
+                mem = {}
+                for col in [0x010, 0x020, 0x030, 0x100]:
+                    base = (bank << (2 + 6 + 4)) | (rows[r] << (6 + 4)) | col
+                    data = 0
+                    for n in range(16):
+                        data |= (yield phy.drams[r].mem[base + n]) << (16*n)
+                    mem[col] = data
+                res["mem"].append(mem)
+                res["stb_low"][r] = (yield phy.drams[r].nwords)
+
+        run_simulation(phy, {"sys": [gen()]}, clocks={
+            "sys":           (16, 8),
+            "sys4x_90":      (4,  1),
+            "sys4x_180":     (4,  0),
+            "sys4x_90_ddr":  (2,  0),
+            "sys4x_180_ddr": (2,  1),
+        })
+
+        self.assertEqual(res["error"], 0)
+        for r in range(2):
+            expected = {0x010*(n + 1): word(10*r + n) for n in range(3)}
+            expected[0x100] = word(30)
+            self.assertEqual(res["mem"][r], expected)
+        self.assertEqual(res["read"], reads)
+        # WORDs seen by each model: 3 + 1 writes, 3 reads and the read of its rdrank.
+        self.assertEqual(res["stb_low"], [8, 8])
+        # CS#: both ranks low for the commands sent to both, only the rank in use otherwise.
+        cs_n = set(res["cs_n"].values())
+        self.assertEqual(cs_n, {0b00, 0b01, 0b10, 0b11})
+        first_write_r1 = writes[3][0]
+        self.assertEqual(res["cs_n"][first_write_r1 - 3], 0b10) # Rank 0 in use.
+        self.assertEqual(res["cs_n"][first_write_r1 + 6], 0b01) # Rank 1 in use.
+
 
 if __name__ == "__main__":
     unittest.main()

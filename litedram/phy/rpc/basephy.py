@@ -40,10 +40,10 @@ class RPCPads:
     _layout = [
         ("clk_p",  1),
         ("clk_n",  1),
-        ("cs_n",   1),
+        ("cs_n",   1),  # one per rank
         ("dqs_p",  1),  # may be 2 (hardware option; 2-bit DQS strobes DB by bytes: [0:7], [8:15])
         ("dqs_n",  1),  # may be 2
-        ("stb",    1),
+        ("stb",    1),  # one per rank
         ("db",    16),
     ]
 
@@ -60,7 +60,7 @@ class RPCPads:
 
 
 class BasePHY(Module, AutoCSR):
-    def __init__(self, pads, sys_clk_freq, write_ser_latency, read_des_latency, phytype, with_bitslip=True):
+    def __init__(self, pads, sys_clk_freq, write_ser_latency, read_des_latency, phytype, with_bitslip=True, nranks=1):
         # TODO: pads groups for multiple chips
         #  pads = PHYPadsCombiner(pads)
         if not isinstance(pads, RPCPads):
@@ -68,7 +68,12 @@ class BasePHY(Module, AutoCSR):
         self.pads = pads
 
         self.memtype     = memtype     = "RPC"
-        self.nranks      = nranks      = 1
+        # Ranks: DRAMs sharing CLK/DQS/DB, each with its STB and CS#. The first nranks pads are
+        # used; the DRAMs of the others only get the reset sequence, then their STB/CS# are held
+        # high (a DRAM that was configured before, ex by another design, and is left alone can
+        # disturb the bus: after a reset its outputs are open until a MRS).
+        assert 1 <= nranks <= min(len(pads.stb), len(pads.cs_n))
+        self.nranks      = nranks
         self.databits    = databits    = 16
         self.addressbits = addressbits = 12
         self.bankbits    = bankbits    = 2
@@ -87,6 +92,13 @@ class BasePHY(Module, AutoCSR):
         self._reset_fsm  = CSR()
 
         self._burst_stop = CSRStorage(reset=1)
+
+        if nranks > 1:
+            self._rdrank = CSRStorage(max(1, log2_int(nranks)), description=
+                "Rank that answers the reads sent to several ranks (commands from the software): "
+                "only one DRAM can drive DQS/DB.")
+            self._cs_all = CSRStorage(description=
+                "Keep CS# of all the ranks low (debug), instead of only the ranks of the last command.")
 
         # PHY settings -----------------------------------------------------------------------------
         def get_cl(tck):
@@ -184,8 +196,11 @@ class BasePHY(Module, AutoCSR):
         # Signal values (de)serialized during 1 sysclk.
         # These signals must be populated in specific PHY implementations.
         self.clk_1ck_out  = clk_1ck_out  = Signal(2*nphases)
-        self.stb_1ck_out  = stb_1ck_out  = Signal(2*nphases)
-        self.cs_n_1ck_out = cs_n_1ck_out = Signal(2*nphases)
+        self.stb_1ck_out  = stb_1ck_out  = [Signal(2*nphases, name=f"stb{r}_1ck_out")  for r in range(nranks)]
+        self.cs_n_1ck_out = cs_n_1ck_out = [Signal(2*nphases, name=f"cs_n{r}_1ck_out") for r in range(nranks)]
+        # Unused ranks.
+        self.stb_park_1ck_out  = stb_park_1ck_out  = Signal(2*nphases, reset=2**(2*nphases) - 1)
+        self.cs_n_park_1ck_out = cs_n_park_1ck_out = Signal(2*nphases, reset=2**(2*nphases) - 1)
 
         self.dqs_1ck_out = dqs_1ck_out = Signal(2*nphases)
         self.dqs_1ck_in  = dqs_1ck_in  = Signal(2*nphases)
@@ -232,10 +247,25 @@ class BasePHY(Module, AutoCSR):
         # able to meet tCSS, we have to add a delay of 1 more sysclk.
         # list from oldest to newest: dfi[N-1][p0], dfi[N-1][p1], ..., dfi[N][p0], dfi[N][p1], ...
         dfi_adapters = []
+        # Ranks addressed by each command (cs_n of DFI). A read sent to several ranks (software
+        # commands are sent to all the ranks) only goes to the rank of the rdrank CSR: the DRAMs
+        # share DQS/DB.
+        rank_sel = []
         for phase in dfi_hist[2].phases + dfi_hist[1].phases + dfi_hist[0].phases:
             adapter = DFIAdapter(phase)
             self.submodules += adapter
             dfi_adapters.append(adapter)
+            sel = Signal(nranks, reset=2**nranks - 1)
+            rank_sel.append(sel)
+            if nranks > 1:
+                cs = Signal(nranks)
+                self.comb += [
+                    cs.eq(~phase.cs_n),
+                    sel.eq(cs),
+                    If(adapter._is_cmd("RD") & ((cs & (cs - 1)) != 0),
+                        Case(self._rdrank.storage, {r: sel.eq(1 << r) for r in range(nranks)})
+                    )
+                ]
             self.comb += [
                 # We always send one WORD, which consists of 32 bytes.
                 adapter.bc.eq(0),
@@ -261,9 +291,13 @@ class BasePHY(Module, AutoCSR):
         rw_d     = {t: [Signal(name=f"rw_{t.lower()}_d{n}") for n in range(2)] for t in rw_types}
         for t in rw_types:
             self.sync += [rw_d[t][0].eq(rw_new[t]), rw_d[t][1].eq(rw_d[t][0])]
+        # A stream stays on its rank (the STB of each rank has its own Serial Packets).
+        rw_rank   = rank_sel[2*nphases + rwphase]
+        rw_rank_d = [Signal(nranks, name=f"rw_rank_d{n}") for n in range(2)]
+        self.sync += [rw_rank_d[0].eq(rw_rank), rw_rank_d[1].eq(rw_rank_d[0])]
         # stream[n]: the read/write of dfi_hist[n] continues a burst (no Request Packet).
         self.stream = stream = [Signal(name=f"stream{n}") for n in range(3)]
-        self.comb += stream[0].eq(reduce(or_, [rw_new[t] & rw_d[t][1] for t in rw_types]))
+        self.comb += stream[0].eq(reduce(or_, [rw_new[t] & rw_d[t][1] for t in rw_types]) & (rw_rank == rw_rank_d[1]))
         self.sync += [stream[1].eq(stream[0]), stream[2].eq(stream[1])]
         # Request Packets: all the commands but the ones of a stream.
         pcmd_valid = []
@@ -381,7 +415,7 @@ class BasePHY(Module, AutoCSR):
         # STB --------------------------------------------------------------------------------------
         # Currently not sending any serial commands, but the STB pin must be held low for 2 full
         # rate cycles before writing a parallel command to activate the DRAM.
-        stb_bits = []
+        stb_bits = [[] for r in range(nranks)]
 
         # Serial Packet (16 bits, 2 per tCK) that follows each read/write: it starts with the
         # command (on rwphase, the last phase) and ends 2 sys_clk later.
@@ -435,21 +469,33 @@ class BasePHY(Module, AutoCSR):
         # Without Burst Stop, the first bits of the packet are those of a NOP too.
         nop_bits = Signal()
         self.comb += nop_bits.eq(rw_s & ~stream[0] & ~self._burst_stop.storage)
+        # Rank of the Serial Packet: the one of its read/write (the STB of the others stays high).
+        serial_rank   = Signal(nranks)
+        serial_rank_r = Signal(nranks)
+        self.sync += If(rw_s, serial_rank_r.eq(rank_sel[rwphase]))
+        self.comb += If(rw_s, serial_rank.eq(rank_sel[rwphase])).Else(serial_rank.eq(serial_rank_r))
 
-        for p in range(nphases):
+        for r, p in [(r, p) for r in range(nranks) for p in range(nphases)]:
             # Use cmd from current and prev cycle, depending on which phase the command appears on
-            preamble = (pcmd_valid[p+2] | pcmd_valid[p+1]) & cmd_valid
+            preamble = ((pcmd_valid[p+2] & rank_sel[p+2][r]) | (pcmd_valid[p+1] & rank_sel[p+1][r])) & cmd_valid
 
             # We use STB to start parallel commands, for the serial reset, for the Serial Packets
             # of the reads/writes and to send NOPs. NOP is indicated by the first two bits being
             # high (0b11, and other as "don't care"), so we can simply hold STB high all the time
             # and reset is zeros for 8 cycles (1 sysclk).
-            stb_bits += [
-                ~(preamble | stb_reset_seq) & (serial[2*p + 0] | nop_bits),
-                ~(preamble | stb_reset_seq) & (serial[2*p + 1] | nop_bits),
+            stb_bits[r] += [
+                ~(preamble | stb_reset_seq) & (serial[2*p + 0] | nop_bits | ~serial_rank[r]),
+                ~(preamble | stb_reset_seq) & (serial[2*p + 1] | nop_bits | ~serial_rank[r]),
             ]
 
-        self.comb += stb_1ck_out.eq(Cat(*stb_bits))
+        self.comb += [stb_1ck_out[r].eq(Cat(*stb_bits[r])) for r in range(nranks)]
+
+        # Unused ranks: STB of the reset sequence only.
+        stb_park_bits = []
+        for p in range(nphases):
+            preamble = reduce(or_, [pcmd_valid[n] & dfi_adapters[n]._is_cmd("RESET") for n in [p+2, p+1]]) & cmd_valid
+            stb_park_bits += 2*[~(preamble | stb_reset_seq)]
+        self.comb += stb_park_1ck_out.eq(Cat(*stb_park_bits))
 
         # Chip Select ------------------------------------------------------------------------------
         # RPC has quite high required time of CS# low before sending a command (tCSS), this means
@@ -468,8 +514,8 @@ class BasePHY(Module, AutoCSR):
         # FIXME: currently we hold CS low constantly to avoid problems with signal integrity on our board
         # lock CS when DFI sends cs_n=0 only on phase 0 (avoids start condition problems)
         cs_lock = Signal()
-        cs_lock_cond = reduce(and_, [dfi_hist[0].phases[p].cs_n for p in range(1, nphases)])
-        cs_lock_cond = cs_lock_cond & ~dfi_hist[0].p0.cs_n
+        cs_lock_cond = reduce(and_, [dfi_hist[0].phases[p].cs_n == 2**nranks - 1 for p in range(1, nphases)])
+        cs_lock_cond = cs_lock_cond & (dfi_hist[0].p0.cs_n == 0)
         self.sync += If(cs_lock_cond, cs_lock.eq(1)).Elif(self._reset_fsm.wr_stb, cs_lock.eq(0))
 
         _any_cmd_valid = reduce(or_, (a.cmd_valid for a in dfi_adapters))
@@ -477,7 +523,28 @@ class BasePHY(Module, AutoCSR):
             # self.cs_hold.i.eq(cmd_valid & (_any_cmd_valid | cs_burst_hold)),
             # cs.eq(reduce(or_, self.cs_hold.sr)),
             # cs_n_1ck_out.eq(Replicate(~cs, len(cs_n_1ck_out))),
-            cs_n_1ck_out.eq(Replicate(~(cs_lock & ~cs_release), len(cs_n_1ck_out))),
+        ]
+        # Ranks (see Multi Rank in the datasheet): CS# is low only on the ranks of the last
+        # command (the others do not receive the DB/DQS traffic and do not terminate it). CS# of a
+        # new rank goes low when its command is received (2 sys_clk of command history: at least 1
+        # sys_clk + 2 tCK before its STB preamble, for tCSS), CS# of a rank that is left goes high
+        # 1 sys_clk later (after the Request Packet of a command sent 3 sys_clk earlier, for tCSH;
+        # the controller waits for the end of the bursts before a new Request Packet).
+        cs_active = Signal(nranks, reset=2**nranks - 1)
+        cs_new    = Signal(nranks)
+        if nranks > 1:
+            self.comb += cs_new.eq(reduce(or_, [
+                Replicate(dfi_adapters[2*nphases + p].cmd_valid, nranks) & rank_sel[2*nphases + p]
+                for p in range(nphases)]))
+            self.sync += If(cs_new != 0, cs_active.eq(cs_new))
+        for r in range(nranks):
+            cs_rank = (cs_active[r] | cs_new[r] | self._cs_all.storage) if nranks > 1 else 1
+            self.comb += cs_n_1ck_out[r].eq(Replicate(~(cs_lock & ~cs_release & cs_rank), 2*nphases))
+        # Unused ranks: CS# low for the reset sequence only.
+        in_reset = Signal()
+        self.comb += [
+            in_reset.eq(reduce(or_, [fsm.ongoing(state) for state in ["IDLE", "RESET_RECEIVED", "SERIAL_RESET", "CS_HOLD"]])),
+            cs_n_park_1ck_out.eq(Replicate(~(cs_lock & ~cs_release & in_reset), 2*nphases)),
         ]
 
         # Data IN ----------------------------------------------------------------------------------
@@ -656,11 +723,14 @@ class BasePHY(Module, AutoCSR):
 
     def do_finalize(self):
         self.do_clock_serialization(self.clk_1ck_out, self.pads.clk_p, self.pads.clk_n)
-        self.do_stb_serialization(self.stb_1ck_out, self.pads.stb)
+        # One STB and one CS# per rank (unused ranks: reset sequence only).
+        for r in range(len(self.pads.stb)):
+            self.do_stb_serialization(self.stb_1ck_out[r] if r < self.nranks else self.stb_park_1ck_out, self.pads.stb[r])
         self.do_dqs_serialization(self.dqs_1ck_out, self.dqs_1ck_in, self.dqs_oe,
                                   self.pads.dqs_p, self.pads.dqs_n)
         self.do_db_serialization(self.db_1ck_out, self.db_1ck_in, self.db_oe, self.pads.db)
-        self.do_cs_serialization(self.cs_n_1ck_out, self.pads.cs_n)
+        for r in range(len(self.pads.cs_n)):
+            self.do_cs_serialization(self.cs_n_1ck_out[r] if r < self.nranks else self.cs_n_park_1ck_out, self.pads.cs_n[r])
 
     # I/O implementation ---------------------------------------------------------------------------
 

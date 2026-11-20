@@ -34,8 +34,25 @@ class RPCDRAMModel(Module):
         "REF" : 0b110,
         "UTR" : 0b111,
     }
-    def __init__(self, stb_in, dq_in, dq_out, cl, dq_oe=None, rowbits=12):
+    def __init__(self, stb_in, dq_in, dq_out, cl, dq_oe=None, rowbits=12, cs_n_in=None, tcss=4):
         assert len(dq_in) == 16
+        self.cs_error = Signal() # STB low less than tcss model cycles after CS# low (sticky).
+        if cs_n_in is not None:
+            # CS# high disables the inputs: STB is then seen high (and DB is not looked at).
+            stb_pad  = stb_in
+            stb_in   = Signal(reset=1)
+            cs_count = Signal(max=tcss + 1)
+            self.comb += stb_in.eq(stb_pad | cs_n_in)
+            cs_high  = Signal() # CS# has to be seen high first (as STB below).
+            self.sync += [
+                If(cs_n_in,
+                    cs_high.eq(1),
+                    cs_count.eq(0)
+                ).Elif(cs_count != tcss,
+                    cs_count.eq(cs_count + 1),
+                    If(~stb_pad & cs_high, self.cs_error.eq(1)),
+                )
+            ]
         self.dq_oe = dq_oe = Signal() if dq_oe is None else dq_oe
         self.dqs   = dqs   = Signal() # For waveforms.
 

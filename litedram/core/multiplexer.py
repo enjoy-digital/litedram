@@ -398,6 +398,14 @@ class Multiplexer(Module, AutoCSR):
             rw_accept   = Signal()
             rw_accept_d = Signal(2)
             last_write  = Signal()
+            # A stream stays on its rank (each rank has its STB for the Serial Packets).
+            rankbits  = log2_int(settings.phy.nranks)
+            same_rank = Signal(reset=1)
+            if rankbits:
+                rank      = choose_req.arbiter.grant[-rankbits:] # One request per rank*bank.
+                last_rank = Signal(rankbits)
+                self.sync += If(rw_accept, last_rank.eq(rank))
+                self.comb += same_rank.eq(rank == last_rank)
             self.comb += rw_accept.eq(rw_requests[choose_req.arbiter.grant] & (cas_allowed | stream_slot))
             self.sync += [
                 rw_accept_d.eq(Cat(rw_accept, rw_accept_d[0])),
@@ -410,7 +418,7 @@ class Multiplexer(Module, AutoCSR):
                 ).Else(
                     stream_en.eq(stream_reads & choose_req.want_reads),
                 ),
-                stream_slot.eq(rw_accept_d[1] & stream_en),
+                stream_slot.eq(rw_accept_d[1] & stream_en & same_rank),
                 # Between the read/write and its slot: only a read/write of the same type (from
                 # registers only: the command paths of the bank machines are long enough).
                 stream_hold.eq((rw_accept_d[0] | rw_accept_d[1]) & stream_en),
