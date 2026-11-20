@@ -421,6 +421,32 @@ class TestMultiplexer(unittest.TestCase):
         run("write", dict(),                                               check_no_stream)
         run("write", dict(write_streaming=True),                         check_stream)
 
+    def test_streaming_ranks(self):
+        # RPC Address Streaming with 2 ranks: a stream stays on its rank (2 cycles between reads of
+        # the same rank, tCCD when the rank changes).
+        dut = MultiplexerDUT(
+            phy_settings    = dict(memtype="RPC", nphases=4, rdphase=3, wrphase=3, nranks=2,
+                read_latency=10, cl=9, cwl=9, databits=16, dfi_databits=4*16),
+            timing_settings = dict(tCCD=8, tWTR=4))
+        nbanks  = len(dut.bank_machines)//2
+        bms     = [1, 2, nbanks + 1] # Two bank machines of rank 0, one of rank 1.
+        accepts = []
+        def main_generator(dut):
+            for n in bms:
+                yield from dut.bm_drivers[n].read()
+            for cycle in range(80):
+                for n in bms:
+                    if (yield dut.bank_machines[n].cmd.ready):
+                        accepts.append((cycle, n//nbanks))
+                yield
+        run_simulation(dut, [main_generator(dut), timeout_generator(200)])
+        gaps = {True: set(), False: set()} # Same rank: gaps.
+        for (c0, r0), (c1, r1) in zip(accepts, accepts[1:]):
+            gaps[r0 == r1].add(c1 - c0)
+        self.assertEqual(gaps[True], {2})
+        self.assertTrue(gaps[False])
+        self.assertGreaterEqual(min(gaps[False]), 8)
+
     def test_fsm_anti_starvation(self):
         # Check that anti-starvation works according to controller settings.
         def main_generator(dut):

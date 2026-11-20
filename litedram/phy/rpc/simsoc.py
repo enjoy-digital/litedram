@@ -53,9 +53,14 @@ _io = [
 ]
 
 class Platform(SimPlatform):
-    def __init__(self):
-        print('_io', end=' = '); __import__('pprint').pprint(_io)
-        SimPlatform.__init__(self, "SIM", _io)
+    def __init__(self, nranks=1):
+        # One CS# and one STB per rank.
+        io = []
+        for name, number, *items in _io:
+            if name == "rpcdram":
+                items = [Subsignal(i.name, Pins(nranks)) if i.name in ["cs_n", "stb"] else i for i in items]
+            io.append((name, number, *items))
+        SimPlatform.__init__(self, "SIM", io)
 
 # DFI PHY model settings ---------------------------------------------------------------------------
 
@@ -145,8 +150,8 @@ class _CRG(Module):
 
 class SimSoC(SoCCore):
     def __init__(self, clocks, trace_reset=1, auto_precharge=False, with_refresh=True,
-        stream_reads=True, stream_writes=False, bist_length=0, bist_random=False, **kwargs):
-        platform     = Platform()
+        stream_reads=True, stream_writes=False, bist_length=0, bist_random=False, nranks=1, **kwargs):
+        platform     = Platform(nranks)
         sys_clk_freq = clocks["sys"]["freq_hz"]
 
         # SoCCore ----------------------------------------------------------------------------------
@@ -164,7 +169,7 @@ class SimSoC(SoCCore):
         # RPC DRAM ---------------------------------------------------------------------------------
         sdram_module = EM6GA16L(sys_clk_freq, "1:4")
         pads = platform.request("rpcdram")
-        self.submodules.ddrphy = SimulationPHY(pads, sys_clk_freq=sys_clk_freq, with_dram_model=True)
+        self.submodules.ddrphy = SimulationPHY(pads, sys_clk_freq=sys_clk_freq, with_dram_model=True, nranks=nranks)
         self.csr.add("ddrphy")
 
         controller_settings = ControllerSettings()
@@ -337,6 +342,7 @@ def main():
     parser.add_argument("--stream-writes",   action="store_true", help="Enable the Address Streaming of the writes (full WORDs only)")
     parser.add_argument("--bist-length",     default=0,           help="Run a BIST of this size (bytes) after the BIOS initialization")
     parser.add_argument("--bist-random",     action="store_true", help="BIST with random addresses")
+    parser.add_argument("--nranks",          default=1, type=int, help="Number of DRAMs (ranks) on the bus")
     args = parser.parse_args()
 
     soc_kwargs     = soc_core_argdict(args)
@@ -378,6 +384,7 @@ def main():
         with_refresh   = not args.no_refresh,
         stream_reads   = not args.no_stream_reads,
         stream_writes  = args.stream_writes,
+        nranks         = args.nranks,
         bist_length    = int(args.bist_length, 0) if isinstance(args.bist_length, str) else args.bist_length,
         bist_random    = args.bist_random,
         sdram_init     = [] if args.sdram_init is None else get_mem_data(args.sdram_init, endianness=cpu.endianness),

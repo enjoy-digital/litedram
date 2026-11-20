@@ -89,6 +89,16 @@ WORDs follow each other on DB. Same bitstream at sys_clk 100MHz, streaming switc
 That is 86% of the bus, 97.6GiB tested without error with both on; the BIOS memory test and
 `mem_test` over the 32MiB also pass with both on.
 
+These numbers were measured with `tRFC` at 1.64ms; with the current value (2.46ms every 32ms, see
+below) the same test gives 1281MiB/s in write and 1278MiB/s in read.
+
+With the two DRAMs of the board (`--rpc-ranks 2` on the target, `nranks=2` on the PHY) the BIOS
+reports 64MiB and the speeds are the same at sys_clk 100MHz (timing met): BIOS memory test and
+`mem_test` over the 64MiB OK after each of 6 bitstream loads and 2 `sdram_init`, `sdram_bist 4096
+0`/`sdram_bist 4096 1` at 1281MiB/s in write and 1278MiB/s in read without error (73GiB tested
+in random). The read leveling is done on the first DRAM; the window of the second one is one
+delay step later (m0 05+-03, m1 06+-03 against 04+-03, 05+-03).
+
 The write shifts and the read enable position were first
 settled in a simulation of the PHY with Lattice's primitive models (QuestaSim) and a timing-aware
 RPC DRAM model (`bench/rpc/sim`), then on the board: STB/CS# need one
@@ -125,8 +135,21 @@ What the DRAM needs from the controller, found on this board:
   Other commands (activate, precharge, refresh) still end the stream: serial activate/precharge
   and Toggle RW are not used.
 * A refresh command burst refreshes all the rows of the selected banks (100ns per row in Fast
-  Refresh) and no command is accepted until it is done: `tRFC` is the duration of this burst
-  (1.64ms for the 4 banks) and `tREFI` its period (32ms).
+  Refresh) and no command is accepted until it is done: `tRFC` covers this burst and `tREFI` is
+  its period (32ms). The burst is timed by the DRAM (1.64ms nominal for the 4 banks, no tolerance
+  in the datasheet) and the DRAM drives DQS high until it is done. With `tRFC` at the nominal
+  duration plus 2us and two DRAMs on the bus, about 1 read in 10000 of the first DRAM had a wrong
+  bit in its first data (4 bitstream loads of 5): the second DRAM was still driving DQS. `tRFC`
+  is 1.5 times the nominal duration (2.46ms).
+* Two DRAMs on the same bus (`nranks=2`, datasheet "Multi Rank"): each DRAM has its STB and CS#.
+  CS# is only low on the DRAM(s) of the current command (it also enables their termination): the
+  PHY lowers the CS# of a newly selected DRAM with the STB preamble and raises the CS# of the
+  other one a sys_clk cycle later. A stream stays in one DRAM (the Multiplexer ends it when the
+  rank changes). Refresh, precharge and the initialization commands go to both DRAMs at once;
+  reads sent by software to all ranks (read leveling) are answered by the DRAM selected with the
+  `rdrank` CSR of the PHY (the first one by default). A DRAM that is not used (`nranks=1` with two
+  DRAMs on the board) still gets the reset sequence: once configured it keeps its state when the
+  FPGA is loaded again, and the read leveling of the other DRAM then failed completely.
 
 ## Implementation
 
@@ -164,8 +187,8 @@ Important implementation notes:
   decreased (`rdqs_dec` steps), otherwise the next UI is captured at this frequency. CSRs give
   access to the read delay, the write delay (DB against DQS) and the write leveling delay (DQS
   and DB against CLK) of the DQSBUFs: use them under software control only (a DQSBUF paused
-  while the controller sends commands corrupts them, and the DRAM then needs a new initialization). Only the first DRAM (rank) is used: STB/CS# of the others
-  are held high.
+  while the controller sends commands corrupts them, and the DRAM then needs a new initialization). Each DRAM (rank) has its STB/CS#
+  gearboxes; the DRAMs after `nranks` are only reset, their CS# is high the rest of the time.
 
 The current code structure is the predecessor of the concepts used in LPDDR4/LPDDR5 PHYs.
 RPC-related code is contained in the `litedram/phy/rpc` directory (with some modifications in other
@@ -181,7 +204,11 @@ cycles (16KiB: 4056 write/4157 read cycles without streaming, 1086/1133 with):
 ```sh
 python3 litedram/phy/rpc/simsoc.py
 python3 litedram/phy/rpc/simsoc.py --bist-length 16384 --stream-writes
+python3 litedram/phy/rpc/simsoc.py --nranks 2 --bist-length 32768 --stream-writes
 ```
+
+With `--nranks 2` there is one DRAM model per rank on the same bus; the BIST report flags bus
+contention and STB going low less than tCSS after CS# (`DRAM model error`).
 
 Currently this PHY is functional however it has some limitations that need to be addressed. The code
 structure could also be refreshed basing on the LPDDR4 code. Potential improvements include the

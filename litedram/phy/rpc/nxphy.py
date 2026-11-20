@@ -365,20 +365,18 @@ class NXRPCPHY(BasePHY):
         self.oddrx4(din=clk_1ck_out, dout=clk_p)
 
     def do_stb_serialization(self, stb_1ck_out, stb):
-        # STB idles high (also on the STB pins of the unused ranks).
+        # Called for each rank. STB idles high.
         stb_1ck = self.write_shift(~stb_1ck_out, self._stb_shift.storage)
-        for i in range(len(stb)):
-            stb_o = Signal()
-            self.oddrx4(din=~stb_1ck if i == 0 else Replicate(1, 8), dout=stb_o)
-            self.delaya(din=stb_o, dout=stb[i], delay=self.stb_delay)
+        stb_o   = Signal()
+        self.oddrx4(din=~stb_1ck, dout=stb_o)
+        self.delaya(din=stb_o, dout=stb, delay=self.stb_delay)
 
     def do_cs_serialization(self, cs_n_1ck_out, cs_n):
-        # CS# idles high (also on the CS# pins of the unused ranks).
+        # Called for each rank. CS# idles high.
         cs_n_1ck = self.write_shift(~cs_n_1ck_out, self._stb_shift.storage)
-        for i in range(len(cs_n)):
-            cs_n_o = Signal()
-            self.oddrx4(din=~cs_n_1ck if i == 0 else Replicate(1, 8), dout=cs_n_o)
-            self.delaya(din=cs_n_o, dout=cs_n[i], delay=self.stb_delay)
+        cs_n_o   = Signal()
+        self.oddrx4(din=~cs_n_1ck, dout=cs_n_o)
+        self.delaya(din=cs_n_o, dout=cs_n, delay=self.stb_delay)
 
     def do_dqs_serialization(self, dqs_1ck_out, dqs_1ck_in, dqs_oe, dqs_p, dqs_n):
         dqs_1ck = self.write_shift(dqs_1ck_out, self._dqs_shift.storage)
