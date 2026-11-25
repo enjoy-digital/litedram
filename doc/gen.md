@@ -96,6 +96,8 @@ default of `litedram/init.py`.
 | `rtt_nom` | DDR3: `disabled`, `20ohm`, `30ohm`, `40ohm`, `60ohm`, `120ohm`; DDR4: `disabled`, `34ohm`, `40ohm`, `48ohm`, `60ohm`, `80ohm`, `120ohm`, `240ohm` | `60ohm` (DDR3), `40ohm` (DDR4) | Nominal on-die termination (non-writes) |
 | `rtt_wr` | DDR3: `disabled`, `60ohm`, `120ohm`; DDR4: `disabled`, `80ohm`, `120ohm`, `240ohm`, `high-z` | `60ohm` (DDR3), `120ohm` (DDR4) | Dynamic on-die termination (writes) |
 | `ron` | DDR3: `34ohm`, `40ohm`; DDR4: `34ohm`, `48ohm` | `34ohm` | Output driver impedance |
+| `vref_dq` | DDR4 only: VrefDQ as % of VDDQ (e.g., `80.15`). Must be an encodable 0.65% step. | `None` | DRAM-side VrefDQ programming |
+| `vref_dq_range` | DDR4 only: JEDEC Range `1` or `2`. | `1` | VrefDQ Range (1: 60-92.5%, 2: 45-77.5%) |
 
 ### Controller
 
