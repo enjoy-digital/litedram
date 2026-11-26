@@ -849,7 +849,7 @@ class MT41K256M8(DDR3Module):
     # timings
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(4, 6), tZQCS=(64, 80))
     speedgrade_timings = {
-          "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(128, None), tFAW=(None, 40), tRAS=35),
+          "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=15, tRFC=(None, 160), tFAW=(None, 40), tRAS=35),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
@@ -892,10 +892,10 @@ class MT41J256M16(DDR3Module):
     # JEDEC DDR3 x16 organisation requires the 6 nCK tRRD floor (vs 4 nCK for x4/x8).
     technology_timings = _TechnologyTimings(tREFI=64e6/8192, tWTR=(4, 7.5), tCCD=(4, None), tRRD=(6, 10), tZQCS=(64, 80))
     speedgrade_timings = {
-        "800":  _SpeedgradeTimings(tRP=13.1,  tRCD=13.1,  tWR=13.1,  tRFC=(139, None), tFAW=(None, 50), tRAS=37.5),
-        "1066": _SpeedgradeTimings(tRP=13.1,  tRCD=13.1,  tWR=13.1,  tRFC=(138, None), tFAW=(None, 50), tRAS=37.5),
-        "1333": _SpeedgradeTimings(tRP=13.5,  tRCD=13.5,  tWR=13.5,  tRFC=(174, None), tFAW=(None, 45), tRAS=36),
-        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=13.75, tRFC=(208, None), tFAW=(None, 40), tRAS=35),
+        "800":  _SpeedgradeTimings(tRP=13.1,  tRCD=13.1,  tWR=13.1,  tRFC=(None, 260), tFAW=(None, 50), tRAS=37.5),
+        "1066": _SpeedgradeTimings(tRP=13.1,  tRCD=13.1,  tWR=13.1,  tRFC=(None, 260), tFAW=(None, 50), tRAS=37.5),
+        "1333": _SpeedgradeTimings(tRP=13.5,  tRCD=13.5,  tWR=13.5,  tRFC=(None, 260), tFAW=(None, 45), tRAS=36),
+        "1600": _SpeedgradeTimings(tRP=13.75, tRCD=13.75, tWR=13.75, tRFC=(None, 260), tFAW=(None, 40), tRAS=35),
     }
     speedgrade_timings["default"] = speedgrade_timings["1600"]
 
