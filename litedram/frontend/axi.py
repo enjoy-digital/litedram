@@ -372,7 +372,11 @@ class LiteDRAMAXI2NativeR(Module):
                 If(port.cmd.ready,
                     ar.ready.eq(1),
                 )
-            )
+            ),
+            # Flush when the read path stops in the middle of a burst (read buffer reserved or
+            # Read-Modify-Write): an up-converter would keep the reads already issued, waiting
+            # for the next words to gather, and their data would never come back.
+            port.flush.eq(ar.valid & ~ar.first & ~can_read),
         ]
 
         # Read data --------------------------------------------------------------------------------

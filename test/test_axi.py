@@ -550,6 +550,102 @@ class TestAXI(unittest.TestCase):
         data = [0xa0a1a2a3_a4a5a6a7_a8a9aaab_acadaeaf ^ i for i in range(4)]
         self._axi2native_rmw_burst_check(128, list(zip(data, [0x1, 0xffff, 0x8000, 0x00f0])))
 
+    def _axi2native_read_stall_up_converted(self, data_width, r_buffer_depth, read_addr, read_len,
+        with_read_modify_write=False, write_delay=None):
+        # Issue one INCR read burst on a port converted to 128-bit (and, optionally, a partial write
+        # starting write_delay cycles later) and check the read data: when the read path stops in
+        # the middle of a 128-bit word, the up-converter must not keep the words already gathered.
+        class DUT(Module):
+            def __init__(self):
+                self.axi  = LiteDRAMAXIPort(data_width=data_width, address_width=32, id_width=8)
+                self.port = LiteDRAMNativePort("both", 20, data_width)
+                self.dram = LiteDRAMNativePort("both", 20, 128)
+                self.submodules.converter = LiteDRAMNativePortConverter(self.port, self.dram)
+                self.submodules.bridge    = LiteDRAMAXI2Native(self.axi, self.port,
+                    r_buffer_depth         = r_buffer_depth,
+                    with_read_modify_write = with_read_modify_write)
+
+        dut      = DUT()
+        mem_init = [0x0f0e0d0c_0b0a0908_07060504_03020100 + i*(1 << 120) for i in range(32)]
+        mem      = DRAMMemory(128, 32, init=mem_init)
+        nbytes   = data_width//8
+        ratio    = 128//data_width
+        words    = [read_addr//nbytes + i for i in range(read_len)]
+        expected = [(mem_init[w//ratio] >> data_width*(w%ratio)) & (2**data_width - 1) for w in words]
+        rdata    = []
+        bdone    = []
+
+        def reader():
+            yield dut.axi.r.ready.eq(1)
+            yield dut.axi.ar.valid.eq(1)
+            yield dut.axi.ar.addr.eq(read_addr)
+            yield dut.axi.ar.burst.eq(BURST_INCR)
+            yield dut.axi.ar.len.eq(read_len - 1)
+            yield dut.axi.ar.size.eq(log2_int(nbytes))
+            yield
+            while not (yield dut.axi.ar.ready):
+                yield
+            yield dut.axi.ar.valid.eq(0)
+            while len(rdata) < read_len:
+                if (yield dut.axi.r.valid):
+                    rdata.append((yield dut.axi.r.data))
+                yield
+
+        def writer():
+            for _ in range(write_delay):
+                yield
+            yield dut.axi.aw.valid.eq(1)
+            yield dut.axi.aw.addr.eq(0x100)
+            yield dut.axi.aw.burst.eq(BURST_INCR)
+            yield dut.axi.aw.len.eq(0)
+            yield dut.axi.aw.size.eq(log2_int(nbytes))
+            yield dut.axi.w.valid.eq(1)
+            yield dut.axi.w.data.eq(2**data_width - 1)
+            yield dut.axi.w.strb.eq(0x1)
+            yield dut.axi.w.last.eq(1)
+            yield dut.axi.b.ready.eq(1)
+            yield
+            while not (yield dut.axi.b.valid):
+                if (yield dut.axi.aw.ready):
+                    yield dut.axi.aw.valid.eq(0)
+                if (yield dut.axi.w.ready):
+                    yield dut.axi.w.valid.eq(0)
+                yield
+            for _ in range(32):
+                yield
+            bdone.append(True)
+
+        generators = [
+            reader(),
+            mem.read_handler(dut.dram),
+            mem.write_handler(dut.dram),
+            timeout_generator(1000),
+        ]
+        if write_delay is not None:
+            generators.append(writer())
+        run_simulation(dut, generators)
+        self.assertEqual(rdata, expected)
+        if write_delay is not None:
+            self.assertEqual(bdone, [True])
+            self.assertEqual(mem.mem[0x100//16] & 0xff, 0xff)
+
+    def test_axi2native_read_buffer_full_up_converted(self):
+        # The read path used to stop in the middle of a word when its read buffer was reserved,
+        # with the up-converter waiting for the next words: no read data ever came back.
+        for data_width in [32, 64]:
+            for r_buffer_depth in [1, 2, 3]:
+                with self.subTest(data_width=data_width, r_buffer_depth=r_buffer_depth):
+                    self._axi2native_read_stall_up_converted(data_width, r_buffer_depth,
+                        read_addr=0, read_len=2*128//data_width)
+
+    def test_axi2native_rmw_during_read_up_converted(self):
+        # A partial write arriving in the middle of a read burst blocked the read path until the
+        # outstanding reads were done, but the up-converter was keeping them for the next words.
+        for write_delay in range(16):
+            with self.subTest(write_delay=write_delay):
+                self._axi2native_read_stall_up_converted(64, 16, read_addr=0x80, read_len=2,
+                    with_read_modify_write=True, write_delay=write_delay)
+
     # Now let's stress things a bit... :)
     def test_axi2native_random_all(self):
         self._test_axi2native(
