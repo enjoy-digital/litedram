@@ -107,7 +107,7 @@ controller commands to consecutive addresses, and the read data of the N command
 A narrower port goes through an up-converter. Consecutive commands to the same controller word are
 grouped into one DRAM access, with up to 8 reads in flight. A burst that stops before filling the
 word must be closed by `cmd.last` on its last command or by a pulse on the port `flush`. The
-Wishbone and Avalon bridges do it for you.
+Wishbone, Avalon and AXI bridges do it for you.
 
 ## Choosing a frontend {#fe-choosing}
 
